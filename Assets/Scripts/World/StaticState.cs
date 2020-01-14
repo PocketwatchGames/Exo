@@ -26,7 +26,7 @@ public class StaticState {
 		for (int i=0;i<Count;i++)
 		{
 			var v = vertices[i];
-			Coordinate[i] = new float2(math.asin(v.x), math.asin(v.y));
+			Coordinate[i] = new float2(math.atan2(v.x, v.z), math.asin(v.y));
 			SphericalPosition[i] = new float3(v.x, v.y, v.z);
 		}
 	}

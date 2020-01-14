@@ -340,13 +340,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2154d38784c857144af42caef2dc5850, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
+  m_TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
+  m_WaterMaterial: {fileID: 2100000, guid: 297c693a57253724c881afe6c7ac126c, type: 2}
+  m_CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
   WorldGenData:
-    Radius: 100000
+    Radius: 20000
     MinElevation: -10000
     MaxElevation: 10000
   Seed: 0
-  Subdivisions: 4
+  Subdivisions: 5
 --- !u!4 &365555217
 Transform:
   m_ObjectHideFlags: 0

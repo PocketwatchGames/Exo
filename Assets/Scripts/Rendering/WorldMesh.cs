@@ -4,18 +4,28 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using Unity.Mathematics;
 
 public struct WorldMesh {
 
 
 	List<Polygon> m_Polygons;
 	List<Vector3> m_Vertices;
-	Vector3[] vertices;
-	Vector3[] normals;
-	Color32[] colors;
+	Vector3[] terrainVertices;
+	Vector3[] terrainNormals;
+	Color32[] terrainColors;
+	Vector3[] waterVertices;
+	Vector3[] waterNormals;
+	Color32[] waterColors;
+	Vector3[] cloudVertices;
+	Vector3[] cloudNormals;
+	Color32[] cloudColors;
 
 	static Color32 green = new Color32(20, 255, 30, 255);
 	static Color32 brown = new Color32(220, 150, 70, 255);
+	static Color32 blue = new Color32(0, 0, 255, 255);
+	static Color32 white = new Color32(255, 255, 255, 255);
+	static Color32 black = new Color32(0, 0, 0, 255);
 
 
 	public void Init(int subdivisions)
@@ -32,15 +42,21 @@ public struct WorldMesh {
 	}
 
 
-	public void InitMesh(Mesh mesh)
+	public void InitMesh(Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh)
 	{
 
 		int vertexCount = m_Polygons.Count * 3;
 
 		int[] indices = new int[vertexCount];
-		vertices = new Vector3[m_Vertices.Count];
-		normals = new Vector3[m_Vertices.Count];
-		colors = new Color32[m_Vertices.Count];
+		terrainVertices = new Vector3[m_Vertices.Count];
+		terrainNormals = new Vector3[m_Vertices.Count];
+		terrainColors = new Color32[m_Vertices.Count];
+		waterVertices = new Vector3[m_Vertices.Count];
+		waterNormals = new Vector3[m_Vertices.Count];
+		waterColors = new Color32[m_Vertices.Count];
+		cloudVertices = new Vector3[m_Vertices.Count];
+		cloudNormals = new Vector3[m_Vertices.Count];
+		cloudColors = new Color32[m_Vertices.Count];
 
 		for (int i = 0; i < m_Polygons.Count; i++)
 		{
@@ -51,35 +67,83 @@ public struct WorldMesh {
 			indices[i * 3 + 2] = poly.m_Vertices[2];
 		}
 
-		mesh.vertices = vertices;
-		mesh.normals = normals;
-		mesh.colors32 = colors;
+		terrainMesh.vertices = terrainVertices;
+		terrainMesh.normals = terrainNormals;
+		terrainMesh.colors32 = terrainColors;
+		terrainMesh.SetTriangles(indices, 0);
 
-		mesh.SetTriangles(indices, 0);
+		waterMesh.vertices = waterVertices;
+		waterMesh.normals = waterNormals;
+		waterMesh.colors32 = waterColors;
+		waterMesh.SetTriangles(indices, 0);
+
+		cloudMesh.vertices = cloudVertices;
+		cloudMesh.normals = cloudNormals;
+		cloudMesh.colors32 = cloudColors;
+		cloudMesh.SetTriangles(indices, 0);
 
 	}
 
-	public void UpdateMesh(MeshFilter meshFilter, StaticState staticState, SimState lastState, SimState nextState, float t, float scale)
+	public void UpdateMesh(Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh, StaticState staticState, SimState lastState, SimState nextState, float t, float scale)
 	{
 		for (int i = 0; i < m_Vertices.Count; i++)
 		{
 			float lastElevation = lastState.Elevation[i];
 			float nextElevation = nextState.Elevation[i];
-			vertices[i] = m_Vertices[i] * ((nextElevation - lastElevation) * t + lastElevation + staticState.Radius) * scale;
-			colors[i] = Color32.Lerp(GetVertColor(staticState, lastState, i), GetVertColor(staticState, nextState, i), t);
-			normals[i] = m_Vertices[i];
+			terrainVertices[i] = m_Vertices[i] * ((nextElevation - lastElevation) * t + lastElevation + staticState.Radius) * scale;
+			terrainColors[i] = Color32.Lerp(GetTerrainColor(staticState, lastState, i), GetTerrainColor(staticState, nextState, i), t);
+			terrainNormals[i] = m_Vertices[i];
+
+			float lastWaterElevation = lastState.WaterElevation[i];
+			float nextWaterElevation = nextState.WaterElevation[i];
+			waterVertices[i] = m_Vertices[i] * ((nextWaterElevation - lastWaterElevation) * t + lastWaterElevation + staticState.Radius) * scale;
+			waterColors[i] = Color32.Lerp(GetWaterColor(staticState, lastState, i), GetWaterColor(staticState, nextState, i), t);
+			waterNormals[i] = m_Vertices[i];
+
+			float lastCloudElevation = lastState.CloudElevation[i];
+			float nextCloudElevation = nextState.CloudElevation[i];
+			cloudVertices[i] = m_Vertices[i] * ((nextCloudElevation - lastCloudElevation) * t + lastCloudElevation + staticState.Radius) * scale;
+			cloudColors[i] = Color32.Lerp(GetCloudColor(staticState, lastState, i), GetCloudColor(staticState, nextState, i), t);
+			cloudNormals[i] = m_Vertices[i];
+
 		}
 
-		meshFilter.mesh.vertices = vertices;
-		meshFilter.mesh.normals = normals;
-		meshFilter.mesh.colors32 = colors;
+		terrainMesh.vertices = terrainVertices;
+		terrainMesh.normals = terrainNormals;
+		terrainMesh.colors32 = terrainColors;
+		terrainMesh.RecalculateBounds();
+
+		waterMesh.vertices = waterVertices;
+		waterMesh.normals = waterNormals;
+		waterMesh.colors32 = waterColors;
+		waterMesh.RecalculateBounds();
+
+		cloudMesh.vertices = cloudVertices;
+		cloudMesh.normals = cloudNormals;
+		cloudMesh.colors32 = cloudColors;
+		cloudMesh.RecalculateBounds();
+
 	}
 
 	#region private functions
 
-	private Color32 GetVertColor(StaticState staticState, SimState state, int index)
+	private Color32 GetTerrainColor(StaticState staticState, SimState state, int index)
 	{
 		return Color32.Lerp(brown, green, state.Vegetation[index]);
+	}
+
+	private Color32 GetWaterColor(StaticState staticState, SimState state, int index)
+	{
+		return Color32.Lerp(blue, white, state.Ice[index]);
+	}
+
+	private Color32 GetCloudColor(StaticState staticState, SimState state, int index)
+	{
+		var humidity = state.RelativeHumidity[index];
+		var c = Color32.Lerp(white, black, humidity);
+		float opacity = humidity > 0.5f ? math.pow(humidity, 0.25f) * 0.75f : math.pow(humidity, 4);
+		c.a = (byte)(255 * opacity);
+		return c;
 	}
 
 	private void InitAsIcosohedron()
