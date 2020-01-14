@@ -22,84 +22,109 @@ public class WorldComponent : MonoBehaviour
 	public TextAsset WorldDataAsset;
 	public WorldData WorldData;
 
-	public Material m_TerrainMaterial;
-	public Material m_WaterMaterial;
-	public Material m_CloudMaterial;
-
-	private MeshBuilder meshBuilder;
-	GameObject m_TerrainMesh;
-	GameObject m_WaterMesh;
-	GameObject m_CloudMesh;
+	public Material TerrainMaterial;
+	public Material WaterMaterial;
+	public Material CloudMaterial;
 
 	public float TimeScale;
 
-	private WorldGenData _worldGenData = new WorldGenData();
-	
+
 
 	private int _simVertCount;
 	public int SimVertCount {  get { return _simVertCount; } }
-	public ref SimState RenderState {  get { return ref _nextRenderState; } }
+	public ref SimState RenderState {  get { return ref _renderStates[_curRenderState]; } }
 
+	GameObject _terrainMesh;
+	GameObject _waterMesh;
+	GameObject _cloudMesh;
+	private MeshBuilder _meshBuilder;
+	private WorldGenData _worldGenData = new WorldGenData();
+	private const int _simStateCount = 2;
+	private const int _renderStateCount = 3;
 	private StaticState _staticState;
-	private SimState _state;
-	private SimState _lastRenderState;
-	private SimState _nextRenderState;
+	private SimState[] _simStates;
+	private SimState[] _renderStates;
+	private int _curRenderState;
+	private int _lastRenderState;
+	private int _nextRenderState;
 	private float _renderStateLerp;
-	private SimState _activeSimState;
+	private int _activeSimState;
+	private float _timeTillTick = 0.00001f;
+	private float _tickLerpTime;
+	private float _ticksPerSecond = 1;
 
 
 	public void Start()
     {
-		meshBuilder.Init(Subdivisions);
+		_meshBuilder.Init(Subdivisions);
 
-		_simVertCount = meshBuilder.GetVertices().Count;
+		_simVertCount = _meshBuilder.GetVertices().Count;
 
 		_staticState = new StaticState();
 		_staticState.Init(_simVertCount);
 
-		_state = new SimState();
-		_state.Init(_simVertCount);
-
-		if (m_TerrainMesh)
+		_activeSimState = 0;
+		_curRenderState = 1;
+		_nextRenderState = 0;
+		_lastRenderState = 0;
+		_simStates = new SimState[_simStateCount];
+		for (int i = 0; i < _simStateCount; i++)
 		{
-			GameObject.Destroy(m_TerrainMesh);
+			_simStates[i] = new SimState();
+			_simStates[i].Init(_simVertCount);
 		}
-		m_TerrainMesh = new GameObject("Terrain Mesh");
-		m_TerrainMesh.transform.parent = gameObject.transform;
-		var terrainFilter = m_TerrainMesh.AddComponent<MeshFilter>();
-		var terrainSurfaceRenderer = m_TerrainMesh.AddComponent<MeshRenderer>();
-		terrainSurfaceRenderer.material = m_TerrainMaterial;
+		_renderStates = new SimState[_renderStateCount];
+		for (int i = 0; i < _renderStateCount; i++)
+		{
+			_renderStates[i] = new SimState();
+			_renderStates[i].Init(_simVertCount);
+		}
 
-		m_WaterMesh = new GameObject("Water Mesh");
-		m_WaterMesh.transform.parent = gameObject.transform;
-		var waterFilter = m_WaterMesh.AddComponent<MeshFilter>();
-		var waterSurfaceRenderer = m_WaterMesh.AddComponent<MeshRenderer>();
-		waterSurfaceRenderer.material = m_WaterMaterial;
+		if (_terrainMesh)
+		{
+			GameObject.Destroy(_terrainMesh);
+		}
+		_terrainMesh = new GameObject("Terrain Mesh");
+		_terrainMesh.transform.parent = gameObject.transform;
+		var terrainFilter = _terrainMesh.AddComponent<MeshFilter>();
+		var terrainSurfaceRenderer = _terrainMesh.AddComponent<MeshRenderer>();
+		terrainSurfaceRenderer.material = TerrainMaterial;
 
-		m_CloudMesh = new GameObject("Cloud Mesh");
-		m_CloudMesh.transform.parent = gameObject.transform;
-		var cloudFilter = m_CloudMesh.AddComponent<MeshFilter>();
-		var cloudSurfaceRenderer = m_CloudMesh.AddComponent<MeshRenderer>();
-		cloudSurfaceRenderer.material = m_CloudMaterial;
+		_waterMesh = new GameObject("Water Mesh");
+		_waterMesh.transform.parent = gameObject.transform;
+		var waterFilter = _waterMesh.AddComponent<MeshFilter>();
+		var waterSurfaceRenderer = _waterMesh.AddComponent<MeshRenderer>();
+		waterSurfaceRenderer.material = WaterMaterial;
+
+		_cloudMesh = new GameObject("Cloud Mesh");
+		_cloudMesh.transform.parent = gameObject.transform;
+		var cloudFilter = _cloudMesh.AddComponent<MeshFilter>();
+		var cloudSurfaceRenderer = _cloudMesh.AddComponent<MeshRenderer>();
+		cloudSurfaceRenderer.material = CloudMaterial;
 
 
 		var terrainMesh = new Mesh();
 		var waterMesh = new Mesh();
 		var cloudMesh = new Mesh();
-		meshBuilder.InitMesh(terrainMesh, waterMesh, cloudMesh);
+		_meshBuilder.InitMesh(terrainMesh, waterMesh, cloudMesh);
 		terrainFilter.mesh = terrainMesh;
 		waterFilter.mesh = waterMesh;
 		cloudFilter.mesh = cloudMesh;
 
-		_staticState.ExtractCoordinates(meshBuilder.GetVertices());
+		_staticState.ExtractCoordinates(_meshBuilder.GetVertices());
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
-		WorldGen.Generate(_staticState, Seed, _worldGenData, WorldData, ref _state);
-
-		_activeSimState = _state;
-		_lastRenderState = _state;
-		_nextRenderState = _state;
-		meshBuilder.UpdateMesh(terrainMesh, waterMesh, cloudMesh, _staticState, _state, _state, 0, Scale);
+		WorldGen.Generate(_staticState, Seed, _worldGenData, WorldData, ref _simStates[0]);
+		for (int i=1;i<_simStateCount;i++)
+		{
+			_meshBuilder.CopyRenderState(ref _simStates[i-1], ref _simStates[i]);
+		}
+		_meshBuilder.CopyRenderState(ref _simStates[0], ref _renderStates[_lastRenderState]);
+		for (int i=1;i<_renderStateCount;i++)
+		{
+			_meshBuilder.CopyRenderState(ref _renderStates[i-1], ref _renderStates[i]);
+		}
+		_meshBuilder.UpdateMesh(terrainMesh, waterMesh, cloudMesh, _staticState, _renderStates[_lastRenderState], Scale);
 		
 
 	}
@@ -107,18 +132,54 @@ public class WorldComponent : MonoBehaviour
 
 	public void Update()
 	{
-		var terrainMeshFilter = m_TerrainMesh.GetComponent<MeshFilter>();
-		var waterMeshFilter = m_WaterMesh.GetComponent<MeshFilter>();
-		var cloudMeshFilter = m_CloudMesh.GetComponent<MeshFilter>();
+		if (_timeTillTick > -1)
+		{
+			_timeTillTick -= Time.deltaTime * TimeScale;
+		}
+		if (_timeTillTick <= 0)
+		{
+			while (_timeTillTick <= 0)
+			{
+				DoSimTick();
+			}
+			_lastRenderState = _curRenderState;
+			_nextRenderState = (_curRenderState + 1) % _renderStateCount;
+			_curRenderState = (_nextRenderState + 1) % _renderStateCount;
+			_meshBuilder.CopyRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState]);
+			_renderStateLerp = 0;
+			_tickLerpTime = _timeTillTick;
+		}
+		ref var renderState = ref _renderStates[_curRenderState];
+		if (_tickLerpTime > 0)
+		{
+			_renderStateLerp = Mathf.Clamp01(1.0f - _timeTillTick / _tickLerpTime);
+		}
+		_meshBuilder.LerpRenderState(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], _renderStateLerp, ref renderState);
+
+
+		var terrainMeshFilter = _terrainMesh.GetComponent<MeshFilter>();
+		var waterMeshFilter = _waterMesh.GetComponent<MeshFilter>();
+		var cloudMeshFilter = _cloudMesh.GetComponent<MeshFilter>();
 		if (terrainMeshFilter != null && waterMeshFilter != null && cloudMeshFilter != null)
 		{
-			meshBuilder.UpdateMesh(terrainMeshFilter.mesh, waterMeshFilter.mesh, cloudMeshFilter.mesh, _staticState, _lastRenderState, _nextRenderState, _renderStateLerp, Scale);
+			_meshBuilder.UpdateMesh(terrainMeshFilter.mesh, waterMeshFilter.mesh, cloudMeshFilter.mesh, _staticState, _renderStates[_curRenderState], Scale);
 		}
 
-		var quat = Quaternion.Euler(Mathf.LerpAngle(_lastRenderState.TiltAngle, _nextRenderState.TiltAngle, _renderStateLerp), Mathf.LerpAngle(_lastRenderState.SpinAngle, _nextRenderState.SpinAngle, _renderStateLerp), 0);
+		var quat = Quaternion.Euler(renderState.TiltAngle, renderState.SpinAngle, 0);
 		transform.SetPositionAndRotation(Vector3.zero, quat);
 
-		
+	}
+	private void DoSimTick()
+	{
+		if (_timeTillTick <= 0)
+		{
+			_timeTillTick += _ticksPerSecond;
+
+			int nextStateIndex = (_activeSimState + 1) % _simStateCount;
+			WorldSim.Tick(ref _simStates[_activeSimState], ref _simStates[nextStateIndex]);
+			_activeSimState = nextStateIndex;
+		}
+
 	}
 
 	public string GetCellInfo(CellInfoType cellInfoType)
@@ -128,22 +189,26 @@ public class WorldComponent : MonoBehaviour
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
-		m_WaterMesh.SetActive(toggle.isOn);
+		_waterMesh.SetActive(toggle.isOn);
 	}
 	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
-		m_CloudMesh.SetActive(toggle.isOn);
+		_cloudMesh.SetActive(toggle.isOn);
 	}
 	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
 	{
-		meshBuilder.ActiveMeshOverlay = (MeshBuilder.MeshOverlay)dropdown.value;
+		_meshBuilder.ActiveMeshOverlay = (MeshBuilder.MeshOverlay)dropdown.value;
 	}
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
 	{
-		meshBuilder.ActiveWindOverlay = (MeshBuilder.WindOverlay)dropdown.value;
+		_meshBuilder.ActiveWindOverlay = (MeshBuilder.WindOverlay)dropdown.value;
 	}
+
+
 	public void StepTime()
 	{
-
+		TimeScale = 0;
+		_timeTillTick = 0;
 	}
+
 }

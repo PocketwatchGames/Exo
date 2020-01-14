@@ -8,8 +8,8 @@ using Unity.Entities;
 public struct SimState {
 
 	public int Count;
-	public float Gravity;
 	public int Ticks;
+	public float Gravity;
 	public float SpinAngle;
 	public float SpinSpeed;
 	public float OrbitSpeed;

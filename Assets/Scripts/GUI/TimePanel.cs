@@ -25,7 +25,7 @@ public class TimePanel : MonoBehaviour
 		Ticks.text = "[" + rs.Ticks + "]";
 		Time.text = ((int)(WorldTime.GetTime(rs.Ticks, rs.SpinSpeed) / rs.SpinSpeed)).ToString() + "\"";
 		float days = WorldTime.GetDays(rs.Ticks, rs.SpinSpeed);
-		Date.text = ((int)(days / rs.SpinSpeed)).ToString() + "\\" + ((int)(days / rs.OrbitSpeed)).ToString("X4");
+		Date.text = ((int)days).ToString() + "\\" + ((int)(rs.Ticks * rs.OrbitSpeed)).ToString("X4");
 	}
 
 	public void OnTimescaleChanged(float t)

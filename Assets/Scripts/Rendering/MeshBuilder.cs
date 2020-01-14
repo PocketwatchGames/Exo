@@ -118,28 +118,56 @@ public struct MeshBuilder {
 
 	}
 
-	public void UpdateMesh(Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh, StaticState staticState, SimState lastState, SimState nextState, float t, float scale)
+
+	public void LerpRenderState(ref SimState lastState, ref SimState nextState, float t, ref SimState state)
+	{
+		state.Gravity = (nextState.Gravity - lastState.Gravity) * t + lastState.Gravity;
+		state.TiltAngle = Mathf.LerpAngle(lastState.TiltAngle, nextState.TiltAngle, t);
+		state.SpinAngle = Mathf.LerpAngle(lastState.SpinAngle, nextState.SpinAngle, t);
+		state.Ticks = (int)((nextState.Ticks - lastState.Ticks) * t + lastState.Ticks);
+		for (int i = 0; i < lastState.Count; i++)
+		{
+			ref var last = ref lastState.Cells[i];
+			ref var next = ref nextState.Cells[i];
+			state.Cells[i].Elevation		= (next.Elevation - last.Elevation) * t + last.Elevation;
+			state.Cells[i].CloudCoverage	= (next.CloudCoverage - last.CloudCoverage) * t + last.CloudCoverage;
+			state.Cells[i].CloudElevation	= (next.CloudElevation - last.CloudElevation) * t + last.CloudElevation;
+			state.Cells[i].WaterElevation	= (next.WaterElevation - last.WaterElevation) * t + last.WaterElevation;
+			state.Cells[i].Ice				= (next.Ice - last.Ice) * t + last.Ice;
+			state.Cells[i].RelativeHumidity = (next.RelativeHumidity - last.RelativeHumidity) * t + last.RelativeHumidity;
+			state.Cells[i].Vegetation		= (next.Vegetation - last.Vegetation) * t + last.Vegetation;
+		}
+	}
+	public void CopyRenderState(ref SimState from, ref SimState state)
+	{
+		state.Ticks = from.Ticks;
+		state.OrbitSpeed = from.OrbitSpeed;
+		state.SpinAngle = from.SpinAngle;
+		state.SpinSpeed = from.SpinSpeed;
+		state.Gravity = from.Gravity;
+		state.TiltAngle = from.TiltAngle;
+		state.Count = from.Count;
+		for (int i=0;i<from.Count;i++)
+		{
+			state.Cells[i] = from.Cells[i];
+		}
+	}
+
+	public void UpdateMesh(Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh, StaticState staticState, SimState simState, float scale)
 	{
 		for (int i = 0; i < m_Vertices.Count; i++)
 		{
-			var lastStateCell = lastState.Cells[i];
-			var nextStateCell = nextState.Cells[i];
-			float lastElevation = lastStateCell.Elevation;
-			float nextElevation = nextStateCell.Elevation;
-			terrainVertices[i] = m_Vertices[i] * ((nextElevation - lastElevation) * t + lastElevation + staticState.Radius) * scale;
-			terrainColors[i] = Color32.Lerp(GetTerrainColor(staticState, lastState, i), GetTerrainColor(staticState, nextState, i), t);
+			var cell = simState.Cells[i];
+			terrainVertices[i] = m_Vertices[i] * (cell.Elevation + staticState.Radius) * scale;
+			terrainColors[i] = GetTerrainColor(staticState, simState, i);
 			terrainNormals[i] = m_Vertices[i];
 
-			float lastWaterElevation = lastStateCell.WaterElevation;
-			float nextWaterElevation = nextStateCell.WaterElevation;
-			waterVertices[i] = m_Vertices[i] * ((nextWaterElevation - lastWaterElevation) * t + lastWaterElevation + staticState.Radius) * scale;
-			waterColors[i] = Color32.Lerp(GetWaterColor(staticState, lastState, i), GetWaterColor(staticState, nextState, i), t);
+			waterVertices[i] = m_Vertices[i] * (cell.WaterElevation + staticState.Radius) * scale;
+			waterColors[i] = GetWaterColor(staticState, simState, i);
 			waterNormals[i] = m_Vertices[i];
 
-			float lastCloudElevation = lastStateCell.CloudElevation;
-			float nextCloudElevation = nextStateCell.CloudElevation;
-			cloudVertices[i] = m_Vertices[i] * ((nextCloudElevation - lastCloudElevation) * t + lastCloudElevation + staticState.Radius) * scale;
-			cloudColors[i] = Color32.Lerp(GetCloudColor(staticState, lastState, i), GetCloudColor(staticState, nextState, i), t);
+			cloudVertices[i] = m_Vertices[i] * (cell.CloudElevation + staticState.Radius) * scale;
+			cloudColors[i] = GetCloudColor(staticState, simState, i);
 			cloudNormals[i] = m_Vertices[i];
 
 		}
