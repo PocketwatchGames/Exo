@@ -8,6 +8,39 @@ using Unity.Mathematics;
 
 public struct MeshBuilder {
 
+	public enum MeshOverlay {
+		None,
+		TerrainTemperature,
+		GroundWater,
+		DeepWaterTemperature,
+		DeepWaterSalinity,
+		ShallowWaterTemperature,
+		ShallowWaterSalinity,
+		LowerAirTemperature,
+		LowerAirPressure,
+		UpperAirTemperature,
+		UpperAirPressure,
+		VerticalWind,
+		AbsoluteHumidity,
+		RelativeHumidity,
+		CloudMass,
+		CloudCoalescence,
+		Evaporation,
+		Rainfall,
+		Condensation,
+		HeatAbsorbed,
+	}
+
+	public enum WindOverlay {
+		None,
+		DeepWaterCurrent,
+		ShallowWaterCurrent,
+		LowerAirWind,
+		UpperAirWind
+	}
+
+	public MeshOverlay ActiveMeshOverlay;
+	public WindOverlay ActiveWindOverlay;
 
 	List<Polygon> m_Polygons;
 	List<Vector3> m_Vertices;
@@ -20,6 +53,7 @@ public struct MeshBuilder {
 	Vector3[] cloudVertices;
 	Vector3[] cloudNormals;
 	Color32[] cloudColors;
+
 
 	static Color32 green = new Color32(20, 255, 30, 255);
 	static Color32 brown = new Color32(220, 150, 70, 255);

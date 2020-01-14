@@ -115,6 +115,8 @@ public class WorldComponent : MonoBehaviour
 
 		var quat = Quaternion.Euler(Mathf.LerpAngle(_lastRenderState.TiltAngle, _nextRenderState.TiltAngle, _renderStateLerp), Mathf.LerpAngle(_lastRenderState.SpinAngle, _nextRenderState.SpinAngle, _renderStateLerp), 0);
 		transform.SetPositionAndRotation(Vector3.zero, quat);
+
+		
 	}
 
 	public string GetCellInfo(CellInfoType cellInfoType)
@@ -129,5 +131,14 @@ public class WorldComponent : MonoBehaviour
 	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
 		m_CloudMesh.SetActive(toggle.isOn);
+	}
+	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
+	{
+		meshBuilder.ActiveMeshOverlay = (MeshBuilder.MeshOverlay)dropdown.value;
+	}
+	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
+	{
+		meshBuilder.ActiveWindOverlay = (MeshBuilder.WindOverlay)dropdown.value;
+
 	}
 }
