@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using Unity.Mathematics;
 
-public struct WorldMesh {
+public struct MeshBuilder {
 
 
 	List<Polygon> m_Polygons;
@@ -88,20 +88,22 @@ public struct WorldMesh {
 	{
 		for (int i = 0; i < m_Vertices.Count; i++)
 		{
-			float lastElevation = lastState.Elevation[i];
-			float nextElevation = nextState.Elevation[i];
+			var lastStateCell = lastState.Cells[i];
+			var nextStateCell = nextState.Cells[i];
+			float lastElevation = lastStateCell.Elevation;
+			float nextElevation = nextStateCell.Elevation;
 			terrainVertices[i] = m_Vertices[i] * ((nextElevation - lastElevation) * t + lastElevation + staticState.Radius) * scale;
 			terrainColors[i] = Color32.Lerp(GetTerrainColor(staticState, lastState, i), GetTerrainColor(staticState, nextState, i), t);
 			terrainNormals[i] = m_Vertices[i];
 
-			float lastWaterElevation = lastState.WaterElevation[i];
-			float nextWaterElevation = nextState.WaterElevation[i];
+			float lastWaterElevation = lastStateCell.WaterElevation;
+			float nextWaterElevation = nextStateCell.WaterElevation;
 			waterVertices[i] = m_Vertices[i] * ((nextWaterElevation - lastWaterElevation) * t + lastWaterElevation + staticState.Radius) * scale;
 			waterColors[i] = Color32.Lerp(GetWaterColor(staticState, lastState, i), GetWaterColor(staticState, nextState, i), t);
 			waterNormals[i] = m_Vertices[i];
 
-			float lastCloudElevation = lastState.CloudElevation[i];
-			float nextCloudElevation = nextState.CloudElevation[i];
+			float lastCloudElevation = lastStateCell.CloudElevation;
+			float nextCloudElevation = nextStateCell.CloudElevation;
 			cloudVertices[i] = m_Vertices[i] * ((nextCloudElevation - lastCloudElevation) * t + lastCloudElevation + staticState.Radius) * scale;
 			cloudColors[i] = Color32.Lerp(GetCloudColor(staticState, lastState, i), GetCloudColor(staticState, nextState, i), t);
 			cloudNormals[i] = m_Vertices[i];
@@ -129,17 +131,17 @@ public struct WorldMesh {
 
 	private Color32 GetTerrainColor(StaticState staticState, SimState state, int index)
 	{
-		return Color32.Lerp(brown, green, state.Vegetation[index]);
+		return Color32.Lerp(brown, green, state.Cells[index].Vegetation);
 	}
 
 	private Color32 GetWaterColor(StaticState staticState, SimState state, int index)
 	{
-		return Color32.Lerp(blue, white, state.Ice[index]);
+		return Color32.Lerp(blue, white, state.Cells[index].Ice);
 	}
 
 	private Color32 GetCloudColor(StaticState staticState, SimState state, int index)
 	{
-		var humidity = state.RelativeHumidity[index];
+		var humidity = state.Cells[index].RelativeHumidity;
 		var c = Color32.Lerp(white, black, humidity);
 		float opacity = humidity > 0.5f ? math.pow(humidity, 0.25f) * 0.75f : math.pow(humidity, 4);
 		c.a = (byte)(255 * opacity);

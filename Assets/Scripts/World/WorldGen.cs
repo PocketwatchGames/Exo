@@ -21,15 +21,18 @@ public static class WorldGen {
 	{
 		return _noise.GetPerlin(x * frequency + hash, y * frequency);
 	}
-	public static void Generate(SimState state, StaticState staticState, int seed, WorldGenData worldGenData)
+	public static void Generate(SimState state, StaticState staticState, int seed, WorldGenData worldGenData, WorldData worldData)
 	{
 		float inversePI = 1.0f / math.PI;
 		_noise = new FastNoise(seed);
 		_noise.SetFrequency(10);
 		_random = new System.Random(seed);
 		staticState.Radius = worldGenData.Radius;
+		state.TiltAngle = worldGenData.TiltAngle;
+		state.SpinSpeed = worldGenData.SpinSpeed;
 		for (int i = 0; i < state.Count; i++)
 		{
+			SimStateCell cell;
 			var coord = staticState.Coordinate[i] * 2 * inversePI;
 			var coordNormalized = (coord + 1) / 2;
 			float elevation =
@@ -37,23 +40,24 @@ public static class WorldGen {
 				0.3f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 0.25f, 0, worldGenData.MinElevation, worldGenData.MaxElevation) +
 				0.2f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 1f, 0, worldGenData.MinElevation, worldGenData.MaxElevation) +
 				0.1f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 2.5f, 0, worldGenData.MinElevation, worldGenData.MaxElevation);
-			state.Elevation[i] = elevation;
-			state.WaterElevation[i] = 0;
-			state.Vegetation[i] = elevation < 0 ? 0 : (float)_random.NextDouble();
-			state.Ice[i] = GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 10, 100) * coord.y * coord.y;
+			cell.Elevation = elevation;
+			cell.WaterElevation = 0;
+			cell.Vegetation = elevation < 0 ? 0 : (float)_random.NextDouble();
+			cell.Ice = GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 10, 100) * coord.y * coord.y;
 
-			state.CloudElevation[i] =
+			cell.CloudElevation =
 				0.5f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 0.1f, 20, 0, worldGenData.MaxElevation) +
 				0.5f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 1.0f, 20, 0, worldGenData.MaxElevation);
 
-			state.CloudCoverage[i] =
+			cell.CloudCoverage =
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 0.1f, 30) +
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 1.0f, 30);
 
-			state.RelativeHumidity[i] =
+			cell.RelativeHumidity =
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 0.1f, 40) +
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 1.0f, 40);
 
+			state.Cells[i] = cell;
 		}
 	}
 }

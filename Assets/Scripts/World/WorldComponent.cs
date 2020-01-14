@@ -5,21 +5,36 @@ using Unity.Mathematics;
 
 public class WorldComponent : MonoBehaviour
 {
-	public WorldMesh mesh;
+	public enum CellInfoType {
+		Global,
+		Cell,
+		Energy,
+		Atmosphere,
+		Water,
+		Terrain
+	}
+
+
+	public int Seed;
+	public float Scale = 0.00005f;
+	public int Subdivisions = 5;
+	public TextAsset WorldGenAsset;
+	public TextAsset WorldDataAsset;
+	public WorldData WorldData;
+
 	public Material m_TerrainMaterial;
 	public Material m_WaterMaterial;
 	public Material m_CloudMaterial;
+
+	private MeshBuilder meshBuilder;
 	GameObject m_TerrainMesh;
 	GameObject m_WaterMesh;
 	GameObject m_CloudMesh;
 
 
-	public WorldGenData WorldGenData = new WorldGenData();
-	public int Seed;
+	private WorldGenData _worldGenData = new WorldGenData();
+	
 
-	private float _scale = 0.00005f;
-
-	public int Subdivisions = 5;
 	private int _simVertCount;
 	public int SimVertCount {  get { return _simVertCount; } }
 
@@ -33,9 +48,9 @@ public class WorldComponent : MonoBehaviour
 
 	public void Start()
     {
-		mesh.Init(Subdivisions);
+		meshBuilder.Init(Subdivisions);
 
-		_simVertCount = mesh.GetVertices().Count;
+		_simVertCount = meshBuilder.GetVertices().Count;
 
 		_staticState = new StaticState();
 		_staticState.Init(_simVertCount);
@@ -69,18 +84,20 @@ public class WorldComponent : MonoBehaviour
 		var terrainMesh = new Mesh();
 		var waterMesh = new Mesh();
 		var cloudMesh = new Mesh();
-		mesh.InitMesh(terrainMesh, waterMesh, cloudMesh);
+		meshBuilder.InitMesh(terrainMesh, waterMesh, cloudMesh);
 		terrainFilter.mesh = terrainMesh;
 		waterFilter.mesh = waterMesh;
 		cloudFilter.mesh = cloudMesh;
 
-		_staticState.ExtractCoordinates(mesh.GetVertices());
-		WorldGen.Generate(_state, _staticState, Seed, WorldGenData);
+		_staticState.ExtractCoordinates(meshBuilder.GetVertices());
+		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
+		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
+		WorldGen.Generate(_state, _staticState, Seed, _worldGenData, WorldData);
 
 		_activeSimState = _state;
 		_lastRenderState = _state;
 		_nextRenderState = _state;
-		mesh.UpdateMesh(terrainMesh, waterMesh, cloudMesh, _staticState, _state, _state, 0, _scale);
+		meshBuilder.UpdateMesh(terrainMesh, waterMesh, cloudMesh, _staticState, _state, _state, 0, Scale);
 		
 
 	}
@@ -93,8 +110,24 @@ public class WorldComponent : MonoBehaviour
 		var cloudMeshFilter = m_CloudMesh.GetComponent<MeshFilter>();
 		if (terrainMeshFilter != null && waterMeshFilter != null && cloudMeshFilter != null)
 		{
-			mesh.UpdateMesh(terrainMeshFilter.mesh, waterMeshFilter.mesh, cloudMeshFilter.mesh, _staticState, _lastRenderState, _nextRenderState, _renderStateLerp, _scale);
+			meshBuilder.UpdateMesh(terrainMeshFilter.mesh, waterMeshFilter.mesh, cloudMeshFilter.mesh, _staticState, _lastRenderState, _nextRenderState, _renderStateLerp, Scale);
 		}
+
+		var quat = Quaternion.Euler(Mathf.LerpAngle(_lastRenderState.TiltAngle, _nextRenderState.TiltAngle, _renderStateLerp), Mathf.LerpAngle(_lastRenderState.SpinAngle, _nextRenderState.SpinAngle, _renderStateLerp), 0);
+		transform.SetPositionAndRotation(Vector3.zero, quat);
 	}
 
+	public string GetCellInfo(CellInfoType cellInfoType)
+	{
+		return "AFA";
+	}
+
+	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
+	{
+		m_WaterMesh.SetActive(toggle.isOn);
+	}
+	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
+	{
+		m_CloudMesh.SetActive(toggle.isOn);
+	}
 }

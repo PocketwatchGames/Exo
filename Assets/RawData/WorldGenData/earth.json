@@ -1,0 +1,18 @@
+{
+	"Radius": 20000,
+	"MinElevation": -10000,
+	"MaxElevation": 10000,
+	"TiltAngle": -23.5,
+	"SpinSpeed": 0.0001458,
+	"StratosphereMass": 2583,
+	"TroposphereMass": 7749,
+	"MinTemperature": 253.15,
+	"MaxTemperature": 323.15,
+	"MaxSalinity": 40,
+	"MinSalinity": 30,
+	"NumPlates": 12,
+	"CarbonDioxide": 0.001,
+	"SolarRadiation": 1.367,
+	"GeothermalHeat": 0.5,
+	"Gravity": 9.80665
+}
