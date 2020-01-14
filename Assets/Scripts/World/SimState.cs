@@ -12,6 +12,7 @@ public struct SimState {
 	public int Ticks;
 	public float SpinAngle;
 	public float SpinSpeed;
+	public float OrbitSpeed;
 	public float TiltAngle;
 	public SimStateCell[] Cells;
 

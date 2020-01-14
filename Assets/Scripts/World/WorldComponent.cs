@@ -31,12 +31,14 @@ public class WorldComponent : MonoBehaviour
 	GameObject m_WaterMesh;
 	GameObject m_CloudMesh;
 
+	public float TimeScale;
 
 	private WorldGenData _worldGenData = new WorldGenData();
 	
 
 	private int _simVertCount;
 	public int SimVertCount {  get { return _simVertCount; } }
+	public ref SimState RenderState {  get { return ref _nextRenderState; } }
 
 	private StaticState _staticState;
 	private SimState _state;
@@ -92,7 +94,7 @@ public class WorldComponent : MonoBehaviour
 		_staticState.ExtractCoordinates(meshBuilder.GetVertices());
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
-		WorldGen.Generate(_state, _staticState, Seed, _worldGenData, WorldData);
+		WorldGen.Generate(_staticState, Seed, _worldGenData, WorldData, ref _state);
 
 		_activeSimState = _state;
 		_lastRenderState = _state;
@@ -139,6 +141,9 @@ public class WorldComponent : MonoBehaviour
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
 	{
 		meshBuilder.ActiveWindOverlay = (MeshBuilder.WindOverlay)dropdown.value;
+	}
+	public void StepTime()
+	{
 
 	}
 }

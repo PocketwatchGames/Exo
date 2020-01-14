@@ -21,7 +21,7 @@ public static class WorldGen {
 	{
 		return _noise.GetPerlin(x * frequency + hash, y * frequency);
 	}
-	public static void Generate(SimState state, StaticState staticState, int seed, WorldGenData worldGenData, WorldData worldData)
+	public static void Generate(StaticState staticState, int seed, WorldGenData worldGenData, WorldData worldData, ref SimState state)
 	{
 		float inversePI = 1.0f / math.PI;
 		_noise = new FastNoise(seed);
@@ -29,7 +29,8 @@ public static class WorldGen {
 		_random = new System.Random(seed);
 		staticState.Radius = worldGenData.Radius;
 		state.TiltAngle = worldGenData.TiltAngle;
-		state.SpinSpeed = worldGenData.SpinSpeed;
+		state.SpinSpeed = 1.0f / worldGenData.SpinTime;
+		state.OrbitSpeed = 1.0f / worldGenData.OrbitTime;
 		for (int i = 0; i < state.Count; i++)
 		{
 			SimStateCell cell;

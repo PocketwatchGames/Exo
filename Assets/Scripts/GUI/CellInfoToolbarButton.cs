@@ -3,18 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class CellInfoToolbarButton : MonoBehaviour
+public class CellInfoToolbarButton : ToolbarButton
 {
-	public bool Active;
 	public CellInfoPanel Panel;
-	public Text ButtonText;
 
     // Start is called before the first frame update
-    void Start()
+    public override void Start()
     {
+		base.Start();
 		Panel.gameObject.SetActive(Active);
-		ButtonText.fontStyle = Active ? FontStyle.Bold : FontStyle.Normal;
-		ButtonText.color = Active ? Color.white : Color.black;
 	}
 
 	// Update is called once per frame
@@ -22,11 +19,9 @@ public class CellInfoToolbarButton : MonoBehaviour
     {
     }
 
-	public void OnClick()
+	public override void OnClick()
 	{
-		Active = !Active;
-		ButtonText.fontStyle = Active ? FontStyle.Bold : FontStyle.Normal;
-		ButtonText.color = Active ? Color.white : Color.black;
+		base.OnClick();
 		Panel.gameObject.SetActive(Active);
 	}
 }
