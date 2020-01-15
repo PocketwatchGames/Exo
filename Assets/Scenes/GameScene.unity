@@ -6640,6 +6640,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40351b5bcc03b5d4390c8eefa6fd7c90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DistanceToSun: 100
   TerrainScale: 0.5
   ActiveMeshOverlay: 0
   ActiveWindOverlay: 0

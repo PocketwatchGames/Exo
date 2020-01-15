@@ -67,7 +67,7 @@ public class WorldSim : MonoBehaviour
 
 		_nextRenderState = 0;
 		_lastRenderState = 0;
-		_curRenderState = 1;
+		_curRenderState = 0;
 		_renderStates = new RenderState[_renderStateCount];
 		for (int i = 0; i < _renderStateCount; i++)
 		{
@@ -101,7 +101,6 @@ public class WorldSim : MonoBehaviour
 				iterations++;
 			}
 			Tick(ref _simStates[_activeSimState], iterations);
-			Mesh.UpdateMesh(ref _renderStates[_lastRenderState]);
 		}
 		if (_tickLerpTime > 0)
 		{
@@ -109,8 +108,6 @@ public class WorldSim : MonoBehaviour
 			Mesh.LerpRenderState(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], _renderStateLerp, ref _renderStates[_curRenderState]);
 			Mesh.UpdateMesh(ref _renderStates[_curRenderState]);
 		}
-		var quat = Quaternion.Euler(_renderStates[_curRenderState].TiltAngle, _renderStates[_curRenderState].SpinAngle, 0);
-		transform.SetPositionAndRotation(Vector3.zero, quat);
 
 	}
 

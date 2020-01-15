@@ -38,7 +38,7 @@ public struct SimStateCell {
 
 public struct RenderState {
 
-	public int Ticks;
+	public float Ticks;
 	public float SpinAngle;
 	public float SpinSpeed;
 	public float OrbitSpeed;

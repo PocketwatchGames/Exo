@@ -13,13 +13,15 @@ public class CameraController : MonoBehaviour
 
     Vector3 m_PrevMousePosition;
     float   m_Zoom;
+	float m_OffsetYaw;
+	float m_OffsetPitch;
 
     private void Start()
     {
         m_Zoom = Mathf.Lerp(m_MinZoom, m_MaxZoom, 0.5f);
     }
 
-    void Update ()
+    void LateUpdate ()
     {
         Vector3 currentMousePosition = Input.mousePosition;
 
@@ -33,10 +35,12 @@ public class CameraController : MonoBehaviour
             mouseDisplacement.x /= Screen.width;
             mouseDisplacement.y /= Screen.height;
 
-            Quaternion yaw   = Quaternion.AngleAxis(mouseDisplacement.x * m_MouseDragSensitivity,  transform.up);
-            Quaternion pitch = Quaternion.AngleAxis(mouseDisplacement.y * m_MouseDragSensitivity, -transform.right);
+			m_OffsetYaw += mouseDisplacement.x * m_MouseDragSensitivity;
+			m_OffsetPitch += mouseDisplacement.y * m_MouseDragSensitivity;
 
-            transform.localRotation = yaw * pitch * transform.localRotation;
+
+
+
         }
 
         float mouseWheelInput = Input.GetAxis("Mouse ScrollWheel");
@@ -46,7 +50,11 @@ public class CameraController : MonoBehaviour
             m_Zoom  = Mathf.Clamp(m_Zoom, m_MinZoom, m_MaxZoom);
         }
 
-        transform.position = Target.position + transform.forward * -m_Zoom;
+		var targetRotation = Target.rotation;
+		Quaternion yaw = Quaternion.AngleAxis(m_OffsetYaw, Vector3.up);
+		Quaternion pitch = Quaternion.AngleAxis(m_OffsetPitch, -Vector3.right);
+		transform.localRotation = targetRotation * yaw * pitch;
+		transform.position = Target.position + transform.forward * -m_Zoom;
 
         m_PrevMousePosition = currentMousePosition;
     }

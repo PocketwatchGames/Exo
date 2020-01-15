@@ -40,6 +40,7 @@ public class WorldMesh : MonoBehaviour {
 		UpperAirWind
 	}
 
+	public float DistanceToSun = 100;
 	public float TerrainScale = 0.00005f;
 	public MeshOverlay ActiveMeshOverlay;
 	public WindOverlay ActiveWindOverlay;
@@ -121,8 +122,8 @@ public class WorldMesh : MonoBehaviour {
 
 	public void LerpRenderState(ref RenderState lastState, ref RenderState nextState, float t, ref RenderState state)
 	{
+		state.Ticks = (nextState.Ticks - lastState.Ticks) * t + lastState.Ticks;
 		state.TiltAngle = Mathf.LerpAngle(lastState.TiltAngle, nextState.TiltAngle, t);
-		state.SpinAngle = Mathf.LerpAngle(lastState.SpinAngle, nextState.SpinAngle, t);
 		for (int i = 0; i < state.CloudColor.Length; i++)
 		{
 			state.TerrainColor[i] = Color32.Lerp(lastState.TerrainColor[i], nextState.TerrainColor[i], t);
@@ -189,6 +190,12 @@ public class WorldMesh : MonoBehaviour {
 		_terrainMesh.RecalculateNormals();
 		_waterMesh.RecalculateNormals();
 		_cloudMesh.RecalculateNormals();
+
+		var time = WorldTime.GetTime(state.Ticks, state.SpinSpeed);
+		var day = WorldTime.GetDays(state.Ticks, state.SpinSpeed);
+		var quat = Quaternion.Euler(state.TiltAngle, time * 360, 0);
+		float dayAngle = day * state.OrbitSpeed * 360;
+		transform.SetPositionAndRotation(new Vector3(math.cos(dayAngle), 0, math.sin(dayAngle)) * DistanceToSun, quat);
 	}
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
