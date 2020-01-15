@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Unity.Mathematics;
+using Unity.Entities;
 
 public static class WorldGen {
 	static System.Random _random;
@@ -31,9 +32,9 @@ public static class WorldGen {
 		state.TiltAngle = worldGenData.TiltAngle;
 		state.SpinSpeed = 1.0f / worldGenData.SpinTime;
 		state.OrbitSpeed = 1.0f / worldGenData.OrbitTime;
-		for (int i = 0; i < state.Count; i++)
+		var cells = state.World.EntityManager.GetAllEntities();
+		for (int i = 0; i < cells.Length; i++)
 		{
-			SimStateCell cell;
 			var coord = staticState.Coordinate[i] * 2 * inversePI;
 			var coordNormalized = (coord + 1) / 2;
 			float elevation =
@@ -41,24 +42,31 @@ public static class WorldGen {
 				0.3f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 0.25f, 0, worldGenData.MinElevation, worldGenData.MaxElevation) +
 				0.2f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 1f, 0, worldGenData.MinElevation, worldGenData.MaxElevation) +
 				0.1f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 2.5f, 0, worldGenData.MinElevation, worldGenData.MaxElevation);
-			cell.Elevation = elevation;
-			cell.WaterElevation = 0;
-			cell.Vegetation = elevation < 0 ? 0 : (float)_random.NextDouble();
-			cell.Ice = GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 10, 100) * coord.y * coord.y;
+			float vegetation = elevation < 0 ? 0 : (float)_random.NextDouble();
+			float ice = GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 10, 100) * coord.y * coord.y;
 
-			cell.CloudElevation =
+			float cloudElevation =
 				0.5f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 0.1f, 20, 0, worldGenData.MaxElevation) +
 				0.5f * GetPerlinMinMax(coordNormalized.x, coordNormalized.y, 1.0f, 20, 0, worldGenData.MaxElevation);
 
-			cell.CloudCoverage =
+			float cloudCoverage =
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 0.1f, 30) +
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 1.0f, 30);
 
-			cell.RelativeHumidity =
+			float relativeHumidity =
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 0.1f, 40) +
 				0.5f * GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 1.0f, 40);
 
-			state.Cells[i] = cell;
+			state.World.EntityManager.SetComponentData(cells[i], new CellComponent
+			{
+				Elevation = elevation,
+				WaterElevation = 0,
+				Vegetation = vegetation,
+				Ice = ice,
+				CloudCoverage = cloudCoverage,
+				CloudElevation = cloudElevation,
+				RelativeHumidity = relativeHumidity
+			});
 		}
 	}
 }

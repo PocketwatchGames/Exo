@@ -6,41 +6,18 @@ using System.Threading.Tasks;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
+using Unity.Entities;
+using Unity.Burst;
 
-public class WorldSim {
+public class WorldSimSystem : JobComponentSystem {
 
-	public static void Tick(ref SimState state, ref SimState nextState)
-	{
-		var tickJob = new TickJob();
-		tickJob.Ticks = state.Ticks + 1;
-		tickJob.Cells = new NativeArray<SimStateCell>(state.Cells, Allocator.TempJob);
-		var jobHandle = tickJob.Schedule(state.Count, 1000);
 
-		jobHandle.Complete();
-		nextState.Ticks = tickJob.Ticks;
-		for (int i = 0; i < state.Count; i++)
+	[BurstCompile]
+	struct WorldSimJob : IJobForEach<CellComponent> {
+		public void Execute(ref CellComponent cell)
 		{
-			nextState.Cells[i] = tickJob.Cells[i];
-		}
+			var curCell = cell;
 
-		tickJob.Cells.Dispose();
-
-	}
-
-	struct TickJob : IJobParallelFor {
-
-		public int Ticks;
-		public float Gravity;
-		public float SpinAngle;
-		public float SpinSpeed;
-		public float OrbitSpeed;
-		public float TiltAngle;
-		public NativeArray<SimStateCell> Cells;
-
-		public void Execute(int i)
-		{
-			var curCell = Cells[i];
-			var cell = new SimStateCell();
 			float depth = math.max(0, curCell.WaterElevation - curCell.Elevation);
 			float evap = math.min(depth, 1f);
 			cell.WaterElevation = curCell.WaterElevation - evap;
@@ -62,8 +39,13 @@ public class WorldSim {
 				cell.CloudCoverage -= curCell.CloudCoverage;
 			}
 
-			Cells[i] = cell;
-
 		}
 	}
+
+	protected override JobHandle OnUpdate(JobHandle inputDeps)
+	{
+		var job = new WorldSimJob() { };
+		return job.Schedule(this, inputDeps);
+	}
+
 }
