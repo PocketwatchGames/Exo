@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Jobs;
+using Unity.Collections;
 
 public class WorldComponent : MonoBehaviour
 {
@@ -32,7 +34,7 @@ public class WorldComponent : MonoBehaviour
 
 	private int _simVertCount;
 	public int SimVertCount {  get { return _simVertCount; } }
-	public ref SimState RenderState {  get { return ref _renderStates[_curRenderState]; } }
+	public ref SimState ActiveSimState {  get { return ref _simStates[_activeSimState]; } }
 
 	GameObject _terrainMesh;
 	GameObject _waterMesh;
@@ -43,7 +45,7 @@ public class WorldComponent : MonoBehaviour
 	private const int _renderStateCount = 3;
 	private StaticState _staticState;
 	private SimState[] _simStates;
-	private SimState[] _renderStates;
+	private RenderState[] _renderStates;
 	private int _curRenderState;
 	private int _lastRenderState;
 	private int _nextRenderState;
@@ -56,30 +58,6 @@ public class WorldComponent : MonoBehaviour
 
 	public void Start()
     {
-		_meshBuilder.Init(Subdivisions);
-
-		_simVertCount = _meshBuilder.GetVertices().Count;
-
-		_staticState = new StaticState();
-		_staticState.Init(_simVertCount);
-
-		_activeSimState = 0;
-		_curRenderState = 1;
-		_nextRenderState = 0;
-		_lastRenderState = 0;
-		_simStates = new SimState[_simStateCount];
-		for (int i = 0; i < _simStateCount; i++)
-		{
-			_simStates[i] = new SimState();
-			_simStates[i].Init(_simVertCount);
-		}
-		_renderStates = new SimState[_renderStateCount];
-		for (int i = 0; i < _renderStateCount; i++)
-		{
-			_renderStates[i] = new SimState();
-			_renderStates[i].Init(_simVertCount);
-		}
-
 		if (_terrainMesh)
 		{
 			GameObject.Destroy(_terrainMesh);
@@ -89,96 +67,128 @@ public class WorldComponent : MonoBehaviour
 		var terrainFilter = _terrainMesh.AddComponent<MeshFilter>();
 		var terrainSurfaceRenderer = _terrainMesh.AddComponent<MeshRenderer>();
 		terrainSurfaceRenderer.material = TerrainMaterial;
+		terrainFilter.mesh = new Mesh();
 
 		_waterMesh = new GameObject("Water Mesh");
 		_waterMesh.transform.parent = gameObject.transform;
 		var waterFilter = _waterMesh.AddComponent<MeshFilter>();
 		var waterSurfaceRenderer = _waterMesh.AddComponent<MeshRenderer>();
 		waterSurfaceRenderer.material = WaterMaterial;
+		waterFilter.mesh = new Mesh();
 
 		_cloudMesh = new GameObject("Cloud Mesh");
 		_cloudMesh.transform.parent = gameObject.transform;
 		var cloudFilter = _cloudMesh.AddComponent<MeshFilter>();
 		var cloudSurfaceRenderer = _cloudMesh.AddComponent<MeshRenderer>();
 		cloudSurfaceRenderer.material = CloudMaterial;
+		cloudFilter.mesh = new Mesh();
 
+		_meshBuilder = new MeshBuilder(Subdivisions, terrainFilter.mesh, waterFilter.mesh, cloudFilter.mesh);
 
-		var terrainMesh = new Mesh();
-		var waterMesh = new Mesh();
-		var cloudMesh = new Mesh();
-		_meshBuilder.InitMesh(terrainMesh, waterMesh, cloudMesh);
-		terrainFilter.mesh = terrainMesh;
-		waterFilter.mesh = waterMesh;
-		cloudFilter.mesh = cloudMesh;
+		_simVertCount = _meshBuilder.GetVertices().Count;
+
+		_staticState = new StaticState();
+		_staticState.Init(_simVertCount);
+
+		_activeSimState = 0;
+		_simStates = new SimState[_simStateCount];
+		for (int i = 0; i < _simStateCount; i++)
+		{
+			_simStates[i] = new SimState();
+			_simStates[i].Init(_simVertCount);
+		}
+
+		_nextRenderState = 0;
+		_lastRenderState = 0;
+		_curRenderState = 1;
+		_renderStates = new RenderState[_renderStateCount];
+		for (int i = 0; i < _renderStateCount; i++)
+		{
+			_renderStates[i] = new RenderState();
+			_renderStates[i].Init(_simVertCount);
+		}
 
 		_staticState.ExtractCoordinates(_meshBuilder.GetVertices());
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
 		WorldGen.Generate(_staticState, Seed, _worldGenData, WorldData, ref _simStates[0]);
-		for (int i=1;i<_simStateCount;i++)
-		{
-			_meshBuilder.CopyRenderState(ref _simStates[i-1], ref _simStates[i]);
-		}
-		_meshBuilder.CopyRenderState(ref _simStates[0], ref _renderStates[_lastRenderState]);
-		for (int i=1;i<_renderStateCount;i++)
-		{
-			_meshBuilder.CopyRenderState(ref _renderStates[i-1], ref _renderStates[i]);
-		}
-		_meshBuilder.UpdateMesh(terrainMesh, waterMesh, cloudMesh, _staticState, _renderStates[_lastRenderState], Scale);
-		
+
+		_meshBuilder.BuildRenderState(ref _simStates[0], ref _renderStates[0], _staticState, Scale);
+		_meshBuilder.UpdateMesh(ref _renderStates[0]);
 
 	}
 
-
+	bool _simulating;
 	public void Update()
 	{
+		var terrainMeshFilter = _terrainMesh.GetComponent<MeshFilter>()?.mesh;
+		var waterMeshFilter = _waterMesh.GetComponent<MeshFilter>()?.mesh;
+		var cloudMeshFilter = _cloudMesh.GetComponent<MeshFilter>()?.mesh;
 		if (_timeTillTick > -1)
 		{
 			_timeTillTick -= Time.deltaTime * TimeScale;
 		}
 		if (_timeTillTick <= 0)
 		{
+			int iterations = 0;
 			while (_timeTillTick <= 0)
 			{
-				DoSimTick();
+				_timeTillTick += _ticksPerSecond;
+				iterations++;
 			}
-			_lastRenderState = _curRenderState;
-			_nextRenderState = (_curRenderState + 1) % _renderStateCount;
-			_curRenderState = (_nextRenderState + 1) % _renderStateCount;
-			_meshBuilder.CopyRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState]);
-			_renderStateLerp = 0;
-			_tickLerpTime = _timeTillTick;
+			Tick(ref _simStates[_activeSimState], iterations);
+			_meshBuilder.UpdateMesh(ref _renderStates[_lastRenderState]);
 		}
-		ref var renderState = ref _renderStates[_curRenderState];
 		if (_tickLerpTime > 0)
 		{
 			_renderStateLerp = Mathf.Clamp01(1.0f - _timeTillTick / _tickLerpTime);
+			_meshBuilder.LerpRenderState(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], _renderStateLerp, ref _renderStates[_curRenderState]);
+			_meshBuilder.UpdateMesh(ref _renderStates[_curRenderState]);
 		}
-		_meshBuilder.LerpRenderState(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], _renderStateLerp, ref renderState);
-
-
-		var terrainMeshFilter = _terrainMesh.GetComponent<MeshFilter>();
-		var waterMeshFilter = _waterMesh.GetComponent<MeshFilter>();
-		var cloudMeshFilter = _cloudMesh.GetComponent<MeshFilter>();
-		if (terrainMeshFilter != null && waterMeshFilter != null && cloudMeshFilter != null)
-		{
-			_meshBuilder.UpdateMesh(terrainMeshFilter.mesh, waterMeshFilter.mesh, cloudMeshFilter.mesh, _staticState, _renderStates[_curRenderState], Scale);
-		}
-
-		var quat = Quaternion.Euler(renderState.TiltAngle, renderState.SpinAngle, 0);
+		var quat = Quaternion.Euler(_renderStates[_curRenderState].TiltAngle, _renderStates[_curRenderState].SpinAngle, 0);
 		transform.SetPositionAndRotation(Vector3.zero, quat);
 
 	}
-	private void DoSimTick()
-	{
-		if (_timeTillTick <= 0)
-		{
-			_timeTillTick += _ticksPerSecond;
 
-			int nextStateIndex = (_activeSimState + 1) % _simStateCount;
-			WorldSim.Tick(ref _simStates[_activeSimState], ref _simStates[nextStateIndex]);
-			_activeSimState = nextStateIndex;
+	private void Tick(ref SimState state, int ticksToAdvance)
+	{
+		JobHandle lastJobHandle = default(JobHandle);
+		var cells = new NativeArray<SimStateCell>(state.Cells, Allocator.TempJob);
+		int ticks = state.Ticks;		
+		for (int i=0;i<ticksToAdvance;i++)
+		{
+			ticks++;
+			var tickJob = new WorldSim.TickCellJob();
+			tickJob.Cells = cells;
+			tickJob.Ticks = ticks;
+			lastJobHandle = tickJob.Schedule(state.Count, 100, lastJobHandle);
 		}
+		lastJobHandle.Complete();
+		
+		int nextStateIndex = (_activeSimState + 1) % _simStateCount;
+		_activeSimState = nextStateIndex;
+
+		ref var nextState = ref _simStates[_activeSimState];
+		nextState.Ticks = ticks;
+		nextState.Gravity = state.Gravity;
+		nextState.OrbitSpeed = state.OrbitSpeed;
+		nextState.SpinAngle = state.SpinAngle;
+		nextState.SpinSpeed = state.SpinSpeed;
+		nextState.TiltAngle = state.TiltAngle;
+		for (int i = 0; i < nextState.Count; i++)
+		{
+			nextState.Cells[i] = cells[i];
+		}
+		cells.Dispose();
+
+
+		_lastRenderState = _curRenderState;
+		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
+		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
+		_meshBuilder.BuildRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState], _staticState, Scale);
+		_renderStateLerp = 0;
+		_tickLerpTime = _timeTillTick;
+
 
 	}
 

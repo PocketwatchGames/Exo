@@ -5,8 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Burst;
 
-public struct MeshBuilder {
+public class MeshBuilder {
 
 	public enum MeshOverlay {
 		None,
@@ -42,17 +43,7 @@ public struct MeshBuilder {
 	public MeshOverlay ActiveMeshOverlay;
 	public WindOverlay ActiveWindOverlay;
 
-	List<Polygon> m_Polygons;
-	List<Vector3> m_Vertices;
-	Vector3[] terrainVertices;
-	Vector3[] terrainNormals;
-	Color32[] terrainColors;
-	Vector3[] waterVertices;
-	Vector3[] waterNormals;
-	Color32[] waterColors;
-	Vector3[] cloudVertices;
-	Vector3[] cloudNormals;
-	Color32[] cloudColors;
+	private Icosphere _icosphere;
 
 
 	static Color32 green = new Color32(20, 255, 30, 255);
@@ -61,275 +52,129 @@ public struct MeshBuilder {
 	static Color32 white = new Color32(255, 255, 255, 255);
 	static Color32 black = new Color32(0, 0, 0, 255);
 
+	Mesh _terrainMesh;
+	Mesh _waterMesh;
+	Mesh _cloudMesh;
 
-	public void Init(int subdivisions)
+	bool _indicesInitialized;
+	int[] indices;
+
+	public MeshBuilder(int subdivisions, Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh)
 	{
-		InitAsIcosohedron();
+		_icosphere = new Icosphere(subdivisions);
+		_terrainMesh = terrainMesh;
+		_waterMesh = waterMesh;
+		_cloudMesh = cloudMesh;
 
-		// TODO: this subdivides recursively, not by a fraction of the edge length, which allows for more precision -- see wikipedia page
-		Subdivide(subdivisions);
-	}
-
-	public List<Vector3> GetVertices()
-	{
-		return m_Vertices;
-	}
-
-
-	public void InitMesh(Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh)
-	{
-
-		int vertexCount = m_Polygons.Count * 3;
-
-		int[] indices = new int[vertexCount];
-		terrainVertices = new Vector3[m_Vertices.Count];
-		terrainNormals = new Vector3[m_Vertices.Count];
-		terrainColors = new Color32[m_Vertices.Count];
-		waterVertices = new Vector3[m_Vertices.Count];
-		waterNormals = new Vector3[m_Vertices.Count];
-		waterColors = new Color32[m_Vertices.Count];
-		cloudVertices = new Vector3[m_Vertices.Count];
-		cloudNormals = new Vector3[m_Vertices.Count];
-		cloudColors = new Color32[m_Vertices.Count];
-
-		for (int i = 0; i < m_Polygons.Count; i++)
+		int indexCount = _icosphere._icospherePolygons.Count * 3;
+		indices = new int[indexCount];
+		for (int i = 0; i < _icosphere._icospherePolygons.Count; i++)
 		{
-			var poly = m_Polygons[i];
-
+			var poly = _icosphere._icospherePolygons[i];
 			indices[i * 3 + 0] = poly.m_Vertices[0];
 			indices[i * 3 + 1] = poly.m_Vertices[1];
 			indices[i * 3 + 2] = poly.m_Vertices[2];
 		}
 
-		terrainMesh.vertices = terrainVertices;
-		terrainMesh.normals = terrainNormals;
-		terrainMesh.colors32 = terrainColors;
-		terrainMesh.SetTriangles(indices, 0);
+	}
 
-		waterMesh.vertices = waterVertices;
-		waterMesh.normals = waterNormals;
-		waterMesh.colors32 = waterColors;
-		waterMesh.SetTriangles(indices, 0);
-
-		cloudMesh.vertices = cloudVertices;
-		cloudMesh.normals = cloudNormals;
-		cloudMesh.colors32 = cloudColors;
-		cloudMesh.SetTriangles(indices, 0);
-
+	public List<Vector3> GetVertices()
+	{
+		return _icosphere._icosphereVertices;
 	}
 
 
-	public void LerpRenderState(ref SimState lastState, ref SimState nextState, float t, ref SimState state)
+	public void LerpRenderState(ref RenderState lastState, ref RenderState nextState, float t, ref RenderState state)
 	{
-		state.Gravity = (nextState.Gravity - lastState.Gravity) * t + lastState.Gravity;
 		state.TiltAngle = Mathf.LerpAngle(lastState.TiltAngle, nextState.TiltAngle, t);
 		state.SpinAngle = Mathf.LerpAngle(lastState.SpinAngle, nextState.SpinAngle, t);
-		state.Ticks = (int)((nextState.Ticks - lastState.Ticks) * t + lastState.Ticks);
-		for (int i = 0; i < lastState.Count; i++)
+		for (int i = 0; i < state.CloudColor.Length; i++)
 		{
-			ref var last = ref lastState.Cells[i];
-			ref var next = ref nextState.Cells[i];
-			state.Cells[i].Elevation		= (next.Elevation - last.Elevation) * t + last.Elevation;
-			state.Cells[i].CloudCoverage	= (next.CloudCoverage - last.CloudCoverage) * t + last.CloudCoverage;
-			state.Cells[i].CloudElevation	= (next.CloudElevation - last.CloudElevation) * t + last.CloudElevation;
-			state.Cells[i].WaterElevation	= (next.WaterElevation - last.WaterElevation) * t + last.WaterElevation;
-			state.Cells[i].Ice				= (next.Ice - last.Ice) * t + last.Ice;
-			state.Cells[i].RelativeHumidity = (next.RelativeHumidity - last.RelativeHumidity) * t + last.RelativeHumidity;
-			state.Cells[i].Vegetation		= (next.Vegetation - last.Vegetation) * t + last.Vegetation;
-		}
-	}
-	public void CopyRenderState(ref SimState from, ref SimState state)
-	{
-		state.Ticks = from.Ticks;
-		state.OrbitSpeed = from.OrbitSpeed;
-		state.SpinAngle = from.SpinAngle;
-		state.SpinSpeed = from.SpinSpeed;
-		state.Gravity = from.Gravity;
-		state.TiltAngle = from.TiltAngle;
-		state.Count = from.Count;
-		for (int i=0;i<from.Count;i++)
-		{
-			state.Cells[i] = from.Cells[i];
+			state.TerrainColor[i] = Color32.Lerp(lastState.TerrainColor[i], nextState.TerrainColor[i], t);
+			state.TerrainPosition[i] = Vector3.Lerp(lastState.TerrainPosition[i], nextState.TerrainPosition[i], t);
+			state.TerrainNormal[i] = Vector3.Lerp(lastState.TerrainNormal[i], nextState.TerrainNormal[i], t);
+			state.WaterColor[i] = Color32.Lerp(lastState.WaterColor[i], nextState.WaterColor[i], t);
+			state.WaterPosition[i] = Vector3.Lerp(lastState.WaterPosition[i], nextState.WaterPosition[i], t);
+			state.WaterNormal[i] = Vector3.Lerp(lastState.WaterNormal[i], nextState.WaterNormal[i], t);
+			state.CloudColor[i] = Color32.Lerp(lastState.CloudColor[i], nextState.CloudColor[i], t);
+			state.CloudPosition[i] = Vector3.Lerp(lastState.CloudPosition[i], nextState.CloudPosition[i], t);
+			state.CloudNormal[i] = Vector3.Lerp(lastState.CloudNormal[i], nextState.CloudNormal[i], t);
 		}
 	}
 
-	public void UpdateMesh(Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh, StaticState staticState, SimState simState, float scale)
+	public void BuildRenderState(ref SimState from, ref RenderState to, StaticState staticState, float scale)
 	{
-		for (int i = 0; i < m_Vertices.Count; i++)
+		to.Ticks = from.Ticks;
+		to.OrbitSpeed = from.OrbitSpeed;
+		to.SpinAngle = from.SpinAngle;
+		to.SpinSpeed = from.SpinSpeed;
+		to.TiltAngle = from.TiltAngle;
+		for (int i = 0; i < from.Count; i++)
 		{
-			var cell = simState.Cells[i];
-			terrainVertices[i] = m_Vertices[i] * (cell.Elevation + staticState.Radius) * scale;
-			terrainColors[i] = GetTerrainColor(staticState, simState, i);
-			terrainNormals[i] = m_Vertices[i];
-
-			waterVertices[i] = m_Vertices[i] * (cell.WaterElevation + staticState.Radius) * scale;
-			waterColors[i] = GetWaterColor(staticState, simState, i);
-			waterNormals[i] = m_Vertices[i];
-
-			cloudVertices[i] = m_Vertices[i] * (cell.CloudElevation + staticState.Radius) * scale;
-			cloudColors[i] = GetCloudColor(staticState, simState, i);
-			cloudNormals[i] = m_Vertices[i];
-
+			ref var fromCell = ref from.Cells[i];
+			to.TerrainColor[i] = GetTerrainColor(staticState, fromCell);
+			to.WaterColor[i] = GetWaterColor(staticState, fromCell);
+			to.CloudColor[i] = GetCloudColor(staticState, fromCell);
+			to.TerrainNormal[i] = _icosphere._icosphereVertices[i];
+			to.WaterNormal[i] = _icosphere._icosphereVertices[i];
+			to.CloudNormal[i] = _icosphere._icosphereVertices[i];
+			to.TerrainPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.Elevation + staticState.Radius) * scale;
+			to.WaterPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.WaterElevation + staticState.Radius) * scale;
+			to.CloudPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.CloudElevation + staticState.Radius) * scale;
 		}
 
-		terrainMesh.vertices = terrainVertices;
-		terrainMesh.normals = terrainNormals;
-		terrainMesh.colors32 = terrainColors;
-		terrainMesh.RecalculateBounds();
+	}
 
-		waterMesh.vertices = waterVertices;
-		waterMesh.normals = waterNormals;
-		waterMesh.colors32 = waterColors;
-		waterMesh.RecalculateBounds();
+	public void UpdateMesh(ref RenderState state)
+	{
+		_terrainMesh.vertices = state.TerrainPosition;
+		_terrainMesh.normals = state.TerrainNormal;
+		_terrainMesh.colors32 = state.TerrainColor;
 
-		cloudMesh.vertices = cloudVertices;
-		cloudMesh.normals = cloudNormals;
-		cloudMesh.colors32 = cloudColors;
-		cloudMesh.RecalculateBounds();
+		_waterMesh.vertices = state.WaterPosition;
+		_waterMesh.normals = state.WaterNormal;
+		_waterMesh.colors32 = state.WaterColor;
 
+		_cloudMesh.vertices = state.CloudPosition;
+		_cloudMesh.normals = state.CloudNormal;
+		_cloudMesh.colors32 = state.CloudColor;
+
+		if (!_indicesInitialized)
+		{
+			_terrainMesh.SetTriangles(indices, 0);
+			_waterMesh.SetTriangles(indices, 0);
+			_cloudMesh.SetTriangles(indices, 0);
+			_indicesInitialized = true;
+		}
+
+		_terrainMesh.RecalculateBounds();
+		_waterMesh.RecalculateBounds();
+		_cloudMesh.RecalculateBounds();
+
+		_terrainMesh.RecalculateNormals();
+		_waterMesh.RecalculateNormals();
+		_cloudMesh.RecalculateNormals();
 	}
 
 	#region private functions
 
-	private Color32 GetTerrainColor(StaticState staticState, SimState state, int index)
+	private Color32 GetTerrainColor(StaticState staticState, SimStateCell cell)
 	{
-		return Color32.Lerp(brown, green, state.Cells[index].Vegetation);
+		return Color32.Lerp(brown, green, cell.Vegetation);
 	}
 
-	private Color32 GetWaterColor(StaticState staticState, SimState state, int index)
+	private Color32 GetWaterColor(StaticState staticState, SimStateCell cell)
 	{
-		return Color32.Lerp(blue, white, state.Cells[index].Ice);
+		return Color32.Lerp(blue, white, cell.Ice);
 	}
 
-	private Color32 GetCloudColor(StaticState staticState, SimState state, int index)
+	private Color32 GetCloudColor(StaticState staticState, SimStateCell cell)
 	{
-		var humidity = state.Cells[index].RelativeHumidity;
-		var c = Color32.Lerp(white, black, humidity);
-		float opacity = humidity > 0.5f ? math.pow(humidity, 0.25f) * 0.75f : math.pow(humidity, 4);
+		var c = Color32.Lerp(white, black, cell.RelativeHumidity);
+		float opacity = cell.CloudCoverage > 0.5f ? math.pow(cell.CloudCoverage, 0.25f) * 0.75f : math.pow(cell.CloudCoverage, 4);
 		c.a = (byte)(255 * opacity);
 		return c;
 	}
 
-	private void InitAsIcosohedron()
-	{
-		m_Polygons = new List<Polygon>();
-		m_Vertices = new List<Vector3>();
-
-		// An icosahedron has 12 vertices, and
-		// since they're completely symmetrical the
-		// formula for calculating them is kind of
-		// symmetrical too:
-
-		float t = (1.0f + Mathf.Sqrt(5.0f)) / 2.0f;
-
-		m_Vertices.Add(new Vector3(-1, t, 0).normalized);
-		m_Vertices.Add(new Vector3(1, t, 0).normalized);
-		m_Vertices.Add(new Vector3(-1, -t, 0).normalized);
-		m_Vertices.Add(new Vector3(1, -t, 0).normalized);
-		m_Vertices.Add(new Vector3(0, -1, t).normalized);
-		m_Vertices.Add(new Vector3(0, 1, t).normalized);
-		m_Vertices.Add(new Vector3(0, -1, -t).normalized);
-		m_Vertices.Add(new Vector3(0, 1, -t).normalized);
-		m_Vertices.Add(new Vector3(t, 0, -1).normalized);
-		m_Vertices.Add(new Vector3(t, 0, 1).normalized);
-		m_Vertices.Add(new Vector3(-t, 0, -1).normalized);
-		m_Vertices.Add(new Vector3(-t, 0, 1).normalized);
-
-		// And here's the formula for the 20 sides,
-		// referencing the 12 vertices we just created.
-
-		m_Polygons.Add(new Polygon(0, 11, 5));
-		m_Polygons.Add(new Polygon(0, 5, 1));
-		m_Polygons.Add(new Polygon(0, 1, 7));
-		m_Polygons.Add(new Polygon(0, 7, 10));
-		m_Polygons.Add(new Polygon(0, 10, 11));
-		m_Polygons.Add(new Polygon(1, 5, 9));
-		m_Polygons.Add(new Polygon(5, 11, 4));
-		m_Polygons.Add(new Polygon(11, 10, 2));
-		m_Polygons.Add(new Polygon(10, 7, 6));
-		m_Polygons.Add(new Polygon(7, 1, 8));
-		m_Polygons.Add(new Polygon(3, 9, 4));
-		m_Polygons.Add(new Polygon(3, 4, 2));
-		m_Polygons.Add(new Polygon(3, 2, 6));
-		m_Polygons.Add(new Polygon(3, 6, 8));
-		m_Polygons.Add(new Polygon(3, 8, 9));
-		m_Polygons.Add(new Polygon(4, 9, 5));
-		m_Polygons.Add(new Polygon(2, 4, 11));
-		m_Polygons.Add(new Polygon(6, 2, 10));
-		m_Polygons.Add(new Polygon(8, 6, 7));
-		m_Polygons.Add(new Polygon(9, 8, 1));
-	}
-
-	private void Subdivide(int recursions)
-	{
-		var midPointCache = new Dictionary<int, int>();
-
-		for (int i = 0; i < recursions; i++)
-		{
-			var newPolys = new List<Polygon>();
-			foreach (var poly in m_Polygons)
-			{
-				int a = poly.m_Vertices[0];
-				int b = poly.m_Vertices[1];
-				int c = poly.m_Vertices[2];
-
-				// Use GetMidPointIndex to either create a
-				// new vertex between two old vertices, or
-				// find the one that was already created.
-
-				int ab = GetMidPointIndex(midPointCache, a, b);
-				int bc = GetMidPointIndex(midPointCache, b, c);
-				int ca = GetMidPointIndex(midPointCache, c, a);
-
-				// Create the four new polygons using our original
-				// three vertices, and the three new midpoints.
-				newPolys.Add(new Polygon(a, ab, ca));
-				newPolys.Add(new Polygon(b, bc, ab));
-				newPolys.Add(new Polygon(c, ca, bc));
-				newPolys.Add(new Polygon(ab, bc, ca));
-			}
-			// Replace all our old polygons with the new set of
-			// subdivided ones.
-			m_Polygons = newPolys;
-		}
-	}
-	private int GetMidPointIndex(Dictionary<int, int> cache, int indexA, int indexB)
-	{
-		// We create a key out of the two original indices
-		// by storing the smaller index in the upper two bytes
-		// of an integer, and the larger index in the lower two
-		// bytes. By sorting them according to whichever is smaller
-		// we ensure that this function returns the same result
-		// whether you call
-		// GetMidPointIndex(cache, 5, 9)
-		// or...
-		// GetMidPointIndex(cache, 9, 5)
-
-		int smallerIndex = Mathf.Min(indexA, indexB);
-		int greaterIndex = Mathf.Max(indexA, indexB);
-		int key = (smallerIndex << 16) + greaterIndex;
-
-		// If a midpoint is already defined, just return it.
-
-		int ret;
-		if (cache.TryGetValue(key, out ret))
-			return ret;
-
-		// If we're here, it's because a midpoint for these two
-		// vertices hasn't been created yet. Let's do that now!
-
-		Vector3 p1 = m_Vertices[indexA];
-		Vector3 p2 = m_Vertices[indexB];
-		Vector3 middle = Vector3.Lerp(p1, p2, 0.5f).normalized;
-
-		ret = m_Vertices.Count;
-		m_Vertices.Add(middle);
-
-		// Add our new midpoint to the cache so we don't have
-		// to do this again. =)
-
-		cache.Add(key, ret);
-		return ret;
-	}
 	#endregion
 }
