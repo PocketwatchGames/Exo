@@ -5,8 +5,8 @@ using UnityEngine;
 public class CellInfoPanel : MonoBehaviour
 {
 	public UnityEngine.UI.Text TextObject;
-	public WorldComponent WorldComponent;
-	public WorldComponent.CellInfoType CellInfo;
+	public WorldSim WorldComponent;
+	public WorldSim.CellInfoType CellInfo;
 
 	// Start is called before the first frame update
 	void Start()

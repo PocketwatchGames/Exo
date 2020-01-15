@@ -9,6 +9,7 @@ public class CameraController : MonoBehaviour
 
     public float m_MinZoom = 2.0f;
     public float m_MaxZoom = 10.0f;
+	public Transform Target;
 
     Vector3 m_PrevMousePosition;
     float   m_Zoom;
@@ -45,7 +46,7 @@ public class CameraController : MonoBehaviour
             m_Zoom  = Mathf.Clamp(m_Zoom, m_MinZoom, m_MaxZoom);
         }
 
-        transform.position = transform.forward * -m_Zoom;
+        transform.position = Target.position + transform.forward * -m_Zoom;
 
         m_PrevMousePosition = currentMousePosition;
     }

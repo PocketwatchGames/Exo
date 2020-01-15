@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class TimePanel : MonoBehaviour
 {
-	public WorldComponent World;
+	public WorldSim World;
 	public UnityEngine.UI.Text Time;
 	public UnityEngine.UI.Text Date;
 	public UnityEngine.UI.Text Ticks;

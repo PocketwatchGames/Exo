@@ -7,7 +7,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Burst;
 
-public class MeshBuilder {
+public class WorldMesh : MonoBehaviour {
 
 	public enum MeshOverlay {
 		None,
@@ -40,11 +40,13 @@ public class MeshBuilder {
 		UpperAirWind
 	}
 
+	public float TerrainScale = 0.00005f;
 	public MeshOverlay ActiveMeshOverlay;
 	public WindOverlay ActiveWindOverlay;
 
-	private Icosphere _icosphere;
-
+	public Material TerrainMaterial;
+	public Material WaterMaterial;
+	public Material CloudMaterial;
 
 	static Color32 green = new Color32(20, 255, 30, 255);
 	static Color32 brown = new Color32(220, 150, 70, 255);
@@ -52,19 +54,52 @@ public class MeshBuilder {
 	static Color32 white = new Color32(255, 255, 255, 255);
 	static Color32 black = new Color32(0, 0, 0, 255);
 
-	Mesh _terrainMesh;
-	Mesh _waterMesh;
-	Mesh _cloudMesh;
+	private Icosphere _icosphere;
+
+	private Mesh _terrainMesh;
+	private Mesh _waterMesh;
+	private Mesh _cloudMesh;
+
+	private GameObject _terrainObject;
+	private GameObject _waterObject;
+	private GameObject _cloudObject;
 
 	bool _indicesInitialized;
 	int[] indices;
 
-	public MeshBuilder(int subdivisions, Mesh terrainMesh, Mesh waterMesh, Mesh cloudMesh)
+	public void Init(int subdivisions)
 	{
 		_icosphere = new Icosphere(subdivisions);
-		_terrainMesh = terrainMesh;
-		_waterMesh = waterMesh;
-		_cloudMesh = cloudMesh;
+
+		if (_terrainMesh)
+		{
+			GameObject.Destroy(_terrainMesh);
+		}
+		_terrainMesh = new Mesh();
+		_cloudMesh = new Mesh();
+		_waterMesh = new Mesh();
+
+		_terrainObject = new GameObject("Terrain Mesh");
+		_terrainObject.transform.SetParent(gameObject.transform, false);
+		var terrainFilter = _terrainObject.AddComponent<MeshFilter>();
+		var terrainSurfaceRenderer = _terrainObject.AddComponent<MeshRenderer>();
+		terrainSurfaceRenderer.material = TerrainMaterial;
+		terrainFilter.mesh = _terrainMesh;
+
+		_waterObject = new GameObject("Water Mesh");
+		_waterObject.transform.SetParent(gameObject.transform, false);
+		var waterFilter = _waterObject.AddComponent<MeshFilter>();
+		var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
+		waterSurfaceRenderer.material = WaterMaterial;
+		waterFilter.mesh = _waterMesh;
+
+		_cloudObject = new GameObject("Cloud Mesh");
+		_cloudObject.transform.SetParent(gameObject.transform, false);
+		var cloudFilter = _cloudObject.AddComponent<MeshFilter>();
+		var cloudSurfaceRenderer = _cloudObject.AddComponent<MeshRenderer>();
+		cloudSurfaceRenderer.material = CloudMaterial;
+		cloudFilter.mesh = _cloudMesh;
+
 
 		int indexCount = _icosphere._icospherePolygons.Count * 3;
 		indices = new int[indexCount];
@@ -102,7 +137,7 @@ public class MeshBuilder {
 		}
 	}
 
-	public void BuildRenderState(ref SimState from, ref RenderState to, StaticState staticState, float scale)
+	public void BuildRenderState(ref SimState from, ref RenderState to, StaticState staticState)
 	{
 		to.Ticks = from.Ticks;
 		to.OrbitSpeed = from.OrbitSpeed;
@@ -118,9 +153,9 @@ public class MeshBuilder {
 			to.TerrainNormal[i] = _icosphere._icosphereVertices[i];
 			to.WaterNormal[i] = _icosphere._icosphereVertices[i];
 			to.CloudNormal[i] = _icosphere._icosphereVertices[i];
-			to.TerrainPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.Elevation + staticState.Radius) * scale;
-			to.WaterPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.WaterElevation + staticState.Radius) * scale;
-			to.CloudPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.CloudElevation + staticState.Radius) * scale;
+			to.TerrainPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.Elevation * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.WaterPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.WaterElevation * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.CloudPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.Radius) / staticState.Radius;
 		}
 
 	}
@@ -155,6 +190,24 @@ public class MeshBuilder {
 		_waterMesh.RecalculateNormals();
 		_cloudMesh.RecalculateNormals();
 	}
+
+	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
+	{
+		_waterObject.SetActive(toggle.isOn);
+	}
+	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
+	{
+		_cloudObject.SetActive(toggle.isOn);
+	}
+	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
+	{
+		ActiveMeshOverlay = (WorldMesh.MeshOverlay)dropdown.value;
+	}
+	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
+	{
+		ActiveWindOverlay = (WorldMesh.WindOverlay)dropdown.value;
+	}
+
 
 	#region private functions
 
