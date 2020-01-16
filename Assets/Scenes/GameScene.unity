@@ -1254,6 +1254,8 @@ MonoBehaviour:
   Subdivisions: 5
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
   WorldDataAsset: {fileID: 4900000, guid: a0e62a68ba207124092d1d775e028c05, type: 3}
+  WorldData:
+    WaterDiffuseSpeed: 0.2
   Mesh: {fileID: 1921819012}
   TimeScale: 0
 --- !u!4 &365555217
@@ -6640,12 +6642,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40351b5bcc03b5d4390c8eefa6fd7c90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  LerpStates: 1
   DistanceToSun: 100
   TerrainScale: 0.5
   ActiveMeshOverlay: 0
   ActiveWindOverlay: 0
   TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
-  WaterMaterial: {fileID: 2100000, guid: 297c693a57253724c881afe6c7ac126c, type: 2}
+  WaterMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
 --- !u!4 &1921819013
 Transform:

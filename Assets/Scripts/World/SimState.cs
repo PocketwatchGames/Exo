@@ -27,7 +27,9 @@ public struct SimState {
 
 public struct SimStateCell {
 	public float Elevation;
-	public float WaterElevation;
+	public float Roughness;
+	public float WaterDepth;
+	public float SoilFertility;
 	public float Vegetation;
 	public float Ice;
 	public float CloudCoverage;

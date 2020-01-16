@@ -6,4 +6,5 @@ using System.Threading.Tasks;
 
 [Serializable]
 public class WorldData {
+	public float WaterDiffuseSpeed = 0.5f;
 }

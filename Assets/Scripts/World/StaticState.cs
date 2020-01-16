@@ -58,4 +58,9 @@ public class StaticState {
 		}
 
 	}
+
+	public void Dispose()
+	{
+		Neighbors.Dispose();
+	}
 }
