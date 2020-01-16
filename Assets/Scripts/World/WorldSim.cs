@@ -116,68 +116,11 @@ public class WorldSim : MonoBehaviour
 
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
-		JobHandle lastJobHandle = default(JobHandle);
-
-		var flow = new NativeArray<float>(state.Count * 6, Allocator.TempJob);
-		var flowLimit = new NativeArray<float>(state.Count, Allocator.TempJob);
-		var cells = new NativeArray<SimStateCell>[2];
-		cells[0] = new NativeArray<SimStateCell>(state.Cells, Allocator.TempJob);
-		cells[1] = new NativeArray<SimStateCell>(state.Cells.Length, Allocator.TempJob);
-		int ticks = state.Ticks;		
-		for (int i=0;i<ticksToAdvance;i++)
-		{
-			ticks++;
-			int lastStateIndex = i % 2;
-			var tickFlow = new WorldTick.TickFlowJob();
-			tickFlow.Last = cells[lastStateIndex];
-			tickFlow.WaterFlow = flow;
-			tickFlow.Neighbors = _staticState.Neighbors;
-			tickFlow.WaterDiffuseSpeed = WorldData.WaterDiffuseSpeed;
-			lastJobHandle = tickFlow.Schedule(state.Count * 6, 100, lastJobHandle);
-
-			var tickFlowLimit = new WorldTick.TickFlowLimitJob();
-			tickFlowLimit.Last = cells[lastStateIndex];
-			tickFlowLimit.WaterFlow = flow;
-			tickFlowLimit.WaterFlowLimit = flowLimit;
-			lastJobHandle = tickFlowLimit.Schedule(state.Count, 100, lastJobHandle);
-
-
-			var tickJob = new WorldTick.TickCellJob();
-			tickJob.Cells = cells[(i + 1) % 2];
-			tickJob.Last = cells[lastStateIndex];
-			tickJob.Neighbors = _staticState.Neighbors;
-			tickJob.WaterFlow = flow;
-			tickJob.WaterFlowLimit = flowLimit;
-			tickJob.Ticks = ticks;
-			lastJobHandle = tickJob.Schedule(state.Count, 100, lastJobHandle);
-		}
-		lastJobHandle.Complete();
-
-		int outputBuffer = ticksToAdvance % 2;
-		
 		int nextStateIndex = (_activeSimState + 1) % _simStateCount;
 		_activeSimState = nextStateIndex;
-
 		ref var nextState = ref _simStates[_activeSimState];
-		nextState.Ticks = ticks;
-		nextState.Gravity = state.Gravity;
-		nextState.OrbitSpeed = state.OrbitSpeed;
-		nextState.SpinAngle = state.SpinAngle;
-		nextState.SpinSpeed = state.SpinSpeed;
-		nextState.TiltAngle = state.TiltAngle;
-		for (int i = 0; i < nextState.Count; i++)
-		{
-			nextState.Cells[i] = cells[outputBuffer][i];
-		}
 
-
-		for (int i = 0; i < 2; i++)
-		{
-			cells[i].Dispose();
-		}
-		flow.Dispose();
-		flowLimit.Dispose();
-
+		WorldTick.Tick(ref state, ref nextState, ticksToAdvance, _staticState, WorldData);
 
 		_lastRenderState = _curRenderState;
 		_nextRenderState = (_curRenderState + 1) % _renderStateCount;

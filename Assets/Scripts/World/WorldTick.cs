@@ -8,60 +8,156 @@ using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Burst;
 
-public class WorldTick {
+public static class WorldTick {
+
+	public struct CellDiffusion {
+		public float Water;
+		public float Cloud;
+		public float Humidity;
+	}
+
+	public static void Tick(ref SimState state, ref SimState nextState, int ticksToAdvance, StaticState staticState, WorldData worldData)
+	{
+		JobHandle lastJobHandle = default(JobHandle);
+
+		var diffusion = new NativeArray<CellDiffusion>(state.Count * 6, Allocator.TempJob);
+		var diffusionLimit = new NativeArray<CellDiffusion>(state.Count, Allocator.TempJob);
+		var cells = new NativeArray<SimStateCell>[2];
+		cells[0] = new NativeArray<SimStateCell>(state.Cells, Allocator.TempJob);
+		cells[1] = new NativeArray<SimStateCell>(state.Cells.Length, Allocator.TempJob);
+		int ticks = state.Ticks;
+		for (int i = 0; i < ticksToAdvance; i++)
+		{
+			ticks++;
+			int lastStateIndex = i % 2;
+			var diffusionJob = new DiffusionJob();
+			diffusionJob.Last = cells[lastStateIndex];
+			diffusionJob.CellDiffusion = diffusion;
+			diffusionJob.Neighbors = staticState.Neighbors;
+			diffusionJob.WaterDiffuseSpeed = worldData.WaterDiffuseSpeed;
+			lastJobHandle = diffusionJob.Schedule(state.Count * 6, 100, lastJobHandle);
+
+			var diffusionLimitJob = new DiffusionLimitJob();
+			diffusionLimitJob.Last = cells[lastStateIndex];
+			diffusionLimitJob.CellDiffusion = diffusion;
+			diffusionLimitJob.DiffusionLimit = diffusionLimit;
+			lastJobHandle = diffusionLimitJob.Schedule(state.Count, 100, lastJobHandle);
+
+
+			var tickJob = new TickCellJob();
+			tickJob.Cells = cells[(i + 1) % 2];
+			tickJob.Last = cells[lastStateIndex];
+			tickJob.Neighbors = staticState.Neighbors;
+			tickJob.Diffusion = diffusion;
+			tickJob.DiffusionLimit = diffusionLimit;
+			tickJob.Ticks = ticks;
+			lastJobHandle = tickJob.Schedule(state.Count, 100, lastJobHandle);
+		}
+		lastJobHandle.Complete();
+
+		int outputBuffer = ticksToAdvance % 2;
+
+		nextState.Ticks = ticks;
+		nextState.Gravity = state.Gravity;
+		nextState.OrbitSpeed = state.OrbitSpeed;
+		nextState.SpinAngle = state.SpinAngle;
+		nextState.SpinSpeed = state.SpinSpeed;
+		nextState.TiltAngle = state.TiltAngle;
+		for (int i = 0; i < nextState.Count; i++)
+		{
+			nextState.Cells[i] = cells[outputBuffer][i];
+		}
+
+
+		for (int i = 0; i < 2; i++)
+		{
+			cells[i].Dispose();
+		}
+		diffusion.Dispose();
+		diffusionLimit.Dispose();
+
+	}
 
 	[BurstCompile]
-	public struct TickFlowJob : IJobParallelFor {
+	public struct DiffusionJob : IJobParallelFor {
 
 		[ReadOnly] public NativeArray<int> Neighbors;
 		[ReadOnly] public NativeArray<SimStateCell> Last;
-		public NativeArray<float> WaterFlow;
+		public NativeArray<CellDiffusion> CellDiffusion;
 		public float WaterDiffuseSpeed;
 
 		public void Execute(int i)
 		{
-			int index = i / 6;
-			var curCell = Last[index];
-			float f = 0;
-			if (curCell.WaterDepth > 0)
+			int n = Neighbors[i];
+			if (n >= 0)
 			{
-				float waterElevation = curCell.Elevation + curCell.WaterDepth;
-				int n = Neighbors[i];
-				if (n >= 0)
+				int index = i / 6;
+				var curCell = Last[index];
+				float water = 0;
+				if (curCell.WaterDepth > 0)
 				{
+					float waterElevation = curCell.Elevation + curCell.WaterDepth;
 					float nWaterElevation = Last[n].Elevation + Last[n].WaterDepth;
 					if (waterElevation > nWaterElevation)
 					{
-						f = (waterElevation - nWaterElevation) * WaterDiffuseSpeed;
+						water = (waterElevation - nWaterElevation) * WaterDiffuseSpeed;
 					}
 				}
+				float cloud = math.max(0, (curCell.CloudCoverage - Last[n].CloudCoverage) * WaterDiffuseSpeed);
+				float humidity = math.max(0, (curCell.RelativeHumidity - Last[n].RelativeHumidity) * WaterDiffuseSpeed);
+
+				CellDiffusion[i] = new CellDiffusion { Water = water, Cloud = cloud, Humidity = humidity };
 			}
-			WaterFlow[i] = f;
 		}
 	}
 	[BurstCompile]
-	public struct TickFlowLimitJob : IJobParallelFor {
+	public struct DiffusionLimitJob : IJobParallelFor {
 
-		public NativeArray<float> WaterFlowLimit;
-		[ReadOnly] public NativeArray<float> WaterFlow;
+		public NativeArray<CellDiffusion> DiffusionLimit;
+		[ReadOnly] public NativeArray<CellDiffusion> CellDiffusion;
 		[ReadOnly] public NativeArray<SimStateCell> Last;
 
 		public void Execute(int i)
 		{
-			float total = 0;
+			float totalWater = 0;
+			float totalCloud = 0;
+			float totalHumidity = 0;
+			float waterLimit, cloudLimit, humidityLimit;
 			for (int j = 0; j < 6; j++)
 			{
-				total += WaterFlow[i * 6 + j];
+				int index = i * 6 + j;
+				totalWater += CellDiffusion[index].Water;
+				totalCloud += CellDiffusion[index].Cloud;
+				totalHumidity += CellDiffusion[index].Humidity;
 			}
 			float waterDepth = Last[i].WaterDepth;
-			if (total > waterDepth && waterDepth > 0)
+			float cloud = Last[i].CloudCoverage;
+			float humidity = Last[i].RelativeHumidity;
+			if (totalWater > waterDepth && waterDepth > 0)
 			{
-				WaterFlowLimit[i] = waterDepth / total;
+				waterLimit = waterDepth / totalWater;
 			}
 			else
 			{
-				WaterFlowLimit[i] = 1;
+				waterLimit = 1;
 			}
+			if (totalCloud > cloud && cloud > 0)
+			{
+				cloudLimit = cloud / totalCloud;
+			}
+			else
+			{
+				cloudLimit = 1;
+			}
+			if (totalHumidity > humidity && humidity > 0)
+			{
+				humidityLimit = humidity / totalHumidity;
+			}
+			else
+			{
+				humidityLimit = 1;
+			}
+			DiffusionLimit[i] = new CellDiffusion { Water = waterLimit, Cloud = cloudLimit, Humidity = humidityLimit };
 		}
 	}
 	[BurstCompile]
@@ -73,8 +169,8 @@ public class WorldTick {
 		public float SpinSpeed;
 		public float OrbitSpeed;
 		public float TiltAngle;
-		[ReadOnly] public NativeArray<float> WaterFlow;
-		[ReadOnly] public NativeArray<float> WaterFlowLimit;
+		[ReadOnly] public NativeArray<CellDiffusion> Diffusion;
+		[ReadOnly] public NativeArray<CellDiffusion> DiffusionLimit;
 		[ReadOnly] public NativeArray<int> Neighbors;
 		[ReadOnly] public NativeArray<SimStateCell> Last;
 
@@ -109,20 +205,21 @@ public class WorldTick {
 			}
 			for (int j = 0; j < 6; j++)
 			{
-				int n = Neighbors[i * 6 + j];
+				int neighborIndex = i * 6 + j;
+				int n = Neighbors[neighborIndex];
 				if (n >= 0)
 				{
-					cell.CloudCoverage -= curCell.CloudCoverage * 0.01f;
-					cell.CloudCoverage += Last[n].CloudCoverage * 0.01f;
-					cell.RelativeHumidity += math.min(math.max(Last[n].RelativeHumidity, curCell.RelativeHumidity), Last[n].RelativeHumidity - curCell.RelativeHumidity) * 0.1f;
-
-					cell.WaterDepth -= WaterFlow[i * 6 + j] * WaterFlowLimit[i];
+					cell.CloudCoverage -= Diffusion[neighborIndex].Cloud * DiffusionLimit[i].Cloud;
+					cell.RelativeHumidity -= Diffusion[neighborIndex].Humidity * DiffusionLimit[i].Humidity;
+					cell.WaterDepth -= Diffusion[neighborIndex].Water * DiffusionLimit[i].Water;
 					for (int k=0;k<6;k++)
 					{
 						int nToMeIndex = n * 6 + k;
 						if (Neighbors[nToMeIndex] == i)
 						{
-							cell.WaterDepth += WaterFlow[nToMeIndex] * WaterFlowLimit[n];
+							cell.CloudCoverage += Diffusion[nToMeIndex].Cloud * DiffusionLimit[n].Cloud;
+							cell.RelativeHumidity += Diffusion[nToMeIndex].Humidity * DiffusionLimit[n].Humidity;
+							cell.WaterDepth += Diffusion[nToMeIndex].Water * DiffusionLimit[n].Water;
 							break;
 						}
 					}
