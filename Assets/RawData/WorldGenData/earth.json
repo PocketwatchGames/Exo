@@ -4,7 +4,7 @@
 	"MaxElevation": 10000,
 	"TiltAngle": -23.5,
 	"SpinTime": 24,
-	"OrbitTime": 365,
+	"OrbitTime": 8760,
 	"StratosphereMass": 2583,
 	"TroposphereMass": 7749,
 	"MinTemperature": 253.15,

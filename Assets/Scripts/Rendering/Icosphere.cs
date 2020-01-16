@@ -8,14 +8,14 @@ using UnityEngine;
 
 public class Icosphere {
 
-	public List<Polygon> _icospherePolygons = new List<Polygon>();
-	public List<Vector3> _icosphereVertices = new List<Vector3>();
+	public List<Polygon> Polygons = new List<Polygon>();
+	public List<Vector3> Vertices = new List<Vector3>();
 
 
 	public Icosphere(int recursions)
 	{
-		_icospherePolygons = new List<Polygon>();
-		_icosphereVertices = new List<Vector3>();
+		Polygons = new List<Polygon>();
+		Vertices = new List<Vector3>();
 
 		// An icosahedron has 12 vertices, and
 		// since they're completely symmetrical the
@@ -24,42 +24,42 @@ public class Icosphere {
 
 		float t = (1.0f + Mathf.Sqrt(5.0f)) / 2.0f;
 
-		_icosphereVertices.Add(new Vector3(-1, t, 0).normalized);
-		_icosphereVertices.Add(new Vector3(1, t, 0).normalized);
-		_icosphereVertices.Add(new Vector3(-1, -t, 0).normalized);
-		_icosphereVertices.Add(new Vector3(1, -t, 0).normalized);
-		_icosphereVertices.Add(new Vector3(0, -1, t).normalized);
-		_icosphereVertices.Add(new Vector3(0, 1, t).normalized);
-		_icosphereVertices.Add(new Vector3(0, -1, -t).normalized);
-		_icosphereVertices.Add(new Vector3(0, 1, -t).normalized);
-		_icosphereVertices.Add(new Vector3(t, 0, -1).normalized);
-		_icosphereVertices.Add(new Vector3(t, 0, 1).normalized);
-		_icosphereVertices.Add(new Vector3(-t, 0, -1).normalized);
-		_icosphereVertices.Add(new Vector3(-t, 0, 1).normalized);
+		Vertices.Add(new Vector3(-1, t, 0).normalized);
+		Vertices.Add(new Vector3(1, t, 0).normalized);
+		Vertices.Add(new Vector3(-1, -t, 0).normalized);
+		Vertices.Add(new Vector3(1, -t, 0).normalized);
+		Vertices.Add(new Vector3(0, -1, t).normalized);
+		Vertices.Add(new Vector3(0, 1, t).normalized);
+		Vertices.Add(new Vector3(0, -1, -t).normalized);
+		Vertices.Add(new Vector3(0, 1, -t).normalized);
+		Vertices.Add(new Vector3(t, 0, -1).normalized);
+		Vertices.Add(new Vector3(t, 0, 1).normalized);
+		Vertices.Add(new Vector3(-t, 0, -1).normalized);
+		Vertices.Add(new Vector3(-t, 0, 1).normalized);
 
 		// And here's the formula for the 20 sides,
 		// referencing the 12 vertices we just created.
 
-		_icospherePolygons.Add(new Polygon(0, 11, 5));
-		_icospherePolygons.Add(new Polygon(0, 5, 1));
-		_icospherePolygons.Add(new Polygon(0, 1, 7));
-		_icospherePolygons.Add(new Polygon(0, 7, 10));
-		_icospherePolygons.Add(new Polygon(0, 10, 11));
-		_icospherePolygons.Add(new Polygon(1, 5, 9));
-		_icospherePolygons.Add(new Polygon(5, 11, 4));
-		_icospherePolygons.Add(new Polygon(11, 10, 2));
-		_icospherePolygons.Add(new Polygon(10, 7, 6));
-		_icospherePolygons.Add(new Polygon(7, 1, 8));
-		_icospherePolygons.Add(new Polygon(3, 9, 4));
-		_icospherePolygons.Add(new Polygon(3, 4, 2));
-		_icospherePolygons.Add(new Polygon(3, 2, 6));
-		_icospherePolygons.Add(new Polygon(3, 6, 8));
-		_icospherePolygons.Add(new Polygon(3, 8, 9));
-		_icospherePolygons.Add(new Polygon(4, 9, 5));
-		_icospherePolygons.Add(new Polygon(2, 4, 11));
-		_icospherePolygons.Add(new Polygon(6, 2, 10));
-		_icospherePolygons.Add(new Polygon(8, 6, 7));
-		_icospherePolygons.Add(new Polygon(9, 8, 1));
+		Polygons.Add(new Polygon(0, 11, 5));
+		Polygons.Add(new Polygon(0, 5, 1));
+		Polygons.Add(new Polygon(0, 1, 7));
+		Polygons.Add(new Polygon(0, 7, 10));
+		Polygons.Add(new Polygon(0, 10, 11));
+		Polygons.Add(new Polygon(1, 5, 9));
+		Polygons.Add(new Polygon(5, 11, 4));
+		Polygons.Add(new Polygon(11, 10, 2));
+		Polygons.Add(new Polygon(10, 7, 6));
+		Polygons.Add(new Polygon(7, 1, 8));
+		Polygons.Add(new Polygon(3, 9, 4));
+		Polygons.Add(new Polygon(3, 4, 2));
+		Polygons.Add(new Polygon(3, 2, 6));
+		Polygons.Add(new Polygon(3, 6, 8));
+		Polygons.Add(new Polygon(3, 8, 9));
+		Polygons.Add(new Polygon(4, 9, 5));
+		Polygons.Add(new Polygon(2, 4, 11));
+		Polygons.Add(new Polygon(6, 2, 10));
+		Polygons.Add(new Polygon(8, 6, 7));
+		Polygons.Add(new Polygon(9, 8, 1));
 
 		Subdivide(recursions);
 	}
@@ -71,7 +71,7 @@ public class Icosphere {
 		for (int i = 0; i < recursions; i++)
 		{
 			var newPolys = new List<Polygon>();
-			foreach (var poly in _icospherePolygons)
+			foreach (var poly in Polygons)
 			{
 				int a = poly.m_Vertices[0];
 				int b = poly.m_Vertices[1];
@@ -94,7 +94,7 @@ public class Icosphere {
 			}
 			// Replace all our old polygons with the new set of
 			// subdivided ones.
-			_icospherePolygons = newPolys;
+			Polygons = newPolys;
 		}
 	}
 	private int GetMidPointIndex(Dictionary<int, int> cache, int indexA, int indexB)
@@ -122,12 +122,12 @@ public class Icosphere {
 		// If we're here, it's because a midpoint for these two
 		// vertices hasn't been created yet. Let's do that now!
 
-		Vector3 p1 = _icosphereVertices[indexA];
-		Vector3 p2 = _icosphereVertices[indexB];
+		Vector3 p1 = Vertices[indexA];
+		Vector3 p2 = Vertices[indexB];
 		Vector3 middle = Vector3.Lerp(p1, p2, 0.5f).normalized;
 
-		ret = _icosphereVertices.Count;
-		_icosphereVertices.Add(middle);
+		ret = Vertices.Count;
+		Vertices.Add(middle);
 
 		// Add our new midpoint to the cache so we don't have
 		// to do this again. =)

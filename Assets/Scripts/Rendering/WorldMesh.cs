@@ -55,7 +55,7 @@ public class WorldMesh : MonoBehaviour {
 	static Color32 white = new Color32(255, 255, 255, 255);
 	static Color32 black = new Color32(0, 0, 0, 255);
 
-	private Icosphere _icosphere;
+	public Icosphere Icosphere;
 
 	private Mesh _terrainMesh;
 	private Mesh _waterMesh;
@@ -70,7 +70,7 @@ public class WorldMesh : MonoBehaviour {
 
 	public void Init(int subdivisions)
 	{
-		_icosphere = new Icosphere(subdivisions);
+		Icosphere = new Icosphere(subdivisions);
 
 		if (_terrainMesh)
 		{
@@ -102,21 +102,16 @@ public class WorldMesh : MonoBehaviour {
 		cloudFilter.mesh = _cloudMesh;
 
 
-		int indexCount = _icosphere._icospherePolygons.Count * 3;
+		int indexCount = Icosphere.Polygons.Count * 3;
 		indices = new int[indexCount];
-		for (int i = 0; i < _icosphere._icospherePolygons.Count; i++)
+		for (int i = 0; i < Icosphere.Polygons.Count; i++)
 		{
-			var poly = _icosphere._icospherePolygons[i];
+			var poly = Icosphere.Polygons[i];
 			indices[i * 3 + 0] = poly.m_Vertices[0];
 			indices[i * 3 + 1] = poly.m_Vertices[1];
 			indices[i * 3 + 2] = poly.m_Vertices[2];
 		}
 
-	}
-
-	public List<Vector3> GetVertices()
-	{
-		return _icosphere._icosphereVertices;
 	}
 
 
@@ -151,12 +146,12 @@ public class WorldMesh : MonoBehaviour {
 			to.TerrainColor[i] = GetTerrainColor(staticState, fromCell);
 			to.WaterColor[i] = GetWaterColor(staticState, fromCell);
 			to.CloudColor[i] = GetCloudColor(staticState, fromCell);
-			to.TerrainNormal[i] = _icosphere._icosphereVertices[i];
-			to.WaterNormal[i] = _icosphere._icosphereVertices[i];
-			to.CloudNormal[i] = _icosphere._icosphereVertices[i];
-			to.TerrainPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.Elevation * TerrainScale + staticState.Radius) / staticState.Radius;
-			to.WaterPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.WaterElevation * TerrainScale + staticState.Radius) / staticState.Radius;
-			to.CloudPosition[i] = _icosphere._icosphereVertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.TerrainNormal[i] = Icosphere.Vertices[i];
+			to.WaterNormal[i] = Icosphere.Vertices[i];
+			to.CloudNormal[i] = Icosphere.Vertices[i];
+			to.TerrainPosition[i] = Icosphere.Vertices[i] * (fromCell.Elevation * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.WaterPosition[i] = Icosphere.Vertices[i] * (fromCell.WaterElevation * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.CloudPosition[i] = Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.Radius) / staticState.Radius;
 		}
 
 	}
@@ -192,10 +187,9 @@ public class WorldMesh : MonoBehaviour {
 		_cloudMesh.RecalculateNormals();
 
 		var time = WorldTime.GetTime(state.Ticks, state.SpinSpeed);
-		var day = WorldTime.GetDays(state.Ticks, state.SpinSpeed);
-		var quat = Quaternion.Euler(state.TiltAngle, time * 360, 0);
-		float dayAngle = day * state.OrbitSpeed * 360;
-		transform.SetPositionAndRotation(new Vector3(math.cos(dayAngle), 0, math.sin(dayAngle)) * DistanceToSun, quat);
+		var spin = Quaternion.Euler(state.TiltAngle, time * 360, 0);
+		float orbitAngle = state.Ticks * state.OrbitSpeed * 360;
+		transform.SetPositionAndRotation(new Vector3(math.cos(orbitAngle), 0, math.sin(orbitAngle)) * DistanceToSun, spin);
 	}
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
@@ -231,7 +225,7 @@ public class WorldMesh : MonoBehaviour {
 	private Color32 GetCloudColor(StaticState staticState, SimStateCell cell)
 	{
 		var c = Color32.Lerp(white, black, cell.RelativeHumidity);
-		float opacity = cell.CloudCoverage > 0.5f ? math.pow(cell.CloudCoverage, 0.25f) * 0.75f : math.pow(cell.CloudCoverage, 4);
+		float opacity = -math.cos(cell.CloudCoverage * math.PI)/ 2 + 0.5f;
 		c.a = (byte)(255 * opacity);
 		return c;
 	}

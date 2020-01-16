@@ -52,10 +52,10 @@ public class WorldSim : MonoBehaviour
     {
 		Mesh.Init(Subdivisions);
 
-		SimVertCount = Mesh.GetVertices().Count;
+		SimVertCount = Mesh.Icosphere.Vertices.Count;
 
 		_staticState = new StaticState();
-		_staticState.Init(SimVertCount);
+		_staticState.Init(SimVertCount, Mesh.Icosphere);
 
 		_activeSimState = 0;
 		_simStates = new SimState[_simStateCount];
@@ -75,7 +75,6 @@ public class WorldSim : MonoBehaviour
 			_renderStates[i].Init(SimVertCount);
 		}
 
-		_staticState.ExtractCoordinates(Mesh.GetVertices());
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
 		WorldGen.Generate(_staticState, Seed, _worldGenData, WorldData, ref _simStates[0]);
@@ -114,16 +113,24 @@ public class WorldSim : MonoBehaviour
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
 		JobHandle lastJobHandle = default(JobHandle);
-		var cells = new NativeArray<SimStateCell>(state.Cells, Allocator.TempJob);
+
+		var cells = new NativeArray<SimStateCell>[2];
+		for (int i=0;i<2;i++)
+		{
+			cells[i] = new NativeArray<SimStateCell>(state.Cells, Allocator.TempJob);
+		}
 		int ticks = state.Ticks;		
 		for (int i=0;i<ticksToAdvance;i++)
 		{
 			ticks++;
 			var tickJob = new WorldTick.TickCellJob();
-			tickJob.Cells = cells;
+			tickJob.Last = cells[i%2];
+			tickJob.Cells = cells[(i+1)%2];
+			tickJob.Neighbors = _staticState.Neighbors;
 			tickJob.Ticks = ticks;
 			lastJobHandle = tickJob.Schedule(state.Count, 100, lastJobHandle);
 		}
+		int outputBuffer = ticksToAdvance % 2;
 		lastJobHandle.Complete();
 		
 		int nextStateIndex = (_activeSimState + 1) % _simStateCount;
@@ -138,9 +145,12 @@ public class WorldSim : MonoBehaviour
 		nextState.TiltAngle = state.TiltAngle;
 		for (int i = 0; i < nextState.Count; i++)
 		{
-			nextState.Cells[i] = cells[i];
+			nextState.Cells[i] = cells[outputBuffer][i];
 		}
-		cells.Dispose();
+		for (int i = 0; i < 2; i++)
+		{
+			cells[i].Dispose();
+		}
 
 
 		_lastRenderState = _curRenderState;
