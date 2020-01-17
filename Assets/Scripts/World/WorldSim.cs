@@ -43,7 +43,6 @@ public class WorldSim : MonoBehaviour
 	private int _nextRenderState;
 	private int _activeSimState;
 	private float _timeTillTick = 0.00001f;
-	private float _tickLerpTime;
 	private float _ticksPerSecond = 1;
 
 
@@ -79,7 +78,7 @@ public class WorldSim : MonoBehaviour
 		WorldGen.Generate(_staticState, Seed, _worldGenData, WorldData, ref _simStates[0]);
 
 		Mesh.BuildRenderState(ref _simStates[0], ref _renderStates[0], _staticState);
-		Mesh.UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], 0, ref _renderStates[_curRenderState]);
+		Mesh.UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
 	}
 
@@ -91,6 +90,7 @@ public class WorldSim : MonoBehaviour
 	bool _simulating;
 	public void Update()
 	{
+		Mesh.Update(Time.deltaTime * TimeScale);
 		if (_timeTillTick > -1)
 		{
 			_timeTillTick -= Time.deltaTime * TimeScale;
@@ -104,13 +104,10 @@ public class WorldSim : MonoBehaviour
 				iterations++;
 			}
 			Tick(ref _simStates[_activeSimState], iterations);
-		}
-		if (_tickLerpTime > 0)
-		{
 
-			float renderStateLerp = Mathf.Clamp01(1.0f - _timeTillTick / _tickLerpTime);
-			Mesh.UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], renderStateLerp, ref _renderStates[_curRenderState]);
+			Mesh.StartLerp(_timeTillTick);
 		}
+		Mesh.UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
 	}
 
@@ -126,7 +123,6 @@ public class WorldSim : MonoBehaviour
 		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
 		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
 		Mesh.BuildRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState], _staticState);
-		_tickLerpTime = _timeTillTick;
 
 	}
 
@@ -141,5 +137,17 @@ public class WorldSim : MonoBehaviour
 		TimeScale = 0;
 		_timeTillTick = 0;
 	}
+
+	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
+	{
+		Mesh.OnHUDOverlayChanged(dropdown);
+		Mesh.BuildRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState], _staticState);
+	}
+	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
+	{
+		Mesh.OnHUDWindChanged(dropdown);
+		Mesh.BuildRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState], _staticState);
+	}
+
 
 }

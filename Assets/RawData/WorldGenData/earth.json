@@ -3,6 +3,8 @@
 	"MinElevation": -11000,
 	"MaxElevation": 10000,
 	"MaxRoughness": 1000,
+	"GroundWaterDepthMax": 1000,
+	"GroundWaterDepthMin": 10,
 	"TiltAngle": -23.5,
 	"SpinTime": 24,
 	"OrbitTime": 8760,

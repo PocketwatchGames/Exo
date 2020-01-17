@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Unity.Entities;
 using Unity;
 using UnityEngine;
+using Unity.Mathematics;
 
 public struct SimState {
 
@@ -16,6 +17,11 @@ public struct SimState {
 	public float SpinSpeed;
 	public float OrbitSpeed;
 	public float TiltAngle;
+	public float GeothermalHeat;
+	public float SolarRadiation;
+	public float StratosphereMass;
+	public float CarbonDioxide;
+
 	public SimStateCell[] Cells;
 
 	public void Init(int count)
@@ -28,13 +34,30 @@ public struct SimState {
 public struct SimStateCell {
 	public float Elevation;
 	public float Roughness;
-	public float WaterDepth;
 	public float SoilFertility;
 	public float Vegetation;
-	public float Ice;
+	public float IceMass;
+	public float WaterMass;
+	public float WaterEnergy;
+	public float SaltMass;
+	public float GroundEnergy;
+	public float GroundWater;
+	public float GroundWaterDepth;
+	public float AirMass;
+	public float AirEnergy;
+	public float AirWaterMass;
+	public float CloudMass;
+	public float CloudDropletMass;
 	public float CloudCoverage;
 	public float CloudElevation;
+	public float WaterDepth;
 	public float RelativeHumidity;
+	public float AirTemperature;
+	public float AirPressure;
+	public float WaterTemperature;
+	public float WindVertical;
+	public float2 WindSurface;
+	public float2 WindTropopause;
 }
 
 

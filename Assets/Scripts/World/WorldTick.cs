@@ -183,13 +183,31 @@ public static class WorldTick {
 			cell.CloudCoverage = curCell.CloudCoverage;
 			cell.RelativeHumidity = curCell.RelativeHumidity;
 			cell.WaterDepth = curCell.WaterDepth;
-			cell.RelativeHumidity = curCell.RelativeHumidity;
 			cell.CloudElevation = curCell.CloudElevation;
 			cell.Elevation = curCell.Elevation;
 			cell.Roughness = curCell.Roughness;
-			cell.Ice = curCell.Ice;
+			cell.IceMass = curCell.IceMass;
 			cell.Vegetation = curCell.Vegetation;
 			cell.SoilFertility = curCell.SoilFertility;
+			cell.WaterMass = curCell.WaterMass;
+			cell.WaterEnergy = curCell.WaterEnergy;
+			cell.SaltMass = curCell.SaltMass;
+			cell.GroundEnergy = curCell.GroundEnergy;
+			cell.GroundWater = curCell.GroundWater;
+			cell.GroundWaterDepth = curCell.GroundWaterDepth;
+			cell.AirMass = curCell.AirMass;
+			cell.AirEnergy = curCell.AirEnergy;
+			cell.CloudMass = curCell.CloudMass;
+			cell.CloudDropletMass = curCell.CloudDropletMass;
+
+
+			cell.AirWaterMass = curCell.AirWaterMass;
+			cell.AirTemperature = curCell.AirTemperature;
+			cell.AirPressure = curCell.AirPressure;
+			cell.WaterTemperature = curCell.WaterTemperature;
+			cell.WindVertical = curCell.WindVertical;
+			cell.WindSurface = curCell.WindSurface;
+			cell.WindTropopause = curCell.WindTropopause;
 
 
 			float evap = math.min(curCell.WaterDepth, 1f) * math.clamp(1.0f - curCell.RelativeHumidity / 100, 0, 1);

@@ -15,6 +15,12 @@ public class StaticState {
 	public List<int>[] NeighborList;
 	public NativeArray<int> Neighbors;
 
+	public float TicksPerHour;
+	public float TicksPerSecond;
+	public float SecondsPerTick;
+	public float InverseMetersPerTile;
+
+
 	public void Init(int count, Icosphere icosphere)
 	{
 		Count = count;
@@ -56,6 +62,34 @@ public class StaticState {
 				}
 			}
 		}
+
+
+		//TicksPerHour = (float)TicksPerYear / (365 * 24);
+		//int secondsPerYear = 365 * 24 * 60 * 60;
+		//TicksPerSecond = (float)TicksPerYear / secondsPerYear;
+		//SecondsPerTick = 1.0f / TicksPerSecond;
+
+		//InverseMetersPerTile = 1.0f / MetersPerTile;
+
+		//for (int y = 0; y < size; y++)
+		//{
+		//	float latitude = ((float)y / size) * 2 - 1.0f;
+		//	float yaw = (float)(latitude * Math.PI * 1.5f);
+		//	float pitch = (float)(latitude * Math.PI * 3f);
+		//	float absSinPitch = (float)(Math.Abs(Math.Sin(pitch)));
+		//	float cosYaw = (float)Math.Cos(yaw);
+		//	float cosPitch = (float)Math.Cos(pitch);
+
+		//	float tropopauseElevation = (1.0f - Math.Abs(latitude)) * (MaxTropopauseElevation - MinTropopauseElevation) + MinTropopauseElevation + TropopauseElevationSeason * latitude;
+		//	windInfo[y] = new WindInfo()
+		//	{
+		//		latitude = latitude,
+		//		yaw = yaw,
+		//		tropopauseElevationMax = tropopauseElevation,
+		//		coriolisParam = Mathf.Sin(latitude * Mathf.PI / 2),
+		//		inverseCoriolisParam = 1.0f / Mathf.Sin(latitude * Mathf.PI / 2)
+		//	};
+		//}
 
 	}
 

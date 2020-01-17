@@ -10,6 +10,8 @@ public class WorldGenData {
 	public float MinElevation;
 	public float MaxElevation;
 	public float MaxRoughness;
+	public float GroundWaterDepthMin;
+	public float GroundWaterDepthMax;
 	public float StratosphereMass;
 	public float TroposphereMass;
 	public float MinTemperature;

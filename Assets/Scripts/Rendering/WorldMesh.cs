@@ -40,6 +40,38 @@ public class WorldMesh : MonoBehaviour {
 		UpperAirWind
 	}
 
+	[Header("Display")]
+	public float ElevationScale = 0.002f;
+	public float MinZoom;
+	public float MaxZoom;
+	public float Zoom { get { return MinZoom + MaxZoom * (float)Mathf.Pow(ZoomLevel, 3); } }
+	public float ZoomLevel = 0.5f;
+	public float CameraMoveSpeed = 2;
+	public float CameraZoomSpeed = 2;
+//	public TemperatureDisplayType TemperatureDisplay;
+	public float minPressure = 300;
+	public float maxPressure = 600;
+	public float MinElevation = -11000;
+	public float MaxElevation = 10000;
+	public float MaxDepth = 11000;
+	public float maxHumidity = 50;
+	public float maxRainfall = 5.0f;
+	public float maxCloudColor = 300.0f;
+	public float MaxEnergyAbsorbed = 300;
+	public float MinSalinity = 0;
+	public float MaxSalinity = 50;
+	public float waterDepthThreshold = 10;
+	public float DisplayMaxWindSpeedLowerAtm = 50;
+	public float DisplayMaxWindSpeedUpperAtm = 250;
+	public float DisplayMaxWindSpeedSurfaceWater = 5;
+	public float DisplayMaxWindSpeedDeepWater = 0.5f;
+	public float DisplayMaxVerticalWindSpeed = 1.0f;
+	public float MaxEvap = 5.0f;
+	public float DisplayMaxCanopy = 1000;
+	public float DisplayMinTemperature = 223;
+	public float DisplayMaxTemperature = 323;
+
+
 	public bool LerpStates = true;
 	public float DistanceToSun = 100;
 	public float TerrainScale = 0.00005f;
@@ -66,6 +98,10 @@ public class WorldMesh : MonoBehaviour {
 	private GameObject _terrainObject;
 	private GameObject _waterObject;
 	private GameObject _cloudObject;
+
+	private float _tickLerpTime = 0;
+	private float _tickLerpTimeTotal = 1;
+
 
 	bool _indicesInitialized;
 	int[] indices;
@@ -116,6 +152,15 @@ public class WorldMesh : MonoBehaviour {
 
 	}
 
+	public void Update(float dt)
+	{
+		_tickLerpTime -= dt;
+	}
+	public void StartLerp(float lerpTime)
+	{
+		_tickLerpTime = lerpTime;
+		_tickLerpTimeTotal = lerpTime;
+	}
 
 	public void BuildRenderState(ref SimState from, ref RenderState to, StaticState staticState)
 	{
@@ -127,8 +172,16 @@ public class WorldMesh : MonoBehaviour {
 		for (int i = 0; i < from.Count; i++)
 		{
 			ref var fromCell = ref from.Cells[i];
-			to.TerrainColor[i] = GetTerrainColor(staticState, fromCell);
-			to.WaterColor[i] = GetWaterColor(staticState, fromCell);
+			if (ActiveMeshOverlay == MeshOverlay.None)
+			{
+				to.TerrainColor[i] = GetTerrainColor(staticState, fromCell);
+				to.WaterColor[i] = GetWaterColor(staticState, fromCell);
+			} else
+			{
+				var overlayColor = GetOverlayColor(fromCell);
+				to.TerrainColor[i] = overlayColor;
+				to.WaterColor[i] = overlayColor;
+			}
 			to.CloudColor[i] = GetCloudColor(staticState, fromCell);
 			to.TerrainNormal[i] = Icosphere.Vertices[i];
 			to.WaterNormal[i] = Icosphere.Vertices[i];
@@ -140,8 +193,9 @@ public class WorldMesh : MonoBehaviour {
 
 	}
 
-	public void UpdateMesh(ref RenderState lastState, ref RenderState nextState, float t, ref RenderState state)
+	public void UpdateMesh(ref RenderState lastState, ref RenderState nextState, ref RenderState state)
 	{
+		float t = Mathf.Clamp01(1.0f - _tickLerpTime / _tickLerpTimeTotal);
 		if (!LerpStates)
 		{
 			t = 1;
@@ -206,10 +260,12 @@ public class WorldMesh : MonoBehaviour {
 	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
 	{
 		ActiveMeshOverlay = (WorldMesh.MeshOverlay)dropdown.value;
+		_tickLerpTime = 0;
 	}
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
 	{
 		ActiveWindOverlay = (WorldMesh.WindOverlay)dropdown.value;
+		_tickLerpTime = 0;
 	}
 
 
@@ -219,14 +275,14 @@ public class WorldMesh : MonoBehaviour {
 	{
 		var groundColor = Color32.Lerp(grey, brown, cell.SoilFertility);
 		var waterColor = Color32.Lerp(groundColor, blue, math.clamp(math.pow(cell.WaterDepth / cell.Roughness, 2), 0, 1));
-		var iceColor = Color32.Lerp(waterColor, white, cell.Ice);
+		var iceColor = Color32.Lerp(waterColor, white, cell.IceMass);
 		var vegetationColor = Color32.Lerp(groundColor, green, cell.Vegetation);
 		return vegetationColor;
 	}
 
 	private Color32 GetWaterColor(StaticState staticState, SimStateCell cell)
 	{
-		return Color32.Lerp(blue, white, cell.Ice);
+		return Color32.Lerp(blue, white, cell.IceMass);
 	}
 
 	private Color32 GetCloudColor(StaticState staticState, SimStateCell cell)
@@ -236,6 +292,48 @@ public class WorldMesh : MonoBehaviour {
 		c.a = (byte)(255 * opacity);
 		return c;
 	}
+
+	private Color32 GetOverlayColor(SimStateCell cell)
+	{
+		switch (ActiveMeshOverlay)
+		{
+			case MeshOverlay.LowerAirTemperature:
+				return Lerp(NormalizedRainbow, cell.AirTemperature, DisplayMinTemperature, DisplayMaxTemperature);
+			default:
+				return black;
+		}
+	}
+
+	static List<CVP> NormalizedRainbow = new List<CVP> {
+											new CVP(Color.black, 0),
+											new CVP(Color.white, 0.1667f),
+											new CVP(Color.blue, 0.3333f),
+											new CVP(Color.green, 0.5f),
+											new CVP(Color.yellow, 0.6667f),
+											new CVP(Color.red, 0.8333f),
+											new CVP(Color.magenta, 1) };
+	struct CVP {
+		public Color Color;
+		public float Value;
+		public CVP(Color c, float v) { Color = c; Value = v; }
+	};
+
+	Color Lerp(List<CVP> colors, float value, float min, float max)
+	{
+		return Lerp(colors, (value - min) / (max - min));
+	}
+	Color Lerp(List<CVP> colors, float value)
+	{
+		for (int i = 0; i < colors.Count - 1; i++)
+		{
+			if (value < colors[i + 1].Value)
+			{
+				return Color.Lerp(colors[i].Color, colors[i + 1].Color, (value - colors[i].Value) / (colors[i + 1].Value - colors[i].Value));
+			}
+		}
+		return colors[colors.Count - 1].Color;
+	}
+
 
 	#endregion
 }
