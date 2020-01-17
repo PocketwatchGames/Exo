@@ -6727,27 +6727,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LerpStates: 1
   TerrainScale: 0.5
-  minPressure: 300
-  maxPressure: 600
   MinElevation: -11000
   MaxElevation: 10000
   MaxDepth: 11000
-  maxHumidity: 50
-  maxRainfall: 5
   maxCloudColor: 300
-  MaxEnergyAbsorbed: 300
-  MinSalinity: 0
-  MaxSalinity: 50
-  waterDepthThreshold: 10
+  WaterDepthThreshold: 10
+  RRDisplayEnergyAborsobedMax: 300
+  DisplayRainfallMax: 5
+  DisplayMinSalinity: 0
+  DisplayMaxSalinity: 50
   DisplayMaxWindSpeedLowerAtm: 50
   DisplayMaxWindSpeedUpperAtm: 250
   DisplayMaxWindSpeedSurfaceWater: 5
   DisplayMaxWindSpeedDeepWater: 0.5
   DisplayMaxVerticalWindSpeed: 1
-  MaxEvap: 5
+  DisplayEvaporationMax: 5
   DisplayMaxCanopy: 1000
-  DisplayMinTemperature: 223
-  DisplayMaxTemperature: 323
+  DisplayTemperatureMin: 223
+  DisplayTemperatureMax: 323
+  DisplayAbsoluteHumidityMax: 1000
+  DisplayGroundWaterMax: 100000
+  DisplayAirPressureMin: 97000
+  DisplayAirPressureMax: 110000
   Sim: {fileID: 365555216}
   ActiveMeshOverlay: 0
   ActiveWindOverlay: 0

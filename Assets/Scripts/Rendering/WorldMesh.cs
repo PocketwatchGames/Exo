@@ -11,7 +11,7 @@ public class WorldMesh : MonoBehaviour {
 
 	public enum MeshOverlay {
 		None,
-		TerrainTemperature,
+		GroundTemperature,
 		GroundWater,
 		DeepWaterTemperature,
 		DeepWaterSalinity,
@@ -25,7 +25,7 @@ public class WorldMesh : MonoBehaviour {
 		AbsoluteHumidity,
 		RelativeHumidity,
 		CloudMass,
-		CloudCoalescence,
+		CloudDropletMass,
 		Evaporation,
 		Rainfall,
 		Condensation,
@@ -44,27 +44,30 @@ public class WorldMesh : MonoBehaviour {
 	public bool LerpStates = true;
 	public float TerrainScale = 100f;
 //	public TemperatureDisplayType TemperatureDisplay;
-	public float minPressure = 300;
-	public float maxPressure = 600;
 	public float MinElevation = -11000;
 	public float MaxElevation = 10000;
 	public float MaxDepth = 11000;
-	public float maxHumidity = 50;
-	public float maxRainfall = 5.0f;
 	public float maxCloudColor = 300.0f;
-	public float MaxEnergyAbsorbed = 300;
-	public float MinSalinity = 0;
-	public float MaxSalinity = 50;
-	public float waterDepthThreshold = 10;
+	public float WaterDepthThreshold = 10;
+
+	public float RRDisplayEnergyAborsobedMax = 300;
+	public float DisplayRainfallMax = 5.0f;
+	public float DisplayMinSalinity = 0;
+	public float DisplayMaxSalinity = 50;
 	public float DisplayMaxWindSpeedLowerAtm = 50;
 	public float DisplayMaxWindSpeedUpperAtm = 250;
 	public float DisplayMaxWindSpeedSurfaceWater = 5;
 	public float DisplayMaxWindSpeedDeepWater = 0.5f;
 	public float DisplayMaxVerticalWindSpeed = 1.0f;
-	public float MaxEvap = 5.0f;
+	public float DisplayEvaporationMax = 5.0f;
 	public float DisplayMaxCanopy = 1000;
-	public float DisplayMinTemperature = 223;
-	public float DisplayMaxTemperature = 323;
+	public float DisplayTemperatureMin = 223;
+	public float DisplayTemperatureMax = 323;
+	public float DisplayAbsoluteHumidityMax = 400;
+	public float DisplayGroundWaterMax = 100000;
+	public float DisplayAirPressureMin = 97000;
+	public float DisplayAirPressureMax = 110000;
+
 
 
 	[Header("References")]
@@ -321,8 +324,22 @@ public class WorldMesh : MonoBehaviour {
 	{
 		switch (ActiveMeshOverlay)
 		{
+			case MeshOverlay.AbsoluteHumidity:
+				return Lerp(NormalizedRainbow, cell.AirWaterMass, 0, DisplayAbsoluteHumidityMax);
+			case MeshOverlay.RelativeHumidity:
+				return Lerp(NormalizedRainbow, cell.RelativeHumidity, 0, 1.0f);
+			case MeshOverlay.GroundWater:
+				return Lerp(NormalizedRainbow, cell.GroundWater, 0, DisplayGroundWaterMax);
+			case MeshOverlay.LowerAirPressure:
+				return Lerp(NormalizedRainbow, cell.AirPressure, DisplayAirPressureMin, DisplayAirPressureMax);
 			case MeshOverlay.LowerAirTemperature:
-				return Lerp(NormalizedRainbow, cell.AirTemperature, DisplayMinTemperature, DisplayMaxTemperature);
+				return Lerp(NormalizedRainbow, cell.AirTemperature, DisplayTemperatureMin, DisplayTemperatureMax);
+			case MeshOverlay.ShallowWaterTemperature:
+				return Lerp(NormalizedRainbow, cell.WaterTemperature, DisplayTemperatureMin, DisplayTemperatureMax);
+			case MeshOverlay.GroundTemperature:
+				return Lerp(NormalizedRainbow, Atmosphere.GetLandTemperature(ref Sim.WorldData, cell.GroundEnergy, cell.GroundWater, cell.SoilFertility, cell.Vegetation), DisplayTemperatureMin, DisplayTemperatureMax);
+			case MeshOverlay.VerticalWind:
+				return Lerp(NormalizedBlueBlackRed, cell.WindVertical, -DisplayMaxVerticalWindSpeed, DisplayMaxVerticalWindSpeed);
 			default:
 				return black;
 		}
@@ -336,6 +353,10 @@ public class WorldMesh : MonoBehaviour {
 											new CVP(Color.yellow, 0.6667f),
 											new CVP(Color.red, 0.8333f),
 											new CVP(Color.magenta, 1) };
+	static List<CVP> NormalizedBlueBlackRed = new List<CVP> {
+											new CVP(Color.blue, 0),
+											new CVP(Color.black, 0.5f),
+											new CVP(Color.red, 1) };
 	struct CVP {
 		public Color Color;
 		public float Value;

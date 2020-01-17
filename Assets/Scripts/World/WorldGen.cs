@@ -62,7 +62,7 @@ public static class WorldGen {
 			var coord = staticState.Coordinate[i] * 2 * inversePI;
 			var pos = staticState.SphericalPosition[i];
 			var coordNormalized = (coord + 1) / 2;
-			cell.Roughness = math.max(1, math.pow(GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 6643230), 3) * worldGenData.MaxRoughness);
+			cell.Roughness = math.max(1, math.pow(GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 660), 3) * worldGenData.MaxRoughness);
 			float elevation =
 				0.6f * GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 0, worldGenData.MinElevation, worldGenData.MaxElevation) +
 				0.3f * GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 0, worldGenData.MinElevation, worldGenData.MaxElevation) +
@@ -75,7 +75,7 @@ public static class WorldGen {
 
 			float soil =
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.2f, 6630) +
-				0.3f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 43560) +
+				0.3f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 435) +
 				0.2f * GetPerlinNormalized(pos.x, pos.y, pos.z, 1f, 8740);
 			cell.SoilFertility = soil;
 
@@ -105,7 +105,7 @@ public static class WorldGen {
 
 			float regionalTemperatureVariation =
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 15460, -5, 5) +
-				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.2f, 665431, -10, 10) +
+				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.2f, 431, -10, 10) +
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 6952, -10, 10);
 			cell.AirTemperature =
 				regionalTemperatureVariation + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.15f, 80, -5, 5) +
@@ -120,12 +120,12 @@ public static class WorldGen {
 
 			//cell.UpperAirMass = totalAirMassUpper - state.CloudMass;
 			//cell.UpperAirPressure = Atmosphere.GetAirPressure(world, state.UpperAirMass + state.StratosphereMass + state.CloudMass, surfaceElevation + world.Data.BoundaryZoneElevation, state.UpperAirTemperature, Atmosphere.GetMolarMassAir(world, state.UpperAirMass + state.StratosphereMass, state.CloudMass));
-			cell.AirMass = totalAirMass - cell.AirWaterMass;
+			cell.AirMass = totalAirMass - cell.AirWaterMass - cell.CloudMass;
 			cell.AirPressure = Atmosphere.GetAirPressure(
-				ref worldData, 
-				cell.AirMass + state.PlanetState.StratosphereMass + cell.AirWaterMass + cell.CloudMass + cell.AirWaterMass, 
-				surfaceElevation, 
-				cell.AirTemperature, 
+				ref worldData,
+				cell.AirMass + state.PlanetState.StratosphereMass + cell.AirWaterMass + cell.CloudMass,
+				surfaceElevation,
+				cell.AirTemperature,
 				Atmosphere.GetMolarMassAir(cell.AirMass + state.PlanetState.StratosphereMass, cell.AirWaterMass + cell.CloudMass),
 				state.PlanetState.Gravity);
 
