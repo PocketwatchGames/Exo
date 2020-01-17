@@ -89,7 +89,13 @@ public class WorldMesh : MonoBehaviour {
 	static Color32 white = new Color32(255, 255, 255, 255);
 	static Color32 black = new Color32(0, 0, 0, 255);
 
-	public Icosphere Icosphere;
+
+	public WorldSim Sim;
+	private RenderState[] _renderStates;
+	private int _curRenderState;
+	private int _lastRenderState;
+	private int _nextRenderState;
+	private const int _renderStateCount = 3;
 
 	private Mesh _terrainMesh;
 	private Mesh _waterMesh;
@@ -106,9 +112,9 @@ public class WorldMesh : MonoBehaviour {
 	bool _indicesInitialized;
 	int[] indices;
 
-	public void Init(int subdivisions)
+	public void Start()
 	{
-		Icosphere = new Icosphere(subdivisions);
+		Sim.OnTick += OnSimTick;
 
 		if (_terrainMesh)
 		{
@@ -140,26 +146,53 @@ public class WorldMesh : MonoBehaviour {
 		cloudFilter.mesh = _cloudMesh;
 
 
-		int indexCount = Icosphere.Polygons.Count * 3;
-		indices = new int[indexCount];
-		for (int i = 0; i < Icosphere.Polygons.Count; i++)
+
+		_nextRenderState = 0;
+		_lastRenderState = 0;
+		_curRenderState = 0;
+		_renderStates = new RenderState[_renderStateCount];
+		for (int i = 0; i < _renderStateCount; i++)
 		{
-			var poly = Icosphere.Polygons[i];
+			_renderStates[i] = new RenderState();
+			_renderStates[i].Init(Sim.CellCount);
+		}
+
+		int indexCount = Sim.Icosphere.Polygons.Count * 3;
+		indices = new int[indexCount];
+		for (int i = 0; i < Sim.Icosphere.Polygons.Count; i++)
+		{
+			var poly = Sim.Icosphere.Polygons[i];
 			indices[i * 3 + 0] = poly.m_Vertices[0];
 			indices[i * 3 + 1] = poly.m_Vertices[1];
 			indices[i * 3 + 2] = poly.m_Vertices[2];
 		}
 
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[0], Sim.StaticState);
+		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
+	}
+	public void OnDestroy()
+	{
+		Sim.OnTick -= OnSimTick;
 	}
 
-	public void Update(float dt)
+	public void Update()
 	{
-		_tickLerpTime -= dt;
+		_tickLerpTime -= Time.deltaTime * Sim.TimeScale;
+		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 	}
 	public void StartLerp(float lerpTime)
 	{
 		_tickLerpTime = lerpTime;
 		_tickLerpTimeTotal = lerpTime;
+	}
+
+	private void OnSimTick()
+	{
+		StartLerp(Sim.TimeTillTick);
+		_lastRenderState = _curRenderState;
+		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
+		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], Sim.StaticState);
 	}
 
 	public void BuildRenderState(ref SimState from, ref RenderState to, StaticState staticState)
@@ -183,12 +216,12 @@ public class WorldMesh : MonoBehaviour {
 				to.WaterColor[i] = overlayColor;
 			}
 			to.CloudColor[i] = GetCloudColor(staticState, fromCell);
-			to.TerrainNormal[i] = Icosphere.Vertices[i];
-			to.WaterNormal[i] = Icosphere.Vertices[i];
-			to.CloudNormal[i] = Icosphere.Vertices[i];
-			to.TerrainPosition[i] = Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.Roughness) * TerrainScale + staticState.Radius) / staticState.Radius;
-			to.WaterPosition[i] = Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.Radius) / staticState.Radius * math.clamp(fromCell.WaterDepth / fromCell.Roughness, 0, 1);
-			to.CloudPosition[i] = Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.TerrainNormal[i] = Sim.Icosphere.Vertices[i];
+			to.WaterNormal[i] = Sim.Icosphere.Vertices[i];
+			to.CloudNormal[i] = Sim.Icosphere.Vertices[i];
+			to.TerrainPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.Roughness) * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.WaterPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.Radius) / staticState.Radius * math.clamp(fromCell.WaterDepth / fromCell.Roughness, 0, 1);
+			to.CloudPosition[i] = Sim.Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.Radius) / staticState.Radius;
 		}
 
 	}
@@ -261,11 +294,13 @@ public class WorldMesh : MonoBehaviour {
 	{
 		ActiveMeshOverlay = (WorldMesh.MeshOverlay)dropdown.value;
 		_tickLerpTime = 0;
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], Sim.StaticState);
 	}
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
 	{
 		ActiveWindOverlay = (WorldMesh.WindOverlay)dropdown.value;
 		_tickLerpTime = 0;
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], Sim.StaticState);
 	}
 
 

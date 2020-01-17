@@ -1251,13 +1251,126 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Seed: 0
-  Subdivisions: 5
+  Subdivisions: 6
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
   WorldDataAsset: {fileID: 4900000, guid: a0e62a68ba207124092d1d775e028c05, type: 3}
   WorldData:
     WaterDiffuseSpeed: 0.2
-  Mesh: {fileID: 1921819012}
+    FullIceCoverage: 3
+    FullWaterCoverage: 50
+    MaxSoilPorousness: 0.1
+    GroundWaterReplenishmentSpeed: 10
+    GroundWaterFlowSpeed: 0.5
+    TropopauseElevation: 10000
+    BoundaryZoneElevation: 1000
+    stratosphereElevation: 50000
+    MaxTropopauseElevation: 17000
+    MinTropopauseElevation: 9000
+    TropopauseElevationSeason: 1000
+    PressureToVerticalWindSpeed: 0.0001
+    DestinationPressureDifferentialToVerticalWindSpeed: 0.0001
+    MountainUpdraftWindSpeed: 0.1
+    MaxTerrainNormalForFriction: 0.25
+    AirMassDiffusionSpeedHorizontal: 0.1
+    AirMassDiffusionSpeedVertical: 0.1
+    AirEnergyDiffusionSpeedHorizontal: 0.1
+    AirEnergyDiffusionSpeedVertical: 0.1
+    WindOceanFriction: 0.2
+    WindIceFriction: 0.1
+    WindLandFriction: 0.5
+    WindAirMovementHorizontal: 0.001
+    WindAirMovementVertical: 0.01
+    WindHumidityMovement: 0.1
+    HumidityToCloudPercent: 0.1
+    PressureGradientWindMultiplier: 4000
+    GlobalCoriolisInfluenceWindUpper: 0.75
+    GlobalCoriolisInfluenceWindLower: 0.25
+    GlobalCoriolisInfluenceOcean: 0.5
+    AtmosphericHeatAbsorption: 0.297
+    AtmosphericHeatReflection: 0.07
+    CloudSolarAbsorptivity: 0.06
+    CloudOutgoingReflectionRate: 0.9
+    OceanAirConductionWarming: 0.016
+    OceanAirConductionCooling: 0.008
+    WaterAirConductionDepth: 10
+    OceanIceConduction: 0.00001
+    IceAirConductionCooling: 0.008
+    maxGroundWaterTemperature: 283
+    SoilHeatDepth: 2
+    CloudMassFullAbsorption: 0.5
+    EnergyEmittedByAtmosphere: 0.000000199
+    EnergyLostThroughAtmosphereWindow: 0.067
+    DewPointTemperatureRange: 100
+    DewPointZero: 213
+    WaterVaporMassToAirMassAtDewPoint: 0.2
+    RainfallRate: 0.01
+    EvapMinTemperature: 243
+    EvapMaxTemperature: 343
+    EvaporationRate: 0.002
+    RainDropFormationSpeedTemperature: 10
+    RainDropCoalescenceWind: 0.00001
+    rainDropDragCoefficient: 0.5
+    rainDropMaxSize: 0.004
+    rainDropMinSize: 0.00001
+    airDensity: 1.21
+    waterDensity: 997
+    CloudDissapationRateWind: 0.1
+    CloudDissapationRateDryAir: 0.1
+    DeepOceanDepth: 500
+    WindToOceanCurrentFactor: 0.1
+    OceanCurrentSpeed: 0.00001
+    OceanHorizontalMixingSpeed: 0.01
+    OceanUpwellingSpeed: 0.0001
+    OceanTemperatureVerticalMixingSpeed: 0.0001
+    SalinityVerticalMixingSpeed: 0.001
+    OceanDensityPerSalinity: 800
+    OceanDensityPerDegree: 0.2
+    OceanDensityCurrentSpeed: 0.1
+    MinTemperatureCanopy: 223.15
+    MaxTemperatureCanopy: 323.15
+    TemperatureLapseRate: -0.0065
+    AdiabaticLapseRate: 0.0098
+    GravitationalAcceleration: 9.80665
+    StaticPressure: 101325
+    StdTemp: 288.15
+    MolarMassEarthAir: 0.0289644
+    MolarMassAir: 0.02857
+    MolarMassWater: 0.01802
+    UniversalGasConstant: 8.31446
+    FreezingTemperature: 273.15
+    DewPointElevationPerDegree: 67.73
+    DewPointTemperaturePerRelativeHumidity: 20
+    StefanBoltzmannConstant: 0.00000005670373
+    AlbedoWater: 0.06
+    AlbedoIce: 0.5
+    AlbedoLand: 0.4
+    AlbedoReductionSoilQuality: 0.15
+    AlbedoFoliage: 0.1
+    SpecificHeatIce: 2.108
+    SpecificHeatWater: 4.187
+    SpecificHeatWaterVapor: 1.996
+    SpecificHeatSalt: 0.85
+    SpecificHeatAtmosphere: 1.158
+    SpecificHeatSoil: 0.84
+    LatentHeatWaterLiquid: 334
+    LatentHeatWaterVapor: 2264.705
+    EmissivityWater: 0.96
+    EmissivityIce: 0.96
+    EmissivityDirt: 0.92
+    EmissivitySand: 0.76
+    EmissivityAir: 0.8
+    MassEarthAir: 1.29
+    MassWater: 1000
+    MassSalt: 2170
+    MassIce: 919
+    MassSoil: 1200
+    MassSand: 1600
+    AbsorptivityWaterLiquid: 0.05
+    AbsorptivityCarbonDioxide: 0.25
+    AbsorptivityWaterVapor: 0.00155
+    AbsorptivityAir: 0.0005
   TimeScale: 0
+  _timeTillTick: 0.00001
 --- !u!4 &365555217
 Transform:
   m_ObjectHideFlags: 0
@@ -6642,6 +6755,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40351b5bcc03b5d4390c8eefa6fd7c90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ElevationScale: 0.002
+  MinZoom: 0
+  MaxZoom: 0
+  ZoomLevel: 0.5
+  CameraMoveSpeed: 2
+  CameraZoomSpeed: 2
+  minPressure: 300
+  maxPressure: 600
+  MinElevation: -11000
+  MaxElevation: 10000
+  MaxDepth: 11000
+  maxHumidity: 50
+  maxRainfall: 5
+  maxCloudColor: 300
+  MaxEnergyAbsorbed: 300
+  MinSalinity: 0
+  MaxSalinity: 50
+  waterDepthThreshold: 10
+  DisplayMaxWindSpeedLowerAtm: 50
+  DisplayMaxWindSpeedUpperAtm: 250
+  DisplayMaxWindSpeedSurfaceWater: 5
+  DisplayMaxWindSpeedDeepWater: 0.5
+  DisplayMaxVerticalWindSpeed: 1
+  MaxEvap: 5
+  DisplayMaxCanopy: 1000
+  DisplayMinTemperature: 223
+  DisplayMaxTemperature: 323
   LerpStates: 1
   DistanceToSun: 100
   TerrainScale: 0.5
@@ -6650,6 +6790,7 @@ MonoBehaviour:
   TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   WaterMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
+  Sim: {fileID: 365555216}
 --- !u!4 &1921819013
 Transform:
   m_ObjectHideFlags: 0

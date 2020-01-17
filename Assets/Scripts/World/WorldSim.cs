@@ -22,93 +22,70 @@ public class WorldSim : MonoBehaviour
 	public TextAsset WorldGenAsset;
 	public TextAsset WorldDataAsset;
 	public WorldData WorldData;
-	public WorldMesh Mesh;
-
-
+	public StaticState StaticState;
+	public Icosphere Icosphere;
 	public float TimeScale;
 
-
-
-	public int SimVertCount { get; private set; }
+	public int CellCount { get; private set; }
 	public ref SimState ActiveSimState {  get { return ref _simStates[_activeSimState]; } }
+	public float TimeTillTick { get { return _timeTillTick; } private set { _timeTillTick = value; } }
 
 	private WorldGenData _worldGenData = new WorldGenData();
 	private const int _simStateCount = 2;
-	private const int _renderStateCount = 3;
-	private StaticState _staticState;
 	private SimState[] _simStates;
-	private RenderState[] _renderStates;
-	private int _curRenderState;
-	private int _lastRenderState;
-	private int _nextRenderState;
 	private int _activeSimState;
-	private float _timeTillTick = 0.00001f;
+	public float _timeTillTick = 0.00001f;
 	private float _ticksPerSecond = 1;
 
+	public delegate void TickEventHandler();
+	public event TickEventHandler OnTick;
 
 	public void Start()
     {
-		Mesh.Init(Subdivisions);
+		Icosphere = new Icosphere(Subdivisions);
 
-		SimVertCount = Mesh.Icosphere.Vertices.Count;
+		CellCount = Icosphere.Vertices.Count;
 
-		_staticState = new StaticState();
-		_staticState.Init(SimVertCount, Mesh.Icosphere);
+		StaticState = new StaticState();
+		StaticState.Init(CellCount, Icosphere);
 
 		_activeSimState = 0;
 		_simStates = new SimState[_simStateCount];
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i] = new SimState();
-			_simStates[i].Init(SimVertCount);
-		}
-
-		_nextRenderState = 0;
-		_lastRenderState = 0;
-		_curRenderState = 0;
-		_renderStates = new RenderState[_renderStateCount];
-		for (int i = 0; i < _renderStateCount; i++)
-		{
-			_renderStates[i] = new RenderState();
-			_renderStates[i].Init(SimVertCount);
+			_simStates[i].Init(CellCount);
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
-		WorldGen.Generate(_staticState, Seed, _worldGenData, WorldData, ref _simStates[0]);
-
-		Mesh.BuildRenderState(ref _simStates[0], ref _renderStates[0], _staticState);
-		Mesh.UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
+		WorldGen.Generate(StaticState, Seed, _worldGenData, WorldData, ref _simStates[0]);
 
 	}
 
 	public void OnDestroy()
 	{
-		_staticState.Dispose();
+		StaticState.Dispose();
 	}
 
 	bool _simulating;
 	public void Update()
 	{
-		Mesh.Update(Time.deltaTime * TimeScale);
-		if (_timeTillTick > -1)
+		if (TimeTillTick > -1)
 		{
-			_timeTillTick -= Time.deltaTime * TimeScale;
+			TimeTillTick -= Time.deltaTime * TimeScale;
 		}
-		if (_timeTillTick <= 0)
+		if (TimeTillTick <= 0)
 		{
 			int iterations = 0;
-			while (_timeTillTick <= 0)
+			while (TimeTillTick <= 0)
 			{
-				_timeTillTick += _ticksPerSecond;
+				TimeTillTick += _ticksPerSecond;
 				iterations++;
 			}
 			Tick(ref _simStates[_activeSimState], iterations);
 
-			Mesh.StartLerp(_timeTillTick);
 		}
-		Mesh.UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
-
 	}
 
 	private void Tick(ref SimState state, int ticksToAdvance)
@@ -117,13 +94,9 @@ public class WorldSim : MonoBehaviour
 		_activeSimState = nextStateIndex;
 		ref var nextState = ref _simStates[_activeSimState];
 
-		WorldTick.Tick(ref state, ref nextState, ticksToAdvance, _staticState, WorldData);
+		WorldTick.Tick(ref state, ref nextState, ticksToAdvance, StaticState, WorldData);
 
-		_lastRenderState = _curRenderState;
-		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
-		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
-		Mesh.BuildRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState], _staticState);
-
+		OnTick?.Invoke();
 	}
 
 	public string GetCellInfo(CellInfoType cellInfoType)
@@ -135,18 +108,7 @@ public class WorldSim : MonoBehaviour
 	public void StepTime()
 	{
 		TimeScale = 0;
-		_timeTillTick = 0;
-	}
-
-	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
-	{
-		Mesh.OnHUDOverlayChanged(dropdown);
-		Mesh.BuildRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState], _staticState);
-	}
-	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
-	{
-		Mesh.OnHUDWindChanged(dropdown);
-		Mesh.BuildRenderState(ref _simStates[_activeSimState], ref _renderStates[_nextRenderState], _staticState);
+		TimeTillTick = 0;
 	}
 
 
