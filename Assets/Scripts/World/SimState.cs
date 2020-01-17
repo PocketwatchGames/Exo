@@ -10,25 +10,27 @@ using Unity.Mathematics;
 
 public struct SimState {
 
-	public int Count;
-	public int Ticks;
-	public float Gravity;
-	public float SpinAngle;
-	public float SpinSpeed;
-	public float OrbitSpeed;
-	public float TiltAngle;
-	public float GeothermalHeat;
-	public float SolarRadiation;
-	public float StratosphereMass;
-	public float CarbonDioxide;
-
+	public SimPlanetState PlanetState;
 	public SimStateCell[] Cells;
 
 	public void Init(int count)
 	{
-		Count = count;
-		Cells = new SimStateCell[Count];
+		Cells = new SimStateCell[count];
 	}
+}
+
+public struct SimPlanetState {
+	public int Ticks;
+	public float Gravity;
+	public float SpinSpeed;
+	public float OrbitSpeed;
+	public float GeothermalHeat;
+	public float SolarRadiation;
+	public float StratosphereMass;
+	public float CarbonDioxide;
+	public float DistanceToSun;
+	public quaternion Rotation;
+	public float3 Position;
 }
 
 public struct SimStateCell {
@@ -64,10 +66,8 @@ public struct SimStateCell {
 public struct RenderState {
 
 	public float Ticks;
-	public float SpinAngle;
-	public float SpinSpeed;
-	public float OrbitSpeed;
-	public float TiltAngle;
+	public float3 Position;
+	public quaternion Rotation;
 	public Color32[] TerrainColor;
 	public Color32[] WaterColor;
 	public Color32[] CloudColor;

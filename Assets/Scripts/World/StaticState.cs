@@ -6,31 +6,34 @@ using System.Threading.Tasks;
 using Unity.Mathematics;
 using Unity.Collections;
 
-public class StaticState {
+public struct StaticState {
 
 	public int Count;
-	public float Radius;
-	public float2[] Coordinate;
-	public float3[] SphericalPosition;
-	public List<int>[] NeighborList;
+	public float PlanetRadius;
+	public float CellSurfaceArea;
+	public float CellDiameter;
+	public float InverseCellDiameter;
+	public NativeArray<float2> Coordinate;
+	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
 
-	public float TicksPerHour;
-	public float TicksPerSecond;
-	public float SecondsPerTick;
-	public float InverseMetersPerTile;
 
-
-	public void Init(int count, Icosphere icosphere)
+	public void Init(float radius, Icosphere icosphere, ref WorldData worldData)
 	{
-		Count = count;
-		Coordinate = new float2[count];
-		SphericalPosition = new float3[count];
-		NeighborList = new List<int>[count];
-		Neighbors = new NativeArray<int>(count * 6, Allocator.Persistent);
-		for (int i = 0; i < count; i++)
+		PlanetRadius = radius;
+		Count = icosphere.Vertices.Count;
+		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
+		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent);;
+		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
+		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
+		CellSurfaceArea = surfaceArea / Count;
+		CellDiameter = 2 * math.sqrt(CellSurfaceArea / (4 * math.PI));
+		InverseCellDiameter = 1.0f / CellDiameter;
+
+		var neighborList = new List<int>[Count];
+		for (int i = 0; i < Count; i++)
 		{
-			NeighborList[i] = new List<int>();
+			neighborList[i] = new List<int>();
 		}
 
 		for (int i = 0; i < Count; i++)
@@ -45,16 +48,16 @@ public class StaticState {
 			var p = icosphere.Polygons[i];
 			for (int j = 0; j < 3; j++)
 			{
-				NeighborList[p.m_Vertices[j]].Add(p.m_Vertices[(j + 1) % 3]);
+				neighborList[p.m_Vertices[j]].Add(p.m_Vertices[(j + 1) % 3]);
 			}
 		}
 		for (int i = 0; i < Count; i++)
 		{
 			for (int j = 0; j < 6; j++)
 			{
-				if (j < NeighborList[i].Count)
+				if (j < neighborList[i].Count)
 				{
-					Neighbors[i * 6 + j] = NeighborList[i][j];
+					Neighbors[i * 6 + j] = neighborList[i][j];
 				}
 				else
 				{
@@ -64,12 +67,7 @@ public class StaticState {
 		}
 
 
-		//TicksPerHour = (float)TicksPerYear / (365 * 24);
-		//int secondsPerYear = 365 * 24 * 60 * 60;
-		//TicksPerSecond = (float)TicksPerYear / secondsPerYear;
-		//SecondsPerTick = 1.0f / TicksPerSecond;
 
-		//InverseMetersPerTile = 1.0f / MetersPerTile;
 
 		//for (int y = 0; y < size; y++)
 		//{
@@ -96,5 +94,7 @@ public class StaticState {
 	public void Dispose()
 	{
 		Neighbors.Dispose();
+		Coordinate.Dispose();
+		SphericalPosition.Dispose();
 	}
 }

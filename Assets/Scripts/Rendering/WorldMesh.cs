@@ -41,13 +41,8 @@ public class WorldMesh : MonoBehaviour {
 	}
 
 	[Header("Display")]
-	public float ElevationScale = 0.002f;
-	public float MinZoom;
-	public float MaxZoom;
-	public float Zoom { get { return MinZoom + MaxZoom * (float)Mathf.Pow(ZoomLevel, 3); } }
-	public float ZoomLevel = 0.5f;
-	public float CameraMoveSpeed = 2;
-	public float CameraZoomSpeed = 2;
+	public bool LerpStates = true;
+	public float TerrainScale = 100f;
 //	public TemperatureDisplayType TemperatureDisplay;
 	public float minPressure = 300;
 	public float maxPressure = 600;
@@ -72,12 +67,10 @@ public class WorldMesh : MonoBehaviour {
 	public float DisplayMaxTemperature = 323;
 
 
-	public bool LerpStates = true;
-	public float DistanceToSun = 100;
-	public float TerrainScale = 0.00005f;
+	[Header("References")]
+	public WorldSim Sim;
 	public MeshOverlay ActiveMeshOverlay;
 	public WindOverlay ActiveWindOverlay;
-
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
 	public Material CloudMaterial;
@@ -90,7 +83,6 @@ public class WorldMesh : MonoBehaviour {
 	static Color32 black = new Color32(0, 0, 0, 255);
 
 
-	public WorldSim Sim;
 	private RenderState[] _renderStates;
 	private int _curRenderState;
 	private int _lastRenderState;
@@ -108,9 +100,8 @@ public class WorldMesh : MonoBehaviour {
 	private float _tickLerpTime = 0;
 	private float _tickLerpTimeTotal = 1;
 
-
-	bool _indicesInitialized;
-	int[] indices;
+	private bool _indicesInitialized;
+	private int[] indices;
 
 	public void Start()
 	{
@@ -167,7 +158,7 @@ public class WorldMesh : MonoBehaviour {
 			indices[i * 3 + 2] = poly.m_Vertices[2];
 		}
 
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[0], Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 	}
 	public void OnDestroy()
@@ -192,36 +183,34 @@ public class WorldMesh : MonoBehaviour {
 		_lastRenderState = _curRenderState;
 		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
 		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 
-	public void BuildRenderState(ref SimState from, ref RenderState to, StaticState staticState)
+	public void BuildRenderState(ref SimState from, ref RenderState to, ref WorldData worldData, ref StaticState staticState)
 	{
-		to.Ticks = from.Ticks;
-		to.OrbitSpeed = from.OrbitSpeed;
-		to.SpinAngle = from.SpinAngle;
-		to.SpinSpeed = from.SpinSpeed;
-		to.TiltAngle = from.TiltAngle;
-		for (int i = 0; i < from.Count; i++)
+		to.Ticks = from.PlanetState.Ticks;
+		to.Position = from.PlanetState.Position;
+		to.Rotation = from.PlanetState.Rotation;
+		for (int i = 0; i < from.Cells.Length; i++)
 		{
 			ref var fromCell = ref from.Cells[i];
 			if (ActiveMeshOverlay == MeshOverlay.None)
 			{
-				to.TerrainColor[i] = GetTerrainColor(staticState, fromCell);
-				to.WaterColor[i] = GetWaterColor(staticState, fromCell);
+				to.TerrainColor[i] = GetTerrainColor(ref worldData, ref staticState, ref fromCell);
+				to.WaterColor[i] = GetWaterColor(ref worldData, ref staticState, ref fromCell);
 			} else
 			{
-				var overlayColor = GetOverlayColor(fromCell);
+				var overlayColor = GetOverlayColor(ref fromCell);
 				to.TerrainColor[i] = overlayColor;
 				to.WaterColor[i] = overlayColor;
 			}
-			to.CloudColor[i] = GetCloudColor(staticState, fromCell);
+			to.CloudColor[i] = GetCloudColor(ref staticState, ref fromCell);
 			to.TerrainNormal[i] = Sim.Icosphere.Vertices[i];
 			to.WaterNormal[i] = Sim.Icosphere.Vertices[i];
 			to.CloudNormal[i] = Sim.Icosphere.Vertices[i];
-			to.TerrainPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.Roughness) * TerrainScale + staticState.Radius) / staticState.Radius;
-			to.WaterPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.Radius) / staticState.Radius * math.clamp(fromCell.WaterDepth / fromCell.Roughness, 0, 1);
-			to.CloudPosition[i] = Sim.Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.Radius) / staticState.Radius;
+			to.TerrainPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.Roughness) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
+			to.WaterPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius * math.clamp(fromCell.WaterDepth / fromCell.Roughness, 0, 1);
+			to.CloudPosition[i] = Sim.Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
 		}
 
 	}
@@ -234,7 +223,8 @@ public class WorldMesh : MonoBehaviour {
 			t = 1;
 		}
 		state.Ticks = (nextState.Ticks - lastState.Ticks) * t + lastState.Ticks;
-		state.TiltAngle = Mathf.LerpAngle(lastState.TiltAngle, nextState.TiltAngle, t);
+		state.Rotation = Quaternion.Lerp(lastState.Rotation, nextState.Rotation, t);
+		state.Position = math.lerp(lastState.Position, nextState.Position, t);
 		for (int i = 0; i < state.CloudColor.Length; i++)
 		{
 			state.TerrainColor[i] = Color32.Lerp(lastState.TerrainColor[i], nextState.TerrainColor[i], t);
@@ -276,10 +266,7 @@ public class WorldMesh : MonoBehaviour {
 		_waterMesh.RecalculateNormals();
 		_cloudMesh.RecalculateNormals();
 
-		var time = WorldTime.GetTime(state.Ticks, state.SpinSpeed);
-		var spin = Quaternion.Euler(state.TiltAngle, time * 360, 0);
-		float orbitAngle = state.Ticks * state.OrbitSpeed * 360;
-		transform.SetPositionAndRotation(new Vector3(math.cos(orbitAngle), 0, math.sin(orbitAngle)) * DistanceToSun, spin);
+		transform.SetPositionAndRotation(state.Position, state.Rotation);
 	}
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
@@ -294,33 +281,35 @@ public class WorldMesh : MonoBehaviour {
 	{
 		ActiveMeshOverlay = (WorldMesh.MeshOverlay)dropdown.value;
 		_tickLerpTime = 0;
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
 	{
 		ActiveWindOverlay = (WorldMesh.WindOverlay)dropdown.value;
 		_tickLerpTime = 0;
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 
 
 	#region private functions
 
-	private Color32 GetTerrainColor(StaticState staticState, SimStateCell cell)
+	private Color32 GetTerrainColor(ref WorldData worldData, ref StaticState staticState, ref SimStateCell cell)
 	{
 		var groundColor = Color32.Lerp(grey, brown, cell.SoilFertility);
 		var waterColor = Color32.Lerp(groundColor, blue, math.clamp(math.pow(cell.WaterDepth / cell.Roughness, 2), 0, 1));
-		var iceColor = Color32.Lerp(waterColor, white, cell.IceMass);
-		var vegetationColor = Color32.Lerp(groundColor, green, cell.Vegetation);
+		var iceColor = Color32.Lerp(waterColor, white, math.clamp(cell.IceMass / (WorldData.MassIce * worldData.FullIceCoverage), 0, 1));
+		var vegetationColor = Color32.Lerp(groundColor, green, math.clamp(cell.Vegetation / worldData.FullCanopyCoverage, 0, 1));
 		return vegetationColor;
 	}
 
-	private Color32 GetWaterColor(StaticState staticState, SimStateCell cell)
+	private Color32 GetWaterColor(ref WorldData worldData, ref StaticState staticState, ref SimStateCell cell)
 	{
-		return Color32.Lerp(blue, white, cell.IceMass);
+		var waterColor = blue;
+		var iceColor = Color32.Lerp(waterColor, white, math.clamp(cell.IceMass / (WorldData.MassIce * worldData.FullIceCoverage), 0, 1));
+		return iceColor;
 	}
 
-	private Color32 GetCloudColor(StaticState staticState, SimStateCell cell)
+	private Color32 GetCloudColor(ref StaticState staticState, ref SimStateCell cell)
 	{
 		var c = Color32.Lerp(white, black, cell.RelativeHumidity);
 		float opacity = -math.cos(cell.CloudCoverage * math.PI)/ 2 + 0.5f;
@@ -328,7 +317,7 @@ public class WorldMesh : MonoBehaviour {
 		return c;
 	}
 
-	private Color32 GetOverlayColor(SimStateCell cell)
+	private Color32 GetOverlayColor(ref SimStateCell cell)
 	{
 		switch (ActiveMeshOverlay)
 		{

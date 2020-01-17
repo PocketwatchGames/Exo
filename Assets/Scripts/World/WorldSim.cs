@@ -42,12 +42,14 @@ public class WorldSim : MonoBehaviour
 
 	public void Start()
     {
+		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
+		WorldData.Init();
+
+
 		Icosphere = new Icosphere(Subdivisions);
 
 		CellCount = Icosphere.Vertices.Count;
 
-		StaticState = new StaticState();
-		StaticState.Init(CellCount, Icosphere);
 
 		_activeSimState = 0;
 		_simStates = new SimState[_simStateCount];
@@ -58,8 +60,7 @@ public class WorldSim : MonoBehaviour
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
-		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
-		WorldGen.Generate(StaticState, Seed, _worldGenData, WorldData, ref _simStates[0]);
+		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0]);
 
 	}
 
@@ -94,7 +95,7 @@ public class WorldSim : MonoBehaviour
 		_activeSimState = nextStateIndex;
 		ref var nextState = ref _simStates[_activeSimState];
 
-		WorldTick.Tick(ref state, ref nextState, ticksToAdvance, StaticState, WorldData);
+		WorldTick.Tick(ref state, ref nextState, ticksToAdvance, ref StaticState, ref WorldData);
 
 		OnTick?.Invoke();
 	}

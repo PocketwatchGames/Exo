@@ -1,5 +1,6 @@
 {
-	"Radius": 20000,
+	"Radius": 6371000,
+	"DistanceToSun": 100,
 	"MinElevation": -11000,
 	"MaxElevation": 10000,
 	"MaxRoughness": 1000,
@@ -12,8 +13,8 @@
 	"TroposphereMass": 7749,
 	"MinTemperature": 253.15,
 	"MaxTemperature": 323.15,
-	"MaxSalinity": 40,
-	"MinSalinity": 30,
+	"MaxSalinity": 0.04,
+	"MinSalinity": 0.03,
 	"NumPlates": 12,
 	"CarbonDioxide": 0.001,
 	"SolarRadiation": 1.367,

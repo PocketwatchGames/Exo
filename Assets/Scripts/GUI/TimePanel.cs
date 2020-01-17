@@ -22,10 +22,10 @@ public class TimePanel : MonoBehaviour
 		TimeScale.text = "x" + World.TimeScale;
 
 		var state = World.ActiveSimState;
-		Ticks.text = "[" + state.Ticks + "]";
-		Time.text = ((int)(WorldTime.GetTime(state.Ticks, state.SpinSpeed) / state.SpinSpeed)).ToString() + "\"";
-		float days = WorldTime.GetDays(state.Ticks, state.SpinSpeed);
-		Date.text = ((int)days).ToString() + "\\" + ((int)(state.Ticks * state.OrbitSpeed)).ToString("X4");
+		Ticks.text = "[" + state.PlanetState.Ticks + "]";
+		Time.text = ((int)(WorldTime.GetTime(state.PlanetState.Ticks, state.PlanetState.SpinSpeed) / state.PlanetState.SpinSpeed)).ToString() + "\"";
+		float days = WorldTime.GetDays(state.PlanetState.Ticks, state.PlanetState.SpinSpeed);
+		Date.text = ((int)days).ToString() + "\\" + ((int)(state.PlanetState.Ticks * state.PlanetState.OrbitSpeed)).ToString("X4");
 	}
 
 	public void OnTimescaleChanged(float t)

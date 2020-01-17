@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 [Serializable]
 public class WorldGenData {
 	public float Radius;
+	public float DistanceToSun;
 	public float MinElevation;
 	public float MaxElevation;
 	public float MaxRoughness;
