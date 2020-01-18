@@ -69,6 +69,8 @@ public class WorldMesh : MonoBehaviour {
 	public float DisplayAirPressureMax = 110000;
 	public float DisplayHeatAbsorbedMax = 1000;
 
+	float inverseMaxEvapMass;
+	float inverseMaxRainfall;
 
 
 	[Header("References")]
@@ -192,6 +194,11 @@ public class WorldMesh : MonoBehaviour {
 
 	public void BuildRenderState(ref SimState from, ref RenderState to, ref WorldData worldData, ref StaticState staticState)
 	{
+		inverseMaxEvapMass = worldData.TicksPerSecond * 60 * 60 * 24 * 365 / (DisplayEvaporationMax * WorldData.MassWater);
+		inverseMaxRainfall = worldData.TicksPerSecond * 60 * 60 * 24 * 365 / (DisplayRainfallMax * WorldData.MassWater);
+
+
+
 		to.Ticks = from.PlanetState.Ticks;
 		to.Position = from.PlanetState.Position;
 		to.Rotation = math.degrees(from.PlanetState.Rotation);
@@ -341,6 +348,10 @@ public class WorldMesh : MonoBehaviour {
 				return Lerp(NormalizedRainbow, Atmosphere.GetLandTemperature(ref Sim.WorldData, cell.GroundEnergy, cell.GroundWater, cell.SoilFertility, cell.Vegetation), DisplayTemperatureMin, DisplayTemperatureMax);
 			case MeshOverlay.HeatAbsorbed:
 				return Lerp(NormalizedRainbow, displayCell.Heat, 0, DisplayHeatAbsorbedMax);
+			case MeshOverlay.Rainfall:
+				return Lerp(NormalizedRainbow, displayCell.Rainfall * inverseMaxRainfall, 0, DisplayRainfallMax);
+			case MeshOverlay.Evaporation:
+				return Lerp(NormalizedRainbow, displayCell.Evaporation * inverseMaxEvapMass, 0, DisplayEvaporationMax);
 			case MeshOverlay.VerticalWind:
 				return Lerp(NormalizedBlueBlackRed, cell.WindVertical, -DisplayMaxVerticalWindSpeed, DisplayMaxVerticalWindSpeed);
 			default:

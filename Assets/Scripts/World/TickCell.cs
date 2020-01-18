@@ -23,70 +23,136 @@ public struct TickCellJob : IJobParallelFor {
 
 	public void Execute(int i)
 	{
-		var curCell = Last[i];
-		var cell = new SimCell();
-		var displayCell = new DisplayCell();
+		var last = Last[i];
+		var next = new SimCell();
+		var display = new DisplayCell();
 
-		cell.CloudCoverage = curCell.CloudCoverage;
-		cell.RelativeHumidity = curCell.RelativeHumidity;
-		cell.WaterDepth = curCell.WaterDepth;
-		cell.CloudElevation = curCell.CloudElevation;
-		cell.Elevation = curCell.Elevation;
-		cell.Roughness = curCell.Roughness;
-		cell.IceMass = curCell.IceMass;
-		cell.Vegetation = curCell.Vegetation;
-		cell.SoilFertility = curCell.SoilFertility;
-		cell.WaterMass = curCell.WaterMass;
-		cell.WaterEnergy = curCell.WaterEnergy;
-		cell.SaltMass = curCell.SaltMass;
-		cell.GroundEnergy = curCell.GroundEnergy;
-		cell.GroundWater = curCell.GroundWater;
-		cell.GroundWaterDepth = curCell.GroundWaterDepth;
-		cell.AirMass = curCell.AirMass;
-		cell.AirEnergy = curCell.AirEnergy;
-		cell.CloudMass = curCell.CloudMass;
-		cell.CloudDropletMass = curCell.CloudDropletMass;
-		cell.AirWaterMass = curCell.AirWaterMass;
-		cell.AirTemperature = curCell.AirTemperature;
-		cell.AirPressure = curCell.AirPressure;
-		cell.WaterTemperature = curCell.WaterTemperature;
-		cell.WindVertical = curCell.WindVertical;
-		cell.WindSurface = curCell.WindSurface;
-		cell.WindTropopause = curCell.WindTropopause;
+		next.CloudCoverage = last.CloudCoverage;
+		next.RelativeHumidity = last.RelativeHumidity;
+		next.WaterDepth = last.WaterDepth;
+		next.CloudElevation = last.CloudElevation;
+		next.Elevation = last.Elevation;
+		next.Roughness = last.Roughness;
+		next.IceMass = last.IceMass;
+		next.Vegetation = last.Vegetation;
+		next.SoilFertility = last.SoilFertility;
+		next.WaterMass = last.WaterMass;
+		next.WaterEnergy = last.WaterEnergy;
+		next.SaltMass = last.SaltMass;
+		next.GroundEnergy = last.GroundEnergy;
+		next.GroundWater = last.GroundWater;
+		next.GroundWaterDepth = last.GroundWaterDepth;
+		next.AirMass = last.AirMass;
+		next.AirEnergy = last.AirEnergy;
+		next.CloudMass = last.CloudMass;
+		next.CloudDropletMass = last.CloudDropletMass;
+		next.AirWaterMass = last.AirWaterMass;
+		next.AirTemperature = last.AirTemperature;
+		next.AirPressure = last.AirPressure;
+		next.WaterTemperature = last.WaterTemperature;
+		next.WindVertical = last.WindVertical;
+		next.WindSurface = last.WindSurface;
+		next.WindTropopause = last.WindTropopause;
 
-		DoEnergyCycle(i, ref cell, ref displayCell);
-		DoVerticalWaterMovement(i, ref cell);
-		DoDiffusion(i, ref cell);
+		float iceCoverage = math.min(1.0f, math.pow(last.IceMass * worldData.inverseFullIceCoverage, 0.6667f));
+		float surfaceElevation = last.Elevation + last.WaterDepth;
+		float relativeHumidity = Atmosphere.GetRelativeHumidity(ref worldData, last.AirTemperature, last.AirWaterMass, last.AirMass, worldData.inverseDewPointTemperatureRange);
+		float evaporationRate = Atmosphere.GetEvaporationRate(ref worldData, iceCoverage, last.AirTemperature, relativeHumidity, worldData.inverseEvapTemperatureRange);
+		float dewPoint = Atmosphere.GetDewPoint(ref worldData, last.AirTemperature, relativeHumidity);
 
-		Cells[i] = cell;
+		next.RelativeHumidity = relativeHumidity;
+
+		DoEnergyCycle(i, ref next, ref display, surfaceElevation, relativeHumidity, evaporationRate, dewPoint, iceCoverage);
+		DoVerticalWaterMovement(i, ref last, ref next, ref display, surfaceElevation, dewPoint, evaporationRate);
+		DoDiffusion(i, ref next);
+
+
+
+		{
+
+			//float shallowOceanVolume = GetWaterVolume(world, shallowOceanMass, oceanSalinityShallow, oceanEnergyShallow);
+			//float moveFromShallow = shallowOceanVolume - world.Data.DeepOceanDepth;
+			//if (moveFromShallow < 0)
+			//{
+			//	if (deepOceanMass > 0)
+			//	{
+			//		float deepOceanVolume = GetWaterVolume(world, deepOceanMass, oceanSalinityDeep, oceanEnergyDeep);
+			//		moveFromShallow = Mathf.Max(moveFromShallow, -deepOceanVolume);
+			//		float movePercent = moveFromShallow / deepOceanVolume;
+			//		nextState.ShallowWaterMass[index] -= deepOceanMass * movePercent;
+			//		nextState.ShallowWaterEnergy[index] -= oceanEnergyDeep * movePercent;
+			//		nextState.ShallowSaltMass[index] -= oceanSalinityDeep * movePercent;
+			//		nextState.DeepWaterMass[index] += deepOceanMass * movePercent;
+			//		nextState.DeepWaterEnergy[index] += oceanEnergyDeep * movePercent;
+			//		nextState.DeepSaltMass[index] += oceanSalinityDeep * movePercent;
+			//	}
+			//}
+			//else if (shallowOceanVolume > 0)
+			//{
+			//	float movePercent = moveFromShallow / shallowOceanVolume;
+			//	nextState.ShallowWaterMass[index] -= shallowOceanMass * movePercent;
+			//	nextState.ShallowWaterEnergy[index] -= oceanEnergyShallow * movePercent;
+			//	nextState.ShallowSaltMass[index] -= oceanSalinityShallow * movePercent;
+			//	nextState.DeepWaterMass[index] += shallowOceanMass * movePercent;
+			//	nextState.DeepWaterEnergy[index] += oceanEnergyShallow * movePercent;
+			//	nextState.DeepSaltMass[index] += oceanSalinityShallow * movePercent;
+			//}
+
+
+			float waterTemperature = Atmosphere.GetWaterTemperature(next.WaterEnergy, next.WaterMass, next.SaltMass);
+			//float deepWaterTemperature = GetWaterTemperature(world, nextState.DeepWaterEnergy[index], nextState.DeepWaterMass[index], nextState.DeepSaltMass[index]);
+			next.WaterTemperature = waterTemperature;
+			float waterDepth = math.max(0, Atmosphere.GetWaterVolumeByTemperature(ref worldData, next.WaterMass, next.SaltMass, waterTemperature));
+			next.WaterDepth = waterDepth;
+			next.WaterAndIceDepth = waterDepth + next.IceMass / WorldData.MassIce;
+			next.WaterDensity = Atmosphere.GetWaterDensity(ref worldData, next.WaterEnergy, next.SaltMass, next.WaterMass);
+
+		}
+		float newSurfaceElevation = next.Elevation + next.WaterAndIceDepth;
+		next.AirTemperature = Atmosphere.GetAirTemperature(next.AirEnergy, next.AirMass, next.AirWaterMass, WorldData.SpecificHeatWaterVapor);
+		next.AirPressure = math.max(0, Atmosphere.GetAirPressure(
+			ref worldData, 
+			next.AirMass + PlanetState.StratosphereMass + next.AirWaterMass + next.CloudMass, 
+			surfaceElevation, 
+			next.AirTemperature, 
+			Atmosphere.GetMolarMassAir(next.AirMass + PlanetState.StratosphereMass, next.CloudMass + next.AirWaterMass),
+			PlanetState.Gravity));
+		//next.UpperAirTemperature[index] = GetAirTemperature(world, nextState.UpperAirEnergy[index], nextState.UpperAirMass[index], nextState.CloudMass[index], world.Data.SpecificHeatWater);
+		//next.UpperAirPressure[index] = Mathf.Max(0, GetAirPressure(world, nextState.UpperAirMass[index] + nextState.StratosphereMass + nextState.CloudMass[index], elevationOrSeaLevel + world.Data.BoundaryZoneElevation, nextState.UpperAirTemperature[index], GetMolarMassAir(world, nextState.LowerAirMass[index] + nextState.UpperAirMass[index] + nextState.StratosphereMass, nextState.Humidity[index] + nextState.CloudMass[index])));
+		next.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, next.AirTemperature, dewPoint, surfaceElevation);
+
+		//globalIceMass += nextState.IceMass[index];
+		//globalEnergyDeepWater += nextState.DeepWaterEnergy[index];
+		//globalEnergyShallowWater += nextState.ShallowWaterEnergy[index];
+		//globalEnergyLand += nextState.LandEnergy[index];
+		//globalEnergyLowerAir += nextState.LowerAirEnergy[index];
+		//globalEnergyUpperAir += nextState.UpperAirEnergy[index];
+		//atmosphericMass += nextState.LowerAirMass[index] + nextState.UpperAirMass[index];
+
+
+		Cells[i] = next;
+		DisplayCells[i] = display;
 
 	}
 
-	private void DoEnergyCycle(int i, ref SimCell next, ref DisplayCell displayCell)
+	private void DoEnergyCycle(int i, ref SimCell next, ref DisplayCell displayCell, float surfaceElevation, float relativeHumdity, float evaporationRate, float dewPoint, float iceCoverage)
 	{
 		var last = Last[i];
 
-		// TODO: account for ice here
-		float surfaceElevation = last.Elevation + last.WaterDepth;
-		float iceCoverage = math.min(1.0f, math.pow(last.IceMass * worldData.inverseFullIceCoverage, 0.6667f));
 		float waterCoverage = math.min(1.0f, math.pow(last.WaterDepth * worldData.inverseFullWaterCoverage, 0.6667f));
 		float canopyCoverage = math.min(1.0f, math.pow(last.Vegetation * worldData.inverseFullCanopyCoverage, 0.6667f));
-		float relativeHumidity = Atmosphere.GetRelativeHumidity(ref worldData, last.AirTemperature, last.AirWaterMass, last.AirMass, worldData.inverseDewPointTemperatureRange);
-		float evapRate = Atmosphere.GetEvaporationRate(ref worldData, iceCoverage, last.AirTemperature, relativeHumidity, worldData.inverseEvapTemperatureRange);
-		float dewPoint = Atmosphere.GetDewPoint(ref worldData, last.AirTemperature, relativeHumidity);
-		float cloudElevation = Atmosphere.GetCloudElevation(ref worldData, last.AirTemperature, dewPoint, surfaceElevation);
 		float cloudCoverage = math.min(1.0f, math.pow(last.CloudMass * worldData.inverseCloudMassFullAbsorption, 0.6667f)); // bottom surface of volume
 
-		float3 sunVector = -(math.rotate(UnityEngine.Quaternion.Euler(math.degrees(PlanetState.Rotation)), staticState.SphericalPosition[i]) + PlanetState.Position);
+		float sunDotSurface = math.dot(math.normalize(PlanetState.Position), math.rotate(UnityEngine.Quaternion.Euler(math.degrees(PlanetState.Rotation)), -staticState.SphericalPosition[i]));
 
-		float waterSlopeAlbedo = math.pow(1.0f - math.max(0, sunVector.z), 9);
+		float waterSlopeAlbedo = math.pow(1.0f - math.max(0, sunDotSurface), 9);
 		//float groundWaterSaturation = Animals.GetGroundWaterSaturation(state.GroundWater[index], state.WaterTableDepth[index], soilFertility * world.Data.MaxSoilPorousness);
 
 
 		// SOLAR RADIATION
 
 		float solarRadiationAbsorbed = 0;
-		float solarRadiation = PlanetState.SolarRadiation * worldData.SecondsPerTick * math.max(0, (sunVector.z + worldData.sunHitsAtmosphereBelowHorizonAmount) * worldData.inverseSunAtmosphereAmount);
+		float solarRadiation = PlanetState.SolarRadiation * worldData.SecondsPerTick * math.max(0, (sunDotSurface + worldData.sunHitsAtmosphereBelowHorizonAmount) * worldData.inverseSunAtmosphereAmount);
 
 		// get the actual atmospheric depth here based on radius of earth plus atmosphere
 		//float inverseSunAngle = PIOver2 + sunAngle;
@@ -95,7 +161,7 @@ public struct TickCellJob : IJobParallelFor {
 		//float atmosphericDepthInMeters = math.Sin(angleFromPlanetCenterToLatitudeAndAtmosphereEdge) * state.PlanetRadius / math.Sin(angleFromSunToLatitudeAndAtmophereEdge);
 		//float atmosphericDepth = math.max(1.0f, atmosphericDepthInMeters / world.Data.TropopauseElevation);
 
-		float atmosphericDepth = 1.0f + sunVector.y;
+		float atmosphericDepth = 1.0f + (1.0f - sunDotSurface);
 
 		// These constants obtained here, dunno if I've interpreted them correctly
 		// https://www.pveducation.org/pvcdrom/properties-of-sunlight/air-mass
@@ -341,13 +407,13 @@ public struct TickCellJob : IJobParallelFor {
 					// TODO this should be using absolute pressure not barometric
 					float inverseLowerAirPressure = 1.0f / last.AirPressure;
 					// evaporation
-					if (evapRate > 0)
+					if (evaporationRate > 0)
 					{
 						float evapotranspiration;
 						// TODO: absorb incoming radiation as latent heat (rather than from the surrounding air)
 						EvaporateWater(
 							waterCoverage,
-							evapRate,
+							evaporationRate,
 							last.GroundWaterDepth,
 							last.WaterMass,
 							last.SaltMass,
@@ -360,6 +426,7 @@ public struct TickCellJob : IJobParallelFor {
 							out evaporation,
 							out evapotranspiration);
 						//globalEnergyEvapotranspiration += evapotranspiration;
+						displayCell.Evaporation = evaporation;
 					}
 				}
 			}
@@ -459,21 +526,116 @@ public struct TickCellJob : IJobParallelFor {
 
 
 
-	private void DoVerticalWaterMovement(int i, ref SimCell cell)
+	private void DoVerticalWaterMovement(int i, ref SimCell last, ref SimCell next, ref DisplayCell display, float surfaceElevation, float dewPoint, float evaporationRate)
 	{
-		var curCell = Last[i];
-		float evap = math.min(curCell.WaterDepth, 1f) * math.saturate(1.0f - curCell.RelativeHumidity / 100);
-		cell.WaterDepth -= evap;
-		cell.RelativeHumidity += evap;
-		float hToC = curCell.RelativeHumidity / 100;
-		cell.RelativeHumidity -= hToC;
-		cell.CloudCoverage += hToC;
-		if (cell.CloudCoverage > 1000)
+
+
+		// condensation
+		if (last.RelativeHumidity > 1)
 		{
-			cell.WaterDepth += curCell.CloudCoverage;
-			cell.CloudCoverage = 0;
+			float condensationMass = next.AirWaterMass * (last.RelativeHumidity - 1.0f) / last.RelativeHumidity;
+			next.AirWaterMass -= condensationMass;
+			next.AirEnergy -= condensationMass * (WorldData.SpecificHeatWaterVapor * last.AirTemperature - WorldData.LatentHeatWaterVapor);
+			if (last.AirTemperature <= WorldData.FreezingTemperature)
+			{
+				next.IceMass += condensationMass;
+			}
+			else
+			{
+				next.WaterMass += condensationMass;
+				next.WaterEnergy += condensationMass * (WorldData.SpecificHeatWater * last.AirTemperature);
+			}
 		}
+
+		if (last.WindVertical > 0)
+		{
+			float humidityToCloud = math.min(1.0f, last.WindVertical * worldData.SecondsPerTick / (last.CloudElevation - surfaceElevation)) * next.AirWaterMass * worldData.HumidityToCloudPercent;
+			next.CloudMass += humidityToCloud;
+			next.AirWaterMass -= humidityToCloud;
+
+			// TODO: figure out what to do about the 2 layers of atmosphere
+			// We're moving the latent heat of water vapor here since we want it to heat up the upper air around the cloud
+			next.AirEnergy -= humidityToCloud * WorldData.SpecificHeatWaterVapor * last.AirTemperature;
+			next.AirEnergy += humidityToCloud * (WorldData.SpecificHeatWater * last.AirTemperature + WorldData.LatentHeatWaterVapor);
+		}
+
+		if (last.CloudMass > 0)
+		{
+
+			// TODO: airDesntiy and rainDensity should probably be cleaned up (derived from other data?)
+			float rainDropVolume = math.max(worldData.rainDropMinSize, last.CloudDropletMass / (last.CloudMass * worldData.waterDensity));
+			float rainDropRadius = math.min(math.pow(rainDropVolume, 0.333f), worldData.rainDropMaxSize);
+			float rainDropVelocity = last.WindVertical - math.sqrt(8 * rainDropRadius * worldData.waterDensity * PlanetState.Gravity / (3 * worldData.airDensity * worldData.rainDropDragCoefficient));
+
+			next.CloudDropletMass += last.CloudMass * (worldData.RainDropFormationSpeedTemperature / dewPoint * math.pow(math.max(0, -rainDropVelocity) * worldData.RainDropCoalescenceWind, 2));
+
+			if (rainDropVelocity < 0 && last.CloudDropletMass > 0)
+			{
+				float rainfall = last.CloudMass * math.saturate(-rainDropVelocity * worldData.RainfallRate);
+
+				next.CloudMass -= rainfall;
+				next.CloudDropletMass -= rainfall / last.CloudMass;
+
+				{
+					float rainDropFallTime = -last.CloudElevation / rainDropVelocity;
+					// evap rate is based on full tile surface coverage, an occurs in the top millimeter
+					float rainDropSurfaceArea = 4 * math.PI * rainDropRadius * rainDropRadius;
+					float totalRainSurfaceArea = rainfall / (worldData.waterDensity * rainDropVolume) * rainDropSurfaceArea;
+					float rainEvapRate = evaporationRate * totalRainSurfaceArea * 1000 * staticState.InverseCellDiameter * staticState.InverseCellDiameter;
+					float rainDropMassToHumidity = math.min(rainfall, rainDropFallTime * rainEvapRate * worldData.TicksPerSecond);
+					rainfall -= rainDropMassToHumidity;
+					next.AirWaterMass += rainDropMassToHumidity;
+					// This sucks heat out of the lower atmosphere in the form of latent heat of water vapor
+					next.AirEnergy -= rainDropMassToHumidity * last.AirTemperature * WorldData.SpecificHeatWater;
+					next.AirEnergy += rainDropMassToHumidity * (last.AirTemperature * WorldData.SpecificHeatWaterVapor - WorldData.LatentHeatWaterVapor);
+				}
+				if (rainfall > 0)
+				{
+					display.Rainfall = rainfall;
+					next.WaterMass += rainfall;
+					// No real state change here
+					float energyTransfer = rainfall * last.AirTemperature * WorldData.SpecificHeatWater;
+					next.WaterEnergy += energyTransfer;
+					next.AirEnergy -= energyTransfer;
+				}
+			}
+
+			// dissapation
+			float dissapationSpeed = math.min(1.0f, worldData.CloudDissapationRateWind * math.max(0, -last.WindVertical) + worldData.CloudDissapationRateDryAir) * (1.0f - last.RelativeHumidity);
+			float dissapationMass = last.CloudMass * dissapationSpeed;
+			next.CloudDropletMass -= dissapationSpeed;
+			next.CloudMass -= dissapationMass;
+			next.AirWaterMass += dissapationMass;
+			next.AirEnergy -= dissapationMass * (last.AirTemperature * WorldData.SpecificHeatWater + WorldData.LatentHeatWaterVapor);
+			next.AirEnergy += dissapationMass * WorldData.SpecificHeatWaterVapor * last.AirTemperature;
+		}
+
 	}
+
+
+	//static private void SeepWaterIntoGround(World world, float groundWater, float groundEnergy, float shallowWaterMass, float soilFertility, float waterTableDepth, float shallowWaterTemperature, ref float newGroundWater, ref float newShallowWater, ref float newGroundEnergy, ref float newShallowEnergy)
+	//{
+	//	float maxGroundWater = soilFertility * waterTableDepth * world.Data.MaxSoilPorousness * world.Data.MassWater;
+	//	if (groundWater >= maxGroundWater && groundWater > 0)
+	//	{
+	//		float massTransfer = groundWater - maxGroundWater;
+	//		newShallowWater += massTransfer;
+	//		newGroundWater -= massTransfer;
+	//		float energyTransfer = massTransfer / groundWater * groundEnergy; // TODO: this isn't great, some of that ground energy is in the terrain, not just in the water
+	//		newShallowEnergy += energyTransfer;
+	//		newGroundEnergy -= energyTransfer;
+	//	}
+	//	else if (shallowWaterMass > 0)
+	//	{
+	//		float massTransfer = Mathf.Min(shallowWaterMass, Math.Min(soilFertility * world.Data.GroundWaterReplenishmentSpeed * world.Data.SecondsPerTick, maxGroundWater - groundWater));
+	//		newGroundWater += massTransfer;
+	//		newShallowWater -= massTransfer;
+	//		float energyTransfer = massTransfer * shallowWaterTemperature * world.Data.SpecificHeatWater;
+	//		newShallowEnergy -= energyTransfer;
+	//		newGroundEnergy += energyTransfer;
+	//	}
+	//}
+
 
 
 	private void DoDiffusion(int i, ref SimCell cell)

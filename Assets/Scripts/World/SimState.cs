@@ -61,6 +61,8 @@ public struct SimCell {
 	public float CloudCoverage;
 	public float CloudElevation;
 	public float WaterDepth;
+	public float WaterAndIceDepth;
+	public float WaterDensity;
 	public float RelativeHumidity;
 	public float AirTemperature;
 	public float AirPressure;
@@ -72,6 +74,8 @@ public struct SimCell {
 
 public struct DisplayCell {
 	public float Heat;
+	public float Rainfall;
+	public float Evaporation;
 }
 
 

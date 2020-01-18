@@ -1251,7 +1251,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Seed: 0
-  Subdivisions: 6
+  Subdivisions: 5
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
   WorldDataAsset: {fileID: 4900000, guid: a0e62a68ba207124092d1d775e028c05, type: 3}
   WorldData:
@@ -6726,7 +6726,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   LerpStates: 1
-  TerrainScale: 0.5
+  TerrainScale: 100
   MinElevation: -11000
   MaxElevation: 10000
   MaxDepth: 11000
@@ -6749,7 +6749,7 @@ MonoBehaviour:
   DisplayGroundWaterMax: 100000
   DisplayAirPressureMin: 97000
   DisplayAirPressureMax: 110000
-  DisplayHeatAbsorbedMax: 1000
+  DisplayHeatAbsorbedMax: 4000
   Sim: {fileID: 365555216}
   ActiveMeshOverlay: 0
   ActiveWindOverlay: 0

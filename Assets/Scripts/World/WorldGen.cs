@@ -157,7 +157,8 @@ public static class WorldGen {
 			cell.IceMass = worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(cell.AirTemperature - WorldData.FreezingTemperature) / 10);
 			cell.WaterMass -= cell.IceMass;
 			cell.WaterEnergy = Atmosphere.GetWaterEnergy(cell.WaterTemperature, cell.WaterMass, cell.SaltMass);
-			float oceanDensity = Atmosphere.GetWaterDensity(ref worldData, cell.WaterEnergy, cell.SaltMass, cell.WaterMass);
+			cell.WaterDensity = Atmosphere.GetWaterDensity(ref worldData, cell.WaterEnergy, cell.SaltMass, cell.WaterMass);
+			cell.WaterAndIceDepth = cell.WaterDepth + cell.Elevation + cell.IceMass / WorldData.MassIce;
 
 			////	float deepOceanTemperature = (state.ShallowWaterTemperature - minOceanTemperature) * (1.0f - Mathf.Pow(Mathf.Clamp01(deepDepth / oceanDepthMinTemperature), 2f)) + minOceanTemperature;
 			//float deepOceanTemperature = minOceanTemperature;
@@ -192,6 +193,7 @@ public static class WorldGen {
 			}
 			float soilEnergy = soilTemperature * WorldData.SpecificHeatSoil * heatingDepth * landMass;
 			cell.GroundEnergy = groundWaterEnergy + soilEnergy;
+
 
 			state.Cells[i] = cell;
 		}

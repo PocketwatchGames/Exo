@@ -48,7 +48,7 @@ public static class WorldTick {
 
 			var tickJob = new TickCellJob();
 			tickJob.Cells = cells[(i + 1) % 2];
-			tickJob.DisplayCells = state.DisplayCells;
+			tickJob.DisplayCells = nextState.DisplayCells;
 			tickJob.Last = cells[lastStateIndex];
 			tickJob.worldData = worldData;
 			tickJob.staticState = staticState;
