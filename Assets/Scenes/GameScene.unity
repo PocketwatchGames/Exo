@@ -6749,6 +6749,7 @@ MonoBehaviour:
   DisplayGroundWaterMax: 100000
   DisplayAirPressureMin: 97000
   DisplayAirPressureMax: 110000
+  DisplayHeatAbsorbedMax: 1000
   Sim: {fileID: 365555216}
   ActiveMeshOverlay: 0
   ActiveWindOverlay: 0

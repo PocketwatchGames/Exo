@@ -21,7 +21,7 @@ public struct DiffusionJob : IJobParallelFor {
 	public NativeArray<CellDiffusion> CellDiffusion;
 	[ReadOnly] public float WaterDiffuseSpeed;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<SimStateCell> Last;
+	[ReadOnly] public NativeArray<SimCell> Last;
 
 	public void Execute(int i)
 	{
@@ -52,7 +52,7 @@ public struct DiffusionLimitJob : IJobParallelFor {
 
 	public NativeArray<CellDiffusion> DiffusionLimit;
 	[ReadOnly] public NativeArray<CellDiffusion> CellDiffusion;
-	[ReadOnly] public NativeArray<SimStateCell> Last;
+	[ReadOnly] public NativeArray<SimCell> Last;
 
 	public void Execute(int i)
 	{

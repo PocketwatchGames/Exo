@@ -7,6 +7,7 @@ using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Burst;
+using UnityEngine;
 
 public static class WorldTick {
 
@@ -16,16 +17,19 @@ public static class WorldTick {
 
 		var diffusion = new NativeArray<CellDiffusion>(state.Cells.Length * 6, Allocator.TempJob);
 		var diffusionLimit = new NativeArray<CellDiffusion>(state.Cells.Length, Allocator.TempJob);
-		var cells = new NativeArray<SimStateCell>[2];
-		cells[0] = new NativeArray<SimStateCell>(state.Cells, Allocator.TempJob);
-		cells[1] = new NativeArray<SimStateCell>(state.Cells.Length, Allocator.TempJob);
+		var cells = new NativeArray<SimCell>[2];
+		cells[0] = new NativeArray<SimCell>(state.Cells, Allocator.TempJob);
+		cells[1] = new NativeArray<SimCell>(state.Cells.Length, Allocator.TempJob);
 		for (int i = 0; i < ticksToAdvance; i++)
 		{
 			state.PlanetState.Ticks++;
 
 			// TODO: update
-			state.PlanetState.Position = state.PlanetState.Position;
-			state.PlanetState.Rotation = state.PlanetState.Rotation;
+			float distanceToSun = math.length(state.PlanetState.Position);
+			float angleToSun = math.atan2(state.PlanetState.Position.z, state.PlanetState.Position.x);
+			angleToSun += state.PlanetState.OrbitSpeed;
+			state.PlanetState.Position = new float3(math.cos(angleToSun), 0, math.sin(angleToSun)) * distanceToSun;
+			state.PlanetState.Rotation = new float3(state.PlanetState.Rotation.x, Mathf.Repeat(state.PlanetState.Rotation.y + state.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);
 
 			int lastStateIndex = i % 2;
 			var diffusionJob = new DiffusionJob();
@@ -44,6 +48,7 @@ public static class WorldTick {
 
 			var tickJob = new TickCellJob();
 			tickJob.Cells = cells[(i + 1) % 2];
+			tickJob.DisplayCells = state.DisplayCells;
 			tickJob.Last = cells[lastStateIndex];
 			tickJob.worldData = worldData;
 			tickJob.staticState = staticState;

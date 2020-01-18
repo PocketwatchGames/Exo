@@ -67,6 +67,7 @@ public class WorldMesh : MonoBehaviour {
 	public float DisplayGroundWaterMax = 100000;
 	public float DisplayAirPressureMin = 97000;
 	public float DisplayAirPressureMax = 110000;
+	public float DisplayHeatAbsorbedMax = 1000;
 
 
 
@@ -193,7 +194,7 @@ public class WorldMesh : MonoBehaviour {
 	{
 		to.Ticks = from.PlanetState.Ticks;
 		to.Position = from.PlanetState.Position;
-		to.Rotation = from.PlanetState.Rotation;
+		to.Rotation = math.degrees(from.PlanetState.Rotation);
 		for (int i = 0; i < from.Cells.Length; i++)
 		{
 			ref var fromCell = ref from.Cells[i];
@@ -203,7 +204,7 @@ public class WorldMesh : MonoBehaviour {
 				to.WaterColor[i] = GetWaterColor(ref worldData, ref staticState, ref fromCell);
 			} else
 			{
-				var overlayColor = GetOverlayColor(ref fromCell);
+				var overlayColor = GetOverlayColor(ref fromCell, from.DisplayCells[i]);
 				to.TerrainColor[i] = overlayColor;
 				to.WaterColor[i] = overlayColor;
 			}
@@ -212,7 +213,7 @@ public class WorldMesh : MonoBehaviour {
 			to.WaterNormal[i] = Sim.Icosphere.Vertices[i];
 			to.CloudNormal[i] = Sim.Icosphere.Vertices[i];
 			to.TerrainPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.Roughness) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
-			to.WaterPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius * math.clamp(fromCell.WaterDepth / fromCell.Roughness, 0, 1);
+			to.WaterPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius * math.saturate(fromCell.WaterDepth / fromCell.Roughness);
 			to.CloudPosition[i] = Sim.Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
 		}
 
@@ -226,7 +227,7 @@ public class WorldMesh : MonoBehaviour {
 			t = 1;
 		}
 		state.Ticks = (nextState.Ticks - lastState.Ticks) * t + lastState.Ticks;
-		state.Rotation = Quaternion.Lerp(lastState.Rotation, nextState.Rotation, t);
+		state.Rotation = new Vector3(Mathf.LerpAngle(lastState.Rotation.x, nextState.Rotation.x, t), Mathf.LerpAngle(lastState.Rotation.y, nextState.Rotation.y, t), Mathf.LerpAngle(lastState.Rotation.z, nextState.Rotation.z, t));
 		state.Position = math.lerp(lastState.Position, nextState.Position, t);
 		for (int i = 0; i < state.CloudColor.Length; i++)
 		{
@@ -269,7 +270,7 @@ public class WorldMesh : MonoBehaviour {
 		_waterMesh.RecalculateNormals();
 		_cloudMesh.RecalculateNormals();
 
-		transform.SetPositionAndRotation(state.Position, state.Rotation);
+		transform.SetPositionAndRotation(state.Position, Quaternion.Euler(state.Rotation));
 	}
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
@@ -296,23 +297,23 @@ public class WorldMesh : MonoBehaviour {
 
 	#region private functions
 
-	private Color32 GetTerrainColor(ref WorldData worldData, ref StaticState staticState, ref SimStateCell cell)
+	private Color32 GetTerrainColor(ref WorldData worldData, ref StaticState staticState, ref SimCell cell)
 	{
 		var groundColor = Color32.Lerp(grey, brown, cell.SoilFertility);
-		var waterColor = Color32.Lerp(groundColor, blue, math.clamp(math.pow(cell.WaterDepth / cell.Roughness, 2), 0, 1));
-		var iceColor = Color32.Lerp(waterColor, white, math.clamp(cell.IceMass / (WorldData.MassIce * worldData.FullIceCoverage), 0, 1));
-		var vegetationColor = Color32.Lerp(groundColor, green, math.clamp(cell.Vegetation / worldData.FullCanopyCoverage, 0, 1));
+		var waterColor = Color32.Lerp(groundColor, blue, math.saturate(math.pow(cell.WaterDepth / cell.Roughness, 2)));
+		var iceColor = Color32.Lerp(waterColor, white, math.saturate(cell.IceMass / (WorldData.MassIce * worldData.FullIceCoverage)));
+		var vegetationColor = Color32.Lerp(groundColor, green, math.saturate(cell.Vegetation / worldData.FullCanopyCoverage));
 		return vegetationColor;
 	}
 
-	private Color32 GetWaterColor(ref WorldData worldData, ref StaticState staticState, ref SimStateCell cell)
+	private Color32 GetWaterColor(ref WorldData worldData, ref StaticState staticState, ref SimCell cell)
 	{
 		var waterColor = blue;
-		var iceColor = Color32.Lerp(waterColor, white, math.clamp(cell.IceMass / (WorldData.MassIce * worldData.FullIceCoverage), 0, 1));
+		var iceColor = Color32.Lerp(waterColor, white, math.saturate(cell.IceMass / (WorldData.MassIce * worldData.FullIceCoverage)));
 		return iceColor;
 	}
 
-	private Color32 GetCloudColor(ref StaticState staticState, ref SimStateCell cell)
+	private Color32 GetCloudColor(ref StaticState staticState, ref SimCell cell)
 	{
 		var c = Color32.Lerp(white, black, cell.RelativeHumidity);
 		float opacity = -math.cos(cell.CloudCoverage * math.PI)/ 2 + 0.5f;
@@ -320,7 +321,7 @@ public class WorldMesh : MonoBehaviour {
 		return c;
 	}
 
-	private Color32 GetOverlayColor(ref SimStateCell cell)
+	private Color32 GetOverlayColor(ref SimCell cell, DisplayCell displayCell)
 	{
 		switch (ActiveMeshOverlay)
 		{
@@ -338,6 +339,8 @@ public class WorldMesh : MonoBehaviour {
 				return Lerp(NormalizedRainbow, cell.WaterTemperature, DisplayTemperatureMin, DisplayTemperatureMax);
 			case MeshOverlay.GroundTemperature:
 				return Lerp(NormalizedRainbow, Atmosphere.GetLandTemperature(ref Sim.WorldData, cell.GroundEnergy, cell.GroundWater, cell.SoilFertility, cell.Vegetation), DisplayTemperatureMin, DisplayTemperatureMax);
+			case MeshOverlay.HeatAbsorbed:
+				return Lerp(NormalizedRainbow, displayCell.Heat, 0, DisplayHeatAbsorbedMax);
 			case MeshOverlay.VerticalWind:
 				return Lerp(NormalizedBlueBlackRed, cell.WindVertical, -DisplayMaxVerticalWindSpeed, DisplayMaxVerticalWindSpeed);
 			default:

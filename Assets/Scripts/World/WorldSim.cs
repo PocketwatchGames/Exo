@@ -67,9 +67,12 @@ public class WorldSim : MonoBehaviour
 	public void OnDestroy()
 	{
 		StaticState.Dispose();
+		for (int i = 0; i < _simStateCount; i++)
+		{
+			_simStates[i].Dispose();
+		}
 	}
 
-	bool _simulating;
 	public void Update()
 	{
 		if (TimeTillTick > -1)

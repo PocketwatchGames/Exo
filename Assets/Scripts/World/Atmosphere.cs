@@ -83,9 +83,9 @@ public static class Atmosphere {
 
 	static public float GetEvaporationRate(ref WorldData worldData, float iceCoverage, float temperature, float relativeHumidity, float inverseEvapTemperatureRange)
 	{
-		float evapTemperature = math.clamp((temperature - worldData.EvapMinTemperature) * inverseEvapTemperatureRange, 0, 1);
+		float evapTemperature = math.saturate((temperature - worldData.EvapMinTemperature) * inverseEvapTemperatureRange);
 
-		return math.clamp((1.0f - iceCoverage) * (1.0f - relativeHumidity) * Utils.Sqr(evapTemperature), 0, 1) * worldData.EvaporationRate * WorldData.MassWater;
+		return math.saturate((1.0f - iceCoverage) * (1.0f - relativeHumidity) * Utils.Sqr(evapTemperature)) * worldData.EvaporationRate * WorldData.MassWater;
 	}
 
 	static public float GetTemperatureAtElevation(ref WorldData worldData, float elevation, float lowerTemperature, float upperTemperature, float elevationOrSeaLevel)

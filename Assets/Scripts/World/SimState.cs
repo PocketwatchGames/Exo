@@ -7,15 +7,23 @@ using Unity.Entities;
 using Unity;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Collections;
 
 public struct SimState {
 
 	public SimPlanetState PlanetState;
-	public SimStateCell[] Cells;
+	public SimCell[] Cells;
+	public NativeArray<DisplayCell> DisplayCells;
 
 	public void Init(int count)
 	{
-		Cells = new SimStateCell[count];
+		Cells = new SimCell[count];
+		DisplayCells = new NativeArray<DisplayCell>(count, Allocator.Persistent);
+	}
+
+	public void Dispose()
+	{
+		DisplayCells.Dispose();
 	}
 }
 
@@ -29,11 +37,11 @@ public struct SimPlanetState {
 	public float StratosphereMass;
 	public float CarbonDioxide;
 	public float DistanceToSun;
-	public quaternion Rotation;
+	public float3 Rotation;
 	public float3 Position;
 }
 
-public struct SimStateCell {
+public struct SimCell {
 	public float Elevation;
 	public float Roughness;
 	public float SoilFertility;
@@ -62,12 +70,16 @@ public struct SimStateCell {
 	public float2 WindTropopause;
 }
 
+public struct DisplayCell {
+	public float Heat;
+}
+
 
 public struct RenderState {
 
 	public float Ticks;
-	public float3 Position;
-	public quaternion Rotation;
+	public Vector3 Position;
+	public Vector3 Rotation;
 	public Color32[] TerrainColor;
 	public Color32[] WaterColor;
 	public Color32[] CloudColor;

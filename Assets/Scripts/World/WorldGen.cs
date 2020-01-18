@@ -45,10 +45,10 @@ public static class WorldGen {
 
 		state.PlanetState.Gravity = worldGenData.Gravity;
 		state.PlanetState.DistanceToSun = worldGenData.DistanceToSun;
-		state.PlanetState.Rotation = math.quaternion(worldGenData.TiltAngle, 0, 0, 1);
+		state.PlanetState.Rotation = math.radians(math.float3(worldGenData.TiltAngle, 0, 0));
 		state.PlanetState.Position = math.float3(1, 0, 0) * worldGenData.DistanceToSun;
-		state.PlanetState.SpinSpeed = 1.0f / worldGenData.SpinTime;
-		state.PlanetState.OrbitSpeed = 1.0f / worldGenData.OrbitTime;
+		state.PlanetState.SpinSpeed = math.PI * 2 / (worldGenData.SpinTime * 60 * 60);
+		state.PlanetState.OrbitSpeed = math.PI * 2 / worldGenData.OrbitTime;
 		state.PlanetState.GeothermalHeat = worldGenData.GeothermalHeat;
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
 		state.PlanetState.StratosphereMass = worldGenData.StratosphereMass;
@@ -58,7 +58,7 @@ public static class WorldGen {
 
 		for (int i = 0; i < state.Cells.Length; i++)
 		{
-			SimStateCell cell;
+			SimCell cell;
 			var coord = staticState.Coordinate[i] * 2 * inversePI;
 			var pos = staticState.SphericalPosition[i];
 			var coordNormalized = (coord + 1) / 2;

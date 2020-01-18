@@ -11,19 +11,21 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct TickCellJob : IJobParallelFor {
 
-	public NativeArray<SimStateCell> Cells;
+	public NativeArray<SimCell> Cells;
+	public NativeArray<DisplayCell> DisplayCells;
 
 	[ReadOnly] public SimPlanetState PlanetState;
 	[ReadOnly] public NativeArray<CellDiffusion> Diffusion;
 	[ReadOnly] public NativeArray<CellDiffusion> DiffusionLimit;
-	[ReadOnly] public NativeArray<SimStateCell> Last;
+	[ReadOnly] public NativeArray<SimCell> Last;
 	[ReadOnly] public WorldData worldData;
 	[ReadOnly] public StaticState staticState;
 
 	public void Execute(int i)
 	{
 		var curCell = Last[i];
-		var cell = new SimStateCell();
+		var cell = new SimCell();
+		var displayCell = new DisplayCell();
 
 		cell.CloudCoverage = curCell.CloudCoverage;
 		cell.RelativeHumidity = curCell.RelativeHumidity;
@@ -52,7 +54,7 @@ public struct TickCellJob : IJobParallelFor {
 		cell.WindSurface = curCell.WindSurface;
 		cell.WindTropopause = curCell.WindTropopause;
 
-		DoEnergyCycle(i, ref cell);
+		DoEnergyCycle(i, ref cell, ref displayCell);
 		DoVerticalWaterMovement(i, ref cell);
 		DoDiffusion(i, ref cell);
 
@@ -60,7 +62,7 @@ public struct TickCellJob : IJobParallelFor {
 
 	}
 
-	private void DoEnergyCycle(int i, ref SimStateCell next)
+	private void DoEnergyCycle(int i, ref SimCell next, ref DisplayCell displayCell)
 	{
 		var last = Last[i];
 
@@ -75,7 +77,7 @@ public struct TickCellJob : IJobParallelFor {
 		float cloudElevation = Atmosphere.GetCloudElevation(ref worldData, last.AirTemperature, dewPoint, surfaceElevation);
 		float cloudCoverage = math.min(1.0f, math.pow(last.CloudMass * worldData.inverseCloudMassFullAbsorption, 0.6667f)); // bottom surface of volume
 
-		float3 sunVector = -(math.rotate(PlanetState.Rotation, staticState.SphericalPosition[i]) + PlanetState.Position);
+		float3 sunVector = -(math.rotate(UnityEngine.Quaternion.Euler(math.degrees(PlanetState.Rotation)), staticState.SphericalPosition[i]) + PlanetState.Position);
 
 		float waterSlopeAlbedo = math.pow(1.0f - math.max(0, sunVector.z), 9);
 		//float groundWaterSaturation = Animals.GetGroundWaterSaturation(state.GroundWater[index], state.WaterTableDepth[index], soilFertility * world.Data.MaxSoilPorousness);
@@ -103,7 +105,6 @@ public struct TickCellJob : IJobParallelFor {
 		/// With the sun 90 degrees above the horizon (SEA° = 90°), the air mass lowers the intensity of the sunlight from the 1,367 W / m2 that it is in outerspace down to about 1040 W / m2.
 		//				float consumedByAtmosphere = 1.0f - math.pow(0.7f, math.pow(atmosphericDepth, 0.678f));
 
-
 		if (solarRadiation > 0)
 		{
 //			globalEnergyIncoming += solarRadiation;
@@ -118,7 +119,7 @@ public struct TickCellJob : IJobParallelFor {
 
 			if (last.CloudMass > 0)
 			{
-				float cloudTemperatureAlbedo = WorldData.AlbedoIce + (WorldData.AlbedoWater - WorldData.AlbedoIce) * math.clamp((dewPoint - worldData.minCloudFreezingTemperature) / (worldData.maxCloudFreezingTemperature - worldData.minCloudFreezingTemperature),0,1);
+				float cloudTemperatureAlbedo = WorldData.AlbedoIce + (WorldData.AlbedoWater - WorldData.AlbedoIce) * math.saturate((dewPoint - worldData.minCloudFreezingTemperature) / (worldData.maxCloudFreezingTemperature - worldData.minCloudFreezingTemperature));
 				float rainDropSizeAlbedo = math.clamp(1.0f - last.CloudDropletMass / last.CloudMass, 0,1) * (worldData.rainDropSizeAlbedoMax - worldData.rainDropSizeAlbedoMin) + worldData.rainDropSizeAlbedoMin;
 				float cloudReflectivity = math.min(1.0f, worldData.cloudAlbedo * cloudTemperatureAlbedo * last.CloudMass * rainDropSizeAlbedo / math.max(worldData.maxCloudSlopeAlbedo, 1.0f - waterSlopeAlbedo));
 				float energyReflectedClouds = solarRadiation * cloudReflectivity;
@@ -160,7 +161,7 @@ public struct TickCellJob : IJobParallelFor {
 					float slopeAlbedo = 0;
 					float soilReflectivity = Atmosphere.GetAlbedo(WorldData.AlbedoLand - worldData.AlbedoReductionSoilQuality * last.SoilFertility, slopeAlbedo);
 					float heatReflectedLand = canopyCoverage * WorldData.AlbedoFoliage + math.max(0, 1.0f - canopyCoverage) * soilReflectivity;
-					energyReflected += solarRadiation * math.clamp(heatReflectedLand,0,1) * (1.0f - iceCoverage) * (1.0f - waterCoverage);
+					energyReflected += solarRadiation * math.saturate(heatReflectedLand) * (1.0f - iceCoverage) * (1.0f - waterCoverage);
 				}
 				solarRadiation -= energyReflected;
 
@@ -168,7 +169,7 @@ public struct TickCellJob : IJobParallelFor {
 				//globalEnergySolarReflectedSurface += energyReflected;
 			}
 
-			//solarRadiationAbsorbed += solarRadiation;
+			solarRadiationAbsorbed += solarRadiation;
 
 		}
 
@@ -272,6 +273,7 @@ public struct TickCellJob : IJobParallelFor {
 
 		//globalEnergyThermalBackRadiation += backRadiation;
 		//globalEnergySolarAbsorbedSurface += solarRadiationAbsorbed;
+		displayCell.Heat = solarRadiationAbsorbed;
 
 		float radiationToSurface = solarRadiationAbsorbed + backRadiation;
 
@@ -305,7 +307,7 @@ public struct TickCellJob : IJobParallelFor {
 					// Remove the latent heat of water from the air
 					float temperatureDiff = last.AirTemperature - WorldData.FreezingTemperature;
 					float energyTransfer = math.min(last.AirEnergy, temperatureDiff * worldData.SecondsPerTick * iceCoverage * worldData.IceAirConductionCooling);
-					float iceMeltedFromConduction = remainingIceMass * math.clamp(energyTransfer / WorldData.LatentHeatWaterLiquid,0,1);
+					float iceMeltedFromConduction = remainingIceMass * math.saturate(energyTransfer / WorldData.LatentHeatWaterLiquid);
 					next.AirEnergy -= energyTransfer;
 					next.IceMass -= iceMeltedFromConduction;
 					next.WaterMass += iceMeltedFromConduction;
@@ -457,10 +459,10 @@ public struct TickCellJob : IJobParallelFor {
 
 
 
-	private void DoVerticalWaterMovement(int i, ref SimStateCell cell)
+	private void DoVerticalWaterMovement(int i, ref SimCell cell)
 	{
 		var curCell = Last[i];
-		float evap = math.min(curCell.WaterDepth, 1f) * math.clamp(1.0f - curCell.RelativeHumidity / 100, 0, 1);
+		float evap = math.min(curCell.WaterDepth, 1f) * math.saturate(1.0f - curCell.RelativeHumidity / 100);
 		cell.WaterDepth -= evap;
 		cell.RelativeHumidity += evap;
 		float hToC = curCell.RelativeHumidity / 100;
@@ -474,7 +476,7 @@ public struct TickCellJob : IJobParallelFor {
 	}
 
 
-	private void DoDiffusion(int i, ref SimStateCell cell)
+	private void DoDiffusion(int i, ref SimCell cell)
 	{
 		for (int j = 0; j < 6; j++)
 		{
