@@ -40,8 +40,27 @@ public class WorldMesh : MonoBehaviour {
 		UpperAirWind
 	}
 
-	[Header("Display")]
+	public enum TemperatureUnits {
+		Celsius,
+		Farenheit,
+		Kelvin,
+	}
+
+	public enum CellInfoType {
+		Global,
+		Cell,
+		Energy,
+		Atmosphere,
+		Water,
+		Ground
+	}
+
+	public int ActiveCellIndex = 0;
+	public TemperatureUnits ActiveTemperatureUnits = TemperatureUnits.Celsius;
 	public bool LerpStates = true;
+
+
+	[Header("Display")]
 	public float TerrainScale = 100f;
 //	public TemperatureDisplayType TemperatureDisplay;
 	public float MinElevation = -11000;
@@ -50,7 +69,7 @@ public class WorldMesh : MonoBehaviour {
 	public float maxCloudColor = 300.0f;
 	public float WaterDepthThreshold = 10;
 
-	public float RRDisplayEnergyAborsobedMax = 300;
+	public float DisplayEnergyAborsobedMax = 300;
 	public float DisplayRainfallMax = 5.0f;
 	public float DisplayMinSalinity = 0;
 	public float DisplayMaxSalinity = 50;
@@ -307,6 +326,63 @@ public class WorldMesh : MonoBehaviour {
 		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 
+	public static float ConvertTemperature(float kelvin, TemperatureUnits units)
+	{
+		switch (units)
+		{
+			case TemperatureUnits.Celsius:
+				return kelvin - WorldData.FreezingTemperature;
+			case TemperatureUnits.Farenheit:
+				return (kelvin - WorldData.FreezingTemperature) * 9 / 5 + 32;
+			case TemperatureUnits.Kelvin:
+			default:
+				return kelvin;
+		}
+	}
+
+	public static string GetTemperatureString(float kelvin, TemperatureUnits units, int decimals)
+	{
+		string tFormat = "0";
+		if (decimals > 0)
+		{
+			tFormat += ".";
+		}
+		for (int i=0;i<decimals;i++)
+		{
+			tFormat += "0";
+		}
+		string t = ConvertTemperature(kelvin, units).ToString(tFormat);
+		switch (units)
+		{
+			case TemperatureUnits.Celsius:
+				return t + " C";
+			case TemperatureUnits.Farenheit:
+				return t + " F";
+			case TemperatureUnits.Kelvin:
+			default:
+				return t + " K";
+		}
+	}
+
+	public string GetCellInfo(CellInfoType cellInfoType)
+	{
+		switch (cellInfoType)
+		{
+			case CellInfoType.Global:
+				return GetCellInfoGlobal(ref Sim.ActiveSimState);
+			case CellInfoType.Energy:
+				return GetCellInfoEnergy(ref Sim.ActiveSimState);
+			case CellInfoType.Cell:
+				return GetCellInfoCell(ref Sim.ActiveSimState);
+			case CellInfoType.Atmosphere:
+				return GetCellInfoAtmosphere(ref Sim.ActiveSimState);
+			case CellInfoType.Ground:
+				return GetCellInfoGround(ref Sim.ActiveSimState);
+			case CellInfoType.Water:
+				return GetCellInfoWater(ref Sim.ActiveSimState);
+		}
+		return "not implemented";
+	}
 
 	#region private functions
 
@@ -397,6 +473,66 @@ public class WorldMesh : MonoBehaviour {
 			}
 		}
 		return colors[colors.Count - 1].Color;
+	}
+
+
+	private string GetCellInfoGlobal(ref SimState state)
+	{
+		string s = "";
+		s += "CO2: " + state.PlanetState.CarbonDioxide;
+		return s;
+	}
+	private string GetCellInfoEnergy(ref SimState state)
+	{
+		string s = "";
+		s += "Delta: ";
+		return s;
+	}
+	private string GetCellInfoCell(ref SimState state)
+	{
+		var cell = state.Cells[ActiveCellIndex];
+		var display = state.DisplayCells[ActiveCellIndex];
+		string s = "";
+		s += "Surface: " + (cell.Elevation + cell.WaterAndIceDepth).ToString("0.000") + " m\n";
+		s += "Elevation: " + cell.Elevation.ToString("0.000") + " m\n";
+		s += "H2O Depth: " + cell.WaterDepth.ToString("0.000") + " m\n";
+		s += "Ice Depth: " + (cell.IceMass / WorldData.MassIce).ToString("0.000") + " m\n";
+		s += "Rainfall: " + (display.Rainfall / WorldData.MassWater * 100).ToString("0.000") + " cm3\n";
+		s += "Evaporation: " + (display.Evaporation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
+		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
+		return s;
+	}
+	private string GetCellInfoAtmosphere(ref SimState state)
+	{
+		var cell = state.Cells[ActiveCellIndex];
+		string s = "";
+		s += "Temp: " + GetTemperatureString(cell.AirTemperature, ActiveTemperatureUnits, 0) + "\n";
+		s += "Pressure: " + cell.AirPressure.ToString("0") + " Pa\n";
+		s += "Wind Horz: (" + cell.WindSurface.x.ToString("0.0") + ", " + cell.WindSurface.y.ToString("0.0") + ") m/s\n";
+		s += "Wind Vert: " + cell.WindVertical.ToString("0.0") + " m/s\n";
+		s += "Humidity: " + (cell.RelativeHumidity * 100).ToString("0.0") + "%\n";
+		s += "Clouds: " + (cell.CloudMass / WorldData.MassWater).ToString("0.000") + " m3\n";
+		s += "Droplets: " + (cell.CloudDropletMass * 1000000 / (WorldData.MassWater * cell.CloudMass)).ToString("0.000") + " nm3\n";
+		return s;
+	}
+	private string GetCellInfoGround(ref SimState state)
+	{
+		var cell = state.Cells[ActiveCellIndex];
+		string s = "";
+		s += "Fertility: " + cell.SoilFertility + "\n";
+		s += "Temp: " + GetTemperatureString(Atmosphere.GetLandTemperature(ref Sim.WorldData, cell.GroundEnergy, cell.GroundWater, cell.SoilFertility, math.saturate(cell.Vegetation / Sim.WorldData.FullCanopyCoverage)), ActiveTemperatureUnits, 0);
+		s += "H2O Volume: " + (cell.GroundWater / cell.WaterMass).ToString("0.0") + " m3\n";
+		s += "H2O Depth: " + cell.GroundWaterDepth.ToString("0") + " m\n";
+		s += "Roughness: " + cell.Roughness.ToString("0") + " m\n";
+		return s;
+	}
+	private string GetCellInfoWater(ref SimState state)
+	{
+		var cell = state.Cells[ActiveCellIndex];
+		string s = "";
+		s += "Temp: " + GetTemperatureString(cell.WaterTemperature, ActiveTemperatureUnits, 0) + "\n";
+		s += "Salinity: " + (1000000 * cell.SaltMass / (cell.SaltMass + cell.WaterMass)).ToString("0.0") + " ppm\n";
+		return s;
 	}
 
 

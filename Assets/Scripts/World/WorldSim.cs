@@ -7,15 +7,6 @@ using Unity.Collections;
 
 public class WorldSim : MonoBehaviour
 {
-	public enum CellInfoType {
-		Global,
-		Cell,
-		Energy,
-		Atmosphere,
-		Water,
-		Terrain
-	}
-
 
 	public int Seed;
 	public int Subdivisions = 5;
@@ -101,11 +92,6 @@ public class WorldSim : MonoBehaviour
 		WorldTick.Tick(ref state, ref nextState, ticksToAdvance, ref StaticState, ref WorldData);
 
 		OnTick?.Invoke();
-	}
-
-	public string GetCellInfo(CellInfoType cellInfoType)
-	{
-		return "AFA";
 	}
 
 
