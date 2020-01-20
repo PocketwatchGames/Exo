@@ -2,4 +2,4 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DropdownMeshOverlay : DropdownOverlay<WorldMesh.MeshOverlay> { }
+public class DropdownMeshOverlay : DropdownOverlay<WorldView.MeshOverlay> { }

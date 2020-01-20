@@ -7,7 +7,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Burst;
 
-public class WorldMesh : MonoBehaviour {
+public class WorldView : MonoBehaviour {
 
 	public enum MeshOverlay {
 		None,
@@ -94,6 +94,9 @@ public class WorldMesh : MonoBehaviour {
 
 	[Header("References")]
 	public WorldSim Sim;
+	public GameObject Planet;
+	public GameObject Sun;
+	public GameObject Moon;
 	public MeshOverlay ActiveMeshOverlay;
 	public WindOverlay ActiveWindOverlay;
 	public Material TerrainMaterial;
@@ -141,21 +144,21 @@ public class WorldMesh : MonoBehaviour {
 		_waterMesh = new Mesh();
 
 		_terrainObject = new GameObject("Terrain Mesh");
-		_terrainObject.transform.SetParent(gameObject.transform, false);
+		_terrainObject.transform.SetParent(Planet.transform, false);
 		var terrainFilter = _terrainObject.AddComponent<MeshFilter>();
 		var terrainSurfaceRenderer = _terrainObject.AddComponent<MeshRenderer>();
 		terrainSurfaceRenderer.material = TerrainMaterial;
 		terrainFilter.mesh = _terrainMesh;
 
 		_waterObject = new GameObject("Water Mesh");
-		_waterObject.transform.SetParent(gameObject.transform, false);
+		_waterObject.transform.SetParent(Planet.transform, false);
 		var waterFilter = _waterObject.AddComponent<MeshFilter>();
 		var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
 		waterSurfaceRenderer.material = WaterMaterial;
 		waterFilter.mesh = _waterMesh;
 
 		_cloudObject = new GameObject("Cloud Mesh");
-		_cloudObject.transform.SetParent(gameObject.transform, false);
+		_cloudObject.transform.SetParent(Planet.transform, false);
 		var cloudFilter = _cloudObject.AddComponent<MeshFilter>();
 		var cloudSurfaceRenderer = _cloudObject.AddComponent<MeshRenderer>();
 		cloudSurfaceRenderer.material = CloudMaterial;
@@ -302,7 +305,7 @@ public class WorldMesh : MonoBehaviour {
 		_waterMesh.RecalculateNormals();
 		_cloudMesh.RecalculateNormals();
 
-		transform.SetPositionAndRotation(state.Position, Quaternion.Euler(state.Rotation));
+		Planet.transform.SetPositionAndRotation(state.Position, Quaternion.Euler(state.Rotation));
 	}
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
@@ -315,13 +318,13 @@ public class WorldMesh : MonoBehaviour {
 	}
 	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
 	{
-		ActiveMeshOverlay = (WorldMesh.MeshOverlay)dropdown.value;
+		ActiveMeshOverlay = (WorldView.MeshOverlay)dropdown.value;
 		_tickLerpTime = 0;
 		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
 	{
-		ActiveWindOverlay = (WorldMesh.WindOverlay)dropdown.value;
+		ActiveWindOverlay = (WorldView.WindOverlay)dropdown.value;
 		_tickLerpTime = 0;
 		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}

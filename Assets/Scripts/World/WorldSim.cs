@@ -31,7 +31,7 @@ public class WorldSim : MonoBehaviour
 	public delegate void TickEventHandler();
 	public event TickEventHandler OnTick;
 
-	public void Start()
+	public void Awake()
     {
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
 		WorldData.Init();
