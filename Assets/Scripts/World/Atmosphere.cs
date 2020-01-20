@@ -118,13 +118,13 @@ public static class Atmosphere {
 		return humidity;
 	}
 
-	static public float GetAirTemperature(float energy, float mass, float waterMass, float waterSpecificHeat)
+	static public float GetAirTemperature(float energy, float mass, float waterMass, float waterVaporMass)
 	{
-		return energy / (mass * WorldData.SpecificHeatAtmosphere + waterMass * waterSpecificHeat);
+		return energy / (mass * WorldData.SpecificHeatAtmosphere + waterMass * WorldData.SpecificHeatWater + waterVaporMass * WorldData.SpecificHeatWaterVapor);
 	}
-	static public float GetAirEnergy(float temperature, float mass, float waterMass, float waterSpecificHeat)
+	static public float GetAirEnergy(float temperature, float mass, float waterMass, float waterVaporMass)
 	{
-		return temperature * (mass * WorldData.SpecificHeatAtmosphere + waterMass * waterSpecificHeat);
+		return temperature * (mass * WorldData.SpecificHeatAtmosphere + waterMass * WorldData.SpecificHeatWater + waterVaporMass * WorldData.SpecificHeatWaterVapor);
 	}
 
 	static public float GetWaterTemperature(float energy, float waterMass, float saltMass)

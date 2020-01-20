@@ -71,7 +71,7 @@ public static class WorldGen {
 			cell.WaterDepth = math.max(0, -elevation) + math.max(0, GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 25430, -100, 100));
 			//cell.WaterDepth = GetPerlinNormalized(coordNormalized.x, coordNormalized.y, 2.5f, 110) * 2000;
 
-			float surfaceElevation = math.max(0, -elevation);
+			float surfaceElevation = elevation + cell.WaterDepth;
 
 			float soil =
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.2f, 6630) +
@@ -80,10 +80,6 @@ public static class WorldGen {
 			cell.SoilFertility = soil;
 
 			cell.Vegetation = elevation < 0 ? 0 : math.pow(math.sqrt(soil) * math.sqrt(GetPerlinNormalized(pos.x, pos.y, pos.z, 1f, 6630423)), 3);
-
-			cell.CloudElevation =
-				0.5f * GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 20, 0, worldGenData.MaxElevation) +
-				0.5f * GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 20, 0, worldGenData.MaxElevation);
 
 			cell.CloudCoverage =
 				math.pow(
@@ -141,7 +137,7 @@ public static class WorldGen {
 			}
 
 			//			cell.UpperAirEnergy = Atmosphere.GetAirEnergy(world, state.UpperAirTemperature, state.UpperAirMass, state.CloudMass, worldData.SpecificHeatWater);
-			cell.AirEnergy = Atmosphere.GetAirEnergy(cell.AirTemperature, cell.AirMass, cell.AirWaterMass, WorldData.SpecificHeatWaterVapor);
+			cell.AirEnergy = Atmosphere.GetAirEnergy(cell.AirTemperature, cell.AirMass, cell.CloudMass, cell.AirWaterMass);
 
 			//float shallowDepth = Mathf.Min(data.DeepOceanDepth, depth);
 			//float deepDepth = Mathf.Max(0, depth - data.DeepOceanDepth);
@@ -154,11 +150,12 @@ public static class WorldGen {
 			float waterAndSaltMass = GetWaterMass(worldData, cell.WaterDepth, cell.WaterTemperature, salinity);
 			cell.WaterMass = waterAndSaltMass * (1.0f - salinity);
 			cell.SaltMass = waterAndSaltMass * salinity;
-			cell.IceMass = worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(cell.AirTemperature - WorldData.FreezingTemperature) / 10);
+			cell.IceMass = math.min(cell.WaterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(cell.AirTemperature - WorldData.FreezingTemperature) / 10));
 			cell.WaterMass -= cell.IceMass;
 			cell.WaterEnergy = Atmosphere.GetWaterEnergy(cell.WaterTemperature, cell.WaterMass, cell.SaltMass);
 			cell.WaterDensity = Atmosphere.GetWaterDensity(ref worldData, cell.WaterEnergy, cell.SaltMass, cell.WaterMass);
-			cell.WaterAndIceDepth = cell.WaterDepth + cell.Elevation + cell.IceMass / WorldData.MassIce;
+			cell.WaterAndIceDepth = cell.WaterDepth + cell.IceMass / WorldData.MassIce;
+			cell.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, cell.AirTemperature, Atmosphere.GetDewPoint(ref worldData, cell.AirTemperature, cell.RelativeHumidity), surfaceElevation);
 
 			////	float deepOceanTemperature = (state.ShallowWaterTemperature - minOceanTemperature) * (1.0f - Mathf.Pow(Mathf.Clamp01(deepDepth / oceanDepthMinTemperature), 2f)) + minOceanTemperature;
 			//float deepOceanTemperature = minOceanTemperature;

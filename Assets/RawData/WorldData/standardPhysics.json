@@ -6,7 +6,7 @@
 	"FullCanopyCoverage": 2000,
 
 	"MaxSoilPorousness": 0.1,
-	"GroundWaterReplenishmentSpeed": 10.0,
+	"GroundWaterReplenishmentSpeed": 0.01,
 	"GroundWaterFlowSpeed": 0.5,
 
 
@@ -70,7 +70,7 @@
 	"EvapMaxTemperature": 413,
 	"EvaporationRate": 0.004,
 	"RainDropFormationSpeedTemperature": 1,
-	"RainDropCoalescenceWind": 0.00001,
+	"RainDropCoalescenceWind": 0.1,
 	"rainDropDragCoefficient": 0.5,
 	"rainDropMaxSize": 0.004,
 	"rainDropMinSize": 0.00001,
@@ -82,15 +82,15 @@
 	"DewPointTemperaturePerRelativeHumidity": 20,
 
 	"DeepOceanDepth": 500,
-	"WindToOceanCurrentFactor": 0.1,
-	"OceanCurrentSpeed": 0.00001,
-	"OceanHorizontalMixingSpeed": 0.01,
-	"OceanUpwellingSpeed": 0.0001,
-	"OceanTemperatureVerticalMixingSpeed": 0.0001,
-	"SalinityVerticalMixingSpeed": 0.001,
+	"WindToOceanCurrentFactor": 0.25,
+	"OceanCurrentSpeed": 0.2,
+	"OceanHorizontalMixingSpeed": 0.1,
+	"OceanUpwellingSpeed": 0.001,
+	"OceanTemperatureVerticalMixingSpeed": 0.01,
+	"SalinityVerticalMixingSpeed": 0.00000001,
 	"OceanDensityPerSalinity": 800,
-	"OceanDensityPerDegree": 0.2,
-	"OceanDensityCurrentSpeed": 0.1,
+	"OceanDensityPerDegree": -0.2,
+	"OceanDensityCurrentSpeed": 0.5,
 
 	"MinTemperatureCanopy": 223.15,
 	"MaxTemperatureCanopy": 323.15

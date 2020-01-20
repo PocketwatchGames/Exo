@@ -174,7 +174,13 @@ public class WorldMesh : MonoBehaviour {
 
 	public void Update()
 	{
-		_tickLerpTime -= Time.deltaTime * Sim.TimeScale;
+		if (Sim.TimeScale == 0)
+		{
+			_tickLerpTime -= Time.deltaTime * 20;
+		} else
+		{
+			_tickLerpTime -= Time.deltaTime * Sim.TimeScale;
+		}
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 	}
 	public void StartLerp(float lerpTime)

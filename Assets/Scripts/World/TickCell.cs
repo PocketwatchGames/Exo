@@ -7,6 +7,7 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
+using UnityEngine;
 
 [BurstCompile]
 public struct TickCellJob : IJobParallelFor {
@@ -55,14 +56,11 @@ public struct TickCellJob : IJobParallelFor {
 		next.WindTropopause = last.WindTropopause;
 
 		float iceCoverage = math.min(1.0f, math.pow(last.IceMass * worldData.inverseFullIceCoverage, 0.6667f));
-		float surfaceElevation = last.Elevation + last.WaterDepth;
-		float relativeHumidity = Atmosphere.GetRelativeHumidity(ref worldData, last.AirTemperature, last.AirWaterMass, last.AirMass, worldData.inverseDewPointTemperatureRange);
-		float evaporationRate = Atmosphere.GetEvaporationRate(ref worldData, iceCoverage, last.AirTemperature, relativeHumidity, worldData.inverseEvapTemperatureRange);
-		float dewPoint = Atmosphere.GetDewPoint(ref worldData, last.AirTemperature, relativeHumidity);
+		float surfaceElevation = last.Elevation + last.WaterAndIceDepth;
+		float evaporationRate = Atmosphere.GetEvaporationRate(ref worldData, iceCoverage, last.AirTemperature, last.RelativeHumidity, worldData.inverseEvapTemperatureRange);
+		float dewPoint = Atmosphere.GetDewPoint(ref worldData, last.AirTemperature, last.RelativeHumidity);
 
-		next.RelativeHumidity = relativeHumidity;
-
-		DoEnergyCycle(i, ref next, ref display, surfaceElevation, relativeHumidity, evaporationRate, dewPoint, iceCoverage);
+		DoEnergyCycle(i, ref next, ref display, surfaceElevation, evaporationRate, dewPoint, iceCoverage);
 		DoVerticalWaterMovement(i, ref last, ref next, ref display, surfaceElevation, dewPoint, evaporationRate);
 		DoDiffusion(i, ref next);
 
@@ -109,7 +107,7 @@ public struct TickCellJob : IJobParallelFor {
 
 		}
 		float newSurfaceElevation = next.Elevation + next.WaterAndIceDepth;
-		next.AirTemperature = Atmosphere.GetAirTemperature(next.AirEnergy, next.AirMass, next.AirWaterMass, WorldData.SpecificHeatWaterVapor);
+		next.AirTemperature = Atmosphere.GetAirTemperature(next.AirEnergy, next.AirMass, next.CloudMass, next.AirWaterMass);
 		next.AirPressure = math.max(0, Atmosphere.GetAirPressure(
 			ref worldData, 
 			next.AirMass + PlanetState.StratosphereMass + next.AirWaterMass + next.CloudMass, 
@@ -117,9 +115,12 @@ public struct TickCellJob : IJobParallelFor {
 			next.AirTemperature, 
 			Atmosphere.GetMolarMassAir(next.AirMass + PlanetState.StratosphereMass, next.CloudMass + next.AirWaterMass),
 			PlanetState.Gravity));
+		next.RelativeHumidity = Atmosphere.GetRelativeHumidity(ref worldData, next.AirTemperature, next.AirWaterMass, next.AirMass, worldData.inverseDewPointTemperatureRange);
 		//next.UpperAirTemperature[index] = GetAirTemperature(world, nextState.UpperAirEnergy[index], nextState.UpperAirMass[index], nextState.CloudMass[index], world.Data.SpecificHeatWater);
 		//next.UpperAirPressure[index] = Mathf.Max(0, GetAirPressure(world, nextState.UpperAirMass[index] + nextState.StratosphereMass + nextState.CloudMass[index], elevationOrSeaLevel + world.Data.BoundaryZoneElevation, nextState.UpperAirTemperature[index], GetMolarMassAir(world, nextState.LowerAirMass[index] + nextState.UpperAirMass[index] + nextState.StratosphereMass, nextState.Humidity[index] + nextState.CloudMass[index])));
-		next.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, next.AirTemperature, dewPoint, surfaceElevation);
+
+		float newDewPoint = Atmosphere.GetDewPoint(ref worldData, next.AirTemperature, next.RelativeHumidity);
+		next.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, next.AirTemperature, newDewPoint, newSurfaceElevation);
 
 		//globalIceMass += nextState.IceMass[index];
 		//globalEnergyDeepWater += nextState.DeepWaterEnergy[index];
@@ -129,13 +130,17 @@ public struct TickCellJob : IJobParallelFor {
 		//globalEnergyUpperAir += nextState.UpperAirEnergy[index];
 		//atmosphericMass += nextState.LowerAirMass[index] + nextState.UpperAirMass[index];
 
+		if (math.isnan(next.CloudElevation) || math.isinf(next.CloudElevation) ||next.CloudElevation < 0 || next.CloudElevation > 10000)
+		{
+			surfaceElevation = 0;
+		}
 
 		Cells[i] = next;
 		DisplayCells[i] = display;
 
 	}
 
-	private void DoEnergyCycle(int i, ref SimCell next, ref DisplayCell displayCell, float surfaceElevation, float relativeHumdity, float evaporationRate, float dewPoint, float iceCoverage)
+	private void DoEnergyCycle(int i, ref SimCell next, ref DisplayCell displayCell, float surfaceElevation, float evaporationRate, float dewPoint, float iceCoverage)
 	{
 		var last = Last[i];
 
@@ -282,7 +287,7 @@ public struct TickCellJob : IJobParallelFor {
 			float oceanRadiation = math.min(last.WaterEnergy, shallowWaterRadiation);
 			next.WaterEnergy -= oceanRadiation;
 			thermalEnergyRadiatedToIce += oceanRadiation * iceCoverage;
-			thermalEnergyRadiatedToAir += oceanRadiation - thermalEnergyRadiatedToIce;
+			thermalEnergyRadiatedToAir += oceanRadiation * (1.0f - iceCoverage);
 			//globalEnergyThermalOceanRadiation += oceanRadiation;
 		}
 
@@ -490,6 +495,12 @@ public struct TickCellJob : IJobParallelFor {
 			}
 		}
 
+		if (Atmosphere.GetAirTemperature(next.AirEnergy, next.AirMass, next.CloudMass, next.AirWaterMass) > 350)
+		{
+			surfaceElevation = 0;
+		}
+
+
 	}
 
 	static private void EvaporateWater(
@@ -567,14 +578,14 @@ public struct TickCellJob : IJobParallelFor {
 			float rainDropRadius = math.min(math.pow(rainDropVolume, 0.333f), worldData.rainDropMaxSize);
 			float rainDropVelocity = last.WindVertical - math.sqrt(8 * rainDropRadius * worldData.waterDensity * PlanetState.Gravity / (3 * worldData.airDensity * worldData.rainDropDragCoefficient));
 
-			next.CloudDropletMass += last.CloudMass * (worldData.RainDropFormationSpeedTemperature / dewPoint * math.pow(math.max(0, -rainDropVelocity) * worldData.RainDropCoalescenceWind, 2));
+			next.CloudDropletMass = math.max(0, next.CloudDropletMass + last.CloudMass * (worldData.RainDropFormationSpeedTemperature / dewPoint * math.pow(math.max(0, -rainDropVelocity) * worldData.RainDropCoalescenceWind, 2)));
 
 			if (rainDropVelocity < 0 && last.CloudDropletMass > 0)
 			{
 				float rainfall = last.CloudMass * math.saturate(-rainDropVelocity * worldData.RainfallRate);
 
 				next.CloudMass -= rainfall;
-				next.CloudDropletMass -= rainfall / last.CloudMass;
+				next.CloudDropletMass = math.max(0, next.CloudDropletMass - rainfall / last.CloudMass);
 
 				{
 					float rainDropFallTime = -last.CloudElevation / rainDropVelocity;
@@ -603,7 +614,7 @@ public struct TickCellJob : IJobParallelFor {
 			// dissapation
 			float dissapationSpeed = math.min(1.0f, worldData.CloudDissapationRateWind * math.max(0, -last.WindVertical) + worldData.CloudDissapationRateDryAir) * (1.0f - last.RelativeHumidity);
 			float dissapationMass = last.CloudMass * dissapationSpeed;
-			next.CloudDropletMass -= dissapationSpeed;
+			next.CloudDropletMass = math.max(0, next.CloudDropletMass - dissapationSpeed);
 			next.CloudMass -= dissapationMass;
 			next.AirWaterMass += dissapationMass;
 			next.AirEnergy -= dissapationMass * (last.AirTemperature * WorldData.SpecificHeatWater + WorldData.LatentHeatWaterVapor);
