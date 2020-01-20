@@ -55,6 +55,7 @@ public class WorldView : MonoBehaviour {
 		Ground
 	}
 
+	public bool ActiveCellLocked = false;
 	public int ActiveCellIndex = 0;
 	public TemperatureUnits ActiveTemperatureUnits = TemperatureUnits.Celsius;
 	public bool LerpStates = true;
@@ -147,15 +148,17 @@ public class WorldView : MonoBehaviour {
 		_terrainObject.transform.SetParent(Planet.transform, false);
 		var terrainFilter = _terrainObject.AddComponent<MeshFilter>();
 		var terrainSurfaceRenderer = _terrainObject.AddComponent<MeshRenderer>();
+		var terrainCollider = _terrainObject.AddComponent<MeshCollider>();
 		terrainSurfaceRenderer.material = TerrainMaterial;
-		terrainFilter.mesh = _terrainMesh;
+		terrainFilter.mesh = terrainCollider.sharedMesh = _terrainMesh;
 
 		_waterObject = new GameObject("Water Mesh");
 		_waterObject.transform.SetParent(Planet.transform, false);
 		var waterFilter = _waterObject.AddComponent<MeshFilter>();
 		var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
+		var waterCollider = _waterObject.AddComponent<MeshCollider>();
 		waterSurfaceRenderer.material = WaterMaterial;
-		waterFilter.mesh = _waterMesh;
+		waterFilter.mesh = waterCollider.sharedMesh = _waterMesh;
 
 		_cloudObject = new GameObject("Cloud Mesh");
 		_cloudObject.transform.SetParent(Planet.transform, false);
@@ -369,22 +372,30 @@ public class WorldView : MonoBehaviour {
 
 	public string GetCellInfo(CellInfoType cellInfoType)
 	{
-		switch (cellInfoType)
+		if (ActiveCellIndex >= 0)
 		{
-			case CellInfoType.Global:
-				return GetCellInfoGlobal(ref Sim.ActiveSimState);
-			case CellInfoType.Energy:
-				return GetCellInfoEnergy(ref Sim.ActiveSimState);
-			case CellInfoType.Cell:
-				return GetCellInfoCell(ref Sim.ActiveSimState);
-			case CellInfoType.Atmosphere:
-				return GetCellInfoAtmosphere(ref Sim.ActiveSimState);
-			case CellInfoType.Ground:
-				return GetCellInfoGround(ref Sim.ActiveSimState);
-			case CellInfoType.Water:
-				return GetCellInfoWater(ref Sim.ActiveSimState);
+			switch (cellInfoType)
+			{
+				case CellInfoType.Global:
+					return GetCellInfoGlobal(ref Sim.ActiveSimState);
+				case CellInfoType.Energy:
+					return GetCellInfoEnergy(ref Sim.ActiveSimState);
+				case CellInfoType.Cell:
+					return GetCellInfoCell(ref Sim.ActiveSimState);
+				case CellInfoType.Atmosphere:
+					return GetCellInfoAtmosphere(ref Sim.ActiveSimState);
+				case CellInfoType.Ground:
+					return GetCellInfoGround(ref Sim.ActiveSimState);
+				case CellInfoType.Water:
+					return GetCellInfoWater(ref Sim.ActiveSimState);
+			}
 		}
-		return "not implemented";
+		return "";
+	}
+
+	public int GetClosestVert(int triangleIndex)
+	{
+		return indices[triangleIndex * 3];
 	}
 
 	#region private functions
@@ -496,6 +507,7 @@ public class WorldView : MonoBehaviour {
 		var cell = state.Cells[ActiveCellIndex];
 		var display = state.DisplayCells[ActiveCellIndex];
 		string s = "";
+		s += "Index: " + ActiveCellIndex + "\n";
 		s += "Surface: " + (cell.Elevation + cell.WaterAndIceDepth).ToString("0.000") + " m\n";
 		s += "Elevation: " + cell.Elevation.ToString("0.000") + " m\n";
 		s += "H2O Depth: " + cell.WaterDepth.ToString("0.000") + " m\n";

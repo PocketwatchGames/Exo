@@ -25,10 +25,10 @@ public class CameraController : MonoBehaviour
     {
         Vector3 currentMousePosition = Input.mousePosition;
 
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(1))
             m_PrevMousePosition = currentMousePosition;
 
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButton(1))
         {
             Vector3 mouseDisplacement = currentMousePosition - m_PrevMousePosition;
 
