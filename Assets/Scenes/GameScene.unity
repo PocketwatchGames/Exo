@@ -613,7 +613,7 @@ PrefabInstance:
         type: 3}
       propertyPath: WorldView
       value: 
-      objectReference: {fileID: 1921819012}
+      objectReference: {fileID: 1344899376}
     - target: {fileID: 5783764982496763410, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -816,7 +816,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 0
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &285010537
 GameObject:
@@ -1414,7 +1414,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 1
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &374570520
 GameObject:
@@ -1583,7 +1583,7 @@ PrefabInstance:
         type: 3}
       propertyPath: WorldView
       value: 
-      objectReference: {fileID: 1921819012}
+      objectReference: {fileID: 1344899376}
     - target: {fileID: 5783764982496763410, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -2085,7 +2085,7 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1921819012}
+      - m_Target: {fileID: 1344899376}
         m_MethodName: OnWaterDisplayToggled
         m_Mode: 2
         m_Arguments:
@@ -2493,7 +2493,7 @@ PrefabInstance:
         type: 3}
       propertyPath: WorldView
       value: 
-      objectReference: {fileID: 1921819012}
+      objectReference: {fileID: 1344899376}
     - target: {fileID: 5783764982496763410, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -2871,7 +2871,7 @@ Transform:
   - {fileID: 1598314395}
   - {fileID: 1921819013}
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &580881376
 GameObject:
@@ -4378,7 +4378,7 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1921819012}
+      - m_Target: {fileID: 1344899376}
         m_MethodName: OnCloudDisplayToggled
         m_Mode: 2
         m_Arguments:
@@ -4748,7 +4748,7 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1921819012}
+      - m_Target: {fileID: 1344899376}
         m_MethodName: OnHUDWindChanged
         m_Mode: 2
         m_Arguments:
@@ -4936,6 +4936,86 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 28}
   m_Pivot: {x: 0.5, y: 1}
+--- !u!1 &1344899375
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1344899377}
+  - component: {fileID: 1344899376}
+  m_Layer: 0
+  m_Name: WorldView
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1344899376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1344899375}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40351b5bcc03b5d4390c8eefa6fd7c90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ActiveCellLocked: 0
+  ActiveCellIndex: 0
+  ActiveTemperatureUnits: 0
+  LerpStates: 1
+  TerrainScale: 100
+  MinElevation: -11000
+  MaxElevation: 10000
+  MaxDepth: 11000
+  maxCloudColor: 300
+  WaterDepthThreshold: 10
+  DisplayEnergyAborsobedMax: 300
+  DisplayRainfallMax: 5
+  DisplayMinSalinity: 0
+  DisplayMaxSalinity: 50
+  DisplayMaxWindSpeedLowerAtm: 50
+  DisplayMaxWindSpeedUpperAtm: 250
+  DisplayMaxWindSpeedSurfaceWater: 5
+  DisplayMaxWindSpeedDeepWater: 0.5
+  DisplayMaxVerticalWindSpeed: 1
+  DisplayEvaporationMax: 5
+  DisplayMaxCanopy: 1000
+  DisplayTemperatureMin: 223
+  DisplayTemperatureMax: 323
+  DisplayAbsoluteHumidityMax: 1000
+  DisplayGroundWaterMax: 100000
+  DisplayAirPressureMin: 97000
+  DisplayAirPressureMax: 110000
+  DisplayHeatAbsorbedMax: 4000
+  Sim: {fileID: 365555216}
+  Planet: {fileID: 1921819011}
+  Sun: {fileID: 575991941}
+  Moon: {fileID: 997923417}
+  ActiveMeshOverlay: 0
+  ActiveWindOverlay: 0
+  TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
+  WaterMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
+  CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
+--- !u!4 &1344899377
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1344899375}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 123.22814, y: 607.7244, z: -8.868648}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1356901962
 GameObject:
   m_ObjectHideFlags: 0
@@ -5205,8 +5285,9 @@ GameObject:
   - component: {fileID: 1510336704}
   - component: {fileID: 1510336703}
   - component: {fileID: 1510336702}
+  - component: {fileID: 1510336706}
   m_Layer: 5
-  m_Name: Canvas
+  m_Name: HUD
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5286,13 +5367,26 @@ RectTransform:
   - {fileID: 501465058}
   - {fileID: 1115973252}
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1510336706
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1510336701}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c736bd1f57f0dce4589111b41680d711, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  View: {fileID: 1344899376}
 --- !u!1 &1523203197
 GameObject:
   m_ObjectHideFlags: 0
@@ -5466,7 +5560,7 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1921819012}
+      - m_Target: {fileID: 1344899376}
         m_MethodName: OnHUDOverlayChanged
         m_Mode: 2
         m_Arguments:
@@ -6198,7 +6292,7 @@ PrefabInstance:
         type: 3}
       propertyPath: WorldView
       value: 
-      objectReference: {fileID: 1921819012}
+      objectReference: {fileID: 1344899376}
     - target: {fileID: 5783764982496763410, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -6777,7 +6871,7 @@ PrefabInstance:
         type: 3}
       propertyPath: WorldView
       value: 
-      objectReference: {fileID: 1921819012}
+      objectReference: {fileID: 1344899376}
     - target: {fileID: 5783764982496763410, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -6850,7 +6944,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1921819013}
-  - component: {fileID: 1921819012}
   m_Layer: 0
   m_Name: Planet
   m_TagString: Untagged
@@ -6858,51 +6951,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1921819012
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1921819011}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 40351b5bcc03b5d4390c8eefa6fd7c90, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ActiveCellIndex: 0
-  ActiveTemperatureUnits: 0
-  LerpStates: 1
-  TerrainScale: 100
-  MinElevation: -11000
-  MaxElevation: 10000
-  MaxDepth: 11000
-  maxCloudColor: 300
-  WaterDepthThreshold: 10
-  DisplayEnergyAborsobedMax: 300
-  DisplayRainfallMax: 5
-  DisplayMinSalinity: 0
-  DisplayMaxSalinity: 50
-  DisplayMaxWindSpeedLowerAtm: 50
-  DisplayMaxWindSpeedUpperAtm: 250
-  DisplayMaxWindSpeedSurfaceWater: 5
-  DisplayMaxWindSpeedDeepWater: 0.5
-  DisplayMaxVerticalWindSpeed: 1
-  DisplayEvaporationMax: 5
-  DisplayMaxCanopy: 1000
-  DisplayTemperatureMin: 223
-  DisplayTemperatureMax: 323
-  DisplayAbsoluteHumidityMax: 1000
-  DisplayGroundWaterMax: 100000
-  DisplayAirPressureMin: 97000
-  DisplayAirPressureMax: 110000
-  DisplayHeatAbsorbedMax: 4000
-  Sim: {fileID: 365555216}
-  ActiveMeshOverlay: 0
-  ActiveWindOverlay: 0
-  TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
-  WaterMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
-  CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
 --- !u!4 &1921819013
 Transform:
   m_ObjectHideFlags: 0
@@ -7752,7 +7800,7 @@ PrefabInstance:
         type: 3}
       propertyPath: WorldView
       value: 
-      objectReference: {fileID: 1921819012}
+      objectReference: {fileID: 1344899376}
     - target: {fileID: 5783764982496763410, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_AnchorMin.y

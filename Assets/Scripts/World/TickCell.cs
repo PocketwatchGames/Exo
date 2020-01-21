@@ -19,12 +19,14 @@ public struct TickCellJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<CellDiffusion> Diffusion;
 	[ReadOnly] public NativeArray<CellDiffusion> DiffusionLimit;
 	[ReadOnly] public NativeArray<SimCell> Last;
+	[ReadOnly] public NativeArray<SimWind> LastWind;
 	[ReadOnly] public WorldData worldData;
 	[ReadOnly] public StaticState staticState;
 
 	public void Execute(int i)
 	{
 		var last = Last[i];
+		var lastWind = LastWind[i];
 		var next = new SimCell();
 		var display = new DisplayCell();
 
@@ -51,9 +53,6 @@ public struct TickCellJob : IJobParallelFor {
 		next.AirTemperature = last.AirTemperature;
 		next.AirPressure = last.AirPressure;
 		next.WaterTemperature = last.WaterTemperature;
-		next.WindVertical = last.WindVertical;
-		next.WindSurface = last.WindSurface;
-		next.WindTropopause = last.WindTropopause;
 
 		float iceCoverage = math.min(1.0f, math.pow(last.IceMass * worldData.inverseFullIceCoverage, 0.6667f));
 		float surfaceElevation = last.Elevation + last.WaterAndIceDepth;
@@ -61,7 +60,7 @@ public struct TickCellJob : IJobParallelFor {
 		float dewPoint = Atmosphere.GetDewPoint(ref worldData, last.AirTemperature, last.RelativeHumidity);
 
 		DoEnergyCycle(i, ref next, ref display, surfaceElevation, evaporationRate, dewPoint, iceCoverage);
-		DoVerticalWaterMovement(i, ref last, ref next, ref display, surfaceElevation, dewPoint, evaporationRate);
+		DoVerticalWaterMovement(i, ref last, ref lastWind, ref next, ref display, surfaceElevation, dewPoint, evaporationRate);
 		DoDiffusion(i, ref next);
 
 
@@ -537,7 +536,7 @@ public struct TickCellJob : IJobParallelFor {
 
 
 
-	private void DoVerticalWaterMovement(int i, ref SimCell last, ref SimCell next, ref DisplayCell display, float surfaceElevation, float dewPoint, float evaporationRate)
+	private void DoVerticalWaterMovement(int i, ref SimCell last, ref SimWind lastWind, ref SimCell next, ref DisplayCell display, float surfaceElevation, float dewPoint, float evaporationRate)
 	{
 
 
@@ -558,9 +557,9 @@ public struct TickCellJob : IJobParallelFor {
 			}
 		}
 
-		if (last.WindVertical > 0)
+		if (lastWind.WindVertical > 0)
 		{
-			float humidityToCloud = math.min(1.0f, last.WindVertical * worldData.SecondsPerTick / (last.CloudElevation - surfaceElevation)) * next.AirWaterMass * worldData.HumidityToCloudPercent;
+			float humidityToCloud = math.min(1.0f, lastWind.WindVertical * worldData.SecondsPerTick / (last.CloudElevation - surfaceElevation)) * next.AirWaterMass * worldData.HumidityToCloudPercent;
 			next.CloudMass += humidityToCloud;
 			next.AirWaterMass -= humidityToCloud;
 
@@ -576,7 +575,7 @@ public struct TickCellJob : IJobParallelFor {
 			// TODO: airDesntiy and rainDensity should probably be cleaned up (derived from other data?)
 			float rainDropVolume = math.max(worldData.rainDropMinSize, last.CloudDropletMass / (last.CloudMass * worldData.waterDensity));
 			float rainDropRadius = math.min(math.pow(rainDropVolume, 0.333f), worldData.rainDropMaxSize);
-			float rainDropVelocity = last.WindVertical - math.sqrt(8 * rainDropRadius * worldData.waterDensity * PlanetState.Gravity / (3 * worldData.airDensity * worldData.rainDropDragCoefficient));
+			float rainDropVelocity = lastWind.WindVertical - math.sqrt(8 * rainDropRadius * worldData.waterDensity * PlanetState.Gravity / (3 * worldData.airDensity * worldData.rainDropDragCoefficient));
 
 			next.CloudDropletMass = math.max(0, next.CloudDropletMass + last.CloudMass * (worldData.RainDropFormationSpeedTemperature / dewPoint * math.pow(math.max(0, -rainDropVelocity) * worldData.RainDropCoalescenceWind, 2)));
 
@@ -612,7 +611,7 @@ public struct TickCellJob : IJobParallelFor {
 			}
 
 			// dissapation
-			float dissapationSpeed = math.min(1.0f, worldData.CloudDissapationRateWind * math.max(0, -last.WindVertical) + worldData.CloudDissapationRateDryAir) * (1.0f - last.RelativeHumidity);
+			float dissapationSpeed = math.min(1.0f, worldData.CloudDissapationRateWind * math.max(0, -lastWind.WindVertical) + worldData.CloudDissapationRateDryAir) * (1.0f - last.RelativeHumidity);
 			float dissapationMass = last.CloudMass * dissapationSpeed;
 			next.CloudDropletMass = math.max(0, next.CloudDropletMass - dissapationSpeed);
 			next.CloudMass -= dissapationMass;

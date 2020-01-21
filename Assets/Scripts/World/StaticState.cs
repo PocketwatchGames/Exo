@@ -16,6 +16,8 @@ public struct StaticState {
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
+	public NativeArray<StaticWindInfo> WindInfo;
+
 
 	private NativeArray<PolarCoordinateLookup> _polarLookup;
 	private NativeArray<PolarCoordinateLookup> _polarLookupLatitudeIndex;
@@ -24,13 +26,19 @@ public struct StaticState {
 		public float angle;
 		public int index;
 	}
+	public struct StaticWindInfo {
+		public float coriolisParam;
+		public float inverseCoriolisParam;
+	}
+
 
 	public void Init(float radius, Icosphere icosphere, ref WorldData worldData)
 	{
 		PlanetRadius = radius;
 		Count = icosphere.Vertices.Count;
 		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
-		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent);;
+		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent); ;
+		WindInfo = new NativeArray<StaticWindInfo>(Count, Allocator.Persistent); ;
 		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
 		_polarLookup = new NativeArray<PolarCoordinateLookup>(Count, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
@@ -85,6 +93,13 @@ public struct StaticState {
 				vertsByCoord.Add(latitude, vertsAtLatitude);
 			}
 			vertsAtLatitude.Add(Coordinate[i].x, i);
+
+			WindInfo[i] = new StaticWindInfo()
+			{
+				coriolisParam = math.sin(latitude * math.PI / 2),
+				inverseCoriolisParam = 1.0f / math.sin(latitude * math.PI / 2)
+			};
+
 		}
 
 		_polarLookupLatitudeIndex = new NativeArray<PolarCoordinateLookup>(vertsByCoord.Count, Allocator.Persistent);
@@ -102,26 +117,6 @@ public struct StaticState {
 		}
 
 
-		//for (int y = 0; y < size; y++)
-		//{
-		//	float latitude = ((float)y / size) * 2 - 1.0f;
-		//	float yaw = (float)(latitude * Math.PI * 1.5f);
-		//	float pitch = (float)(latitude * Math.PI * 3f);
-		//	float absSinPitch = (float)(Math.Abs(Math.Sin(pitch)));
-		//	float cosYaw = (float)Math.Cos(yaw);
-		//	float cosPitch = (float)Math.Cos(pitch);
-
-		//	float tropopauseElevation = (1.0f - Math.Abs(latitude)) * (MaxTropopauseElevation - MinTropopauseElevation) + MinTropopauseElevation + TropopauseElevationSeason * latitude;
-		//	windInfo[y] = new WindInfo()
-		//	{
-		//		latitude = latitude,
-		//		yaw = yaw,
-		//		tropopauseElevationMax = tropopauseElevation,
-		//		coriolisParam = Mathf.Sin(latitude * Mathf.PI / 2),
-		//		inverseCoriolisParam = 1.0f / Mathf.Sin(latitude * Mathf.PI / 2)
-		//	};
-		//}
-
 	}
 
 	public void Dispose()
@@ -129,6 +124,7 @@ public struct StaticState {
 		Neighbors.Dispose();
 		Coordinate.Dispose();
 		SphericalPosition.Dispose();
+		WindInfo.Dispose();
 		_polarLookup.Dispose();
 		_polarLookupLatitudeIndex.Dispose();
 	}

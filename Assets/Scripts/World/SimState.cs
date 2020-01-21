@@ -12,12 +12,14 @@ using Unity.Collections;
 public struct SimState {
 
 	public SimPlanetState PlanetState;
+	public SimWind[] Wind;
 	public SimCell[] Cells;
 	public NativeArray<DisplayCell> DisplayCells;
 
 	public void Init(int count)
 	{
 		Cells = new SimCell[count];
+		Wind = new SimWind[count];
 		DisplayCells = new NativeArray<DisplayCell>(count, Allocator.Persistent);
 	}
 
@@ -39,6 +41,7 @@ public struct SimPlanetState {
 	public float DistanceToSun;
 	public float3 Rotation;
 	public float3 Position;
+	public float AngularSpeed;
 }
 
 public struct SimCell {
@@ -67,9 +70,15 @@ public struct SimCell {
 	public float AirTemperature;
 	public float AirPressure;
 	public float WaterTemperature;
+}
+
+public struct SimWind {
 	public float WindVertical;
 	public float2 WindSurface;
 	public float2 WindTropopause;
+	public float2 CurrentSurface;
+	public float2 CurrentDeep;
+	public float CurrentVertical;
 }
 
 public struct DisplayCell {

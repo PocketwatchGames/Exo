@@ -49,6 +49,7 @@ public static class WorldGen {
 		state.PlanetState.Position = math.float3(1, 0, 0) * worldGenData.DistanceToSun;
 		state.PlanetState.SpinSpeed = math.PI * 2 / (worldGenData.SpinTime * 60 * 60);
 		state.PlanetState.OrbitSpeed = math.PI * 2 / worldGenData.OrbitTime;
+		state.PlanetState.AngularSpeed = math.PI * 2 / (worldGenData.SpinTime * 60 * 60);
 		state.PlanetState.GeothermalHeat = worldGenData.GeothermalHeat;
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
 		state.PlanetState.StratosphereMass = worldGenData.StratosphereMass;
@@ -58,6 +59,7 @@ public static class WorldGen {
 
 		for (int i = 0; i < state.Cells.Length; i++)
 		{
+			SimWind wind;
 			SimCell cell;
 			var coord = staticState.Coordinate[i] * 2 * inversePI;
 			var pos = staticState.SphericalPosition[i];
@@ -91,9 +93,9 @@ public static class WorldGen {
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 40) +
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 40);
 
-			cell.WindSurface = float2.zero;
-			cell.WindTropopause = float2.zero;
-			cell.WindVertical = 0;
+			wind.WindSurface = float2.zero;
+			wind.WindTropopause = float2.zero;
+			wind.WindVertical = 0;
 
 
 
@@ -192,6 +194,7 @@ public static class WorldGen {
 			cell.GroundEnergy = groundWaterEnergy + soilEnergy;
 
 
+			state.Cells[i] = cell;
 			state.Cells[i] = cell;
 		}
 	}
