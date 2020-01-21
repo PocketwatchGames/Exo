@@ -121,14 +121,6 @@ public struct TickCellJob : IJobParallelFor {
 		float newDewPoint = Atmosphere.GetDewPoint(ref worldData, next.AirTemperature, next.RelativeHumidity);
 		next.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, next.AirTemperature, newDewPoint, newSurfaceElevation);
 
-		//globalIceMass += nextState.IceMass[index];
-		//globalEnergyDeepWater += nextState.DeepWaterEnergy[index];
-		//globalEnergyShallowWater += nextState.ShallowWaterEnergy[index];
-		//globalEnergyLand += nextState.LandEnergy[index];
-		//globalEnergyLowerAir += nextState.LowerAirEnergy[index];
-		//globalEnergyUpperAir += nextState.UpperAirEnergy[index];
-		//atmosphericMass += nextState.LowerAirMass[index] + nextState.UpperAirMass[index];
-
 		if (math.isnan(next.CloudElevation) || math.isinf(next.CloudElevation) ||next.CloudElevation < 0 || next.CloudElevation > 10000)
 		{
 			surfaceElevation = 0;
@@ -177,7 +169,7 @@ public struct TickCellJob : IJobParallelFor {
 
 		if (solarRadiation > 0)
 		{
-//			globalEnergyIncoming += solarRadiation;
+			displayCell.EnergyIncoming += solarRadiation;
 
 			// TODO: reflect/absorb more in the atmosphere with a lower sun angle
 
@@ -185,7 +177,7 @@ public struct TickCellJob : IJobParallelFor {
 			// TODO: this process feels a little broken -- are we giving too much priority to reflecting/absorbing in certain layers?
 			float energyReflectedAtmosphere = solarRadiation * math.min(1, worldData.AtmosphericHeatReflection * (last.AirMass + last.AirWaterMass));
 			solarRadiation -= energyReflectedAtmosphere;
-//			globalEnergySolarReflectedAtmosphere += energyReflectedAtmosphere;
+			displayCell.EnergySolarReflectedAtmosphere += energyReflectedAtmosphere;
 
 			if (last.CloudMass > 0)
 			{
@@ -198,9 +190,9 @@ public struct TickCellJob : IJobParallelFor {
 				float absorbedByCloudsIncoming = solarRadiation * math.min(1.0f, worldData.AtmosphericHeatAbsorption * last.CloudMass);
 				solarRadiation -= absorbedByCloudsIncoming;
 				next.AirEnergy += absorbedByCloudsIncoming;
-				//globalEnergySolarAbsorbedClouds += absorbedByCloudsIncoming;
-				//globalEnergySolarAbsorbedAtmosphere += absorbedByCloudsIncoming;
-				//globalSolarEnergyReflectedClouds += energyReflectedClouds;
+				displayCell.EnergySolarAbsorbedCloud += absorbedByCloudsIncoming;
+				displayCell.EnergySolarAbsorbedAtmosphere += absorbedByCloudsIncoming;
+				displayCell.EnergySolarReflectedCloud += energyReflectedClouds;
 			}
 
 			// Absorbed by atmosphere
@@ -208,11 +200,11 @@ public struct TickCellJob : IJobParallelFor {
 			//	float absorbedByStratosphere = incomingRadiation * world.Data.AtmosphericHeatAbsorption * (state.StratosphereMass / massOfAtmosphericColumn);
 
 			float atmosphereAbsorptionRate = math.min(1, worldData.AtmosphericHeatAbsorption * (last.AirMass + last.AirWaterMass));
-			float absorbedByLowerAtmosphereIncoming = solarRadiation * atmosphereAbsorptionRate * atmosphericDepth;
+			float absorbedByAtmosphereIncoming = solarRadiation * atmosphereAbsorptionRate * atmosphericDepth;
 
-			next.AirEnergy += absorbedByLowerAtmosphereIncoming;
-			solarRadiation -= absorbedByLowerAtmosphereIncoming;
-			//globalEnergySolarAbsorbedAtmosphere += absorbedByLowerAtmosphereIncoming + absorbedByUpperAtmosphereIncoming;
+			next.AirEnergy += absorbedByAtmosphereIncoming;
+			solarRadiation -= absorbedByAtmosphereIncoming;
+			displayCell.EnergySolarAbsorbedAtmosphere += absorbedByAtmosphereIncoming;
 
 			// reflection off surface
 			float energyReflected = 0;
@@ -236,7 +228,7 @@ public struct TickCellJob : IJobParallelFor {
 				solarRadiation -= energyReflected;
 
 				// TODO: do we absorb some of this energy on the way back out of the atmosphere?
-				//globalEnergySolarReflectedSurface += energyReflected;
+				displayCell.EnergySolarReflectedSurface += energyReflected;
 			}
 
 			solarRadiationAbsorbed += solarRadiation;
@@ -287,7 +279,7 @@ public struct TickCellJob : IJobParallelFor {
 			next.WaterEnergy -= oceanRadiation;
 			thermalEnergyRadiatedToIce += oceanRadiation * iceCoverage;
 			thermalEnergyRadiatedToAir += oceanRadiation * (1.0f - iceCoverage);
-			//globalEnergyThermalOceanRadiation += oceanRadiation;
+			displayCell.EnergyThermalOceanRadiation += oceanRadiation;
 		}
 
 		// TODO: track and emit heat from ice
@@ -298,19 +290,19 @@ public struct TickCellJob : IJobParallelFor {
 
 		// Thermal energy from surface to air, space, reflected off clouds
 		{
-			//globalEnergyThermalSurfaceRadiation += thermalEnergyRadiatedToAir;
+			displayCell.EnergyThermalSurfaceRadiation += thermalEnergyRadiatedToAir;
 			float energyThroughAtmosphericWindow = thermalEnergyRadiatedToAir * worldData.EnergyLostThroughAtmosphereWindow;
 			thermalEnergyRadiatedToAir -= energyThroughAtmosphericWindow;
-			//globalEnergyThermalOutAtmosphericWindow += energyThroughAtmosphericWindow;
+			displayCell.EnergyThermalOutAtmosphericWindow += energyThroughAtmosphericWindow;
 
 			float absorbed = thermalEnergyRadiatedToAir * atmosphereEmissivity;
 			thermalEnergyRadiatedToAir -= absorbed;
 			next.AirEnergy += absorbed;
-			//globalEnergyThermalAbsorbedAtmosphere += absorbed;
+			displayCell.EnergyThermalAbsorbedAtmosphere += absorbed;
 
 			surfaceEnergyReflected = thermalEnergyRadiatedToAir * cloudCoverage * worldData.CloudOutgoingReflectionRate;
 			reflected += surfaceEnergyReflected;
-			//globalEnergyThermalOutAtmosphere += thermalEnergyRadiatedToAir - surfaceEnergyReflected;
+			displayCell.EnergyThermalOutAtmosphere += thermalEnergyRadiatedToAir - surfaceEnergyReflected;
 		}
 
 		// atmosphere radiation
@@ -323,11 +315,11 @@ public struct TickCellJob : IJobParallelFor {
 
 			float energyThroughAtmosphericWindow = energyEmitted * worldData.EnergyLostThroughAtmosphereWindow;
 			energyEmitted -= energyThroughAtmosphericWindow;
-			//globalEnergyThermalOutAtmosphericWindow += energyThroughAtmosphericWindow;
+			displayCell.EnergyThermalOutAtmosphericWindow += energyThroughAtmosphericWindow;
 
-			float lowerEnergyReflected = energyEmitted * cloudCoverage * worldData.CloudOutgoingReflectionRate;
-			reflected += lowerEnergyReflected;
-			//globalEnergyThermalOutAtmosphere += lowerEnergyEmitted - lowerEnergyReflected;
+			float energyReflected = energyEmitted * cloudCoverage * worldData.CloudOutgoingReflectionRate;
+			reflected += energyReflected;
+			displayCell.EnergyThermalOutAtmosphere += energyEmitted - energyReflected;
 		}
 
 		// reflected thermal radiation
@@ -336,13 +328,13 @@ public struct TickCellJob : IJobParallelFor {
 			next.AirEnergy += absorbed;
 			reflected -= absorbed;
 
-			//globalEnergyThermalAbsorbedAtmosphere += surfaceEnergyReflected * upperAtmosphereInfraredAbsorption + surfaceEnergyReflected * (1.0f - upperAtmosphereInfraredAbsorption) * lowerAtmosphereInfraredAbsorption;
+			displayCell.EnergyThermalAbsorbedAtmosphere += absorbed;
 
 			backRadiation += reflected;
 		}
 
-		//globalEnergyThermalBackRadiation += backRadiation;
-		//globalEnergySolarAbsorbedSurface += solarRadiationAbsorbed;
+		displayCell.EnergyThermalBackRadiation += backRadiation;
+		displayCell.EnergySolarAbsorbedSurface += solarRadiationAbsorbed;
 		displayCell.Heat = solarRadiationAbsorbed;
 
 		float radiationToSurface = solarRadiationAbsorbed + backRadiation;
@@ -383,7 +375,7 @@ public struct TickCellJob : IJobParallelFor {
 					next.WaterMass += iceMeltedFromConduction;
 					next.WaterEnergy += iceMeltedFromConduction * (WorldData.SpecificHeatWater * WorldData.FreezingTemperature);
 					remainingIceMass -= iceMeltedFromConduction;
-					//globalEnergySurfaceConduction -= energyTransfer;
+					displayCell.EnergySurfaceConduction -= energyTransfer;
 				}
 
 			}
@@ -429,7 +421,7 @@ public struct TickCellJob : IJobParallelFor {
 							ref next.WaterMass,
 							out evaporation,
 							out evapotranspiration);
-						//globalEnergyEvapotranspiration += evapotranspiration;
+						displayCell.EnergyEvapotranspiration += evapotranspiration;
 						displayCell.Evaporation = evaporation;
 					}
 				}
@@ -476,8 +468,8 @@ public struct TickCellJob : IJobParallelFor {
 					}
 					next.AirEnergy += oceanConduction;
 					next.WaterEnergy -= oceanConduction;
-					//globalEnergyOceanConduction += oceanConduction;
-					//globalEnergySurfaceConduction += oceanConduction;
+					displayCell.EnergyOceanConduction += oceanConduction;
+					displayCell.EnergySurfaceConduction += oceanConduction;
 				}
 
 				if (last.WaterTemperature < WorldData.FreezingTemperature)

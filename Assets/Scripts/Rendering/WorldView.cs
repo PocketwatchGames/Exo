@@ -55,8 +55,8 @@ public class WorldView : MonoBehaviour {
 		Ground
 	}
 
-	public bool ActiveCellLocked = false;
-	public int ActiveCellIndex = 0;
+	public bool ActiveCellLocked { get; private set; }
+	public int ActiveCellIndex { get; private set; }
 	public TemperatureUnits ActiveTemperatureUnits = TemperatureUnits.Celsius;
 	public bool LerpStates = true;
 
@@ -70,6 +70,7 @@ public class WorldView : MonoBehaviour {
 	public float maxCloudColor = 300.0f;
 	public float WaterDepthThreshold = 10;
 
+	public float DisplayWindMax = 1;
 	public float DisplayEnergyAborsobedMax = 300;
 	public float DisplayRainfallMax = 5.0f;
 	public float DisplayMinSalinity = 0;
@@ -103,6 +104,8 @@ public class WorldView : MonoBehaviour {
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
 	public Material CloudMaterial;
+	public GameObject SelectionCirclePrefab;
+	public GameObject WindArrowPrefab;
 
 	static Color32 green = new Color32(0, 220, 30, 255);
 	static Color32 grey = new Color32(50, 50, 80, 255);
@@ -125,6 +128,9 @@ public class WorldView : MonoBehaviour {
 	private GameObject _terrainObject;
 	private GameObject _waterObject;
 	private GameObject _cloudObject;
+	private GameObject _selectionCircle;
+
+	private GameObject[] _windArrows;
 
 	private float _tickLerpTime = 0;
 	private float _tickLerpTimeTotal = 1;
@@ -167,7 +173,16 @@ public class WorldView : MonoBehaviour {
 		cloudSurfaceRenderer.material = CloudMaterial;
 		cloudFilter.mesh = _cloudMesh;
 
+		_selectionCircle = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
+		_selectionCircle.transform.localScale *= 0.1f;
 
+		_windArrows = new GameObject[Sim.Icosphere.Vertices.Count];
+		for (int i = 0; i < Sim.Icosphere.Vertices.Count;i++)
+		{
+			_windArrows[i] = GameObject.Instantiate(WindArrowPrefab, Planet.transform);
+			_windArrows[i].SetActive(false);
+			_windArrows[i].hideFlags |= HideFlags.HideInHierarchy;
+		}
 
 		_nextRenderState = 0;
 		_lastRenderState = 0;
@@ -207,6 +222,8 @@ public class WorldView : MonoBehaviour {
 			_tickLerpTime -= Time.deltaTime * Sim.TimeScale;
 		}
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
+
+		UpdateWind();
 	}
 	public void StartLerp(float lerpTime)
 	{
@@ -251,9 +268,12 @@ public class WorldView : MonoBehaviour {
 			to.TerrainNormal[i] = Sim.Icosphere.Vertices[i];
 			to.WaterNormal[i] = Sim.Icosphere.Vertices[i];
 			to.CloudNormal[i] = Sim.Icosphere.Vertices[i];
+			to.SurfacePosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + math.max(fromCell.Roughness, fromCell.WaterAndIceDepth)) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
 			to.TerrainPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.Roughness) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
 			to.WaterPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius * math.saturate(fromCell.WaterDepth / fromCell.Roughness);
 			to.CloudPosition[i] = Sim.Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
+			to.Wind[i] = fromWind.WindSurface;
+			to.Current[i] = fromWind.CurrentSurface;
 		}
 
 	}
@@ -279,6 +299,9 @@ public class WorldView : MonoBehaviour {
 			state.CloudColor[i] = Color32.Lerp(lastState.CloudColor[i], nextState.CloudColor[i], t);
 			state.CloudPosition[i] = Vector3.Lerp(lastState.CloudPosition[i], nextState.CloudPosition[i], t);
 			state.CloudNormal[i] = Vector3.Lerp(lastState.CloudNormal[i], nextState.CloudNormal[i], t);
+			state.SurfacePosition[i] = Vector3.Lerp(lastState.SurfacePosition[i], nextState.SurfacePosition[i], t);
+			state.Wind[i] = Vector2.Lerp(lastState.Wind[i], nextState.Wind[i], t);
+			state.Current[i] = Vector2.Lerp(lastState.Current[i], nextState.Current[i], t);
 		}
 
 		_terrainMesh.vertices = state.TerrainPosition;
@@ -399,7 +422,24 @@ public class WorldView : MonoBehaviour {
 		return indices[triangleIndex * 3];
 	}
 
+	public void SetActiveCell(int index, bool locked)
+	{
+		_selectionCircle.SetActive(index >= 0);
+		ActiveCellIndex = index;
+		ActiveCellLocked = locked;
+		if (index >= 0)
+		{
+			//			var p = Sim.Icosphere.Vertices[index];
+			var pos = _renderStates[_curRenderState].SurfacePosition[index];
+			_selectionCircle.transform.localPosition = pos;
+			_selectionCircle.transform.localRotation = Quaternion.LookRotation(-pos);
+		}
+	}
+
+
+
 	#region private functions
+
 
 	private Color32 GetTerrainColor(ref WorldData worldData, ref StaticState staticState, ref SimCell cell)
 	{
@@ -507,8 +547,10 @@ public class WorldView : MonoBehaviour {
 	{
 		var cell = state.Cells[ActiveCellIndex];
 		var display = state.DisplayCells[ActiveCellIndex];
+		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
 		string s = "";
 		s += "Index: " + ActiveCellIndex + "\n";
+		s += "Coord: (" + math.degrees(coord.x).ToString("0.0") + ", " + math.degrees(coord.y).ToString("0.0") + ")\n";
 		s += "Surface: " + (cell.Elevation + cell.WaterAndIceDepth).ToString("0.000") + " m\n";
 		s += "Elevation: " + cell.Elevation.ToString("0.000") + " m\n";
 		s += "H2O Depth: " + cell.WaterDepth.ToString("0.000") + " m\n";
@@ -551,7 +593,45 @@ public class WorldView : MonoBehaviour {
 		s += "Salinity: " + (1000000 * cell.SaltMass / (cell.SaltMass + cell.WaterMass)).ToString("0.0") + " ppm\n";
 		return s;
 	}
+	private void UpdateWind()
+	{
+		switch (ActiveWindOverlay)
+		{
+			case WindOverlay.LowerAirWind:
+				UpdateArrowsWind();
+				break;
+			case WindOverlay.ShallowWaterCurrent:
+				UpdateArrowsCurrent();
+				break;
+		}
+	}
+	private void UpdateArrowsWind()
+	{
+		for (int i=0;i<_windArrows.Length;i++)
+		{
+			var wind = _renderStates[_curRenderState].Wind[i];
 
+			float speed = wind.magnitude / DisplayWindMax;
+			bool visible = speed > 0.01f;
+			_windArrows[i].SetActive(visible);
+			if (visible)
+			{
+				var coord = Sim.StaticState.Coordinate[i];
+				var pos = _renderStates[_curRenderState].SurfacePosition[i];
+				_windArrows[i].transform.localPosition = pos;
+				var forward = new Vector3(wind.x, wind.y, 0);
+				_windArrows[i].transform.localRotation = Quaternion.LookRotation(-pos, Vector3.Cross(forward, pos));
+				_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, speed);
+			}
+		}
+	}
+	private void UpdateArrowsCurrent()
+	{
+		for (int i = 0; i < _windArrows.Length; i++)
+		{
+
+		}
+	}
 
 	#endregion
 }

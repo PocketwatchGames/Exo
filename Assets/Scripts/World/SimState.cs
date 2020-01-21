@@ -12,6 +12,7 @@ using Unity.Collections;
 public struct SimState {
 
 	public SimPlanetState PlanetState;
+	public DisplayPlanet DisplayPlanet;
 	public SimWind[] Wind;
 	public SimCell[] Cells;
 	public NativeArray<DisplayCell> DisplayCells;
@@ -85,6 +86,62 @@ public struct DisplayCell {
 	public float Heat;
 	public float Rainfall;
 	public float Evaporation;
+
+	public float EnergyDelta;
+	public float EnergyIncoming;
+	public float EnergySolarReflectedCloud;
+	public float EnergySolarReflectedAtmosphere;
+	public float EnergySolarReflectedSurface;
+	public float EnergySolarAbsorbedCloud;
+	public float EnergySolarAbsorbedAtmosphere;
+	public float EnergySolarAbsorbedSurface;
+	public float EnergySolarAbsorbedOcean;
+	public float EnergyThermalOceanRadiation;
+	public float EnergyOceanConduction;
+	public float EnergyEvapotranspiration;
+	public float EnergyThermalOutAtmosphericWindow;
+	public float EnergyThermalOutAtmosphere;
+	public float EnergyThermalSurfaceRadiation;
+	public float EnergyThermalBackRadiation;
+	public float EnergyThermalAbsorbedAtmosphere;
+	public float EnergySurfaceConduction;
+}
+
+public struct DisplayPlanet {
+	public float EnergyDelta;
+	public float EnergyIncoming;
+	public float EnergySolarReflectedCloud;
+	public float EnergySolarReflectedAtmosphere;
+	public float EnergySolarReflectedSurface;
+	public float EnergySolarAbsorbedCloud;
+	public float EnergySolarAbsorbedAtmosphere;
+	public float EnergySolarAbsorbedSurface;
+	public float EnergySolarAbsorbedOcean;
+	public float EnergyThermalOceanRadiation;
+	public float EnergyOceanConduction;
+	public float EnergyEvapotranspiration;
+	public float EnergyThermalOutAtmosphericWindow;
+	public float EnergyThermalOutAtmosphere;
+	public float EnergyThermalSurfaceRadiation;
+	public float EnergyThermalBackRadiation;
+	public float EnergyThermalAbsorbedAtmosphere;
+	public float EnergySurfaceConduction;
+	public float EnergyUpperAir;
+	public float EnergyLowerAir;
+	public float EnergyShallowWater;
+	public float EnergyDeepWater;
+	public float EnergyLand;
+	public float IceMass;
+	public float Temperature;
+	public float OceanCoverage;
+	public float OceanVolume;
+	public float SeaLevel;
+	public float CloudCoverage;
+	public float Evaporation;
+	public float Rainfall;
+	public float WaterVapor;
+	public float CloudMass;
+	public float AtmosphericMass;
 }
 
 
@@ -96,23 +153,29 @@ public struct RenderState {
 	public Color32[] TerrainColor;
 	public Color32[] WaterColor;
 	public Color32[] CloudColor;
+	public Vector3[] SurfacePosition;
 	public Vector3[] TerrainPosition;
 	public Vector3[] WaterPosition;
 	public Vector3[] CloudPosition;
 	public Vector3[] TerrainNormal;
 	public Vector3[] WaterNormal;
 	public Vector3[] CloudNormal;
+	public Vector2[] Wind;
+	public Vector2[] Current;
 
 	public void Init(int count)
 	{
 		TerrainColor = new Color32[count];
 		WaterColor = new Color32[count];
 		CloudColor = new Color32[count];
+		SurfacePosition = new Vector3[count];
 		TerrainPosition = new Vector3[count];
 		WaterPosition = new Vector3[count];
 		CloudPosition = new Vector3[count];
 		TerrainNormal = new Vector3[count];
 		WaterNormal = new Vector3[count];
 		CloudNormal = new Vector3[count];
+		Wind = new Vector2[count];
+		Current = new Vector2[count];
 	}
 }

@@ -4965,8 +4965,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40351b5bcc03b5d4390c8eefa6fd7c90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ActiveCellLocked: 0
-  ActiveCellIndex: 0
   ActiveTemperatureUnits: 0
   LerpStates: 1
   TerrainScale: 100
@@ -5002,6 +5000,10 @@ MonoBehaviour:
   TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   WaterMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
+  SelectionCirclePrefab: {fileID: 3866112454082045954, guid: 3658dbd2135786c4294654eb7281919d,
+    type: 3}
+  WindArrowPrefab: {fileID: 7613255414872140438, guid: dfd7c185abe49744283f6f7f9c5ac455,
+    type: 3}
 --- !u!4 &1344899377
 Transform:
   m_ObjectHideFlags: 0

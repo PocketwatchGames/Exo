@@ -16,15 +16,14 @@ public class HUD : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-		if (!View.ActiveCellLocked)
-		{
-			View.ActiveCellIndex = GetMouseCellIndex();
-		}
+		
 		if (Input.GetMouseButtonUp(0))
 		{
 			int cellHovered = GetMouseCellIndex();
-			View.ActiveCellIndex = cellHovered;
-			View.ActiveCellLocked = cellHovered >= 0;
+			View.SetActiveCell(cellHovered, cellHovered >= 0);
+		} else if (!View.ActiveCellLocked)
+		{
+			View.SetActiveCell(GetMouseCellIndex(), false);
 		}
 	}
 

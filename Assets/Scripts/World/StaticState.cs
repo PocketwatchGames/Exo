@@ -55,7 +55,7 @@ public struct StaticState {
 		for (int i = 0; i < Count; i++)
 		{
 			var v = icosphere.Vertices[i];
-			Coordinate[i] = new float2(math.atan2(v.x, v.z), math.asin(v.y));
+			Coordinate[i] = new float2(-math.atan2(v.x, v.z), math.asin(v.y));
 			SphericalPosition[i] = new float3(v.x, v.y, v.z);
 		}
 
@@ -96,8 +96,8 @@ public struct StaticState {
 
 			WindInfo[i] = new StaticWindInfo()
 			{
-				coriolisParam = math.sin(latitude * math.PI / 2),
-				inverseCoriolisParam = 1.0f / math.sin(latitude * math.PI / 2)
+				coriolisParam = math.sin(latitude),
+				inverseCoriolisParam = 1.0f / math.sin(latitude)
 			};
 
 		}

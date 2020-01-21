@@ -83,8 +83,75 @@ public static class WorldTick {
 		for (int i = 0; i < nextState.Cells.Length; i++)
 		{
 			nextState.Cells[i] = cells[outputBuffer][i];
+			nextState.DisplayPlanet.AtmosphericMass += nextState.Cells[i].AirMass;
+			nextState.DisplayPlanet.CloudCoverage += nextState.Cells[i].CloudCoverage;
+			nextState.DisplayPlanet.CloudMass += nextState.Cells[i].CloudMass;
+			nextState.DisplayPlanet.EnergyDelta += nextState.DisplayCells[i].EnergyDelta;
+			nextState.DisplayPlanet.EnergyEvapotranspiration += nextState.DisplayCells[i].EnergyEvapotranspiration;
+			nextState.DisplayPlanet.EnergyIncoming += nextState.DisplayCells[i].EnergyIncoming;
+			nextState.DisplayPlanet.EnergyLand += nextState.Cells[i].GroundEnergy;
+			nextState.DisplayPlanet.EnergyLowerAir += nextState.Cells[i].AirEnergy;
+			nextState.DisplayPlanet.EnergyOceanConduction += nextState.DisplayCells[i].EnergyOceanConduction;
+			nextState.DisplayPlanet.EnergyShallowWater += nextState.Cells[i].WaterEnergy;
+			nextState.DisplayPlanet.EnergySolarAbsorbedAtmosphere += nextState.DisplayCells[i].EnergySolarAbsorbedAtmosphere;
+			nextState.DisplayPlanet.EnergySolarAbsorbedCloud += nextState.DisplayCells[i].EnergySolarAbsorbedCloud;
+			nextState.DisplayPlanet.EnergySolarAbsorbedOcean += nextState.DisplayCells[i].EnergySolarAbsorbedOcean;
+			nextState.DisplayPlanet.EnergySolarAbsorbedSurface += nextState.DisplayCells[i].EnergySolarAbsorbedSurface;
+			nextState.DisplayPlanet.EnergySolarReflectedAtmosphere += nextState.DisplayCells[i].EnergySolarReflectedAtmosphere;
+			nextState.DisplayPlanet.EnergySolarReflectedCloud += nextState.DisplayCells[i].EnergySolarReflectedCloud;
+			nextState.DisplayPlanet.EnergySolarReflectedSurface += nextState.DisplayCells[i].EnergySolarReflectedSurface;
+			nextState.DisplayPlanet.EnergySurfaceConduction += nextState.DisplayCells[i].EnergySurfaceConduction;
+			nextState.DisplayPlanet.EnergyThermalAbsorbedAtmosphere += nextState.DisplayCells[i].EnergySolarAbsorbedAtmosphere;
+			nextState.DisplayPlanet.EnergyThermalBackRadiation += nextState.DisplayCells[i].EnergyThermalBackRadiation;
+			nextState.DisplayPlanet.EnergyThermalOceanRadiation += nextState.DisplayCells[i].EnergyThermalOceanRadiation;
+			nextState.DisplayPlanet.EnergyThermalOutAtmosphere += nextState.DisplayCells[i].EnergyThermalOutAtmosphere;
+			nextState.DisplayPlanet.EnergyThermalOutAtmosphericWindow += nextState.DisplayCells[i].EnergyThermalOutAtmosphericWindow;
+			nextState.DisplayPlanet.EnergyThermalSurfaceRadiation += nextState.DisplayCells[i].EnergyThermalSurfaceRadiation;
+			nextState.DisplayPlanet.Evaporation += nextState.DisplayCells[i].Evaporation;
+			nextState.DisplayPlanet.IceMass += nextState.Cells[i].IceMass;
+			nextState.DisplayPlanet.OceanCoverage += math.saturate(nextState.Cells[i].WaterDepth / nextState.Cells[i].Roughness);
+			nextState.DisplayPlanet.OceanVolume += nextState.Cells[i].WaterAndIceDepth;
+			nextState.DisplayPlanet.Rainfall += nextState.DisplayCells[i].Rainfall;
+			nextState.DisplayPlanet.SeaLevel += nextState.Cells[i].Elevation + nextState.Cells[i].WaterAndIceDepth;
+			nextState.DisplayPlanet.Temperature += nextState.Cells[i].AirTemperature;
+			nextState.DisplayPlanet.WaterVapor += nextState.Cells[i].AirWaterMass;
+
 			nextState.Wind[i] = wind[outputBuffer][i];
 		}
+
+		float inverseCellCount = 1.0f / nextState.Cells.Length;
+		nextState.DisplayPlanet.AtmosphericMass *= inverseCellCount;
+		nextState.DisplayPlanet.CloudCoverage *= inverseCellCount;
+		nextState.DisplayPlanet.CloudMass *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyDelta *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyEvapotranspiration *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyIncoming *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyLand *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyLowerAir *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyOceanConduction *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyShallowWater *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySolarAbsorbedAtmosphere *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySolarAbsorbedCloud *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySolarAbsorbedOcean *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySolarAbsorbedSurface *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySolarReflectedAtmosphere *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySolarReflectedCloud *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySolarReflectedSurface *= inverseCellCount;
+		nextState.DisplayPlanet.EnergySurfaceConduction *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyThermalAbsorbedAtmosphere *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyThermalBackRadiation *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyThermalOceanRadiation *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyThermalOutAtmosphere *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyThermalOutAtmosphericWindow *= inverseCellCount;
+		nextState.DisplayPlanet.EnergyThermalSurfaceRadiation *= inverseCellCount;
+		nextState.DisplayPlanet.Evaporation *= inverseCellCount;
+		nextState.DisplayPlanet.IceMass *= inverseCellCount;
+		nextState.DisplayPlanet.OceanCoverage *= inverseCellCount;
+		nextState.DisplayPlanet.OceanVolume *= inverseCellCount;
+		nextState.DisplayPlanet.Rainfall *= inverseCellCount;
+		nextState.DisplayPlanet.SeaLevel *= inverseCellCount;
+		nextState.DisplayPlanet.Temperature *= inverseCellCount;
+		nextState.DisplayPlanet.WaterVapor *= inverseCellCount;
 
 
 		for (int i = 0; i < 2; i++)

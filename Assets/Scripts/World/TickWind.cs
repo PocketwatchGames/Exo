@@ -215,9 +215,9 @@ public struct WindJob : IJobParallelFor {
 		pressureGradientForce.y *= PlanetState.Gravity * staticState.InverseCellDiameter;
 		float2 wind = float2.zero;
 
-		//for (int i = 0; i < 4; i++)
+		//for (int i = 0; i < 6; i++)
 		//{
-		//	var nIndex = world.GetNeighborIndex(x, y, i);
+		//	var nIndex = staticState.Neighbors[index * 6 + i];
 		//	var neighborWind = state.UpperWind[nIndex];
 		//	float nWindSpeed = Mathf.Sqrt(neighborWind.x * neighborWind.x + neighborWind.y * neighborWind.y);
 		//	switch (i)
@@ -249,7 +249,7 @@ public struct WindJob : IJobParallelFor {
 		//	}
 		//}
 
-		var pressureWind = pressureGradientForce * worldData.PressureGradientWindMultiplier * PlanetState.Gravity;
+		var pressureWind = pressureGradientForce * worldData.PressureGradientWindMultiplier;
 		if (coriolisParam != 0)
 		{
 			float geostrophicInfluence = math.saturate(math.pow(math.abs(coriolisParam) * 2, 2)) * complementFrictionAtElevation * coriolisInfluenceAtElevation;
@@ -261,7 +261,6 @@ public struct WindJob : IJobParallelFor {
 			wind = pressureWind;
 		}
 		wind *= complementFrictionAtElevation * inverseDensity;
-
 
 		//wind += inertialWind * worldData.windInertia;
 		return wind;
@@ -284,6 +283,8 @@ public struct WindJob : IJobParallelFor {
 	{
 		float2 pressureDifferential = float2.zero;
 		float2 nWind = float2.zero;
+		var coord = staticState.Coordinate[index];
+		int nCount = 0;
 		for (int i = 0; i < 6; i++)
 		{
 			var nIndex = staticState.Neighbors[index*6+i];
@@ -301,24 +302,18 @@ public struct WindJob : IJobParallelFor {
 			float neighborTemperatureAtSeaLevel = nCell.AirTemperature - neighborTemperatureElevation * WorldData.TemperatureLapseRate;
 			float neighborElevationAtPressure = neighborTemperatureAtSeaLevel / WorldData.TemperatureLapseRate * (math.pow(pressureAtWindElevation / nCell.AirPressure, -1.0f / (worldData.PressureExponent * molarMass)) - 1);
 
-
-			//switch (i)
-			//{
-			//	case 0:
-			//		pressureDifferential.x += neighborElevationAtPressure - windElevation;
-			//		break;
-			//	case 1:
-			//		pressureDifferential.x -= neighborElevationAtPressure - windElevation;
-			//		break;
-			//	case 2:
-			//		pressureDifferential.y -= neighborElevationAtPressure - windElevation;
-			//		break;
-			//	case 3:
-			//		pressureDifferential.y += neighborElevationAtPressure - windElevation;
-			//		break;
-			//}
+			var coordDiff = staticState.Coordinate[nIndex] - coord;
+			if (coordDiff.x > math.PI / 2)
+			{
+				coordDiff.x -= math.PI * 2;
+			} else if (coordDiff.x < -math.PI / 2)
+			{
+				coordDiff.x += math.PI * 2;
+			}
+			pressureDifferential += (neighborElevationAtPressure - windElevation) * coordDiff;
+			nCount++;
 		}
-		return pressureDifferential;
+		return pressureDifferential / nCount;
 
 	}
 
