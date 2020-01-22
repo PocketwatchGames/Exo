@@ -162,6 +162,7 @@ public struct RenderState {
 	public Vector3[] CloudNormal;
 	public Vector2[] Wind;
 	public Vector2[] Current;
+	public float[] WaterDepth;
 
 	public void Init(int count)
 	{
@@ -177,5 +178,6 @@ public struct RenderState {
 		CloudNormal = new Vector3[count];
 		Wind = new Vector2[count];
 		Current = new Vector2[count];
+		WaterDepth = new float[count];
 	}
 }

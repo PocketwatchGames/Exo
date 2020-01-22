@@ -157,12 +157,12 @@ public static class Atmosphere {
 		return (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass) / (waterMass + saltMass);
 	}
 
-	static public float GetAtmosphericEmissivity(float airMass, float greenhouseGasMass, float humidity, float cloudMass)
+	static public float GetAtmosphericEmissivity(ref WorldData worldData, float airMass, float greenhouseGasMass, float humidity, float cloudMass)
 	{
-		return airMass * WorldData.AbsorptivityAir +
-			greenhouseGasMass * WorldData.AbsorptivityCarbonDioxide +
-			humidity * WorldData.AbsorptivityWaterVapor +
-			cloudMass * WorldData.AbsorptivityWaterLiquid;
+		return airMass * worldData.AbsorptivityAir +
+			greenhouseGasMass * worldData.AbsorptivityCarbonDioxide +
+			humidity * worldData.AbsorptivityWaterVapor +
+			cloudMass * worldData.AbsorptivityWaterLiquid;
 	}
 
 	static public float GetLandRadiationRate(ref WorldData worldData, float landEnergy, float groundWater, float soilFertility, float canopyCoverage)

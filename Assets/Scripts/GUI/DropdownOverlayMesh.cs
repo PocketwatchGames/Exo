@@ -2,5 +2,5 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DropdownWindOverlay : DropdownOverlay<WorldView.WindOverlay> { }
 
+public class DropdownOverlayMesh : DropdownOverlay<WorldView.MeshOverlay> { }

@@ -175,7 +175,7 @@ public struct TickCellJob : IJobParallelFor {
 
 			// reflect some rads off atmosphere and clouds
 			// TODO: this process feels a little broken -- are we giving too much priority to reflecting/absorbing in certain layers?
-			float energyReflectedAtmosphere = solarRadiation * math.min(1, worldData.AtmosphericHeatReflection * (last.AirMass + last.AirWaterMass));
+			float energyReflectedAtmosphere = solarRadiation * math.min(1, worldData.SolarReflectivityAir * (last.AirMass + last.AirWaterMass));
 			solarRadiation -= energyReflectedAtmosphere;
 			displayCell.EnergySolarReflectedAtmosphere += energyReflectedAtmosphere;
 
@@ -187,7 +187,7 @@ public struct TickCellJob : IJobParallelFor {
 				float energyReflectedClouds = solarRadiation * cloudReflectivity;
 				solarRadiation -= energyReflectedClouds;
 
-				float absorbedByCloudsIncoming = solarRadiation * math.min(1.0f, worldData.AtmosphericHeatAbsorption * last.CloudMass);
+				float absorbedByCloudsIncoming = solarRadiation * math.min(1.0f, worldData.SolarAbsorptivityCloud * last.CloudMass);
 				solarRadiation -= absorbedByCloudsIncoming;
 				next.AirEnergy += absorbedByCloudsIncoming;
 				displayCell.EnergySolarAbsorbedCloud += absorbedByCloudsIncoming;
@@ -199,7 +199,7 @@ public struct TickCellJob : IJobParallelFor {
 			// stratosphere accounts for about a quarter of atmospheric mass
 			//	float absorbedByStratosphere = incomingRadiation * world.Data.AtmosphericHeatAbsorption * (state.StratosphereMass / massOfAtmosphericColumn);
 
-			float atmosphereAbsorptionRate = math.min(1, worldData.AtmosphericHeatAbsorption * (last.AirMass + last.AirWaterMass));
+			float atmosphereAbsorptionRate = math.min(1, worldData.SolarAbsorptivityAir * last.AirMass + worldData.SolarAbsorptivityWaterVapor * last.AirWaterMass);
 			float absorbedByAtmosphereIncoming = solarRadiation * atmosphereAbsorptionRate * atmosphericDepth;
 
 			next.AirEnergy += absorbedByAtmosphereIncoming;
@@ -284,8 +284,7 @@ public struct TickCellJob : IJobParallelFor {
 
 		// TODO: track and emit heat from ice
 
-		float atmosphereEmissivity = Atmosphere.GetAtmosphericEmissivity(last.AirMass, last.AirMass * PlanetState.CarbonDioxide, last.AirWaterMass, last.CloudMass);
-		float emittedByAtmosphere = 0;
+		float atmosphereEmissivity = Atmosphere.GetAtmosphericEmissivity(ref worldData, last.AirMass, last.AirMass * PlanetState.CarbonDioxide, last.AirWaterMass, last.CloudMass);
 		float surfaceEnergyReflected = 0;
 
 		// Thermal energy from surface to air, space, reflected off clouds
@@ -300,7 +299,7 @@ public struct TickCellJob : IJobParallelFor {
 			next.AirEnergy += absorbed;
 			displayCell.EnergyThermalAbsorbedAtmosphere += absorbed;
 
-			surfaceEnergyReflected = thermalEnergyRadiatedToAir * cloudCoverage * worldData.CloudOutgoingReflectionRate;
+			surfaceEnergyReflected = thermalEnergyRadiatedToAir * cloudCoverage * worldData.ThermalReflectivityCloud;
 			reflected += surfaceEnergyReflected;
 			displayCell.EnergyThermalOutAtmosphere += thermalEnergyRadiatedToAir - surfaceEnergyReflected;
 		}
@@ -309,15 +308,13 @@ public struct TickCellJob : IJobParallelFor {
 		{
 			float energyEmitted = Atmosphere.GetRadiationRate(last.AirTemperature, atmosphereEmissivity) * worldData.SecondsPerTick;
 			next.AirEnergy -= 2 * energyEmitted;
-			emittedByAtmosphere += 2 * energyEmitted;
-
 			backRadiation += energyEmitted;
 
 			float energyThroughAtmosphericWindow = energyEmitted * worldData.EnergyLostThroughAtmosphereWindow;
 			energyEmitted -= energyThroughAtmosphericWindow;
 			displayCell.EnergyThermalOutAtmosphericWindow += energyThroughAtmosphericWindow;
 
-			float energyReflected = energyEmitted * cloudCoverage * worldData.CloudOutgoingReflectionRate;
+			float energyReflected = energyEmitted * cloudCoverage * worldData.ThermalReflectivityCloud;
 			reflected += energyReflected;
 			displayCell.EnergyThermalOutAtmosphere += energyEmitted - energyReflected;
 		}
@@ -439,6 +436,7 @@ public struct TickCellJob : IJobParallelFor {
 				// absorb remaining incoming radiation (we've already absorbed radiation in surface ice above)
 				float absorbedByWater = waterCoverage * radiationToSurface;
 				next.WaterEnergy += absorbedByWater;
+//				displayCell.EnergySolarAbsorbedOcean += absorbedByWater;
 				//
 				// heat transfer (both ways) based on temperature differential
 				// conduction to ice from below

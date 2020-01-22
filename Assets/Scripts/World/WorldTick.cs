@@ -119,40 +119,6 @@ public static class WorldTick {
 			nextState.Wind[i] = wind[outputBuffer][i];
 		}
 
-		float inverseCellCount = 1.0f / nextState.Cells.Length;
-		nextState.DisplayPlanet.AtmosphericMass *= inverseCellCount;
-		nextState.DisplayPlanet.CloudCoverage *= inverseCellCount;
-		nextState.DisplayPlanet.CloudMass *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyDelta *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyEvapotranspiration *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyIncoming *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyLand *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyLowerAir *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyOceanConduction *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyShallowWater *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySolarAbsorbedAtmosphere *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySolarAbsorbedCloud *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySolarAbsorbedOcean *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySolarAbsorbedSurface *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySolarReflectedAtmosphere *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySolarReflectedCloud *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySolarReflectedSurface *= inverseCellCount;
-		nextState.DisplayPlanet.EnergySurfaceConduction *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyThermalAbsorbedAtmosphere *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyThermalBackRadiation *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyThermalOceanRadiation *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyThermalOutAtmosphere *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyThermalOutAtmosphericWindow *= inverseCellCount;
-		nextState.DisplayPlanet.EnergyThermalSurfaceRadiation *= inverseCellCount;
-		nextState.DisplayPlanet.Evaporation *= inverseCellCount;
-		nextState.DisplayPlanet.IceMass *= inverseCellCount;
-		nextState.DisplayPlanet.OceanCoverage *= inverseCellCount;
-		nextState.DisplayPlanet.OceanVolume *= inverseCellCount;
-		nextState.DisplayPlanet.Rainfall *= inverseCellCount;
-		nextState.DisplayPlanet.SeaLevel *= inverseCellCount;
-		nextState.DisplayPlanet.Temperature *= inverseCellCount;
-		nextState.DisplayPlanet.WaterVapor *= inverseCellCount;
-
 
 		for (int i = 0; i < 2; i++)
 		{

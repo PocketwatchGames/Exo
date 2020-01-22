@@ -55,10 +55,15 @@ public struct WorldData {
 	[Header("Atmospheric Energy Cycle")]
 	// atmospheric heat balance https://energyeducation.ca/encyclopedia/Earth%27s_heat_balance
 	// https://en.wikipedia.org/wiki/Earth%27s_energy_budget
-	public float AtmosphericHeatAbsorption; // total absorbed by atmosphere AFTER reflection about 30%
-	public float AtmosphericHeatReflection; // 7% is reflected due to atmospheric scattering 
-	public float CloudSolarAbsorptivity; // 6% absorbed by clouds
-	public float CloudOutgoingReflectionRate;
+	// https://en.wikipedia.org/wiki/Electromagnetic_absorption_by_water
+	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.
+	public float SolarAbsorptivityAir; // total absorbed by atmosphere AFTER reflection about 30%
+	public float SolarAbsorptivityWaterVapor; // total absorbed by atmosphere AFTER reflection about 30%
+	public float SolarAbsorptivityCloud; // 6% absorbed by clouds
+	public float SolarReflectivityAir; // 7% is reflected due to atmospheric scattering 
+	public float SolarReflectivityWater; // 7% is reflected due to atmospheric scattering 
+	public float SolarReflectivityCloud;
+
 	//public float EvaporativeHeatLoss = 0.6f; // global average = 78 watts
 	// Net Back Radiation: The ocean transmits electromagnetic radiation into the atmosphere in proportion to the fourth power of the sea surface temperature(black-body radiation)
 	// https://eesc.columbia.edu/courses/ees/climate/lectures/o_atm.html
@@ -71,8 +76,8 @@ public struct WorldData {
 	public float SoilHeatDepth;
 
 	// TODO: tune these to match the science
+	public float ThermalReflectivityCloud;
 	public float CloudMassFullAbsorption; // how much heat gain/loss is caused by cloud cover (cumulus cloud is 0.3g/cubic meter, and about 3 kilometers high)
-	public float EnergyEmittedByAtmosphere; // how fast a cell loses heat an min elevation, no cloud cover, global average = 199 watts
 	public float EnergyLostThroughAtmosphereWindow; // AKA Atmospheric window global average = 40 watts = 6.7% of all surface and atmospheric radiation
 	public float minCloudFreezingTemperature;
 	public float maxCloudFreezingTemperature;
@@ -81,6 +86,14 @@ public struct WorldData {
 	public float rainDropSizeAlbedoMax;
 	public float cloudAlbedo;
 	public float AlbedoReductionSoilQuality;
+
+	// https://en.wikipedia.org/wiki/Electromagnetic_absorption_by_water
+	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.
+	// carbon dioxide accounts for just 26% of the greenhouse effect.
+	public float AbsorptivityCarbonDioxide;
+	public float AbsorptivityAir;
+	public float AbsorptivityWaterLiquid;
+	public float AbsorptivityWaterVapor;
 
 	[Header("Evap, Humidity and Clouds")]
 	public float DewPointTemperatureRange;
@@ -154,16 +167,13 @@ public struct WorldData {
 	public const float MassIce = 919f;
 	public const float MassSoil = 1200f;
 	public const float MassSand = 1600f;
-	public const float AbsorptivityWaterLiquid = 0.05f;
-	public const float AbsorptivityCarbonDioxide = 0.25f;
-	public const float AbsorptivityWaterVapor = 0.00155f;
-	public const float AbsorptivityAir = 0.0005f;
 
 
 	[NonSerialized]	public float SpecificGasConstantDryAir;
 	[NonSerialized]	public float DryAirAdiabaticLapseRate;
 	[NonSerialized]	public float EvapTemperatureRange;
 	[NonSerialized] public float TicksPerSecond;
+	[NonSerialized] public float TicksPerYear;
 	[NonSerialized] public float inverseFullCanopyCoverage;
 	[NonSerialized] public float inverseFullWaterCoverage;
 	[NonSerialized] public float inverseFullIceCoverage;
@@ -186,6 +196,7 @@ public struct WorldData {
 
 		DryAirAdiabaticLapseRate = AdiabaticLapseRate / SpecificHeatAtmosphere;
 		TicksPerSecond = 1.0f / SecondsPerTick;
+		TicksPerYear = 60 * 60 * 24 * 365 / SecondsPerTick;
 
 		inverseFullCanopyCoverage = 1.0f / FullCanopyCoverage;
 		inverseFullWaterCoverage = 1.0f / FullWaterCoverage;

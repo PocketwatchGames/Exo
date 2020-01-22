@@ -87,7 +87,7 @@ public static class WorldGen {
 				math.pow(
 					0.75f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 30) +
 					0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 1.0f, 30),
-					2);
+					1);
 
 			cell.RelativeHumidity =
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 40) +

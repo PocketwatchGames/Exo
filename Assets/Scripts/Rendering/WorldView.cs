@@ -70,7 +70,9 @@ public class WorldView : MonoBehaviour {
 	public float maxCloudColor = 300.0f;
 	public float WaterDepthThreshold = 10;
 
-	public float DisplayWindMax = 1;
+	public float DisplayWindMax = 100;
+	public float DisplayCurrentMax = 10;
+	public float DisplayCurrentMinDepth = 50;
 	public float DisplayEnergyAborsobedMax = 300;
 	public float DisplayRainfallMax = 5.0f;
 	public float DisplayMinSalinity = 0;
@@ -272,6 +274,7 @@ public class WorldView : MonoBehaviour {
 			to.TerrainPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.Roughness) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
 			to.WaterPosition[i] = Sim.Icosphere.Vertices[i] * ((fromCell.Elevation + fromCell.WaterDepth) * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius * math.saturate(fromCell.WaterDepth / fromCell.Roughness);
 			to.CloudPosition[i] = Sim.Icosphere.Vertices[i] * (fromCell.CloudElevation * TerrainScale + staticState.PlanetRadius) / staticState.PlanetRadius;
+			to.WaterDepth[i] = fromCell.WaterDepth;
 			to.Wind[i] = fromWind.WindSurface;
 			to.Current[i] = fromWind.CurrentSurface;
 		}
@@ -302,6 +305,7 @@ public class WorldView : MonoBehaviour {
 			state.SurfacePosition[i] = Vector3.Lerp(lastState.SurfacePosition[i], nextState.SurfacePosition[i], t);
 			state.Wind[i] = Vector2.Lerp(lastState.Wind[i], nextState.Wind[i], t);
 			state.Current[i] = Vector2.Lerp(lastState.Current[i], nextState.Current[i], t);
+			state.WaterDepth[i] = math.lerp(lastState.WaterDepth[i], nextState.WaterDepth[i], t);
 		}
 
 		_terrainMesh.vertices = state.TerrainPosition;
@@ -356,6 +360,11 @@ public class WorldView : MonoBehaviour {
 		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 
+	public void OnHUDTemperatureUnitsChanged(UnityEngine.UI.Dropdown dropdown)
+	{
+		ActiveTemperatureUnits = (WorldView.TemperatureUnits)dropdown.value;
+	}
+
 	public static float ConvertTemperature(float kelvin, TemperatureUnits units)
 	{
 		switch (units)
@@ -396,23 +405,20 @@ public class WorldView : MonoBehaviour {
 
 	public string GetCellInfo(CellInfoType cellInfoType)
 	{
-		if (ActiveCellIndex >= 0)
+		switch (cellInfoType)
 		{
-			switch (cellInfoType)
-			{
-				case CellInfoType.Global:
-					return GetCellInfoGlobal(ref Sim.ActiveSimState);
-				case CellInfoType.Energy:
-					return GetCellInfoEnergy(ref Sim.ActiveSimState);
-				case CellInfoType.Cell:
-					return GetCellInfoCell(ref Sim.ActiveSimState);
-				case CellInfoType.Atmosphere:
-					return GetCellInfoAtmosphere(ref Sim.ActiveSimState);
-				case CellInfoType.Ground:
-					return GetCellInfoGround(ref Sim.ActiveSimState);
-				case CellInfoType.Water:
-					return GetCellInfoWater(ref Sim.ActiveSimState);
-			}
+			case CellInfoType.Global:
+				return GetCellInfoGlobal(ref Sim.ActiveSimState);
+			case CellInfoType.Energy:
+				return GetCellInfoEnergy(ref Sim.ActiveSimState);
+			case CellInfoType.Cell:
+				return GetCellInfoCell(ref Sim.ActiveSimState);
+			case CellInfoType.Atmosphere:
+				return GetCellInfoAtmosphere(ref Sim.ActiveSimState);
+			case CellInfoType.Ground:
+				return GetCellInfoGround(ref Sim.ActiveSimState);
+			case CellInfoType.Water:
+				return GetCellInfoWater(ref Sim.ActiveSimState);
 		}
 		return "";
 	}
@@ -434,6 +440,11 @@ public class WorldView : MonoBehaviour {
 			_selectionCircle.transform.localPosition = pos;
 			_selectionCircle.transform.localRotation = Quaternion.LookRotation(-pos);
 		}
+	}
+
+	float ConvertTileEnergyToWatts(float energy)
+	{
+		return energy * 1000 / Sim.WorldData.SecondsPerTick;
 	}
 
 
@@ -533,18 +544,59 @@ public class WorldView : MonoBehaviour {
 
 	private string GetCellInfoGlobal(ref SimState state)
 	{
+		float inverseCellCount = 1.0f / state.Cells.Length;
 		string s = "";
 		s += "CO2: " + state.PlanetState.CarbonDioxide;
+		s += "\nCloud Coverage: " + (state.DisplayPlanet.CloudCoverage * 100 * inverseCellCount).ToString("0.0") + "%";
+		s += "\nGlobal Sea Level: " + (state.DisplayPlanet.SeaLevel * inverseCellCount).ToString("0.00");
+		s += "\nOcean Coverage: " + (state.DisplayPlanet.OceanCoverage * 100 * inverseCellCount).ToString("0.0") + "%";
+		s += "\nOcean Volume: " + (state.DisplayPlanet.OceanVolume / 1000000000 * inverseCellCount).ToString("0.00") + " B";
+		s += "\nTemperature: " + GetTemperatureString(state.DisplayPlanet.Temperature * inverseCellCount, ActiveTemperatureUnits, 2);
+		s += "\nAtmospheric Mass: " + (state.DisplayPlanet.AtmosphericMass / 1000).ToString("0") + " K";
+		s += "\nCloud Mass: " + (state.DisplayPlanet.CloudMass).ToString("0.00");
+		s += "\nWater Vapor: " + (state.DisplayPlanet.WaterVapor).ToString("0.00");
+		s += "\nRainfall: " + (state.DisplayPlanet.Rainfall * Sim.WorldData.TicksPerYear * inverseCellCount / WorldData.MassWater).ToString("0.00");
+		s += "\nEvaporation: " + (state.DisplayPlanet.Evaporation * Sim.WorldData.TicksPerYear * inverseCellCount / WorldData.MassWater).ToString("0.00");
+
 		return s;
 	}
 	private string GetCellInfoEnergy(ref SimState state)
 	{
 		string s = "";
-		s += "Delta: ";
+
+		float inverseCellCount = 1.0f / state.Cells.Length;
+		var totalReflected = state.DisplayPlanet.EnergySolarReflectedCloud + state.DisplayPlanet.EnergySolarReflectedAtmosphere + state.DisplayPlanet.EnergySolarReflectedSurface;
+		var totalOutgoing = state.DisplayPlanet.EnergyThermalOutAtmosphericWindow + state.DisplayPlanet.EnergyThermalOutAtmosphere;
+		s += "Delta: " + ConvertTileEnergyToWatts((state.DisplayPlanet.EnergyIncoming - totalReflected - totalOutgoing) * inverseCellCount).ToString("0.0");
+		s += "\nS Incoming: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyIncoming * inverseCellCount).ToString("0.0");
+		s += "\nS Reflected: " + ConvertTileEnergyToWatts((totalReflected) * inverseCellCount).ToString("0.0");
+		s += "\nS Reflected Cloud: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySolarReflectedCloud * inverseCellCount).ToString("0.0");
+		s += "\nS Reflected Atmos: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySolarReflectedAtmosphere * inverseCellCount).ToString("0.0");
+		s += "\nS Reflected Surf: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySolarReflectedSurface * inverseCellCount).ToString("0.0");
+		s += "\nS Abs Atm Total: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySolarAbsorbedAtmosphere * inverseCellCount).ToString("0.0");
+		s += "\nS Abs Clouds: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySolarAbsorbedCloud * inverseCellCount).ToString("0.0");
+		s += "\nS Abs Surface Total: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySolarAbsorbedSurface * inverseCellCount).ToString("0.0");
+		s += "\nS Abs Ocean: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySolarAbsorbedOcean * inverseCellCount).ToString("0.0");
+		s += "\nT Outgoing: " + ConvertTileEnergyToWatts(totalOutgoing * inverseCellCount).ToString("0.0");
+		s += "\nT Out Atm Window: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyThermalOutAtmosphericWindow * inverseCellCount).ToString("0.0");
+		s += "\nT Out Radiation: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyThermalOutAtmosphere * inverseCellCount).ToString("0.0");
+		s += "\nT Surface Radiation: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyThermalSurfaceRadiation * inverseCellCount).ToString("0.0");
+		s += "\nT Atm Absorbed: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyThermalAbsorbedAtmosphere * inverseCellCount).ToString("0.0");
+		s += "\nT Back Radiation: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyThermalBackRadiation * inverseCellCount).ToString("0.0");
+		s += "\nEvapotranspiration: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyEvapotranspiration * inverseCellCount).ToString("0.0");
+		s += "\nSurface Conduction: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergySurfaceConduction * inverseCellCount).ToString("0.0");
+		s += "\nOcean Radiation: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyThermalOceanRadiation * inverseCellCount).ToString("0.0");
+		s += "\nOcean Conduction: " + ConvertTileEnergyToWatts(state.DisplayPlanet.EnergyOceanConduction * inverseCellCount).ToString("0.0");
+
+
+
 		return s;
 	}
 	private string GetCellInfoCell(ref SimState state)
 	{
+		if (ActiveCellIndex < 0)
+			return "";
+
 		var cell = state.Cells[ActiveCellIndex];
 		var display = state.DisplayCells[ActiveCellIndex];
 		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
@@ -562,6 +614,9 @@ public class WorldView : MonoBehaviour {
 	}
 	private string GetCellInfoAtmosphere(ref SimState state)
 	{
+		if (ActiveCellIndex < 0)
+			return "";
+
 		var cell = state.Cells[ActiveCellIndex];
 		var wind = state.Wind[ActiveCellIndex];
 		string s = "";
@@ -576,6 +631,9 @@ public class WorldView : MonoBehaviour {
 	}
 	private string GetCellInfoGround(ref SimState state)
 	{
+		if (ActiveCellIndex < 0)
+			return "";
+
 		var cell = state.Cells[ActiveCellIndex];
 		string s = "";
 		s += "Fertility: " + cell.SoilFertility + "\n";
@@ -587,6 +645,9 @@ public class WorldView : MonoBehaviour {
 	}
 	private string GetCellInfoWater(ref SimState state)
 	{
+		if (ActiveCellIndex < 0)
+			return "";
+
 		var cell = state.Cells[ActiveCellIndex];
 		string s = "";
 		s += "Temp: " + GetTemperatureString(cell.WaterTemperature, ActiveTemperatureUnits, 0) + "\n";
@@ -616,11 +677,9 @@ public class WorldView : MonoBehaviour {
 			_windArrows[i].SetActive(visible);
 			if (visible)
 			{
-				var coord = Sim.StaticState.Coordinate[i];
 				var pos = _renderStates[_curRenderState].SurfacePosition[i];
 				_windArrows[i].transform.localPosition = pos;
-				var forward = new Vector3(wind.x, wind.y, 0);
-				_windArrows[i].transform.localRotation = Quaternion.LookRotation(-pos, Vector3.Cross(forward, pos));
+				_windArrows[i].transform.localRotation = Quaternion.LookRotation(-pos, Vector3.Cross(new Vector3(wind.x, wind.y, 0), pos));
 				_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, speed);
 			}
 		}
@@ -629,6 +688,19 @@ public class WorldView : MonoBehaviour {
 	{
 		for (int i = 0; i < _windArrows.Length; i++)
 		{
+			var wind = _renderStates[_curRenderState].Current[i];
+
+			float speed = wind.magnitude / DisplayCurrentMax;
+			bool visible = speed > 0.01f && _renderStates[_curRenderState].WaterDepth[i] >= DisplayCurrentMinDepth;
+			_windArrows[i].SetActive(visible);
+			if (visible)
+			{
+				var pos = _renderStates[_curRenderState].SurfacePosition[i];
+				_windArrows[i].transform.localPosition = pos;
+				var forward = new Vector3(wind.x, wind.y, 0);
+				_windArrows[i].transform.localRotation = Quaternion.LookRotation(-pos, Vector3.Cross(new Vector3(wind.x, wind.y, 0), pos));
+				_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, speed);
+			}
 
 		}
 	}
