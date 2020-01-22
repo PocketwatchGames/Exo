@@ -35,7 +35,20 @@ public class HUD : MonoBehaviour
 		{
 			if (hit.collider.gameObject.transform.parent == View.Planet.transform)
 			{
-				return View.GetClosestVert(hit.triangleIndex);
+				int tIndex;
+				if (hit.barycentricCoordinate.x > hit.barycentricCoordinate.y && hit.barycentricCoordinate.x > hit.barycentricCoordinate.z)
+				{
+					tIndex = 0;
+				}
+				else if (hit.barycentricCoordinate.y > hit.barycentricCoordinate.z)
+				{
+					tIndex = 1;
+				}
+				else
+				{
+					tIndex = 2;
+				}
+				return View.GetClosestVert(hit.triangleIndex, tIndex);
 			}
 		}
 		return -1;

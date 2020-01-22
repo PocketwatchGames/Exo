@@ -423,9 +423,9 @@ public class WorldView : MonoBehaviour {
 		return "";
 	}
 
-	public int GetClosestVert(int triangleIndex)
+	public int GetClosestVert(int triangleIndex, int vIndex)
 	{
-		return indices[triangleIndex * 3];
+		return indices[triangleIndex * 3 + vIndex];
 	}
 
 	public void SetActiveCell(int index, bool locked)
