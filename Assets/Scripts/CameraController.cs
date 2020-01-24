@@ -37,10 +37,6 @@ public class CameraController : MonoBehaviour
 
 			m_OffsetYaw += mouseDisplacement.x * m_MouseDragSensitivity;
 			m_OffsetPitch += mouseDisplacement.y * m_MouseDragSensitivity;
-
-
-
-
         }
 
         float mouseWheelInput = Input.GetAxis("Mouse ScrollWheel");

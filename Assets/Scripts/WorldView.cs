@@ -490,7 +490,7 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.LowerAirPressure:
 				return Lerp(NormalizedRainbow, dependent.AirPressure, DisplayAirPressureMin, DisplayAirPressureMax);
 			case MeshOverlay.LowerAirTemperature:
-				return Lerp(NormalizedRainbow, cell.AirTemperature, DisplayTemperatureMin, DisplayTemperatureMax);
+				return Lerp(NormalizedRainbow, dependent.AirTemperature, DisplayTemperatureMin, DisplayTemperatureMax);
 			case MeshOverlay.ShallowWaterTemperature:
 				return Lerp(NormalizedRainbow, dependent.WaterTemperature, DisplayTemperatureMin, DisplayTemperatureMax);
 			case MeshOverlay.GroundTemperature:
@@ -553,7 +553,6 @@ public class WorldView : MonoBehaviour {
 		s += "\nOcean Coverage: " + (state.DisplayPlanet.OceanCoverage * 100 * inverseCellCount).ToString("0.0") + "%";
 		s += "\nOcean Volume: " + (state.DisplayPlanet.OceanVolume / 1000000000 * inverseCellCount).ToString("0.00") + " B";
 		s += "\nTemperature: " + GetTemperatureString(state.DisplayPlanet.Temperature * inverseCellCount, ActiveTemperatureUnits, 2);
-		s += "\nAtmospheric Mass: " + (state.DisplayPlanet.AtmosphericMass / 1000).ToString("0") + " K";
 		s += "\nCloud Mass: " + (state.DisplayPlanet.CloudMass).ToString("0.00");
 		s += "\nWater Vapor: " + (state.DisplayPlanet.WaterVapor).ToString("0.00");
 		s += "\nRainfall: " + (state.DisplayPlanet.Rainfall * Sim.WorldData.TicksPerYear * inverseCellCount / WorldData.MassWater).ToString("0.00");
@@ -624,7 +623,7 @@ public class WorldView : MonoBehaviour {
 		var dependent = state.CellDependents[ActiveCellIndex];
 		var wind = state.CellDependents[ActiveCellIndex];
 		string s = "";
-		s += "Temp: " + GetTemperatureString(cell.AirTemperature, ActiveTemperatureUnits, 0) + "\n";
+		s += "Temp: " + GetTemperatureString(dependent.AirTemperature, ActiveTemperatureUnits, 0) + "\n";
 		s += "Pressure: " + dependent.AirPressure.ToString("0") + " Pa\n";
 		s += "Wind Horz: (" + wind.WindSurface.x.ToString("0.0") + ", " + wind.WindSurface.y.ToString("0.0") + ") m/s\n";
 		s += "Wind Vert: " + wind.WindVertical.ToString("0.0") + " m/s\n";

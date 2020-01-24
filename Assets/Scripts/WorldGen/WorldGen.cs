@@ -108,26 +108,26 @@ public static class WorldGen {
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 15460, -5, 5) +
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.2f, 431, -10, 10) +
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 6952, -10, 10);
-			cell.AirTemperature =
+			dependent.AirTemperature =
 				regionalTemperatureVariation + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.15f, 80, -5, 5) +
 				(1.0f - coord.y * coord.y) * (worldGenData.MaxTemperature - worldGenData.MinTemperature) + worldGenData.MinTemperature + WorldData.TemperatureLapseRate * surfaceElevation;
 
 			dependent.AirPressure = WorldData.StaticPressure - regionalTemperatureVariation * 1000;
 			cell.CloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2000, 0, 1), 0.85f) * Mathf.Pow(dependent.RelativeHumidity, 0.5f);
 			cell.CloudDropletMass = GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2001, 0, 1) * dependent.RelativeHumidity * Mathf.Pow(cell.CloudMass, 2) * worldData.rainDropMaxSize;
-			float totalAirMass = Atmosphere.GetAirMass(ref worldData, dependent.AirPressure, surfaceElevation, cell.AirTemperature, WorldData.MolarMassAir, state.PlanetState.Gravity) - state.PlanetState.StratosphereMass;
+			float totalAirMass = Atmosphere.GetAirMass(ref worldData, dependent.AirPressure, surfaceElevation, dependent.AirTemperature, WorldData.MolarMassAir, state.PlanetState.Gravity) - state.PlanetState.StratosphereMass;
 			//float totalAirMassLower = Atmosphere.GetAirMass(world, cell.LowerAirPressure, surfaceElevation, cell.LowerAirTemperature, world.Data.MolarMassAir * (1.0f - relativeHumidity) + world.Data.MolarMassWater * relativeHumidity) - state.StratosphereMass - totalAirMassUpper;
-			cell.AirWaterMass = Atmosphere.GetAbsoluteHumidity(ref worldData, cell.AirTemperature, dependent.RelativeHumidity, totalAirMass, inverseDewPointTemperatureRange);
+			cell.AirWaterMass = Atmosphere.GetAbsoluteHumidity(ref worldData, dependent.AirTemperature, dependent.RelativeHumidity, totalAirMass, inverseDewPointTemperatureRange);
 
 			//cell.UpperAirMass = totalAirMassUpper - state.CloudMass;
 			//cell.UpperAirPressure = Atmosphere.GetAirPressure(world, state.UpperAirMass + state.StratosphereMass + state.CloudMass, surfaceElevation + world.Data.BoundaryZoneElevation, state.UpperAirTemperature, Atmosphere.GetMolarMassAir(world, state.UpperAirMass + state.StratosphereMass, state.CloudMass));
-			dependent.AirMass = totalAirMass - cell.AirWaterMass - cell.CloudMass;
+			cell.AirMass = totalAirMass - cell.AirWaterMass - cell.CloudMass;
 			dependent.AirPressure = Atmosphere.GetAirPressure(
 				ref worldData,
-				dependent.AirMass + state.PlanetState.StratosphereMass + cell.AirWaterMass + cell.CloudMass,
+				cell.AirMass + state.PlanetState.StratosphereMass + cell.AirWaterMass + cell.CloudMass,
 				surfaceElevation,
-				cell.AirTemperature,
-				Atmosphere.GetMolarMassAir(dependent.AirMass + state.PlanetState.StratosphereMass, cell.AirWaterMass + cell.CloudMass),
+				dependent.AirTemperature,
+				Atmosphere.GetMolarMassAir(cell.AirMass + state.PlanetState.StratosphereMass, cell.AirWaterMass + cell.CloudMass),
 				state.PlanetState.Gravity);
 
 			cell.GroundWaterDepth = GetPerlinMinMax(pos.x, pos.y, pos.z, 1f, 60423, worldGenData.GroundWaterDepthMin, worldGenData.GroundWaterDepthMax);
@@ -142,7 +142,7 @@ public static class WorldGen {
 			}
 
 			//			cell.UpperAirEnergy = Atmosphere.GetAirEnergy(world, state.UpperAirTemperature, state.UpperAirMass, state.CloudMass, worldData.SpecificHeatWater);
-			dependent.AirEnergy = Atmosphere.GetAirEnergy(cell.AirTemperature, dependent.AirMass, cell.CloudMass, cell.AirWaterMass);
+			cell.AirEnergy = Atmosphere.GetAirEnergy(dependent.AirTemperature, cell.AirMass, cell.CloudMass, cell.AirWaterMass);
 
 			//float shallowDepth = Mathf.Min(data.DeepOceanDepth, depth);
 			//float deepDepth = Mathf.Max(0, depth - data.DeepOceanDepth);
@@ -151,16 +151,16 @@ public static class WorldGen {
 
 			float minOceanTemperature = WorldData.FreezingTemperature + 0.1f;
 			//float oceanDepthMinTemperature = 2000;
-			dependent.WaterTemperature = Mathf.Max(WorldData.FreezingTemperature, cell.AirTemperature + 2);
+			dependent.WaterTemperature = Mathf.Max(WorldData.FreezingTemperature, dependent.AirTemperature + 2);
 			float waterAndSaltMass = GetWaterMass(worldData, dependent.WaterDepth, dependent.WaterTemperature, salinity);
 			cell.WaterMass = waterAndSaltMass * (1.0f - salinity);
 			cell.SaltMass = waterAndSaltMass * salinity;
-			cell.IceMass = math.min(cell.WaterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(cell.AirTemperature - WorldData.FreezingTemperature) / 10));
+			cell.IceMass = math.min(cell.WaterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(dependent.AirTemperature - WorldData.FreezingTemperature) / 10));
 			cell.WaterMass -= cell.IceMass;
 			cell.WaterEnergy = Atmosphere.GetWaterEnergy(dependent.WaterTemperature, cell.WaterMass, cell.SaltMass);
 			dependent.WaterDensity = Atmosphere.GetWaterDensity(ref worldData, cell.WaterEnergy, cell.SaltMass, cell.WaterMass);
 			dependent.WaterAndIceDepth = dependent.WaterDepth + cell.IceMass / WorldData.MassIce;
-			dependent.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, cell.AirTemperature, Atmosphere.GetDewPoint(ref worldData, cell.AirTemperature, dependent.RelativeHumidity), surfaceElevation);
+			dependent.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, dependent.AirTemperature, Atmosphere.GetDewPoint(ref worldData, dependent.AirTemperature, dependent.RelativeHumidity), surfaceElevation);
 
 			////	float deepOceanTemperature = (state.ShallowWaterTemperature - minOceanTemperature) * (1.0f - Mathf.Pow(Mathf.Clamp01(deepDepth / oceanDepthMinTemperature), 2f)) + minOceanTemperature;
 			//float deepOceanTemperature = minOceanTemperature;
@@ -176,11 +176,11 @@ public static class WorldGen {
 
 			if (dependent.WaterDepth == 0)
 			{
-				terrain.Vegetation = terrain.SoilFertility * (cell.GroundWater) * (1.0f - waterCoverage) * (1.0f - iceCoverage) * Mathf.Clamp01((cell.AirTemperature - worldData.MinTemperatureCanopy) / (worldData.MaxTemperatureCanopy - worldData.MinTemperatureCanopy));
+				terrain.Vegetation = terrain.SoilFertility * (cell.GroundWater) * (1.0f - waterCoverage) * (1.0f - iceCoverage) * Mathf.Clamp01((dependent.AirTemperature - worldData.MinTemperatureCanopy) / (worldData.MaxTemperatureCanopy - worldData.MinTemperatureCanopy));
 			}
 
 			// TODO: ground water energy should probably be tracked independently
-			float groundRadiationRate = Atmosphere.GetRadiationRate(cell.AirTemperature, WorldData.EmissivityDirt);
+			float groundRadiationRate = Atmosphere.GetRadiationRate(dependent.AirTemperature, WorldData.EmissivityDirt);
 			float groundWaterEnergy = cell.GroundWater * WorldData.SpecificHeatWater * worldData.maxGroundWaterTemperature;
 			float landMass = (WorldData.MassSand - WorldData.MassSoil) * terrain.SoilFertility + WorldData.MassSoil;
 			float heatingDepth = terrain.SoilFertility * worldData.SoilHeatDepth;
@@ -191,7 +191,7 @@ public static class WorldGen {
 			}
 			else
 			{
-				groundTemperature = cell.AirTemperature;
+				groundTemperature = dependent.AirTemperature;
 			}
 			float soilEnergy = groundTemperature * WorldData.SpecificHeatSoil * heatingDepth * landMass;
 			cell.GroundEnergy = groundWaterEnergy + soilEnergy;

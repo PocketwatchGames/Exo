@@ -81,7 +81,6 @@ public struct PlanetDisplay {
 	public float Rainfall;
 	public float WaterVapor;
 	public float CloudMass;
-	public float AtmosphericMass;
 }
 
 
@@ -102,7 +101,8 @@ public struct CellState {
 	public float AirWaterMass;
 	public float CloudMass;
 	public float CloudDropletMass;
-	public float AirTemperature;
+	public float AirMass;
+	public float AirEnergy;
 }
 
 public struct CellDependent {
@@ -112,14 +112,13 @@ public struct CellDependent {
 	public float2 CurrentSurface;
 	public float2 CurrentDeep;
 	public float CurrentVertical;
-	public float AirMass;
-	public float AirEnergy;
 	public float CloudCoverage;
 	public float CloudElevation;
 	public float WaterDepth;
 	public float WaterAndIceDepth;
 	public float WaterDensity;
 	public float RelativeHumidity;
+	public float AirTemperature;
 	public float AirPressure;
 	public float WaterTemperature;
 }

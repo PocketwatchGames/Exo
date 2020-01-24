@@ -59,7 +59,6 @@ public static class WorldTick {
 
 			var cellJob = new TickCellJob();
 			cellJob.Cells = cells[(i + 1) % 2];
-			cellJob.NextDependent = dependents[(i + 1) % 2];
 			cellJob.DisplayCells = nextState.CellDisplays;
 			cellJob.Last = cells[lastStateIndex];
 			cellJob.LastDependent = dependents[lastStateIndex];
@@ -98,14 +97,13 @@ public static class WorldTick {
 
 		for (int i = 0; i < nextState.CellDependents.Length; i++)
 		{
-			nextState.DisplayPlanet.AtmosphericMass += nextState.CellDependents[i].AirMass;
 			nextState.DisplayPlanet.CloudCoverage += nextState.CellDependents[i].CloudCoverage;
 			nextState.DisplayPlanet.CloudMass += nextState.CellStates[i].CloudMass;
 			nextState.DisplayPlanet.EnergyDelta += nextState.CellDisplays[i].EnergyDelta;
 			nextState.DisplayPlanet.EnergyEvapotranspiration += nextState.CellDisplays[i].EnergyEvapotranspiration;
 			nextState.DisplayPlanet.EnergyIncoming += nextState.CellDisplays[i].EnergyIncoming;
 			nextState.DisplayPlanet.EnergyLand += nextState.CellStates[i].GroundEnergy;
-			nextState.DisplayPlanet.EnergyLowerAir += nextState.CellDependents[i].AirEnergy;
+			nextState.DisplayPlanet.EnergyLowerAir += nextState.CellStates[i].AirEnergy;
 			nextState.DisplayPlanet.EnergyOceanConduction += nextState.CellDisplays[i].EnergyOceanConduction;
 			nextState.DisplayPlanet.EnergyShallowWater += nextState.CellStates[i].WaterEnergy;
 			nextState.DisplayPlanet.EnergySolarAbsorbedAtmosphere += nextState.CellDisplays[i].EnergySolarAbsorbedAtmosphere;
@@ -128,7 +126,7 @@ public static class WorldTick {
 			nextState.DisplayPlanet.OceanVolume += nextState.CellDependents[i].WaterAndIceDepth;
 			nextState.DisplayPlanet.Rainfall += nextState.CellDisplays[i].Rainfall;
 			nextState.DisplayPlanet.SeaLevel += nextState.CellTerrains[i].Elevation + nextState.CellDependents[i].WaterAndIceDepth;
-			nextState.DisplayPlanet.Temperature += nextState.CellStates[i].AirTemperature;
+			nextState.DisplayPlanet.Temperature += nextState.CellDependents[i].AirTemperature;
 			nextState.DisplayPlanet.WaterVapor += nextState.CellStates[i].AirWaterMass;
 
 			nextState.CellStates[i] = cells[outputBuffer][i];
