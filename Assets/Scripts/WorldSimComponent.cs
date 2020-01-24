@@ -5,7 +5,7 @@ using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Collections;
 
-public class WorldSim : MonoBehaviour
+public class WorldSimComponent : MonoBehaviour
 {
 
 	public int Seed;

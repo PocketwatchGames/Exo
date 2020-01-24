@@ -97,7 +97,7 @@ public class WorldView : MonoBehaviour {
 
 
 	[Header("References")]
-	public WorldSim Sim;
+	public WorldSimComponent Sim;
 	public GameObject Planet;
 	public GameObject Sun;
 	public GameObject Moon;
