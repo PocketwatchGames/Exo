@@ -7,14 +7,32 @@ public class HUD : MonoBehaviour
 {
 	public WorldView View;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+	public enum HUDMode {
+		Info,
+		Geology,
+		Plants,
+		Animals,
+		Count
+	}
 
-    // Update is called once per frame
-    void Update()
+	public HUDMode ActiveMode;
+
+	public List<GameObject> ModeComponentsInfo;
+	public List<GameObject> ModeComponentsGeo;
+	public List<GameObject> ModeComponentsPlants;
+	public List<GameObject> ModeComponentsAnimals;
+
+	private List<List<GameObject>> ModeComponents;
+
+	// Start is called before the first frame update
+	void Start()
+    {
+		ModeComponents = new List<List<GameObject>> { ModeComponentsInfo, ModeComponentsGeo, ModeComponentsPlants, ModeComponentsAnimals };
+		SetMode(HUDMode.Info);
+	}
+
+// Update is called once per frame
+void Update()
     {
 		
 		if (Input.GetMouseButtonUp(0))
@@ -52,5 +70,29 @@ public class HUD : MonoBehaviour
 			}
 		}
 		return -1;
+	}
+
+	public void SetMode(HUDMode mode)
+	{
+		for (int i = 0; i < (int)HUDMode.Count; i++)
+		{
+			if (i != (int)mode)
+			{
+				foreach (var c in ModeComponents[i])
+				{
+					c.SetActive(false);
+				}
+			}
+		}
+		foreach (var c in ModeComponents[(int)mode])
+		{
+			c.SetActive(true);
+		}
+		ActiveMode = mode;
+	}
+
+	public void OnHUDModeClicked(UnityEngine.UI.Button button)
+	{
+		SetMode(button.GetComponent<HUDModeButton>().Mode);
 	}
 }
