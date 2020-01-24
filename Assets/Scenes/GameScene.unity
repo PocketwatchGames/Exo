@@ -1674,7 +1674,7 @@ MonoBehaviour:
     SoilHeatDepth: 2
     ThermalReflectivityCloud: 0
     CloudMassFullAbsorption: 0.5
-    EnergyLostThroughAtmosphereWindow: 0.067
+    EnergyLostThroughAtmosphereWindow: 0.1007
     minCloudFreezingTemperature: 0
     maxCloudFreezingTemperature: 0
     maxCloudSlopeAlbedo: 0

@@ -11,26 +11,28 @@ using Unity.Collections;
 
 public struct SimState {
 
-	public SimPlanetState PlanetState;
-	public DisplayPlanet DisplayPlanet;
-	public SimWind[] Wind;
-	public SimCell[] Cells;
-	public NativeArray<DisplayCell> DisplayCells;
+	public PlanetState PlanetState;
+	public PlanetDisplay DisplayPlanet;
+	public CellDependent[] CellDependents;
+	public CellState[] CellStates;
+	public CellTerrain[] CellTerrains;
+	public NativeArray<CellDisplay> CellDisplays;
 
 	public void Init(int count)
 	{
-		Cells = new SimCell[count];
-		Wind = new SimWind[count];
-		DisplayCells = new NativeArray<DisplayCell>(count, Allocator.Persistent);
+		CellStates = new CellState[count];
+		CellTerrains = new CellTerrain[count];
+		CellDependents = new CellDependent[count];
+		CellDisplays = new NativeArray<CellDisplay>(count, Allocator.Persistent);
 	}
 
 	public void Dispose()
 	{
-		DisplayCells.Dispose();
+		CellDisplays.Dispose();
 	}
 }
 
-public struct SimPlanetState {
+public struct PlanetState {
 	public int Ticks;
 	public float Gravity;
 	public float SpinSpeed;
@@ -45,48 +47,7 @@ public struct SimPlanetState {
 	public float AngularSpeed;
 }
 
-public struct SimCell {
-	public float Elevation;
-	public float Roughness;
-	public float SoilFertility;
-	public float Vegetation;
-	public float IceMass;
-	public float WaterMass;
-	public float WaterEnergy;
-	public float SaltMass;
-	public float GroundEnergy;
-	public float GroundWater;
-	public float GroundWaterDepth;
-	public float AirMass;
-	public float AirEnergy;
-	public float AirWaterMass;
-	public float CloudMass;
-	public float CloudDropletMass;
-	public float CloudCoverage;
-	public float CloudElevation;
-	public float WaterDepth;
-	public float WaterAndIceDepth;
-	public float WaterDensity;
-	public float RelativeHumidity;
-	public float AirTemperature;
-	public float AirPressure;
-	public float WaterTemperature;
-}
-
-public struct SimWind {
-	public float WindVertical;
-	public float2 WindSurface;
-	public float2 WindTropopause;
-	public float2 CurrentSurface;
-	public float2 CurrentDeep;
-	public float CurrentVertical;
-}
-
-public struct DisplayCell {
-	public float Heat;
-	public float Rainfall;
-	public float Evaporation;
-
+public struct PlanetDisplay {
 	public float EnergyDelta;
 	public float EnergyIncoming;
 	public float EnergySolarReflectedCloud;
@@ -99,28 +60,7 @@ public struct DisplayCell {
 	public float EnergyThermalOceanRadiation;
 	public float EnergyOceanConduction;
 	public float EnergyEvapotranspiration;
-	public float EnergyThermalOutAtmosphericWindow;
-	public float EnergyThermalOutAtmosphere;
-	public float EnergyThermalSurfaceRadiation;
-	public float EnergyThermalBackRadiation;
-	public float EnergyThermalAbsorbedAtmosphere;
-	public float EnergySurfaceConduction;
-}
-
-public struct DisplayPlanet {
-	public float EnergyDelta;
-	public float EnergyIncoming;
-	public float EnergySolarReflectedCloud;
-	public float EnergySolarReflectedAtmosphere;
-	public float EnergySolarReflectedSurface;
-	public float EnergySolarAbsorbedCloud;
-	public float EnergySolarAbsorbedAtmosphere;
-	public float EnergySolarAbsorbedSurface;
-	public float EnergySolarAbsorbedOcean;
-	public float EnergyThermalOceanRadiation;
-	public float EnergyOceanConduction;
-	public float EnergyEvapotranspiration;
-	public float EnergyThermalOutAtmosphericWindow;
+	public float EnergyThermalSurfaceOutAtmosphericWindow;
 	public float EnergyThermalOutAtmosphere;
 	public float EnergyThermalSurfaceRadiation;
 	public float EnergyThermalBackRadiation;
@@ -142,6 +82,71 @@ public struct DisplayPlanet {
 	public float WaterVapor;
 	public float CloudMass;
 	public float AtmosphericMass;
+}
+
+
+public struct CellTerrain {
+	public float Elevation;
+	public float Roughness;
+	public float SoilFertility;
+	public float Vegetation;
+}
+public struct CellState {
+	public float IceMass;
+	public float WaterMass;
+	public float WaterEnergy;
+	public float SaltMass;
+	public float GroundEnergy;
+	public float GroundWater;
+	public float GroundWaterDepth;
+	public float AirWaterMass;
+	public float CloudMass;
+	public float CloudDropletMass;
+	public float AirTemperature;
+}
+
+public struct CellDependent {
+	public float WindVertical;
+	public float2 WindSurface;
+	public float2 WindTropopause;
+	public float2 CurrentSurface;
+	public float2 CurrentDeep;
+	public float CurrentVertical;
+	public float AirMass;
+	public float AirEnergy;
+	public float CloudCoverage;
+	public float CloudElevation;
+	public float WaterDepth;
+	public float WaterAndIceDepth;
+	public float WaterDensity;
+	public float RelativeHumidity;
+	public float AirPressure;
+	public float WaterTemperature;
+}
+
+public struct CellDisplay {
+	public float Heat;
+	public float Rainfall;
+	public float Evaporation;
+
+	public float EnergyDelta;
+	public float EnergyIncoming;
+	public float EnergySolarReflectedCloud;
+	public float EnergySolarReflectedAtmosphere;
+	public float EnergySolarReflectedSurface;
+	public float EnergySolarAbsorbedCloud;
+	public float EnergySolarAbsorbedAtmosphere;
+	public float EnergySolarAbsorbedSurface;
+	public float EnergySolarAbsorbedOcean;
+	public float EnergyThermalOceanRadiation;
+	public float EnergyOceanConduction;
+	public float EnergyEvapotranspiration;
+	public float EnergyThermalSurfaceOutAtmosphericWindow;
+	public float EnergyThermalOutAtmosphere;
+	public float EnergyThermalSurfaceRadiation;
+	public float EnergyThermalBackRadiation;
+	public float EnergyThermalAbsorbedAtmosphere;
+	public float EnergySurfaceConduction;
 }
 
 

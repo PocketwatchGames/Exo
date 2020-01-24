@@ -19,13 +19,6 @@ public struct StaticState {
 	public NativeArray<StaticWindInfo> WindInfo;
 
 
-	private NativeArray<PolarCoordinateLookup> _polarLookup;
-	private NativeArray<PolarCoordinateLookup> _polarLookupLatitudeIndex;
-
-	private struct PolarCoordinateLookup {
-		public float angle;
-		public int index;
-	}
 	public struct StaticWindInfo {
 		public float coriolisParam;
 		public float inverseCoriolisParam;
@@ -40,7 +33,6 @@ public struct StaticState {
 		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent); ;
 		WindInfo = new NativeArray<StaticWindInfo>(Count, Allocator.Persistent); ;
 		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
-		_polarLookup = new NativeArray<PolarCoordinateLookup>(Count, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
 		CellDiameter = 2 * math.sqrt(CellSurfaceArea / (4 * math.PI));
@@ -102,20 +94,6 @@ public struct StaticState {
 
 		}
 
-		_polarLookupLatitudeIndex = new NativeArray<PolarCoordinateLookup>(vertsByCoord.Count, Allocator.Persistent);
-		int curIndex = 0;
-		for (int i = 0; i< vertsByCoord.Count;i++)
-		{
-			var vertsByLat = vertsByCoord.ElementAt(i);
-			_polarLookupLatitudeIndex[i] = new PolarCoordinateLookup { angle = vertsByLat.Key, index = curIndex };
-			for (int j = 0; j < vertsByLat.Value.Count; j++)
-			{
-				var vertByLong = vertsByLat.Value.ElementAt(j);
-				_polarLookup[curIndex] = new PolarCoordinateLookup { angle = vertByLong.Key, index = vertByLong.Value };
-				curIndex++;
-			}
-		}
-
 
 	}
 
@@ -125,32 +103,7 @@ public struct StaticState {
 		Coordinate.Dispose();
 		SphericalPosition.Dispose();
 		WindInfo.Dispose();
-		_polarLookup.Dispose();
-		_polarLookupLatitudeIndex.Dispose();
 	}
 
-	public int GetClosestVertByPolarCoord(float2 pos)
-	{
-		int latitudeStartIndex = 0;
-		int latitudeEndIndex = 0;
-		for (int i=0;i<_polarLookupLatitudeIndex.Length;i++)
-		{
-			if (_polarLookupLatitudeIndex[i].angle > pos.y)
-			{
-				int latitudeSpan = math.max(0, i - 1);
-				latitudeStartIndex = _polarLookupLatitudeIndex[latitudeSpan].index;
-				latitudeEndIndex = ((latitudeSpan < _polarLookupLatitudeIndex.Length - 1) ? _polarLookupLatitudeIndex[i].index : _polarLookup.Length);
-				for (int j = latitudeStartIndex; j< latitudeEndIndex;j++)
-				{
-					if (_polarLookup[j].angle > pos.x)
-					{
-						return _polarLookup[j].index;
-					}
-				}
-			}
-		}
 
-		return 0;
-
-	}
 }

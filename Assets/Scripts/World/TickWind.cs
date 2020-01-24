@@ -10,37 +10,68 @@ using Unity.Mathematics;
 
 
 [BurstCompile]
-public struct WindJob : IJobParallelFor {
+public struct DependentJob : IJobParallelFor {
 
-	public NativeArray<SimWind> Wind;
+	public NativeArray<CellDependent> NextDependent;
 
-	[ReadOnly] public SimPlanetState PlanetState;
-	[ReadOnly] public NativeArray<SimCell> Last;
+	[ReadOnly] public PlanetState PlanetState;
+	[ReadOnly] public NativeArray<CellState> LastCell;
+	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
+
+	// TODO: try to get rid of this
+	[ReadOnly] public NativeArray<CellDependent> LastDependent;
+
 	[ReadOnly] public WorldData worldData;
 	[ReadOnly] public StaticState staticState;
 
 	public void Execute(int i)
 	{
-		SimWind next = new SimWind();
+		CellDependent next = new CellDependent();
 		next.WindTropopause = float2.zero;
 		next.WindSurface = float2.zero;
 		next.CurrentDeep = float2.zero;
 		next.CurrentSurface = float2.zero;
 
-		var last = Last[i];
+		var last = LastCell[i];
+		var lastTerrain = LastTerrain[i];
 		float inverseFullIceCoverage = 1.0f / worldData.FullIceCoverage;
 		var windInfo = staticState.WindInfo[i];
 
+
+		float waterTemperature = Atmosphere.GetWaterTemperature(last.WaterEnergy, last.WaterMass, last.SaltMass);
+		//float deepWaterTemperature = GetWaterTemperature(world, nextState.DeepWaterEnergy[index], nextState.DeepWaterMass[index], nextState.DeepSaltMass[index]);
+		next.WaterTemperature = waterTemperature;
+		float waterDepth = math.max(0, Atmosphere.GetWaterVolumeByTemperature(ref worldData, last.WaterMass, last.SaltMass, waterTemperature));
+		next.WaterDepth = waterDepth;
+		next.WaterAndIceDepth = waterDepth + last.IceMass / WorldData.MassIce;
+		next.WaterDensity = Atmosphere.GetWaterDensity(ref worldData, last.WaterEnergy, last.SaltMass, last.WaterMass);
+
+		float newSurfaceElevation = lastTerrain.Elevation + next.WaterAndIceDepth;
+		last.AirTemperature = Atmosphere.GetAirTemperature(next.AirEnergy, next.AirMass, last.CloudMass, last.AirWaterMass);
+		next.AirPressure = math.max(0, Atmosphere.GetAirPressure(
+			ref worldData,
+			next.AirMass + PlanetState.StratosphereMass + last.AirWaterMass + last.CloudMass,
+			newSurfaceElevation,
+			last.AirTemperature,
+			Atmosphere.GetMolarMassAir(next.AirMass + PlanetState.StratosphereMass, last.CloudMass + last.AirWaterMass),
+			PlanetState.Gravity));
+		next.RelativeHumidity = Atmosphere.GetRelativeHumidity(ref worldData, last.AirTemperature, last.AirWaterMass, next.AirMass, worldData.inverseDewPointTemperatureRange);
+		//next.UpperAirTemperature[index] = GetAirTemperature(world, nextState.UpperAirEnergy[index], nextState.UpperAirMass[index], nextState.CloudMass[index], world.Data.SpecificHeatWater);
+		//next.UpperAirPressure[index] = Mathf.Max(0, GetAirPressure(world, nextState.UpperAirMass[index] + nextState.StratosphereMass + nextState.CloudMass[index], elevationOrSeaLevel + world.Data.BoundaryZoneElevation, nextState.UpperAirTemperature[index], GetMolarMassAir(world, nextState.LowerAirMass[index] + nextState.UpperAirMass[index] + nextState.StratosphereMass, nextState.Humidity[index] + nextState.CloudMass[index])));
+
+		float newDewPoint = Atmosphere.GetDewPoint(ref worldData, last.AirTemperature, next.RelativeHumidity);
+		next.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, last.AirTemperature, newDewPoint, newSurfaceElevation);
+
+
+
+
 		float latitude = staticState.Coordinate[i].y;
-		float lowerPressure = last.AirPressure;
 		float lowerTemperature = last.AirTemperature;
-		float elevation = last.Elevation;
-		float waterDepth = last.WaterDepth;
-		float waterAndIceDepth = last.WaterAndIceDepth;
-		float elevationOrSeaLevel = elevation + waterAndIceDepth;
+		float elevation = lastTerrain.Elevation;
+		float elevationOrSeaLevel = elevation + next.WaterAndIceDepth;
 		float iceCoverage = last.IceMass * inverseFullIceCoverage;
 		float friction;
-		if (waterDepth > 0)
+		if (next.WaterDepth > 0)
 		{
 			friction = worldData.WindOceanFriction;
 		}
@@ -50,8 +81,8 @@ public struct WindJob : IJobParallelFor {
 		}
 		friction = math.saturate(math.lerp(friction, worldData.WindIceFriction, iceCoverage));
 		float lowerTemperatureAtSeaLevel = lowerTemperature - WorldData.TemperatureLapseRate * elevationOrSeaLevel;
-		float molarMassLowerAir = Atmosphere.GetMolarMassAir(last.AirMass, last.AirWaterMass);
-		float surfaceAirDensity = Atmosphere.GetAirDensity(lowerPressure, lowerTemperatureAtSeaLevel, molarMassLowerAir);
+		float molarMassLowerAir = Atmosphere.GetMolarMassAir(next.AirMass, last.AirWaterMass);
+		float surfaceAirDensity = Atmosphere.GetAirDensity(next.AirPressure, lowerTemperatureAtSeaLevel, molarMassLowerAir);
 		float boundaryElevation = elevationOrSeaLevel + worldData.BoundaryZoneElevation;
 
 		var lowerWindH = GetHorizontalWind(
@@ -60,8 +91,8 @@ public struct WindJob : IJobParallelFor {
 			PlanetState.AngularSpeed, 
 			windInfo.coriolisParam, 
 			windInfo.inverseCoriolisParam, 
-			worldData.GlobalCoriolisInfluenceWindLower, 
-			last.AirPressure, 
+			worldData.GlobalCoriolisInfluenceWindLower,
+			next.AirPressure, 
 			elevationOrSeaLevel, 
 			elevationOrSeaLevel,
 			friction,
@@ -106,7 +137,7 @@ public struct WindJob : IJobParallelFor {
 		next.WindSurface = lowerWindH;
 		next.WindVertical = lowerWindV;
 
-		if (last.WaterDepth > 0)
+		if (next.WaterDepth > 0)
 		{
 			float2 densityDifferential = float2.zero;
 			float2 shallowCurrentH;
@@ -201,7 +232,8 @@ public struct WindJob : IJobParallelFor {
 			next.CurrentVertical = 0;
 		}
 
-		Wind[i] = next;
+
+		NextDependent[i] = next;
 	}
 
 
@@ -293,14 +325,16 @@ public struct WindJob : IJobParallelFor {
 				continue;
 			}
 
-			var nCell = Last[nIndex];
+			var nCell = LastCell[nIndex];
+			var nTerrain = LastTerrain[nIndex];
+			var nDependent = LastDependent[nIndex];
 
 			// see bottom of: https://en.wikipedia.org/wiki/Vertical_pressure_variation
-			float neighborElevation = nCell.Elevation + nCell.WaterAndIceDepth;
+			float neighborElevation = nTerrain.Elevation + nDependent.WaterAndIceDepth;
 			float neighborTemperatureElevation;
 			neighborTemperatureElevation = neighborElevation;
 			float neighborTemperatureAtSeaLevel = nCell.AirTemperature - neighborTemperatureElevation * WorldData.TemperatureLapseRate;
-			float neighborElevationAtPressure = neighborTemperatureAtSeaLevel / WorldData.TemperatureLapseRate * (math.pow(pressureAtWindElevation / nCell.AirPressure, -1.0f / (worldData.PressureExponent * molarMass)) - 1);
+			float neighborElevationAtPressure = neighborTemperatureAtSeaLevel / WorldData.TemperatureLapseRate * (math.pow(pressureAtWindElevation / nDependent.AirPressure, -1.0f / (worldData.PressureExponent * molarMass)) - 1);
 
 			var coordDiff = staticState.Coordinate[nIndex] - coord;
 			if (coordDiff.x > math.PI / 2)

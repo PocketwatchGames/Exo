@@ -21,7 +21,9 @@ public struct DiffusionJob : IJobParallelFor {
 	public NativeArray<CellDiffusion> CellDiffusion;
 	[ReadOnly] public float WaterDiffuseSpeed;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<SimCell> Last;
+	[ReadOnly] public NativeArray<CellState> Last;
+	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
+	[ReadOnly] public NativeArray<CellDependent> LastDependent;
 
 	public void Execute(int i)
 	{
@@ -30,18 +32,20 @@ public struct DiffusionJob : IJobParallelFor {
 		{
 			int index = i / 6;
 			var curCell = Last[index];
+			var curTerrain = LastTerrain[index];
+			var curDependent = LastDependent[index];
 			float water = 0;
-			if (curCell.WaterDepth > 0)
+			if (curDependent.WaterDepth > 0)
 			{
-				float waterElevation = curCell.Elevation + curCell.WaterDepth;
-				float nWaterElevation = Last[n].Elevation + Last[n].WaterDepth;
+				float waterElevation = curTerrain.Elevation + curDependent.WaterDepth;
+				float nWaterElevation = LastTerrain[n].Elevation + LastDependent[n].WaterDepth;
 				if (waterElevation > nWaterElevation)
 				{
 					water = (waterElevation - nWaterElevation) * WaterDiffuseSpeed;
 				}
 			}
-			float cloud = math.max(0, (curCell.CloudCoverage - Last[n].CloudCoverage) * WaterDiffuseSpeed);
-			float humidity = math.max(0, (curCell.RelativeHumidity - Last[n].RelativeHumidity) * WaterDiffuseSpeed);
+			float cloud = math.max(0, (curDependent.CloudCoverage - LastDependent[n].CloudCoverage) * WaterDiffuseSpeed);
+			float humidity = math.max(0, (curDependent.RelativeHumidity - LastDependent[n].RelativeHumidity) * WaterDiffuseSpeed);
 
 			CellDiffusion[i] = new CellDiffusion { Water = water, Cloud = cloud, Humidity = humidity };
 		}
@@ -52,7 +56,8 @@ public struct DiffusionLimitJob : IJobParallelFor {
 
 	public NativeArray<CellDiffusion> DiffusionLimit;
 	[ReadOnly] public NativeArray<CellDiffusion> CellDiffusion;
-	[ReadOnly] public NativeArray<SimCell> Last;
+	[ReadOnly] public NativeArray<CellState> Last;
+	[ReadOnly] public NativeArray<CellDependent> LastDependent;
 
 	public void Execute(int i)
 	{
@@ -67,9 +72,9 @@ public struct DiffusionLimitJob : IJobParallelFor {
 			totalCloud += CellDiffusion[index].Cloud;
 			totalHumidity += CellDiffusion[index].Humidity;
 		}
-		float waterDepth = Last[i].WaterDepth;
-		float cloud = Last[i].CloudCoverage;
-		float humidity = Last[i].RelativeHumidity;
+		float waterDepth = LastDependent[i].WaterDepth;
+		float cloud = LastDependent[i].CloudCoverage;
+		float humidity = LastDependent[i].RelativeHumidity;
 		if (totalWater > waterDepth && waterDepth > 0)
 		{
 			waterLimit = waterDepth / totalWater;
