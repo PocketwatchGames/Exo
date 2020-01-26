@@ -10,8 +10,6 @@ using Unity.Mathematics;
 
 public struct CellDiffusion {
 	public float Water;
-	public float Cloud;
-	public float Humidity;
 }
 
 
@@ -31,7 +29,6 @@ public struct DiffusionJob : IJobParallelFor {
 		if (n >= 0)
 		{
 			int index = i / 6;
-			var curCell = Last[index];
 			var curTerrain = LastTerrain[index];
 			var curDependent = LastDependent[index];
 			float water = 0;
@@ -44,10 +41,6 @@ public struct DiffusionJob : IJobParallelFor {
 					water = (waterElevation - nWaterElevation) * WaterDiffuseSpeed;
 				}
 			}
-			float cloud = math.max(0, (curDependent.CloudCoverage - LastDependent[n].CloudCoverage) * WaterDiffuseSpeed);
-			float humidity = math.max(0, (curDependent.RelativeHumidity - LastDependent[n].RelativeHumidity) * WaterDiffuseSpeed);
-
-			CellDiffusion[i] = new CellDiffusion { Water = water, Cloud = cloud, Humidity = humidity };
 		}
 	}
 }
@@ -62,19 +55,13 @@ public struct DiffusionLimitJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float totalWater = 0;
-		float totalCloud = 0;
-		float totalHumidity = 0;
-		float waterLimit, cloudLimit, humidityLimit;
+		float waterLimit;
 		for (int j = 0; j < 6; j++)
 		{
 			int index = i * 6 + j;
 			totalWater += CellDiffusion[index].Water;
-			totalCloud += CellDiffusion[index].Cloud;
-			totalHumidity += CellDiffusion[index].Humidity;
 		}
 		float waterDepth = LastDependent[i].WaterDepth;
-		float cloud = LastDependent[i].CloudCoverage;
-		float humidity = LastDependent[i].RelativeHumidity;
 		if (totalWater > waterDepth && waterDepth > 0)
 		{
 			waterLimit = waterDepth / totalWater;
@@ -83,22 +70,6 @@ public struct DiffusionLimitJob : IJobParallelFor {
 		{
 			waterLimit = 1;
 		}
-		if (totalCloud > cloud && cloud > 0)
-		{
-			cloudLimit = cloud / totalCloud;
-		}
-		else
-		{
-			cloudLimit = 1;
-		}
-		if (totalHumidity > humidity && humidity > 0)
-		{
-			humidityLimit = humidity / totalHumidity;
-		}
-		else
-		{
-			humidityLimit = 1;
-		}
-		DiffusionLimit[i] = new CellDiffusion { Water = waterLimit, Cloud = cloudLimit, Humidity = humidityLimit };
+		DiffusionLimit[i] = new CellDiffusion { Water = waterLimit };
 	}
 }

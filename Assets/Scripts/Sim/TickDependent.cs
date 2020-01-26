@@ -62,6 +62,7 @@ public struct DependentJob : IJobParallelFor {
 
 		float newDewPoint = Atmosphere.GetDewPoint(ref worldData, next.AirTemperature, next.RelativeHumidity);
 		next.CloudElevation = Atmosphere.GetCloudElevation(ref worldData, next.AirTemperature, newDewPoint, newSurfaceElevation);
+		next.CloudCoverage = math.min(1.0f, math.pow(last.CloudMass * worldData.inverseCloudMassFullAbsorption, 0.6667f)); // bottom surface of volume
 
 
 

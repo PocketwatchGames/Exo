@@ -131,6 +131,7 @@ public class WorldView : MonoBehaviour {
 	private GameObject _waterObject;
 	private GameObject _cloudObject;
 	private GameObject _selectionCircle;
+	private List<GameObject> _selectionCircleNeighbors;
 
 	private GameObject[] _windArrows;
 
@@ -176,7 +177,15 @@ public class WorldView : MonoBehaviour {
 		cloudFilter.mesh = _cloudMesh;
 
 		_selectionCircle = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
-		_selectionCircle.transform.localScale *= 0.1f;
+		_selectionCircle.transform.localScale *= 0.02f;
+
+		_selectionCircleNeighbors = new List<GameObject>();
+		for (int i=0;i<6;i++)
+		{
+			var s = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
+			s.transform.localScale *= 0.01f;
+			_selectionCircleNeighbors.Add(s);
+		}
 
 		_windArrows = new GameObject[Sim.Icosphere.Vertices.Count];
 		for (int i = 0; i < Sim.Icosphere.Vertices.Count;i++)
@@ -431,15 +440,31 @@ public class WorldView : MonoBehaviour {
 
 	public void SetActiveCell(int index, bool locked)
 	{
-		_selectionCircle.SetActive(index >= 0);
 		ActiveCellIndex = index;
 		ActiveCellLocked = locked;
+		_selectionCircle.SetActive(index >= 0);
 		if (index >= 0)
 		{
 			//			var p = Sim.Icosphere.Vertices[index];
 			var pos = _renderStates[_curRenderState].SurfacePosition[index];
 			_selectionCircle.transform.localPosition = pos;
 			_selectionCircle.transform.localRotation = Quaternion.LookRotation(-pos);
+		}
+
+		for (int i=0;i<_selectionCircleNeighbors.Count;i++)
+		{
+			_selectionCircleNeighbors[i].SetActive(false);
+			if (index >= 0)
+			{
+				int n = Sim.StaticState.Neighbors[index * 6 + i];
+				if (n >= 0)
+				{
+					_selectionCircleNeighbors[i].SetActive(true);
+					var pos = _renderStates[_curRenderState].SurfacePosition[n];
+					_selectionCircleNeighbors[i].transform.localPosition = pos;
+					_selectionCircleNeighbors[i].transform.localRotation = Quaternion.LookRotation(-pos);
+				}
+			}
 		}
 	}
 

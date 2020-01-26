@@ -95,6 +95,7 @@ public static class WorldTick {
 
 		nextState.PlanetState = state.PlanetState;
 
+		nextState.DisplayPlanet = new PlanetDisplay();
 		for (int i = 0; i < nextState.CellDependents.Length; i++)
 		{
 			nextState.DisplayPlanet.CloudCoverage += nextState.CellDependents[i].CloudCoverage;
