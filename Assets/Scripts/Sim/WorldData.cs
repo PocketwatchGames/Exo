@@ -72,6 +72,7 @@ public struct WorldData {
 	public float IceAirConductionCooling;
 	public float maxGroundWaterTemperature;
 	public float SoilHeatDepth;
+	public float AlbedoReductionSoilQuality;
 
 	// TODO: tune these to match the science
 	public float ThermalReflectivityCloud;
@@ -82,8 +83,6 @@ public struct WorldData {
 	public float maxCloudSlopeAlbedo;
 	public float rainDropSizeAlbedoMin;
 	public float rainDropSizeAlbedoMax;
-	public float cloudAlbedo;
-	public float AlbedoReductionSoilQuality;
 
 	// https://en.wikipedia.org/wiki/Electromagnetic_absorption_by_water
 	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.

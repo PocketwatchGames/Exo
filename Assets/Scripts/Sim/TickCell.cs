@@ -75,7 +75,7 @@ public struct TickCellJob : IJobParallelFor {
 		// SOLAR RADIATION
 
 		float solarRadiationAbsorbed = 0;
-		float solarRadiation = PlanetState.SolarRadiation * worldData.SecondsPerTick * math.max(0, (sunDotSurface + worldData.sunHitsAtmosphereBelowHorizonAmount) * worldData.inverseSunAtmosphereAmount);
+		float solarRadiation = PlanetState.SolarRadiation * worldData.SecondsPerTick * sunDotSurface;
 
 		// get the actual atmospheric depth here based on radius of earth plus atmosphere
 		//float inverseSunAngle = PIOver2 + sunAngle;
@@ -110,7 +110,7 @@ public struct TickCellJob : IJobParallelFor {
 			{
 				float cloudTemperatureAlbedo = WorldData.AlbedoIce + (WorldData.AlbedoWater - WorldData.AlbedoIce) * math.saturate((dewPoint - worldData.minCloudFreezingTemperature) / (worldData.maxCloudFreezingTemperature - worldData.minCloudFreezingTemperature));
 				float rainDropSizeAlbedo = math.clamp(1.0f - last.CloudDropletMass / last.CloudMass, 0,1) * (worldData.rainDropSizeAlbedoMax - worldData.rainDropSizeAlbedoMin) + worldData.rainDropSizeAlbedoMin;
-				float cloudReflectivity = math.min(1.0f, worldData.cloudAlbedo * cloudTemperatureAlbedo * last.CloudMass * rainDropSizeAlbedo / math.max(worldData.maxCloudSlopeAlbedo, 1.0f - waterSlopeAlbedo));
+				float cloudReflectivity = math.min(1.0f, worldData.SolarReflectivityCloud * cloudTemperatureAlbedo * last.CloudMass * rainDropSizeAlbedo / math.max(worldData.maxCloudSlopeAlbedo, 1.0f - waterSlopeAlbedo));
 				float energyReflectedClouds = solarRadiation * cloudReflectivity;
 				solarRadiation -= energyReflectedClouds;
 
@@ -561,55 +561,77 @@ public struct TickCellJob : IJobParallelFor {
 
 	private void DoDiffusion(int i, ref CellState last, ref CellDependent lastDependent, ref CellTerrain lastTerrain, ref CellState next)
 	{
+		float gradientTempAir = 0;
+		float gradientWaterVapor = 0;
+		float gradientSalinity = 0;
+		float gradientTempWater = 0;
+		float2 gradient = Vector2.zero;
+		var coord = staticState.Coordinate[i];
+		int neighborCount = 0;
 		for (int j = 0; j < 6; j++)
 		{
 			int neighborIndex = i * 6 + j;
 			int n = staticState.Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				// TODO: divide by volume
-				float humidityGradient = last.AirWaterMass - Last[n].AirWaterMass;
-				float airMassTotal = last.AirMass + Last[n].AirMass;
-				float airMassGradient = last.AirMass - Last[n].AirMass;
+				//var coordDiff = math.normalize(staticState.Coordinate[n] - coord);
+				//gradient += (Last[n].AirMass - last.AirMass) * coordDiff;
+
+
+				gradientWaterVapor += Last[n].AirWaterMass - last.AirWaterMass;
+				gradientSalinity += Last[n].SaltMass - last.SaltMass;
+				gradientTempWater += LastDependent[n].WaterTemperature - lastDependent.WaterTemperature;
 
 				float aElevation = (lastTerrain.Elevation + lastDependent.WaterAndIceDepth);
 				float bElevation = (LastTerrain[n].Elevation + LastDependent[n].WaterAndIceDepth);
 				float paTemp = lastDependent.AirTemperature - WorldData.TemperatureLapseRate * aElevation;
 				float pbTemp = LastDependent[n].AirTemperature - WorldData.TemperatureLapseRate * bElevation;
-				float potentialTemperatureGradient = paTemp - pbTemp;
+				gradientTempAir += pbTemp - paTemp;
 
-				//float potentialAirMassDiff = last.AirMass *  worldData.TropopauseElevation
-				//next.AirWaterMass -= humidityGradient * worldData.WaterDiffuseSpeed;
-				//next.AirMass -= airMassGradient * worldData.AirMassDiffusionSpeedHorizontal;
-				next.AirEnergy += Atmosphere.GetAirEnergy(lastDependent.AirTemperature - potentialTemperatureGradient * worldData.AirMassDiffusionSpeedHorizontal, last.AirMass, last.CloudMass, last.AirWaterMass) - last.AirEnergy;
-
-				//var diffPos = math.normalize(staticState.Coordinate[n] - staticState.Coordinate[i]);
-				//var myWindDot = Vector2.Dot(lastDependent.WindSurface, diffPos);
-				//if (myWindDot > 0)
-				//{
-				//	float windMove = math.min(1, myWindDot / staticState.CellDiameter * worldData.SecondsPerTick);
-				//	next.AirMass -= airMassGradient * windMove * 0.25f;
-				//	next.AirEnergy -= airEnergyGradient * windMove * 0.25f;
-				//}
-				//var theirWindDot = Vector2.Dot(LastDependent[n].WindSurface, -diffPos);
-				//if (theirWindDot > 0)
-				//{
-				//	float windMove = math.min(1, theirWindDot / staticState.CellDiameter * worldData.SecondsPerTick);
-				//	next.AirMass -= airMassGradient * windMove * 0.25f;
-				//	next.AirEnergy -= airEnergyGradient * windMove*0.25f;
-				//}
-
-				//next.WaterMass -= Diffusion[neighborIndex].Water * DiffusionLimit[i].Water;
-				//for (int k = 0; k < 6; k++)
-				//{
-				//	int nToMeIndex = n * 6 + k;
-				//	if (staticState.Neighbors[nToMeIndex] == i)
-				//	{
-				//		next.WaterMass += Diffusion[nToMeIndex].Water * DiffusionLimit[n].Water;
-				//		break;
-				//	}
-				//}
+				neighborCount++;
 			}
 		}
+
+
+		float deltaTempAir = gradientTempAir * worldData.AirMassDiffusionSpeedHorizontal;
+		float deltaWaterVapor = gradientWaterVapor * worldData.AirMassDiffusionSpeedHorizontal;
+		float deltaTempWater = gradientTempWater * worldData.WaterDiffuseSpeed;
+		float deltaSalinity = gradientSalinity * worldData.WaterDiffuseSpeed;
+
+		//for (int j = 0; j < 6; j++)
+		//{
+		//	int neighborIndex = i * 6 + j;
+		//	int n = staticState.Neighbors[neighborIndex];
+		//	if (n >= 0)
+		//	{
+
+		//		// TODO: divide by volume
+		//		//float humidityGradient = last.AirWaterMass - Last[n].AirWaterMass;
+
+		//		//float aElevation = (lastTerrain.Elevation + lastDependent.WaterAndIceDepth);
+		//		//float bElevation = (LastTerrain[n].Elevation + LastDependent[n].WaterAndIceDepth);
+		//		//float paTemp = lastDependent.AirTemperature - WorldData.TemperatureLapseRate * aElevation;
+		//		//float pbTemp = LastDependent[n].AirTemperature - WorldData.TemperatureLapseRate * bElevation;
+
+		//		//var diffPos = math.normalize(staticState.Coordinate[n] - coord);
+		//		//var myWindDot = Vector2.Dot(lastDependent.WindSurface, diffPos);
+		//		//if (myWindDot > 0)
+		//		//{
+		//		//	float windMove = math.min(1, myWindDot / staticState.CellDiameter * worldData.SecondsPerTick);
+		//		//	deltaTemp += windMove * (pbTemp - paTemp);
+		//		//}
+		//		//var theirWindDot = Vector2.Dot(LastDependent[n].WindSurface, -diffPos);
+		//		//if (theirWindDot > 0)
+		//		//{
+		//		//	float windMove = math.min(1, theirWindDot / staticState.CellDiameter * worldData.SecondsPerTick);
+		//		//	deltaTemp += windMove * (pbTemp - paTemp);
+		//		//}
+
+		//	}
+		//}
+		next.AirEnergy += Atmosphere.GetAirEnergy(lastDependent.AirTemperature + deltaTempAir, last.AirMass, last.CloudMass, last.AirWaterMass) - last.AirEnergy;
+		next.AirWaterMass += deltaWaterVapor;
+		next.WaterEnergy += Atmosphere.GetWaterEnergy(lastDependent.WaterTemperature + deltaTempWater, last.WaterMass, last.SaltMass) - last.WaterEnergy;
+		next.SaltMass += deltaSalinity;
 	}
 }
