@@ -107,13 +107,6 @@ public class WorldView : MonoBehaviour {
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
 
-	static Color32 green = new Color32(0, 220, 30, 255);
-	static Color32 grey = new Color32(50, 50, 80, 255);
-	static Color32 brown = new Color32(100, 60, 20, 255);
-	static Color32 blue = new Color32(0, 0, 255, 255);
-	static Color32 white = new Color32(255, 255, 255, 255);
-	static Color32 black = new Color32(0, 0, 0, 255);
-
 
 	private RenderState[] _renderStates;
 	private int _curRenderState;
@@ -252,7 +245,7 @@ public class WorldView : MonoBehaviour {
 		_cloudNormals = new Vector3[Sim.CellCount];
 		_cloudColors = new Color32[Sim.CellCount];
 
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 	}
 	public void OnDestroy()
@@ -266,6 +259,7 @@ public class WorldView : MonoBehaviour {
 		{
 			_renderStates[i].Dispose();
 		}
+
 	}
 
 	public void Update()
@@ -292,45 +286,77 @@ public class WorldView : MonoBehaviour {
 		_lastRenderState = _curRenderState;
 		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
 		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 
-	public void BuildRenderState(ref SimState from, ref RenderState to, ref WorldData worldData, ref StaticState staticState)
+
+	public void BuildRenderState(ref SimState from, ref DependentState dependent, ref RenderState to, ref WorldData worldData, ref StaticState staticState)
 	{
 		to.Ticks = from.PlanetState.Ticks;
 		to.Position = from.PlanetState.Position;
 		to.Rotation = math.degrees(from.PlanetState.Rotation);
 
-		Overlay overlay;
-		bool useOverlay = GetOverlay(ActiveMeshOverlay, ref from, out overlay);
+		MeshOverlayData meshOverlay;
+		bool useMeshOverlay = GetMeshOverlayData(ActiveMeshOverlay, ref from, ref dependent, out meshOverlay);
 
-		NativeArray<float2> velocity = from.AirVelocity[0];
+		WindOverlayData windOverlayData;
+		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, out windOverlayData);
 
 		var buildRenderStateJob = new BuildRenderStateJob()
-		{
-			SurfacePosition = to.SurfacePosition,
-			VelocityArrow = to.VelocityArrow,
-			TerrainColor = to.TerrainColor,
-			TerrainNormal = to.TerrainNormal,
-			TerrainPosition = to.TerrainPosition,
-			CloudColor = to.CloudColor,
-			CloudNormal = to.CloudNormal,
-			CloudPosition = to.CloudPosition,
-			WaterColor =to.WaterColor,
-			WaterNormal = to.WaterNormal,
-			WaterPosition =to.WaterPosition,
+		{ 
+			TerrainColor = new NativeArray<Color32>(Sim.CellCount, Allocator.TempJob),
+			TerrainNormal = new NativeArray<Vector3>(Sim.CellCount, Allocator.TempJob),
+			TerrainPosition = new NativeArray<Vector3>(Sim.CellCount, Allocator.TempJob),
+			WaterColor = new NativeArray<Color32>(Sim.CellCount, Allocator.TempJob),
+			WaterNormal = new NativeArray<Vector3>(Sim.CellCount, Allocator.TempJob),
+			WaterPosition = new NativeArray<Vector3>(Sim.CellCount, Allocator.TempJob),
+			CloudColor = new NativeArray<Color32>(Sim.CellCount, Allocator.TempJob),
+			CloudNormal = new NativeArray<Vector3>(Sim.CellCount, Allocator.TempJob),
+			CloudPosition = new NativeArray<Vector3>(Sim.CellCount, Allocator.TempJob),
+			VelocityArrow = new NativeArray<float2>(Sim.CellCount, Allocator.TempJob),
+			SurfacePosition = new NativeArray<float3>(Sim.CellCount, Allocator.TempJob),
 
-			UseOverlay = useOverlay,
 			TerrainScale = TerrainScale,
 			PlanetRadius = staticState.PlanetRadius,
-			Icosphere = Sim.Icosphere.Vertices,
-			Overlay = overlay,
-			CloudElevation = from.CloudElevation,
-			Velocity = velocity,
-			Terrain = from.CellTerrains,
+			CloudDropletSizeMin = worldData.rainDropMinSize,
+			InverseCloudDropletSizeRange = 1.0f / (worldData.rainDropMaxSize - worldData.rainDropMinSize),
+			MeshOverlayActive = useMeshOverlay,
+			WindOverlayActive = useWindOverlay,
+			WindVelocityMax = windOverlayData.MaxVelocity,
+			WindMaskedByLand = windOverlayData.MaskLand,
+			MeshOverlayMin = meshOverlay.Min,
+			MeshOverlayInverseRange = meshOverlay.InverseRange,
+			CloudElevation = new NativeArray<float>(from.CloudElevation, Allocator.TempJob),
+			Icosphere = new NativeArray<float3>(Sim.Icosphere.Vertices, Allocator.TempJob),
+			Terrain = new NativeArray<CellTerrain>(from.Terrain, Allocator.TempJob),
+			CloudDropletMass = new NativeArray<float>(from.CloudDropletMass, Allocator.TempJob),
+			CloudCoverage = new NativeArray<float>(dependent.CloudCoverage, Allocator.TempJob),
+			IceCoverage = new NativeArray<float>(dependent.IceCoverage, Allocator.TempJob),
+			VegetationCoverage = new NativeArray<float>(dependent.VegetationCoverage, Allocator.TempJob),
+			WaterCoverage = new NativeArray<float>(dependent.WaterCoverage, Allocator.TempJob),
+			WaterDepth = new NativeArray<float>(dependent.WaterDepth, Allocator.TempJob),
+			SurfaceElevation = new NativeArray<float>(dependent.SurfaceElevation, Allocator.TempJob),
+			MeshOverlayData = new NativeArray<float>(meshOverlay.Values, Allocator.TempJob),
+			MeshOverlayColors = new NativeArray<CVP>(meshOverlay.ColorValuePairs, Allocator.TempJob),
+			WindOverlayData = new NativeArray<float2>(windOverlayData.Values, Allocator.TempJob)
 		};
+
 		var buildRenderStateJobHandle = buildRenderStateJob.Schedule(Sim.CellCount, 100);
 		buildRenderStateJobHandle.Complete();
+
+		to.TerrainColor.CopyFrom(buildRenderStateJob.TerrainColor);
+		to.TerrainNormal.CopyFrom(buildRenderStateJob.TerrainNormal);
+		to.TerrainPosition.CopyFrom(buildRenderStateJob.TerrainPosition);
+		to.WaterColor.CopyFrom(buildRenderStateJob.WaterColor);
+		to.WaterNormal.CopyFrom(buildRenderStateJob.WaterNormal);
+		to.WaterPosition.CopyFrom(buildRenderStateJob.WaterPosition);
+		to.CloudColor.CopyFrom(buildRenderStateJob.CloudColor);
+		to.CloudNormal.CopyFrom(buildRenderStateJob.CloudNormal);
+		to.CloudPosition.CopyFrom(buildRenderStateJob.CloudPosition);
+		to.SurfacePosition.CopyFrom(buildRenderStateJob.SurfacePosition);
+		to.VelocityArrow.CopyFrom(buildRenderStateJob.VelocityArrow);
+
+		buildRenderStateJob.Dispose();
 	}
 
 	public void UpdateMesh(ref RenderState lastState, ref RenderState nextState, ref RenderState state)
@@ -344,35 +370,39 @@ public class WorldView : MonoBehaviour {
 		state.Rotation = new Vector3(Mathf.LerpAngle(lastState.Rotation.x, nextState.Rotation.x, t), Mathf.LerpAngle(lastState.Rotation.y, nextState.Rotation.y, t), Mathf.LerpAngle(lastState.Rotation.z, nextState.Rotation.z, t));
 		state.Position = math.lerp(lastState.Position, nextState.Position, t);
 
-		int batchCount = 100;
-		JobHandle jobHandle = default(JobHandle);
-		JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.SurfacePosition, End = nextState.SurfacePosition, Out = state.SurfacePosition }).Schedule(Sim.CellCount, batchCount));
-		JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.TerrainPosition, End = nextState.TerrainPosition, Out = state.TerrainPosition }).Schedule(Sim.CellCount, batchCount));
-		JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.TerrainNormal, End = nextState.TerrainNormal, Out = state.TerrainNormal }).Schedule(Sim.CellCount, batchCount));
-		JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.WaterPosition, End = nextState.TerrainPosition, Out = state.TerrainPosition }).Schedule(Sim.CellCount, batchCount));
-		JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.WaterNormal, End = nextState.WaterNormal, Out = state.WaterNormal }).Schedule(Sim.CellCount, batchCount));
-		JobHandle.CombineDependencies(jobHandle, (new LerpColor32Job() { T = t, Start = lastState.TerrainColor, End = nextState.TerrainColor, Out = state.TerrainColor }).Schedule(Sim.CellCount, batchCount));
-		JobHandle.CombineDependencies(jobHandle, (new LerpColor32Job() { T = t, Start = lastState.WaterColor, End = nextState.WaterColor, Out = state.WaterColor }).Schedule(Sim.CellCount, batchCount));
 
-		if (true /* cloudsVisible*/)
-		{
-			JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.CloudPosition, End = nextState.CloudPosition, Out = state.CloudPosition }).Schedule(Sim.CellCount, batchCount));
-			JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.CloudNormal, End = nextState.CloudNormal, Out = state.CloudNormal }).Schedule(Sim.CellCount, batchCount));
-			JobHandle.CombineDependencies(jobHandle, (new LerpColor32Job() { T = t, Start = lastState.CloudColor, End = nextState.CloudColor, Out = state.CloudColor }).Schedule(Sim.CellCount, batchCount));
-		}
-		if (ActiveWindOverlay != WindOverlay.None)
-		{
-			JobHandle.CombineDependencies(jobHandle, (new Lerpfloat2Job() { T = t, Start = lastState.VelocityArrow, End = nextState.VelocityArrow, Out = state.VelocityArrow }).Schedule(Sim.CellCount, batchCount));
-		}
+		//int batchCount = 100;
+		//JobHandle jobHandle = default(JobHandle);
+		//JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.SurfacePosition, End = nextState.SurfacePosition, Out = state.SurfacePosition }).Schedule(Sim.CellCount, batchCount));
+		//JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.TerrainPosition, End = nextState.TerrainPosition, Out = state.TerrainPosition }).Schedule(Sim.CellCount, batchCount));
+		//JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.TerrainNormal, End = nextState.TerrainNormal, Out = state.TerrainNormal }).Schedule(Sim.CellCount, batchCount));
+		//JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.WaterPosition, End = nextState.TerrainPosition, Out = state.TerrainPosition }).Schedule(Sim.CellCount, batchCount));
+		//JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.WaterNormal, End = nextState.WaterNormal, Out = state.WaterNormal }).Schedule(Sim.CellCount, batchCount));
+		//JobHandle.CombineDependencies(jobHandle, (new LerpColor32Job() { T = t, Start = lastState.TerrainColor, End = nextState.TerrainColor, Out = state.TerrainColor }).Schedule(Sim.CellCount, batchCount));
+		//JobHandle.CombineDependencies(jobHandle, (new LerpColor32Job() { T = t, Start = lastState.WaterColor, End = nextState.WaterColor, Out = state.WaterColor }).Schedule(Sim.CellCount, batchCount));
 
-		jobHandle.Complete();
+		//if (true /* cloudsVisible*/)
+		//{
+		//	JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.CloudPosition, End = nextState.CloudPosition, Out = state.CloudPosition }).Schedule(Sim.CellCount, batchCount));
+		//	JobHandle.CombineDependencies(jobHandle, (new Lerpfloat3Job() { T = t, Start = lastState.CloudNormal, End = nextState.CloudNormal, Out = state.CloudNormal }).Schedule(Sim.CellCount, batchCount));
+		//	JobHandle.CombineDependencies(jobHandle, (new LerpColor32Job() { T = t, Start = lastState.CloudColor, End = nextState.CloudColor, Out = state.CloudColor }).Schedule(Sim.CellCount, batchCount));
+		//}
+		//if (ActiveWindOverlay != WindOverlay.None)
+		//{
+		//	JobHandle.CombineDependencies(jobHandle, (new Lerpfloat2Job() { T = t, Start = lastState.VelocityArrow, End = nextState.VelocityArrow, Out = state.VelocityArrow }).Schedule(Sim.CellCount, batchCount));
+		//}
 
-		for (int i = 0; i < Sim.CellCount; i++)
-		{
-			_terrainVertices[i] = state.TerrainPosition[i];
-			_terrainNormals[i] = state.TerrainNormal[i];
-			_terrainColors[i] = state.TerrainColor[i];
-		}
+		//jobHandle.Complete();
+
+		state.TerrainPosition.CopyTo(_terrainVertices);
+		state.TerrainNormal.CopyTo(_terrainNormals);
+		state.TerrainColor.CopyTo(_terrainColors);
+		state.WaterPosition.CopyTo(_waterVertices);
+		state.WaterNormal.CopyTo(_waterNormals);
+		state.WaterColor.CopyTo(_waterColors);
+		state.CloudPosition.CopyTo(_cloudVertices);
+		state.CloudNormal.CopyTo(_cloudNormals);
+		state.CloudColor.CopyTo(_cloudColors);
 
 		_terrainMesh.vertices = _terrainVertices;
 		_terrainMesh.normals = _terrainNormals;
@@ -435,13 +465,13 @@ public class WorldView : MonoBehaviour {
 	{
 		ActiveMeshOverlay = (WorldView.MeshOverlay)dropdown.value;
 		_tickLerpTime = 0;
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
 	{
 		ActiveWindOverlay = (WorldView.WindOverlay)dropdown.value;
 		_tickLerpTime = 0;
-		BuildRenderState(ref Sim.ActiveSimState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 
 	public void OnHUDTemperatureUnitsChanged(UnityEngine.UI.Dropdown dropdown)
@@ -492,17 +522,17 @@ public class WorldView : MonoBehaviour {
 		switch (cellInfoType)
 		{
 			case CellInfoType.Global:
-				return GetCellInfoGlobal(ref Sim.ActiveSimState, ref Sim.ActiveSimDependent);
+				return GetCellInfoGlobal(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Energy:
-				return GetCellInfoEnergy(ref Sim.ActiveSimState, ref Sim.ActiveSimDependent);
+				return GetCellInfoEnergy(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Cell:
-				return GetCellInfoCell(ref Sim.ActiveSimState, ref Sim.ActiveSimDependent);
+				return GetCellInfoCell(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Atmosphere:
-				return GetCellInfoAtmosphere(ref Sim.ActiveSimState, ref Sim.ActiveSimDependent);
+				return GetCellInfoAtmosphere(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Ground:
-				return GetCellInfoGround(ref Sim.ActiveSimState, ref Sim.ActiveSimDependent);
+				return GetCellInfoGround(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Water:
-				return GetCellInfoWater(ref Sim.ActiveSimState, ref Sim.ActiveSimDependent);
+				return GetCellInfoWater(ref Sim.ActiveSimState, ref Sim.DependentState);
 		}
 		return "";
 	}
@@ -547,32 +577,9 @@ public class WorldView : MonoBehaviour {
 		return energy * 1000 / Sim.WorldData.SecondsPerTick;
 	}
 
-	public static Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float vegetationCoverage)
-	{
-		var groundColor = Color32.Lerp(grey, brown, soilFertility);
-		var waterColor = Color32.Lerp(groundColor, blue, math.saturate(math.pow(waterDepth / roughness, 2)));
-		var iceColor = Color32.Lerp(waterColor, white, iceCoverage);
-		var vegetationColor = Color32.Lerp(groundColor, green, vegetationCoverage);
-		return vegetationColor;
-	}
 
-	public static Color32 GetWaterColor(float iceCoverage)
-	{
-		var waterColor = blue;
-		var iceColor = Color32.Lerp(waterColor, white, iceCoverage);
-		return iceColor;
-	}
-
-	public static Color32 GetCloudColor(float relativeHumidity, float cloudCoverage)
-	{
-		var c = Color32.Lerp(white, black, relativeHumidity);
-		float opacity = -math.cos(cloudCoverage * math.PI) / 2 + 0.5f;
-		c.a = (byte)(255 * opacity);
-		return c;
-	}
-
-	public struct Overlay {
-		public Overlay(float min, float max, NativeArray<CVP> colors, NativeArray<float> values)
+	public struct MeshOverlayData {
+		public MeshOverlayData(float min, float max, NativeArray<CVP> colors, NativeArray<float> values)
 		{
 			Values = values;
 			Min = min;
@@ -587,11 +594,23 @@ public class WorldView : MonoBehaviour {
 		public float InverseRange { get; private set; }
 	}
 
+	public struct WindOverlayData {
+		public WindOverlayData(float maxVelocity, bool maskLand, NativeArray<float2> values)
+		{
+			MaxVelocity = maxVelocity;
+			MaskLand = maskLand;
+			Values = values;
+		}
+		public float MaxVelocity { get; private set; }
+		public bool MaskLand { get; private set; }
+		public NativeArray<float2> Values { get; private set; }
+	}
+
 
 
 	#region private functions
 
-	private bool GetOverlay(MeshOverlay activeOverlay, ref SimState simState, out Overlay overlay)
+	private bool GetMeshOverlayData(MeshOverlay activeOverlay, ref SimState simState, ref DependentState dependentState, out MeshOverlayData overlay)
 	{
 		float ticksPerYear = Sim.WorldData.TicksPerSecond * 60 * 60 * 24 * 365;
 		float maxEvap = DisplayEvaporationMax * WorldData.MassWater / ticksPerYear;
@@ -599,46 +618,66 @@ public class WorldView : MonoBehaviour {
 		switch (activeOverlay)
 		{
 			case MeshOverlay.AbsoluteHumidity:
-				overlay = new Overlay(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, simState.AirHumidity[0]);
+				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, simState.AirHumidity[0]);
 				return true;
-			//case MeshOverlay.RelativeHumidity:
-			//	overlay = new Overlay(0, 1.0f, _normalizedRainbow, simState.AirHumidity[0]);
-			//	break;
+			case MeshOverlay.RelativeHumidity:
+				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.RelativeHumidity[0]);
+				break;
 			//case MeshOverlay.GroundWater:
-			//	overlay = new Overlay(0, DisplayGroundWaterMax, _normalizedRainbow, simState.GroundWater[0]);
+			//	overlay = new Overlay(0, DisplayGroundWaterMax, _normalizedRainbow, simState.GroundWater);
 			//	break;
-			//case MeshOverlay.LowerAirPressure:
-			//	overlay = new Overlay(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, simState.AirPressure[0]);
-			//	return true;
+			case MeshOverlay.LowerAirPressure:
+				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, dependentState.AirPressure[0]);
+				return true;
 			case MeshOverlay.LowerAirTemperature:
-				overlay = new Overlay(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[0]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[0]);
 				return true;
 			case MeshOverlay.ShallowWaterTemperature:
-				overlay = new Overlay(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.StaticState.WaterLayers-1]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.StaticState.WaterLayers - 1]);
 				return true;
 			case MeshOverlay.GroundTemperature:
-				overlay = new Overlay(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
 				return true;
 			//case MeshOverlay.HeatAbsorbed:
 			//	overlay = new Overlay(0, DisplayHeatAbsorbedMax, _normalizedRainbow, simState.HeatAbsorbed);
 			//	return true;
-			//case MeshOverlay.Rainfall:
-			//	overlay = new Overlay(0, maxRainfall, _normalizedRainbow);
-			//	return true;
-			//case MeshOverlay.Evaporation:
-			//	overlay = new Overlay(0, maxEvap, _normalizedRainbow);
-			//	return true;
-			//case MeshOverlay.VerticalWind:
-			//	overlay = new Overlay(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedRainbow);
-			//	return true;
+			case MeshOverlay.Rainfall:
+				overlay = new MeshOverlayData(0, maxRainfall, _normalizedRainbow, dependentState.Rainfall);
+				return true;
+			case MeshOverlay.Evaporation:
+				overlay = new MeshOverlayData(0, maxEvap, _normalizedRainbow, dependentState.Evaporation);
+				return true;
+				//case MeshOverlay.VerticalWind:
+				//	overlay = new Overlay(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedRainbow);
+				//	return true;
 		}
-		overlay = new Overlay();
+		overlay = new MeshOverlayData(0, maxEvap, _normalizedRainbow, dependentState.Evaporation);
 		return false;
 
 	}
+	private bool GetWindOverlayData(WindOverlay activeOverlay, ref SimState simState, ref DependentState dependentState, out WindOverlayData overlay)
+	{
+		switch (activeOverlay)
+		{
+			case WindOverlay.LowerAirWind:
+				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.AirVelocity[0]);
+				return true;
+			case WindOverlay.UpperAirWind:
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.AirVelocity[Sim.StaticState.AirLayers-1]);
+				return true;
+			case WindOverlay.ShallowWaterCurrent:
+				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, false, simState.WaterVelocity[Sim.StaticState.WaterLayers-1]);
+				return true;
+			case WindOverlay.DeepWaterCurrent:
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[0]);
+				return true;
+		}
+		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[0]);
+		return false;
+	}
 
 
-	private string GetCellInfoGlobal(ref SimState state, ref SimDependent dependent)
+	private string GetCellInfoGlobal(ref SimState state, ref DependentState dependent)
 	{
 		string s = "";
 		s += "CO2: " + state.PlanetState.CarbonDioxide;
@@ -654,7 +693,7 @@ public class WorldView : MonoBehaviour {
 
 		return s;
 	}
-	private string GetCellInfoEnergy(ref SimState state, ref SimDependent dependent)
+	private string GetCellInfoEnergy(ref SimState state, ref DependentState dependent)
 	{
 		string s = "";
 
@@ -685,26 +724,26 @@ public class WorldView : MonoBehaviour {
 
 		return s;
 	}
-	private string GetCellInfoCell(ref SimState state, ref SimDependent dependent)
+	private string GetCellInfoCell(ref SimState state, ref DependentState dependent)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
 
-		var terrain = state.CellTerrains[ActiveCellIndex];
+		var terrain = state.Terrain[ActiveCellIndex];
 		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
 		string s = "";
 		s += "Index: " + ActiveCellIndex + "\n";
 		s += "Coord: (" + math.degrees(coord.x).ToString("0.0") + ", " + math.degrees(coord.y).ToString("0.0") + ")\n";
-		s += "Surface: " + (terrain.Elevation + dependent.WaterAndIceDepth).ToString("0.000") + " m\n";
+		s += "Surface: " + (dependent.SurfaceElevation[ActiveCellIndex]).ToString("0.000") + " m\n";
 		s += "Elevation: " + terrain.Elevation.ToString("0.000") + " m\n";
-		s += "H2O Depth: " + dependent.WaterDepth.ToString("0.000") + " m\n";
+		s += "H2O Depth: " + dependent.WaterDepth[ActiveCellIndex].ToString("0.000") + " m\n";
 		s += "Ice Depth: " + (state.IceMass[ActiveCellIndex] / WorldData.MassIce).ToString("0.000") + " m\n";
 		s += "Rainfall: " + (dependent.CellDisplays[ActiveCellIndex].Rainfall / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
 		s += "Evaporation: " + (dependent.CellDisplays[ActiveCellIndex].Evaporation / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
 		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
 		return s;
 	}
-	private string GetCellInfoAtmosphere(ref SimState state, ref SimDependent dependent)
+	private string GetCellInfoAtmosphere(ref SimState state, ref DependentState dependent)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
@@ -713,35 +752,36 @@ public class WorldView : MonoBehaviour {
 		s += "Surface Temp: " + GetTemperatureString(state.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Surface Pressure: " + dependent.AirPressure[0][ActiveCellIndex].ToString("0") + " Pa\n";
 		s += "Surface Wind Horz: (" + state.AirVelocity[0][ActiveCellIndex].x.ToString("0.0") + ", " + state.AirVelocity[0][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
-		s += "Surface Wind Vert: " + wind.WindVertical.ToString("0.0") + " m/s\n";
+		s += "Surface Wind Vert: " + dependent.WindVertical[0][ActiveCellIndex].ToString("0.0") + " m/s\n";
 		s += "Surface Humidity: " + (dependent.RelativeHumidity[0][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
 		s += "Clouds: " + (state.CloudMass[ActiveCellIndex] / WorldData.MassWater).ToString("0.000") + " m3\n";
 		s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater * state.CloudMass[ActiveCellIndex])).ToString("0.000") + " nm3\n";
 		return s;
 	}
-	private string GetCellInfoGround(ref SimState state, ref SimDependent dependent)
+	private string GetCellInfoGround(ref SimState state, ref DependentState dependent)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
 
-		var terrain = state.CellTerrains[ActiveCellIndex];
+		var terrain = state.Terrain[ActiveCellIndex];
 		string s = "";
 		s += "Fertility: " + terrain.SoilFertility + "\n";
 		s += "Temp: " + GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0);
-		s += "H2O Volume: " + (terrain.GroundWater / cell.WaterMass).ToString("0.0") + " m3\n";
+		s += "H2O Volume: " + (terrain.GroundWater / WorldData.MassWater).ToString("0.0") + " m3\n";
 		s += "H2O Depth: " + terrain.GroundWaterDepth.ToString("0") + " m\n";
 		s += "Roughness: " + terrain.Roughness.ToString("0") + " m\n";
 		return s;
 	}
-	private string GetCellInfoWater(ref SimState state, ref SimDependent dependent)
+	private string GetCellInfoWater(ref SimState state, ref DependentState dependent)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
 
 		string s = "";
-		float saltMass = state.WaterSaltMass[Sim.StaticState.WaterLayers - 1][ActiveCellIndex];
+		int waterSurfaceLayer = Sim.StaticState.WaterLayers - 1;
+		float saltMass = state.WaterSaltMass[waterSurfaceLayer][ActiveCellIndex];
 		s += "Surface Temp: " + GetTemperatureString(state.WaterTemperature[Sim.StaticState.WaterLayers-1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Surface Salinity: " + (1000000 * saltMass / (saltMass + cell.WaterMass)).ToString("0.0") + " ppm\n";
+		s += "Surface Salinity: " + (1000000 * saltMass / (saltMass + state.WaterMass[waterSurfaceLayer][ActiveCellIndex])).ToString("0.0") + " ppm\n";
 		return s;
 	}
 

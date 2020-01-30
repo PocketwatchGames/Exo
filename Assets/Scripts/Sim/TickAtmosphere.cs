@@ -365,7 +365,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Humidity;
 	[ReadOnly] public NativeArray<float2> Velocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public float DiffusionCoefficientTemperature;
 	[ReadOnly] public float DiffusionCoefficientHumidity;
 	[ReadOnly] public float DiffusionCoefficientVelocity;
@@ -383,11 +382,11 @@ public struct DiffusionAirJob : IJobParallelFor {
 			{
 				gradientWaterVapor += Humidity[n];
 				gradientVelocity += Velocity[n];
-				gradientTemperature += Temperature[n] - WorldData.TemperatureLapseRate * Elevation[n];
+				gradientTemperature += Temperature[n];
 				neighborCount++;
 			}
 		}
-		gradientTemperature -= (Temperature[i] - WorldData.TemperatureLapseRate * Elevation[i]) * neighborCount;
+		gradientTemperature -= Temperature[i] * neighborCount;
 		gradientWaterVapor -= Humidity[i] * neighborCount;
 		gradientVelocity -= Velocity[i] * neighborCount;
 
@@ -595,7 +594,7 @@ public struct EnergyAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergy;
 	public void Execute(int i)
 	{
-		float conductionTemperatureDelta = ;
+		float conductionTemperatureDelta = 0;
 		Temperature[i] = LastTemperature[i] + Diffusion[i].Temperature - Advection[i].Temperature - ThermalRadiationOut[i] + ThermalRadiationIn[i] + SolarRadiationIn[i] + conductionTemperatureDelta;
 		Humidity[i] = LastHumidity[i] + Diffusion[i].Humidity - Advection[i].Humidity;
 		Velocity[i] = LastVelocity[i] + Diffusion[i].Velocity - Advection[i].Velocity;
@@ -618,7 +617,7 @@ public struct EnergyWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergy;
 	public void Execute(int i)
 	{
-		float conductionTemperatureDelta = ;
+		float conductionTemperatureDelta = 0;
 		Temperature[i] = LastTemperature[i] + Diffusion[i].Temperature - Advection[i].Temperature - ThermalRadiationOut[i] + ThermalRadiationIn[i] + SolarRadiationIn[i] + conductionTemperatureDelta;
 		Salinity[i] = LastSalinity[i] + Diffusion[i].Salinity - Advection[i].Salinity;
 		Velocity[i] = LastVelocity[i] + Diffusion[i].Velocity - Advection[i].Velocity;
@@ -674,6 +673,46 @@ public struct EnergyTerrainJob : IJobParallelFor {
 	[ReadOnly] float GeothermalEnergy;
 	public void Execute(int i)
 	{
+	}
+}
+
+[BurstCompile]
+public struct UpdateDependentStateJob : IJobParallelFor {
+	public NativeArray<float> SurfaceElevation;
+	public NativeArray<float> IceCoverage;
+	public NativeArray<float> WaterCoverage;
+	public NativeArray<float> VegetationCoverage;
+	public NativeArray<float> CloudCoverage;
+	[ReadOnly] public NativeArray<float> IceMass;
+	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public WorldData worldData;
+	public void Execute(int i)
+	{
+		VegetationCoverage[i] = Terrain[i].Vegetation * worldData.inverseFullCanopyCoverage;
+		WaterCoverage[i] = Terrain[i].WaterDepth * worldData.inverseFullWaterCoverage;
+		CloudCoverage[i] = CloudMass[i] * worldData.inverseCloudMassFullAbsorption;
+		IceCoverage[i] = IceMass[i] * worldData.inverseFullIceCoverage;
+	}
+
+	public void UpdateOut(ref DependentState output)
+	{
+		output.SurfaceElevation.CopyFrom(SurfaceElevation);
+		output.IceCoverage.CopyFrom(IceCoverage);
+		output.WaterCoverage.CopyFrom(WaterCoverage);
+		output.VegetationCoverage.CopyFrom(VegetationCoverage);
+		output.CloudCoverage.CopyFrom(CloudCoverage);
+	}
+	public void Dispose()
+	{
+		SurfaceElevation.Dispose();
+		IceCoverage.Dispose();
+		WaterCoverage.Dispose();
+		VegetationCoverage.Dispose();
+		CloudCoverage.Dispose();
+		IceMass.Dispose();
+		CloudMass.Dispose();
+		Terrain.Dispose();
 	}
 }
 

@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
+using Unity.Jobs;
+using Unity.Collections;
 
 public static class WorldGen {
 	static System.Random _random;
@@ -34,7 +36,7 @@ public static class WorldGen {
 	{
 		return _noise.GetPerlin(x * frequency + hash, y * frequency, z * frequency);
 	}
-	public static void Generate(int seed, WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state)
+	public static void Generate(int seed, WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref DependentState dependentState)
 	{
 		float inversePI = 1.0f / math.PI;
 		_noise = new FastNoise(seed);
@@ -89,12 +91,6 @@ public static class WorldGen {
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 40) +
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 40);
 
-			float2 cloudVelocity = float2.zero;
-			float2 wind = float2.zero;
-			float windVertical = 0;
-			float2 current = float2.zero;
-			float currentVertical = 0;
-
 
 			float troposphereColumnHeight = worldData.TropopauseElevation - surfaceElevation;
 
@@ -110,14 +106,9 @@ public static class WorldGen {
 			float airPressure = WorldData.StaticPressure - regionalTemperatureVariation * 1000;
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2000, 0, 1), 0.85f) * Mathf.Pow(relativeHumidity, 0.5f);
 			float cloudDropletMass = GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2001, 0, 1) * relativeHumidity * Mathf.Pow(cloudMass, 2) * worldData.rainDropMaxSize;
-			float cloudTemperature = airTemperature;
-			float totalAirMass = Atmosphere.GetAirMass(ref worldData, airPressure, surfaceElevation, airTemperature, WorldData.MolarMassAir, state.PlanetState.Gravity) - state.PlanetState.StratosphereMass;
-			//float totalAirMassLower = Atmosphere.GetAirMass(world, cell.LowerAirPressure, surfaceElevation, cell.LowerAirTemperature, world.Data.MolarMassAir * (1.0f - relativeHumidity) + world.Data.MolarMassWater * relativeHumidity) - state.StratosphereMass - totalAirMassUpper;
-			float airWaterMass = Atmosphere.GetAbsoluteHumidity(ref worldData, airTemperature, relativeHumidity, totalAirMass, inverseDewPointTemperatureRange);
-
-			//cell.UpperAirMass = totalAirMassUpper - state.CloudMass;
-			//cell.UpperAirPressure = Atmosphere.GetAirPressure(world, state.UpperAirMass + state.StratosphereMass + state.CloudMass, surfaceElevation + world.Data.BoundaryZoneElevation, state.UpperAirTemperature, Atmosphere.GetMolarMassAir(world, state.UpperAirMass + state.StratosphereMass, state.CloudMass));
-			float airMass = totalAirMass - airWaterMass - cloudMass;
+			float cloudElevation = 5000;
+			float cloudTemperature = airTemperaturePotential * WorldData.TemperatureLapseRate * cloudElevation;
+			float totalAirMass = worldGenData.TroposphereMass * (1.0f - surfaceElevation / worldData.TropopauseElevation);
 
 			float groundWaterDepth = GetPerlinMinMax(pos.x, pos.y, pos.z, 1f, 60423, worldGenData.GroundWaterDepthMin, worldGenData.GroundWaterDepthMax);
 			float maxGroundWater = groundWaterDepth * soilFertility * WorldData.MassWater * worldData.MaxSoilPorousness;
@@ -133,20 +124,48 @@ public static class WorldGen {
 
 			//float shallowDepth = Mathf.Min(data.DeepOceanDepth, depth);
 			//float deepDepth = Mathf.Max(0, depth - data.DeepOceanDepth);
-			float salinity = waterDepth == 0 ? 0 : (1.0f - Math.Abs(coord.y)) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
-			//float deepSalinity = deepDepth == 0 ? 0 : Math.Abs(coord.y) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
 
 			float minOceanTemperature = WorldData.FreezingTemperature + 0.1f;
 			//float oceanDepthMinTemperature = 2000;
 			float waterTemperatureSurface = Mathf.Max(WorldData.FreezingTemperature, airTemperatureSurface + 2);
-			float waterTemperatureBottom = ;
-			float waterAndSaltMass = GetWaterMass(worldData, waterDepth, waterTemperature, salinity);
-			float waterMass = waterAndSaltMass * (1.0f - salinity);
-			float saltMass = waterAndSaltMass * salinity;
-			float iceMass = math.min(waterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(airTemperatureSurface - WorldData.FreezingTemperature) / 10));
-			waterMass -= iceMass;
+			float waterTemperatureBottom = waterTemperatureSurface;
+
+
+			for (int j = 0; j < staticState.AirLayers; j++)
+			{
+				float2 wind = float2.zero;
+				float windVertical = 0;
+				float layerElevation = surfaceElevation;
+				float airTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * layerElevation;
+				float airWaterMass = Atmosphere.GetAbsoluteHumidity(ref worldData, airTemperature, relativeHumidity, totalAirMass, inverseDewPointTemperatureRange);
+				state.AirHumidity[j][i] = airWaterMass;
+				state.AirTemperature[j][i] = airTemperature;
+				state.AirVelocity[j][i] = wind;
+			}
+			for (int j = 0; j < staticState.WaterLayers; j++)
+			{
+				float layerDepth;
+				float waterTemperature = waterTemperatureSurface;
+				float salinity = waterDepth == 0 ? 0 : (1.0f - Math.Abs(coord.y)) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
+				//float deepSalinity = deepDepth == 0 ? 0 : Math.Abs(coord.y) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
+				float waterAndSaltMass = GetWaterMass(worldData, waterDepth, waterTemperature, salinity);
+				float waterMass = waterAndSaltMass * (1.0f - salinity);
+				float saltMass = waterAndSaltMass * salinity;
+				float2 current = float2.zero;
+				float currentVertical = 0;
+
+				state.WaterMass[j][i] = waterMass;
+				state.WaterSaltMass[j][i] = saltMass;
+				state.WaterTemperature[j][i] = waterTemperature;
+				state.WaterVelocity[j][i] = current;
+			}
+
+			float2 cloudVelocity = float2.zero;
+
+			float surfaceWaterMass = state.WaterTemperature[0][i];
+			float iceMass = math.min(surfaceWaterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(airTemperatureSurface - WorldData.FreezingTemperature) / 10));
+			state.WaterTemperature[0][i] -= iceMass;
 			float waterAndIceDepth = waterDepth + iceMass / WorldData.MassIce;
-			float cloudElevation = Atmosphere.GetCloudElevation(ref worldData, airTemperature, Atmosphere.GetDewPoint(ref worldData, airTemperature, relativeHumidity), surfaceElevation);
 
 			////	float deepOceanTemperature = (state.ShallowWaterTemperature - minOceanTemperature) * (1.0f - Mathf.Pow(Mathf.Clamp01(deepDepth / oceanDepthMinTemperature), 2f)) + minOceanTemperature;
 			//float deepOceanTemperature = minOceanTemperature;
@@ -183,23 +202,8 @@ public static class WorldGen {
 			float groundEnergy = groundWaterEnergy + soilEnergy;
 
 
-			for (int j=0;j<staticState.AirLayers;j++)
-			{
-				float layerElevation;
-				state.AirHumidity[j][i] = airWaterMass;
-				state.AirTemperature[j][i] = airTemperaturePotential + WorldData.TemperatureLapseRate * surfaceElevation;
-				state.AirVelocity[j][i] = wind;
-			}
-			for (int j=0;j<staticState.WaterLayers;j++)
-			{
-				float layerDepth;
-				state.WaterSaltMass[j][i] = saltMass;
-				state.WaterTemperature[j][i] = waterTemperature;
-				state.WaterVelocity[j][i] = current;
-			}
 
-
-			state.CellTerrains[i] = new CellTerrain()
+			state.Terrain[i] = new CellTerrain()
 			{
 				Elevation = elevation,
 				GroundWater = groundWater,
@@ -218,6 +222,26 @@ public static class WorldGen {
 			state.IceTemperature[i] = WorldData.FreezingTemperature;
 			state.TerrainTemperature[i] = terrainTemperature;
 		}
+
+		var updateDependentStateJob = new UpdateDependentStateJob()
+		{
+			CloudCoverage = new NativeArray<float>(staticState.Count, Allocator.TempJob),
+			IceCoverage = new NativeArray<float>(staticState.Count, Allocator.TempJob),
+			SurfaceElevation = new NativeArray<float>(staticState.Count, Allocator.TempJob),
+			VegetationCoverage = new NativeArray<float>(staticState.Count, Allocator.TempJob),
+			WaterCoverage = new NativeArray<float>(staticState.Count, Allocator.TempJob),
+
+			CloudMass = new NativeArray<float>(state.CloudMass, Allocator.TempJob),
+			IceMass = new NativeArray<float>(state.IceMass, Allocator.TempJob),
+			Terrain = new NativeArray<CellTerrain>(state.Terrain, Allocator.TempJob),
+			worldData = worldData
+		};
+		var updateDependentStateJobHandle = updateDependentStateJob.Schedule(staticState.Count, 100);
+		updateDependentStateJobHandle.Complete();
+
+		dependentState.Init(staticState.Count, staticState.AirLayers, staticState.WaterLayers);
+		updateDependentStateJob.UpdateOut(ref dependentState);
+		updateDependentStateJob.Dispose();
 	}
 
 	static public float GetWaterMass(WorldData worldData, float depth, float temperature, float salinityPSU)

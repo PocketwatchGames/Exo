@@ -12,12 +12,10 @@ public class Icosphere {
 
 	public List<Polygon> Polygons = new List<Polygon>();
 	public NativeArray<float3> Vertices = new NativeArray<float3>();
-	private List<float3> VertexList = new List<float3>();
 
 	public Icosphere(int recursions)
 	{
 		Polygons = new List<Polygon>();
-		VertexList = new List<float3>();
 
 		// An icosahedron has 12 vertices, and
 		// since they're completely symmetrical the
@@ -26,18 +24,19 @@ public class Icosphere {
 
 		float t = (1.0f + Mathf.Sqrt(5.0f)) / 2.0f;
 
-		VertexList.Add(math.normalize(new float3(-1, t, 0)));
-		VertexList.Add(math.normalize(new float3(1, t, 0)));
-		VertexList.Add(math.normalize(new float3(-1, -t, 0)));
-		VertexList.Add(math.normalize(new float3(1, -t, 0)));
-		VertexList.Add(math.normalize(new float3(0, -1, t)));
-		VertexList.Add(math.normalize(new float3(0, 1, t)));
-		VertexList.Add(math.normalize(new float3(0, -1, -t)));
-		VertexList.Add(math.normalize(new float3(0, 1, -t)));
-		VertexList.Add(math.normalize(new float3(t, 0, -1)));
-		VertexList.Add(math.normalize(new float3(t, 0, 1)));
-		VertexList.Add(math.normalize(new float3(-t, 0, -1)));
-		VertexList.Add(math.normalize(new float3(-t, 0, 1)));
+		List<float3> vertexList = new List<float3>();
+		vertexList.Add(math.normalize(new float3(-1, t, 0)));
+		vertexList.Add(math.normalize(new float3(1, t, 0)));
+		vertexList.Add(math.normalize(new float3(-1, -t, 0)));
+		vertexList.Add(math.normalize(new float3(1, -t, 0)));
+		vertexList.Add(math.normalize(new float3(0, -1, t)));
+		vertexList.Add(math.normalize(new float3(0, 1, t)));
+		vertexList.Add(math.normalize(new float3(0, -1, -t)));
+		vertexList.Add(math.normalize(new float3(0, 1, -t)));
+		vertexList.Add(math.normalize(new float3(t, 0, -1)));
+		vertexList.Add(math.normalize(new float3(t, 0, 1)));
+		vertexList.Add(math.normalize(new float3(-t, 0, -1)));
+		vertexList.Add(math.normalize(new float3(-t, 0, 1)));
 
 		// And here's the formula for the 20 sides,
 		// referencing the 12 vertices we just created.
@@ -63,9 +62,9 @@ public class Icosphere {
 		Polygons.Add(new Polygon(8, 6, 7));
 		Polygons.Add(new Polygon(9, 8, 1));
 
-		Subdivide(recursions);
+		Subdivide(recursions, vertexList);
 
-		Vertices = new NativeArray<float3>(VertexList.ToArray(), Allocator.Persistent);
+		Vertices = new NativeArray<float3>(vertexList.ToArray(), Allocator.Persistent);
 	}
 
 	public void Dispose()
@@ -73,7 +72,7 @@ public class Icosphere {
 		Vertices.Dispose();
 	}
 
-	private void Subdivide(int recursions)
+	private void Subdivide(int recursions, List<float3> vertexList)
 	{
 		var midPointCache = new Dictionary<int, int>();
 
@@ -90,9 +89,9 @@ public class Icosphere {
 				// new vertex between two old vertices, or
 				// find the one that was already created.
 
-				int ab = GetMidPointIndex(midPointCache, a, b);
-				int bc = GetMidPointIndex(midPointCache, b, c);
-				int ca = GetMidPointIndex(midPointCache, c, a);
+				int ab = GetMidPointIndex(midPointCache, a, b, vertexList);
+				int bc = GetMidPointIndex(midPointCache, b, c, vertexList);
+				int ca = GetMidPointIndex(midPointCache, c, a, vertexList);
 
 				// Create the four new polygons using our original
 				// three vertices, and the three new midpoints.
@@ -106,7 +105,7 @@ public class Icosphere {
 			Polygons = newPolys;
 		}
 	}
-	private int GetMidPointIndex(Dictionary<int, int> cache, int indexA, int indexB)
+	private int GetMidPointIndex(Dictionary<int, int> cache, int indexA, int indexB, List<float3> vertexList)
 	{
 		// We create a key out of the two original indices
 		// by storing the smaller index in the upper two bytes
@@ -131,12 +130,12 @@ public class Icosphere {
 		// If we're here, it's because a midpoint for these two
 		// vertices hasn't been created yet. Let's do that now!
 
-		float3 p1 = Vertices[indexA];
-		float3 p2 = Vertices[indexB];
+		float3 p1 = vertexList[indexA];
+		float3 p2 = vertexList[indexB];
 		float3 middle = math.normalize(math.lerp(p1, p2, 0.5f));
 
-		ret = VertexList.Count;
-		VertexList.Add(middle);
+		ret = vertexList.Count;
+		vertexList.Add(middle);
 
 		// Add our new midpoint to the cache so we don't have
 		// to do this again. =)

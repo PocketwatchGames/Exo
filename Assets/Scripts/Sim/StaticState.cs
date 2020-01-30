@@ -107,5 +107,8 @@ public struct StaticState {
 		WindInfo.Dispose();
 	}
 
-
+	public int GetWaterIndex(int layer, int i)
+	{
+		return Count * layer + i;
+	}
 }

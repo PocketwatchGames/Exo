@@ -21,7 +21,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	public int CellCount { get; private set; }
 	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
-	public ref SimDependent ActiveSimDependent { get { return ref _simDependent; } }
+	public ref DependentState DependentState { get { return ref _dependentState; } }
 	public float TimeTillTick { get; private set; }
 
 	public float InverseCellCount { get; private set; }
@@ -30,7 +30,7 @@ public class WorldSimComponent : MonoBehaviour
 	private WorldSim _worldSim;
 	private const int _simStateCount = 2;
 	private SimState[] _simStates;
-	private SimDependent _simDependent;
+	private DependentState _dependentState;
 	private int _activeSimState;
 	private float _ticksPerSecond = 1;
 
@@ -58,7 +58,7 @@ public class WorldSimComponent : MonoBehaviour
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
-		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0]);
+		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
 
 	}
 
@@ -67,6 +67,7 @@ public class WorldSimComponent : MonoBehaviour
 		_worldSim.Dispose();
 		StaticState.Dispose();
 		Icosphere.Dispose();
+		_dependentState.Dispose();
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i].Dispose();
@@ -94,11 +95,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
-		int nextStateIndex = (_activeSimState + 1) % _simStateCount;
-		_activeSimState = nextStateIndex;
-		ref var nextState = ref _simStates[_activeSimState];
-
-		_worldSim.Tick(ref state, ref nextState, ticksToAdvance, ref StaticState, ref WorldData);
+		_worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref StaticState, ref WorldData, ref _activeSimState);
 
 		OnTick?.Invoke();
 	}
