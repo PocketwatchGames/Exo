@@ -1977,8 +1977,6 @@ MonoBehaviour:
     MaxTerrainNormalForFriction: 0.25
     AirMassDiffusionSpeedHorizontal: 0.1
     AirMassDiffusionSpeedVertical: 0.1
-    AirEnergyDiffusionSpeedHorizontal: 0.1
-    AirEnergyDiffusionSpeedVertical: 0.1
     WindOceanFriction: 0.2
     WindIceFriction: 0.1
     WindLandFriction: 0.5
@@ -2003,6 +2001,7 @@ MonoBehaviour:
     IceAirConductionCooling: 0.008
     maxGroundWaterTemperature: 283
     SoilHeatDepth: 2
+    AlbedoReductionSoilQuality: 0.15
     ThermalReflectivityCloud: 0
     CloudMassFullAbsorption: 0.5
     EnergyLostThroughAtmosphereWindow: 0.1007
@@ -2011,8 +2010,6 @@ MonoBehaviour:
     maxCloudSlopeAlbedo: 0
     rainDropSizeAlbedoMin: 0
     rainDropSizeAlbedoMax: 0
-    cloudAlbedo: 0
-    AlbedoReductionSoilQuality: 0.15
     AbsorptivityCarbonDioxide: 0
     AbsorptivityAir: 0
     AbsorptivityWaterLiquid: 0

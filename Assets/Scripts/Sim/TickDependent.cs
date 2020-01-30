@@ -8,7 +8,7 @@ using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
 
-
+/*
 [BurstCompile]
 public struct DependentJob : IJobParallelFor {
 
@@ -354,3 +354,4 @@ public struct DependentJob : IJobParallelFor {
 	}
 
 }
+*/

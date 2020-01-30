@@ -5,17 +5,19 @@ using System.Text;
 using System.Threading.Tasks;
 using Unity;
 using UnityEngine;
+using Unity.Mathematics;
+using Unity.Collections;
 
 public class Icosphere {
 
 	public List<Polygon> Polygons = new List<Polygon>();
-	public List<Vector3> Vertices = new List<Vector3>();
-
+	public NativeArray<float3> Vertices = new NativeArray<float3>();
+	private List<float3> VertexList = new List<float3>();
 
 	public Icosphere(int recursions)
 	{
 		Polygons = new List<Polygon>();
-		Vertices = new List<Vector3>();
+		VertexList = new List<float3>();
 
 		// An icosahedron has 12 vertices, and
 		// since they're completely symmetrical the
@@ -24,18 +26,18 @@ public class Icosphere {
 
 		float t = (1.0f + Mathf.Sqrt(5.0f)) / 2.0f;
 
-		Vertices.Add(new Vector3(-1, t, 0).normalized);
-		Vertices.Add(new Vector3(1, t, 0).normalized);
-		Vertices.Add(new Vector3(-1, -t, 0).normalized);
-		Vertices.Add(new Vector3(1, -t, 0).normalized);
-		Vertices.Add(new Vector3(0, -1, t).normalized);
-		Vertices.Add(new Vector3(0, 1, t).normalized);
-		Vertices.Add(new Vector3(0, -1, -t).normalized);
-		Vertices.Add(new Vector3(0, 1, -t).normalized);
-		Vertices.Add(new Vector3(t, 0, -1).normalized);
-		Vertices.Add(new Vector3(t, 0, 1).normalized);
-		Vertices.Add(new Vector3(-t, 0, -1).normalized);
-		Vertices.Add(new Vector3(-t, 0, 1).normalized);
+		VertexList.Add(math.normalize(new float3(-1, t, 0)));
+		VertexList.Add(math.normalize(new float3(1, t, 0)));
+		VertexList.Add(math.normalize(new float3(-1, -t, 0)));
+		VertexList.Add(math.normalize(new float3(1, -t, 0)));
+		VertexList.Add(math.normalize(new float3(0, -1, t)));
+		VertexList.Add(math.normalize(new float3(0, 1, t)));
+		VertexList.Add(math.normalize(new float3(0, -1, -t)));
+		VertexList.Add(math.normalize(new float3(0, 1, -t)));
+		VertexList.Add(math.normalize(new float3(t, 0, -1)));
+		VertexList.Add(math.normalize(new float3(t, 0, 1)));
+		VertexList.Add(math.normalize(new float3(-t, 0, -1)));
+		VertexList.Add(math.normalize(new float3(-t, 0, 1)));
 
 		// And here's the formula for the 20 sides,
 		// referencing the 12 vertices we just created.
@@ -62,6 +64,13 @@ public class Icosphere {
 		Polygons.Add(new Polygon(9, 8, 1));
 
 		Subdivide(recursions);
+
+		Vertices = new NativeArray<float3>(VertexList.ToArray(), Allocator.Persistent);
+	}
+
+	public void Dispose()
+	{
+		Vertices.Dispose();
 	}
 
 	private void Subdivide(int recursions)
@@ -122,12 +131,12 @@ public class Icosphere {
 		// If we're here, it's because a midpoint for these two
 		// vertices hasn't been created yet. Let's do that now!
 
-		Vector3 p1 = Vertices[indexA];
-		Vector3 p2 = Vertices[indexB];
-		Vector3 middle = Vector3.Lerp(p1, p2, 0.5f).normalized;
+		float3 p1 = Vertices[indexA];
+		float3 p2 = Vertices[indexB];
+		float3 middle = math.normalize(math.lerp(p1, p2, 0.5f));
 
-		ret = Vertices.Count;
-		Vertices.Add(middle);
+		ret = VertexList.Count;
+		VertexList.Add(middle);
 
 		// Add our new midpoint to the cache so we don't have
 		// to do this again. =)

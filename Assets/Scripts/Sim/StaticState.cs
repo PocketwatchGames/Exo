@@ -18,6 +18,8 @@ public struct StaticState {
 	public NativeArray<int> Neighbors;
 	public NativeArray<StaticWindInfo> WindInfo;
 
+	public int AirLayers { get; private set; }
+	public int WaterLayers { get; private set; }
 
 	public struct StaticWindInfo {
 		public float coriolisParam;
@@ -28,7 +30,7 @@ public struct StaticState {
 	public void Init(float radius, Icosphere icosphere, ref WorldData worldData)
 	{
 		PlanetRadius = radius;
-		Count = icosphere.Vertices.Count;
+		Count = icosphere.Vertices.Length;
 		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
 		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent); ;
 		WindInfo = new NativeArray<StaticWindInfo>(Count, Allocator.Persistent); ;

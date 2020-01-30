@@ -143,9 +143,9 @@ public static class Atmosphere {
 	{
 		return surfaceAlbedo + (1.0f - surfaceAlbedo) * slope;
 	}
-	static public float GetDewPoint(ref WorldData worldData, float lowerAirTemperature, float relativeHumidity)
+	static public float GetDewPoint(ref WorldData worldData, float airTemperature, float relativeHumidity)
 	{
-		return lowerAirTemperature - (1.0f - relativeHumidity) * worldData.DewPointTemperaturePerRelativeHumidity;
+		return airTemperature - (1.0f - relativeHumidity) * worldData.DewPointTemperaturePerRelativeHumidity;
 	}
 	static public float GetCloudElevation(ref WorldData worldData, float airTemperature, float dewPoint, float elevationOrSeaLevel)
 	{
@@ -155,14 +155,6 @@ public static class Atmosphere {
 	static public float GetSpecificHeatOfWater(float waterMass, float saltMass)
 	{
 		return (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass) / (waterMass + saltMass);
-	}
-
-	static public float GetAtmosphericEmissivity(ref WorldData worldData, float airMass, float greenhouseGasMass, float humidity, float cloudMass)
-	{
-		return airMass * worldData.AbsorptivityAir +
-			greenhouseGasMass * worldData.AbsorptivityCarbonDioxide +
-			humidity * worldData.AbsorptivityWaterVapor +
-			cloudMass * worldData.AbsorptivityWaterLiquid;
 	}
 
 	static public float GetLandRadiationRate(ref WorldData worldData, float landEnergy, float groundWater, float soilFertility, float canopyCoverage)

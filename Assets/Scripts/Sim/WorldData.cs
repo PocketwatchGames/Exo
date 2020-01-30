@@ -8,7 +8,8 @@ using UnityEngine;
 [Serializable]
 public struct WorldData {
 	public float SecondsPerTick;
-	public float WaterDiffuseSpeed;
+	public int AtmosphericLayers;
+	public int WaterLayers;
 	public float FullIceCoverage;
 	public float FullWaterCoverage;
 	public float FullCanopyCoverage;
@@ -115,6 +116,7 @@ public struct WorldData {
 	[Header("Ocean")]
 	public float DeepOceanDepth;
 	public float WindToOceanCurrentFactor;
+	public float WaterDiffuseSpeed;
 	public float OceanCurrentSpeed;
 	public float OceanHorizontalMixingSpeed;
 	public float OceanUpwellingSpeed;
@@ -154,10 +156,12 @@ public struct WorldData {
 	public const float LatentHeatWaterLiquid = 334.0f;
 	public const float LatentHeatWaterVapor = 2264.705f;
 	public const float EmissivityWater = 0.96f;
+	public const float EmissivitySalt = 0.34f;
 	public const float EmissivityIce = 0.96f;
 	public const float EmissivityDirt = 0.92f;
 	public const float EmissivitySand = 0.76f;
 	public const float EmissivityAir = 0.8f;
+	public const float EmissivityVegetation = 0.25f;
 	public const float MassEarthAir = 1.29f;
 	public const float MassWater = 1000f;
 	public const float MassSalt = 2170f;

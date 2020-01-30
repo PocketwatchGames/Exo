@@ -10,6 +10,8 @@ public class WorldSimComponent : MonoBehaviour
 
 	public int Seed;
 	public int Subdivisions = 5;
+	public int AtmosphericLayers = 3;
+	public int WaterLayers = 3;
 	public TextAsset WorldGenAsset;
 	public TextAsset WorldDataAsset;
 	public WorldData WorldData;
@@ -18,14 +20,18 @@ public class WorldSimComponent : MonoBehaviour
 	public float TimeScale;
 
 	public int CellCount { get; private set; }
-	public ref SimState ActiveSimState {  get { return ref _simStates[_activeSimState]; } }
-	public float TimeTillTick { get { return _timeTillTick; } private set { _timeTillTick = value; } }
+	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
+	public ref SimDependent ActiveSimDependent { get { return ref _simDependent; } }
+	public float TimeTillTick { get; private set; }
+
+	public float InverseCellCount { get; private set; }
 
 	private WorldGenData _worldGenData = new WorldGenData();
+	private WorldSim _worldSim;
 	private const int _simStateCount = 2;
 	private SimState[] _simStates;
+	private SimDependent _simDependent;
 	private int _activeSimState;
-	public float _timeTillTick = 0.00001f;
 	private float _ticksPerSecond = 1;
 
 	public delegate void TickEventHandler();
@@ -36,18 +42,19 @@ public class WorldSimComponent : MonoBehaviour
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
 		WorldData.Init();
 
-
 		Icosphere = new Icosphere(Subdivisions);
+		CellCount = Icosphere.Vertices.Length;
+		InverseCellCount = 1.0f / CellCount;
 
-		CellCount = Icosphere.Vertices.Count;
+		_worldSim = new WorldSim(CellCount, WorldData.AtmosphericLayers, WorldData.WaterLayers);
 
-
+		TimeTillTick = 0.00001f;
 		_activeSimState = 0;
 		_simStates = new SimState[_simStateCount];
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i] = new SimState();
-			_simStates[i].Init(CellCount);
+			_simStates[i].Init(CellCount, AtmosphericLayers, WaterLayers);
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
@@ -57,7 +64,9 @@ public class WorldSimComponent : MonoBehaviour
 
 	public void OnDestroy()
 	{
+		_worldSim.Dispose();
 		StaticState.Dispose();
+		Icosphere.Dispose();
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i].Dispose();
@@ -89,7 +98,7 @@ public class WorldSimComponent : MonoBehaviour
 		_activeSimState = nextStateIndex;
 		ref var nextState = ref _simStates[_activeSimState];
 
-		WorldTick.Tick(ref state, ref nextState, ticksToAdvance, ref StaticState, ref WorldData);
+		_worldSim.Tick(ref state, ref nextState, ticksToAdvance, ref StaticState, ref WorldData);
 
 		OnTick?.Invoke();
 	}

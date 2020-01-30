@@ -12,24 +12,89 @@ using Unity.Collections;
 public struct SimState {
 
 	public PlanetState PlanetState;
-	public PlanetDisplay DisplayPlanet;
-	public CellDependent[] CellDependents;
-	public CellState[] CellStates;
-	public CellTerrain[] CellTerrains;
-	public NativeArray<CellDisplay> CellDisplays;
+	public NativeArray<CellTerrain> CellTerrains;
+	public NativeArray<float> TerrainTemperature;
+	public NativeArray<float> IceTemperature;
+	public NativeArray<float> IceMass;
+	public NativeArray<float> CloudElevation;
+	public NativeArray<float> CloudTemperature;
+	public NativeArray<float> CloudMass;
+	public NativeArray<float> CloudDropletMass;
+	public NativeArray<float2> CloudVelocity;
+	public NativeArray<float>[] AirTemperature;
+	public NativeArray<float>[] AirHumidity;
+	public NativeArray<float2>[] AirVelocity;
+	public NativeArray<float>[] WaterTemperature;
+	public NativeArray<float>[] WaterSaltMass;
+	public NativeArray<float2>[] WaterVelocity;
 
-	public void Init(int count)
+	public void Init(int count, int airLayers, int waterLayers)
 	{
-		CellStates = new CellState[count];
-		CellTerrains = new CellTerrain[count];
-		CellDependents = new CellDependent[count];
-		CellDisplays = new NativeArray<CellDisplay>(count, Allocator.Persistent);
+		CellTerrains = new NativeArray<CellTerrain>(count, Allocator.Persistent);
+		TerrainTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		IceMass = new NativeArray<float>(count, Allocator.Persistent);
+		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
+		CloudTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
+		CloudDropletMass = new NativeArray<float>(count, Allocator.Persistent);
+		CloudVelocity = new NativeArray<float2>(count, Allocator.Persistent);
+		AirTemperature = new NativeArray<float>[waterLayers];
+		AirHumidity = new NativeArray<float>[waterLayers];
+		AirVelocity = new NativeArray<float2>[waterLayers];
+		for (int i = 0; i < airLayers; i++)
+		{
+			AirTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
+			AirHumidity[i] = new NativeArray<float>(count, Allocator.Persistent);
+			AirVelocity[i] = new NativeArray<float2>(count, Allocator.Persistent);
+		}
+
+		WaterTemperature = new NativeArray<float>[waterLayers];
+		WaterSaltMass = new NativeArray<float>[waterLayers];
+		WaterVelocity = new NativeArray<float2>[waterLayers];
+		for (int i = 0; i < waterLayers; i++)
+		{
+			WaterTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
+			WaterSaltMass[i] = new NativeArray<float>(count, Allocator.Persistent);
+			WaterVelocity[i] = new NativeArray<float2>(count, Allocator.Persistent);
+		}
 	}
 
 	public void Dispose()
 	{
-		CellDisplays.Dispose();
+		CellTerrains.Dispose();
+		TerrainTemperature.Dispose();
+		IceTemperature.Dispose();
+		IceMass.Dispose();
+		CloudElevation.Dispose();
+		CloudTemperature.Dispose();
+		CloudMass.Dispose();
+		CloudDropletMass.Dispose();
+		CloudVelocity.Dispose();
+		for (int i = 0; i < AirTemperature.Length; i++)
+		{
+			AirTemperature[i].Dispose();
+			AirHumidity[i].Dispose();
+			AirVelocity[i].Dispose();
+		}
+
+		for (int i = 0; i < WaterTemperature.Length; i++)
+		{
+			WaterTemperature[i].Dispose();
+			WaterSaltMass[i].Dispose();
+			WaterVelocity[i].Dispose();
+		}
 	}
+}
+
+public struct CellTerrain {
+	public float Elevation;
+	public float Roughness;
+	public float SoilFertility;
+	public float Vegetation;
+	public float WaterDepth;
+	public float GroundWater;
+	public float GroundWaterDepth;
 }
 
 public struct PlanetState {
@@ -46,6 +111,39 @@ public struct PlanetState {
 	public float3 Position;
 	public float AngularSpeed;
 }
+
+public struct SimDependent {
+
+	public NativeArray<float>[] AirPressure;
+	public NativeArray<float>[] RelativeHumdity;
+	public PlanetDisplay DisplayPlanet;
+	public NativeArray<CellDisplay> CellDisplays;
+
+	public void Init(int count, int airLayers, int waterLayers)
+	{
+		for (int i = 0; i < airLayers; i++)
+		{
+		}
+		for (int i = 0; i < waterLayers; i++)
+		{
+		}
+
+		CellDisplays = new NativeArray<CellDisplay>(count, Allocator.Persistent);
+	}
+
+	public void Dispose()
+	{
+		CellDisplays.Dispose();
+		for (int i=0;i< AirPressure.Length;i++)
+		{
+			AirPressure[i].Dispose();
+			RelativeHumdity[i].Dispose();
+		}
+	}
+}
+
+
+
 
 public struct PlanetDisplay {
 	public float EnergyDelta;
@@ -84,45 +182,6 @@ public struct PlanetDisplay {
 }
 
 
-public struct CellTerrain {
-	public float Elevation;
-	public float Roughness;
-	public float SoilFertility;
-	public float Vegetation;
-}
-public struct CellState {
-	public float IceMass;
-	public float WaterMass;
-	public float WaterEnergy;
-	public float SaltMass;
-	public float GroundEnergy;
-	public float GroundWater;
-	public float GroundWaterDepth;
-	public float AirWaterMass;
-	public float CloudMass;
-	public float CloudDropletMass;
-	public float AirMass;
-	public float AirEnergy;
-}
-
-public struct CellDependent {
-	public float WindVertical;
-	public float2 WindSurface;
-	public float2 WindTropopause;
-	public float2 CurrentSurface;
-	public float2 CurrentDeep;
-	public float CurrentVertical;
-	public float CloudCoverage;
-	public float CloudElevation;
-	public float WaterDepth;
-	public float WaterAndIceDepth;
-	public float WaterDensity;
-	public float RelativeHumidity;
-	public float AirTemperature;
-	public float AirPressure;
-	public float WaterTemperature;
-}
-
 public struct CellDisplay {
 	public float Heat;
 	public float Rainfall;
@@ -148,40 +207,3 @@ public struct CellDisplay {
 	public float EnergySurfaceConduction;
 }
 
-
-public struct RenderState {
-
-	public float Ticks;
-	public Vector3 Position;
-	public Vector3 Rotation;
-	public Color32[] TerrainColor;
-	public Color32[] WaterColor;
-	public Color32[] CloudColor;
-	public Vector3[] SurfacePosition;
-	public Vector3[] TerrainPosition;
-	public Vector3[] WaterPosition;
-	public Vector3[] CloudPosition;
-	public Vector3[] TerrainNormal;
-	public Vector3[] WaterNormal;
-	public Vector3[] CloudNormal;
-	public Vector2[] Wind;
-	public Vector2[] Current;
-	public float[] WaterDepth;
-
-	public void Init(int count)
-	{
-		TerrainColor = new Color32[count];
-		WaterColor = new Color32[count];
-		CloudColor = new Color32[count];
-		SurfacePosition = new Vector3[count];
-		TerrainPosition = new Vector3[count];
-		WaterPosition = new Vector3[count];
-		CloudPosition = new Vector3[count];
-		TerrainNormal = new Vector3[count];
-		WaterNormal = new Vector3[count];
-		CloudNormal = new Vector3[count];
-		Wind = new Vector2[count];
-		Current = new Vector2[count];
-		WaterDepth = new float[count];
-	}
-}
