@@ -153,7 +153,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		cloudNormal = icosphere;
 		terrainPosition = icosphere * ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
 		waterPosition = icosphere * ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius * math.saturate(waterDepth / roughness);
-		surfacePosition = icosphere * (math.max(elevation + roughness, SurfaceElevation[i]) * TerrainScale + PlanetRadius) / PlanetRadius;
+		surfacePosition = icosphere * ((elevation + math.max(roughness, waterDepth)) * TerrainScale + PlanetRadius) / PlanetRadius;
 		cloudPosition = icosphere * (CloudElevation[i] * TerrainScale + PlanetRadius) / PlanetRadius;
 
 		if (WindOverlayActive)
@@ -185,111 +185,107 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		SurfacePosition[i] = surfacePosition;
 	}
 
-	static readonly Color32 green = new Color32(0, 220, 30, 255);
-	static readonly Color32 grey = new Color32(50, 50, 80, 255);
-	static readonly Color32 brown = new Color32(100, 60, 20, 255);
-	static readonly Color32 blue = new Color32(0, 0, 255, 255);
-	static readonly Color32 white = new Color32(255, 255, 255, 255);
-	static readonly Color32 black = new Color32(0, 0, 0, 255);
-
 	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float vegetationCoverage)
 	{
-		var groundColor = Color32.Lerp(grey, brown, soilFertility);
-		var waterColor = Color32.Lerp(groundColor, blue, math.saturate(math.pow(waterDepth / roughness, 2)));
-		var iceColor = Color32.Lerp(waterColor, white, iceCoverage);
-		var vegetationColor = Color32.Lerp(groundColor, green, vegetationCoverage);
+		var groundColor = Color32.Lerp(new Color32(50, 50, 80, 255), new Color32(100, 60, 20, 255), soilFertility);
+		var waterColor = Color32.Lerp(groundColor, new Color32(0, 0, 255, 255), math.saturate(math.pow(waterDepth / roughness, 2)));
+		var iceColor = Color32.Lerp(waterColor, new Color32(255, 255, 255, 255), iceCoverage);
+		var vegetationColor = Color32.Lerp(groundColor, new Color32(0, 220, 30, 255), vegetationCoverage);
 		return vegetationColor;
 	}
 
 	private Color32 GetWaterColor(float iceCoverage)
 	{
-		var waterColor = blue;
-		var iceColor = Color32.Lerp(waterColor, white, iceCoverage);
+		var waterColor = new Color32(0, 0, 255, 255);
+		var iceColor = Color32.Lerp(waterColor, new Color32(255, 255, 255, 255), iceCoverage);
 		return iceColor;
 	}
 
 	private Color32 GetCloudColor(float dropletSize, float cloudCoverage)
 	{
-		var c = Color32.Lerp(white, black, dropletSize);
+		var c = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0, 0, 0, 255), dropletSize);
 		float opacity = -math.cos(cloudCoverage * math.PI) / 2 + 0.5f;
 		c.a = (byte)(255 * opacity);
 		return c;
 	}
 
 
-	public void Dispose()
-	{
-		TerrainColor.Dispose();
-		WaterColor.Dispose();
-		CloudColor.Dispose();
-		TerrainPosition.Dispose();
-		WaterPosition.Dispose();
-		CloudPosition.Dispose();
-		TerrainNormal.Dispose();
-		WaterNormal.Dispose();
-		CloudNormal.Dispose();
-		SurfacePosition.Dispose();
-		VelocityArrow.Dispose();
-		Terrain.Dispose();
-		CloudElevation.Dispose();
-		CloudDropletMass.Dispose();
-		CloudCoverage.Dispose();
-		IceCoverage.Dispose();
-		VegetationCoverage.Dispose();
-		WaterCoverage.Dispose();
-		WaterDepth.Dispose();
-		SurfaceElevation.Dispose();
-		Icosphere.Dispose();
-		MeshOverlayData.Dispose();
-		WindOverlayData.Dispose();
-		MeshOverlayColors.Dispose();
-	}
-
 }
 
 [BurstCompile]
-public struct LerpColor32Job : IJobParallelFor {
+struct LerpJobVector3 : IJobParallelFor {
+	public NativeArray<Vector3> Out;
+	[ReadOnly] public NativeArray<Vector3> Start;
+	[ReadOnly] public NativeArray<Vector3> End;
+	[ReadOnly] public float Progress;
+	public void Execute(int i)
+	{
+		Out[i] = Vector3.Lerp(Start[i], End[i], Progress);
+	}
+}
+
+[BurstCompile]
+struct LerpJobColor32 : IJobParallelFor {
 	public NativeArray<Color32> Out;
 	[ReadOnly] public NativeArray<Color32> Start;
 	[ReadOnly] public NativeArray<Color32> End;
-	[ReadOnly] public float T;
+	[ReadOnly] public float Progress;
 	public void Execute(int i)
 	{
-		Out[i] = Color32.Lerp(Start[i], End[i], T);
+		Out[i] = Color32.Lerp(Start[i], End[i], Progress);
 	}
 }
+
+
 [BurstCompile]
-public struct Lerpfloat3Job : IJobParallelFor {
+struct LerpJobfloat3 : IJobParallelFor {
 	public NativeArray<float3> Out;
 	[ReadOnly] public NativeArray<float3> Start;
 	[ReadOnly] public NativeArray<float3> End;
-	[ReadOnly] public float T;
+	[ReadOnly] public float Progress;
 	public void Execute(int i)
 	{
-		Out[i] = math.lerp(Start[i], End[i], T);
+		Out[i] = math.lerp(Start[i], End[i], Progress);
 	}
 }
+
 [BurstCompile]
-public struct Lerpfloat2Job : IJobParallelFor {
+struct LerpJobfloat2 : IJobParallelFor {
 	public NativeArray<float2> Out;
 	[ReadOnly] public NativeArray<float2> Start;
 	[ReadOnly] public NativeArray<float2> End;
-	[ReadOnly] public float T;
+	[ReadOnly] public float Progress;
 	public void Execute(int i)
 	{
-		Out[i] = math.lerp(Start[i], End[i], T);
+		Out[i] = math.lerp(Start[i], End[i], Progress);
 	}
 }
+
 [BurstCompile]
-public struct LerpfloatJob : IJobParallelFor {
+struct LerpJobfloat : IJobParallelFor {
 	public NativeArray<float> Out;
 	[ReadOnly] public NativeArray<float> Start;
 	[ReadOnly] public NativeArray<float> End;
-	[ReadOnly] public float T;
+	[ReadOnly] public float Progress;
 	public void Execute(int i)
 	{
-		Out[i] = math.lerp(Start[i], End[i], T);
+		Out[i] = math.lerp(Start[i], End[i], Progress);
+	}
+	public LerpJobfloat(NativeArray<float> a, NativeArray<float> b, float p)
+	{
+		Out = new NativeArray<float>(a.Length, Allocator.TempJob);
+		Start = new NativeArray<float>(a, Allocator.TempJob);
+		End = new NativeArray<float>(b, Allocator.TempJob);
+		Progress = p;
+	}
+	public void CopyAndDispose(ref NativeArray<float> c)
+	{
+		Out.CopyTo(c);
+		Out.Dispose();
+		Start.Dispose();
+		End.Dispose();
 	}
 }
+
 
 

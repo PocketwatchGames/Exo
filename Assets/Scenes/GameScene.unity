@@ -1954,11 +1954,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Seed: 0
   Subdivisions: 5
+  AirLayers: 3
+  WaterLayers: 3
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
   WorldDataAsset: {fileID: 4900000, guid: a0e62a68ba207124092d1d775e028c05, type: 3}
   WorldData:
     SecondsPerTick: 0
-    WaterDiffuseSpeed: 0.2
+    AirLayers: 0
+    WaterLayers: 0
     FullIceCoverage: 3
     FullWaterCoverage: 50
     FullCanopyCoverage: 0
@@ -1994,11 +1997,14 @@ MonoBehaviour:
     SolarReflectivityAir: 0
     SolarReflectivityWater: 0
     SolarReflectivityCloud: 0
-    OceanAirConductionWarming: 0.016
-    OceanAirConductionCooling: 0.008
-    WaterAirConductionDepth: 10
-    OceanIceConduction: 0.00001
-    IceAirConductionCooling: 0.008
+    AirIceConduction: 0
+    AirWaterConductionPositive: 0
+    AirWaterConductionNegative: 0
+    AirWaterConductionDepth: 0
+    AirTerrainConduction: 0
+    IceWaterConduction: 0
+    IceTerrainConduction: 0
+    WaterTerrainConduction: 0
     maxGroundWaterTemperature: 283
     SoilHeatDepth: 2
     AlbedoReductionSoilQuality: 0.15
@@ -2034,6 +2040,7 @@ MonoBehaviour:
     DewPointTemperaturePerRelativeHumidity: 20
     DeepOceanDepth: 500
     WindToOceanCurrentFactor: 0.1
+    WaterDiffuseSpeed: 0.2
     OceanCurrentSpeed: 0.00001
     OceanHorizontalMixingSpeed: 0.01
     OceanUpwellingSpeed: 0.0001
@@ -2045,7 +2052,6 @@ MonoBehaviour:
     MinTemperatureCanopy: 223.15
     MaxTemperatureCanopy: 323.15
   TimeScale: 0
-  _timeTillTick: 0.00001
 --- !u!4 &365555217
 Transform:
   m_ObjectHideFlags: 0
@@ -6054,15 +6060,15 @@ MonoBehaviour:
   DisplayCurrentMinDepth: 50
   DisplayEnergyAborsobedMax: 300
   DisplayRainfallMax: 5
-  DisplayMinSalinity: 0
-  DisplayMaxSalinity: 50
-  DisplayMaxWindSpeedLowerAtm: 50
-  DisplayMaxWindSpeedUpperAtm: 250
-  DisplayMaxWindSpeedSurfaceWater: 5
-  DisplayMaxWindSpeedDeepWater: 0.5
-  DisplayMaxVerticalWindSpeed: 1
+  DisplaySalinityMin: 0
+  DisplaySalinityMax: 50
+  DisplayWindSpeedLowerAirMax: 50
+  DisplayWindSpeedUpperAirMax: 250
+  DisplayWindSpeedSurfaceWaterMax: 5
+  DisplayWindSpeedDeepWaterMax: 0.5
+  DisplayVerticalWindSpeedMax: 1
   DisplayEvaporationMax: 5
-  DisplayMaxCanopy: 1000
+  DisplayVegetationMax: 1000
   DisplayTemperatureMin: 223
   DisplayTemperatureMax: 323
   DisplayAbsoluteHumidityMax: 1000

@@ -18,9 +18,6 @@ public struct StaticState {
 	public NativeArray<int> Neighbors;
 	public NativeArray<StaticWindInfo> WindInfo;
 
-	public int AirLayers { get; private set; }
-	public int WaterLayers { get; private set; }
-
 	public struct StaticWindInfo {
 		public float coriolisParam;
 		public float inverseCoriolisParam;

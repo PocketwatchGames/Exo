@@ -1,4 +1,7 @@
 {
+	"AirLayers": 3,
+	"WaterLayers": 3,
+	
 	"SecondsPerTick": 3600,
 	"WaterDiffuseSpeed": 0.01,
 	"FullIceCoverage": 3.0,
@@ -44,14 +47,18 @@
 	"SolarReflectivityWaterVapor": 0,
 	"SolarReflectivityCloud": 2.5,
 	"ThermalReflectivityCloud": 0.90,
-	"OceanAirConductionWarming": 0.016,
-	"OceanAirConductionCooling": 0.008,
-	"WaterAirConductionDepth": 10.0,
-	"OceanIceConduction": 0.01,
-	"IceAirConductionCooling": 0.008,
 	"maxGroundWaterTemperature": 283,
 	"SoilHeatDepth": 2,
 	"AlbedoReductionSoilQuality": 0.15,
+
+	"AirIceConduction": 0.008,
+	"AirWaterConductionNegative": 0.016,
+	"AirWaterConductionPositive": 0.008,
+	"AirTerrainConduction": 0.01,
+	"IceWaterConduction": 0.01,
+	"IceTerrainConduction": 0.01,
+	"WaterTerrainConduction": 0.01,
+	"AirWaterConductionDepth": 10.0,
 
 	"AbsorptivityCarbonDioxide": 0.25,
 	"AbsorptivityAir": 0.00005,

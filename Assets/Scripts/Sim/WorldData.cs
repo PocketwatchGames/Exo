@@ -8,7 +8,7 @@ using UnityEngine;
 [Serializable]
 public struct WorldData {
 	public float SecondsPerTick;
-	public int AtmosphericLayers;
+	public int AirLayers;
 	public int WaterLayers;
 	public float FullIceCoverage;
 	public float FullWaterCoverage;
@@ -66,11 +66,15 @@ public struct WorldData {
 	//public float EvaporativeHeatLoss = 0.6f; // global average = 78 watts
 	// Net Back Radiation: The ocean transmits electromagnetic radiation into the atmosphere in proportion to the fourth power of the sea surface temperature(black-body radiation)
 	// https://eesc.columbia.edu/courses/ees/climate/lectures/o_atm.html
-	public float OceanAirConductionWarming; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
-	public float OceanAirConductionCooling; // 
-	public float WaterAirConductionDepth;
-	public float OceanIceConduction; // small
-	public float IceAirConductionCooling;
+	public float AirIceConduction;
+	public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
+	public float AirWaterConductionNegative; // 
+	public float AirWaterConductionDepth;
+	public float AirTerrainConduction;
+	public float IceWaterConduction; // small
+	public float IceTerrainConduction;
+	public float WaterTerrainConduction;
+
 	public float maxGroundWaterTemperature;
 	public float SoilHeatDepth;
 	public float AlbedoReductionSoilQuality;

@@ -10,7 +10,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	public int Seed;
 	public int Subdivisions = 5;
-	public int AtmosphericLayers = 3;
+	public int AirLayers = 3;
 	public int WaterLayers = 3;
 	public TextAsset WorldGenAsset;
 	public TextAsset WorldDataAsset;
@@ -46,7 +46,7 @@ public class WorldSimComponent : MonoBehaviour
 		CellCount = Icosphere.Vertices.Length;
 		InverseCellCount = 1.0f / CellCount;
 
-		_worldSim = new WorldSim(CellCount, WorldData.AtmosphericLayers, WorldData.WaterLayers);
+		_worldSim = new WorldSim(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
 
 		TimeTillTick = 0.00001f;
 		_activeSimState = 0;
@@ -54,7 +54,7 @@ public class WorldSimComponent : MonoBehaviour
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i] = new SimState();
-			_simStates[i].Init(CellCount, AtmosphericLayers, WaterLayers);
+			_simStates[i].Init(CellCount, AirLayers, WaterLayers);
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
