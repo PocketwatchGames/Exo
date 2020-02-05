@@ -681,8 +681,9 @@ public class WorldSim {
 				TemperatureB = dependent.IceTemperature,
 				EnergyA = lastState.AirEnergy[0],
 				EnergyB = lastState.IceEnergy,
-				ConductionCoefficient = worldData.AirIceConduction,
-				Coverage = dependent.IceCoverage
+				ConductionCoefficient = WorldData.ConductivityAirIce,
+				Coverage = dependent.IceCoverage,
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			var conductionAirIceJobHandle = conductionAirIceJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -695,10 +696,10 @@ public class WorldSim {
 				TemperatureB = dependent.WaterTemperature[surfaceWaterLayer],
 				EnergyA = lastState.IceEnergy,
 				EnergyB = lastState.WaterEnergy[surfaceWaterLayer],
-				ConductionCoefficientPositive = worldData.AirWaterConductionPositive,
-				ConductionCoefficientNegative = worldData.AirWaterConductionNegative,
+				ConductionCoefficient = WorldData.ConductivityAirWater,
 				CoverageIce = dependent.IceCoverage,
-				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer]
+				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer],
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			var conductionAirWaterJobHandle = conductionAirWaterJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -710,9 +711,10 @@ public class WorldSim {
 				TemperatureB = dependent.TerrainTemperature,
 				EnergyA = lastState.AirEnergy[0],
 				EnergyB = lastState.TerrainEnergy,
-				ConductionCoefficient = worldData.AirTerrainConduction,
+				ConductionCoefficient = WorldData.ConductivityAirTerrain,
 				CoverageIce = dependent.IceCoverage,
-				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer]
+				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer],
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			var conductionAirTerrainJobHandle = conductionAirTerrainJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -724,9 +726,10 @@ public class WorldSim {
 				TemperatureB = dependent.WaterTemperature[surfaceWaterLayer],
 				EnergyA = lastState.IceEnergy,
 				EnergyB = lastState.WaterEnergy[surfaceWaterLayer],
-				ConductionCoefficient = worldData.IceWaterConduction,
+				ConductionCoefficient = WorldData.ConductivityIceWater,
 				CoverageA = dependent.IceCoverage,
-				CoverageB = dependent.WaterCoverage[surfaceWaterLayer]
+				CoverageB = dependent.WaterCoverage[surfaceWaterLayer],
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			var conductionIceWaterJobHandle = conductionIceWaterJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -738,9 +741,10 @@ public class WorldSim {
 				TemperatureB = dependent.TerrainTemperature,
 				EnergyA = lastState.IceEnergy,
 				EnergyB = lastState.TerrainEnergy,
-				ConductionCoefficient = worldData.IceTerrainConduction,
+				ConductionCoefficient = WorldData.ConductivityIceTerrain,
 				CoverageIce = dependent.IceCoverage,
-				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer]
+				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer],
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			var conductionIceTerrainJobHandle = conductionIceTerrainJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -752,8 +756,9 @@ public class WorldSim {
 			//	MassB = ,
 			//	TemperatureA = lastState.WaterTemperature[0],
 			//	TemperatureB = lastState.TerrainTemperature,
-			//	ConductionCoefficient = worldData.WaterTerrainConduction,
-			//	WaterCoverage = dependent.WaterCoverage
+			//	ConductionCoefficient = WorldData.ConductivityWaterTerrain,
+			//	WaterCoverage = dependent.WaterCoverage,
+			//  SecondsPerTick = worldData.SecondsPerTick
 			//};
 			//var conductionWaterTerrainJobHandle = conductionWaterToTerrainJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -1107,7 +1112,6 @@ public class WorldSim {
 					display.GlobalRainfall += display.Rainfall[i];
 					//display.EnergyDelta += curState.CellDisplays[i].EnergyDelta;
 					//display.EnergyEvapotranspiration += display[i].EnergyEvapotranspiration;
-					//display.EnergyOceanConduction += nextState.CellDisplays[i].EnergyOceanConduction;
 					for (int j = 0; j < _airLayers; j++)
 					{
 						display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
@@ -1124,9 +1128,10 @@ public class WorldSim {
 					display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
 					display.EnergySolarReflectedCloud += solarReflected[_cloudLayer][i];
 					display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
-					//display.EnergySurfaceConduction += nextState.CellDisplays[i].EnergySurfaceConduction;
+					display.EnergySurfaceConduction += conductionAirIce[i] + conductionAirTerrain[i] + conductionAirWater[i];
+					display.EnergyOceanConduction += conductionAirWater[i];
 					//display.EnergyThermalAbsorbedAtmosphere += ;
-					display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_iceLayer][i] + thermalRadiationTransmittedDown[_iceLayer][i];
+					display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0][i] + thermalRadiationTransmittedDown[_airLayer0][i];
 					display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i] + thermalRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i]) * dependent.WaterCoverage[_waterLayers - 1][i];
 					display.EnergyThermalOutAtmosphere += thermalRadiationTransmittedUp[_airLayer0 + _airLayers - 1][i];
 					display.EnergyThermalSurfaceOutAtmosphericWindow += windowRadiationTransmittedUp[_iceLayer][i];

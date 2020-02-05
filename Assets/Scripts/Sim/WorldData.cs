@@ -66,14 +66,7 @@ public struct WorldData {
 	//public float EvaporativeHeatLoss = 0.6f; // global average = 78 watts
 	// Net Back Radiation: The ocean transmits electromagnetic radiation into the atmosphere in proportion to the fourth power of the sea surface temperature(black-body radiation)
 	// https://eesc.columbia.edu/courses/ees/climate/lectures/o_atm.html
-	public float AirIceConduction;
 	public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
-	public float AirWaterConductionNegative; // 
-	public float AirWaterConductionDepth;
-	public float AirTerrainConduction;
-	public float IceWaterConduction; // small
-	public float IceTerrainConduction;
-	public float WaterTerrainConduction;
 
 	public float maxGroundWaterTemperature;
 	public float SoilHeatDepth;
@@ -172,6 +165,17 @@ public struct WorldData {
 	public const float MassIce = 919f;
 	public const float MassSoil = 1200f;
 	public const float MassSand = 1600f;
+	public const float ConductivityAir = 0.0262f;
+	public const float ConductivityWater = 0.606f;
+	public const float ConductivityIce = 2.18f;
+	public const float ConductivityTerrain = 0.2f;
+	public const float ConductivityAirWater = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityWater);
+	public const float ConductivityAirIce = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityIce);
+	public const float ConductivityAirTerrain = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityTerrain);
+	public const float ConductivityIceWater = 1.0f / (1.0f / ConductivityWater + 1.0f / ConductivityIce);
+	public const float ConductivityIceTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityIce);
+	public const float ConductivityWaterTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityWater);
+
 
 
 	[NonSerialized]	public float SpecificGasConstantDryAir;

@@ -51,14 +51,7 @@
 	"SoilHeatDepth": 2,
 	"AlbedoReductionSoilQuality": 0.15,
 
-	"AirIceConduction": 0.008,
-	"AirWaterConductionNegative": 0.016,
-	"AirWaterConductionPositive": 0.008,
-	"AirTerrainConduction": 0.01,
-	"IceWaterConduction": 0.01,
-	"IceTerrainConduction": 0.01,
-	"WaterTerrainConduction": 0.01,
-	"AirWaterConductionDepth": 10.0,
+	"AirWaterConductionPositive": 0.5,
 
 	"AbsorptivityCarbonDioxide": 0.25,
 	"AbsorptivityAir": 0.00025,

@@ -181,6 +181,7 @@ public static class WorldGen {
 
 			float surfaceWaterMass = state.WaterMass[worldData.WaterLayers-1][i];
 			float iceMass = math.min(surfaceWaterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(airTemperaturePotential - WorldData.FreezingTemperature) / 10));
+			state.IceEnergy[i] = iceMass * WorldData.FreezingTemperature * WorldData.SpecificHeatIce;
 			state.WaterEnergy[0][i] -= iceMass;
 			float waterAndIceDepth = waterDepth + iceMass / WorldData.MassIce;
 
@@ -233,7 +234,6 @@ public static class WorldGen {
 			state.CloudEnergy[i] = cloudTemperature * WorldData.SpecificHeatWater * cloudMass;
 			state.CloudVelocity[i] = cloudVelocity;
 			state.IceMass[i] = iceMass;
-			state.IceEnergy[i] = WorldData.FreezingTemperature;
 			state.TerrainEnergy[i] = groundEnergy;
 			state.GroundWater[i] = groundWater;
 		}

@@ -562,9 +562,10 @@ public struct ConductionJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> EnergyA;
 	[ReadOnly] public NativeArray<float> EnergyB;
 	[ReadOnly] public float ConductionCoefficient;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient, -EnergyA[i], EnergyB[i]);
+		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick, -EnergyA[i], EnergyB[i]);
 	}
 }
 
@@ -577,9 +578,10 @@ public struct ConductionPartialJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> EnergyB;
 	[ReadOnly] public NativeArray<float> Coverage;
 	[ReadOnly] public float ConductionCoefficient;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * Coverage[i], -EnergyA[i], EnergyB[i]);
+		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * Coverage[i], -EnergyA[i], EnergyB[i]);
 	}
 }
 
@@ -593,11 +595,11 @@ public struct ConductionAirWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> EnergyB;
 	[ReadOnly] public NativeArray<float> CoverageIce;
 	[ReadOnly] public NativeArray<float> CoverageWater;
-	[ReadOnly] public float ConductionCoefficientPositive;
-	[ReadOnly] public float ConductionCoefficientNegative;
+	[ReadOnly] public float ConductionCoefficient;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-
+		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * math.min(CoverageIce[i], CoverageWater[i]), -EnergyA[i], EnergyB[i]);
 	}
 }
 
@@ -611,9 +613,10 @@ public struct ConductionIceWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CoverageA;
 	[ReadOnly] public NativeArray<float> CoverageB;
 	[ReadOnly] public float ConductionCoefficient;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * math.min(CoverageA[i], CoverageB[i]), -EnergyA[i], EnergyB[i]);
+		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * math.min(CoverageA[i], CoverageB[i]), -EnergyA[i], EnergyB[i]);
 	}
 }
 
@@ -627,9 +630,10 @@ public struct ConductionIceTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CoverageIce;
 	[ReadOnly] public NativeArray<float> CoverageWater;
 	[ReadOnly] public float ConductionCoefficient;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * math.max(CoverageIce[i] - CoverageWater[i], 0), -EnergyA[i], EnergyB[i]);
+		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * math.max(CoverageIce[i] - CoverageWater[i], 0), -EnergyA[i], EnergyB[i]);
 	}
 }
 
@@ -643,9 +647,10 @@ public struct ConductionAirTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CoverageIce;
 	[ReadOnly] public NativeArray<float> CoverageWater;
 	[ReadOnly] public float ConductionCoefficient;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * (1.0f - math.max(CoverageIce[i], CoverageWater[i])), -EnergyA[i], EnergyB[i]);
+		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * (1.0f - math.max(CoverageIce[i], CoverageWater[i])), -EnergyA[i], EnergyB[i]);
 	}
 }
 
