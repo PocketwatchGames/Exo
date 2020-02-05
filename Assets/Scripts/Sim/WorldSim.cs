@@ -29,12 +29,6 @@ public class WorldSim {
 	private NativeArray<float> waterSlopeAlbedo;
 	private NativeArray<float>[] emissivity;
 	private NativeArray<float>[] solarRadiationIn;
-	private NativeArray<float> thermalRadiationDeltaIceBottom;
-	private NativeArray<float> thermalRadiationDeltaIceTop;
-	private NativeArray<float> thermalRadiationDeltaSurfaceWater;
-	private NativeArray<float>[] thermalRadiationDelta;
-	private NativeArray<float>[] thermalRadiationTransmittedUp;
-	private NativeArray<float>[] thermalRadiationTransmittedDown;
 	private NativeArray<DiffusionAir>[] diffusionAir;
 	private NativeArray<DiffusionWater>[] diffusionWater;
 	private NativeArray<DiffusionAir>[] advectionAir;
@@ -57,6 +51,7 @@ public class WorldSim {
 	private NativeArray<float> cloudCondensation;
 	private NativeArray<float> surfaceCondensation;
 
+	private NativeArray<float> displaySolarRadiation;
 
 	public WorldSim(int cellCount, int atmosphericLayers, int waterLayers)
 	{
@@ -72,23 +67,14 @@ public class WorldSim {
 
 		solarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterSlopeAlbedo = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		thermalRadiationDeltaIceBottom = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		thermalRadiationDeltaIceTop = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		thermalRadiationDeltaSurfaceWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		emissivity = new NativeArray<float>[_layerCount];
 		solarRadiationIn = new NativeArray<float>[_layerCount];
-		thermalRadiationDelta = new NativeArray<float>[_layerCount];
-		thermalRadiationTransmittedUp = new NativeArray<float>[_layerCount];
-		thermalRadiationTransmittedDown = new NativeArray<float>[_layerCount];
 		latentHeat = new NativeArray<float>[_layerCount];
 		for (int i=0;i<_layerCount;i++)
 		{
 			latentHeat[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			emissivity[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			solarRadiationIn[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
-			thermalRadiationDelta[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
-			thermalRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
-			thermalRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
 		diffusionAir = new NativeArray<DiffusionAir>[_airLayers];
 		advectionAir = new NativeArray<DiffusionAir>[_airLayers];
@@ -114,23 +100,19 @@ public class WorldSim {
 		conductionIceTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionWaterTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 
+		displaySolarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
+
 	}
 
 	public void Dispose()
 	{
 		solarRadiation.Dispose();
 		waterSlopeAlbedo.Dispose();
-		thermalRadiationDeltaIceTop.Dispose();
-		thermalRadiationDeltaIceBottom.Dispose();
-		thermalRadiationDeltaSurfaceWater.Dispose();
 		for (int i=0;i<_layerCount;i++)
 		{
 			latentHeat[i].Dispose();
 			emissivity[i].Dispose();
 			solarRadiationIn[i].Dispose();
-			thermalRadiationDelta[i].Dispose();
-			thermalRadiationTransmittedUp[i].Dispose();
-			thermalRadiationTransmittedDown[i].Dispose();
 		}
 		for (int i = 0; i < _airLayers; i++)
 		{
@@ -151,14 +133,38 @@ public class WorldSim {
 		conductionIceWater.Dispose();
 		conductionIceTerrain.Dispose();
 		conductionWaterTerrain.Dispose();
+
+		displaySolarRadiation.Dispose();
+
 	}
 
-	public void Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex)
+	public void Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex)
 	{
 		JobHandle lastJobHandle = default(JobHandle);
-
 		for (int tick = 0; tick < ticksToAdvance; tick++)
 		{
+
+			var thermalRadiationDeltaIceBottom = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var thermalRadiationDeltaIceTop = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var thermalRadiationDeltaSurfaceWater = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var thermalRadiationDelta = new NativeArray<float>[_layerCount];
+			var thermalRadiationTransmittedUp = new NativeArray<float>[_layerCount];
+			var thermalRadiationTransmittedDown = new NativeArray<float>[_layerCount];
+			var windowRadiationTransmittedUp = new NativeArray<float>[_layerCount];
+			var windowRadiationTransmittedDown = new NativeArray<float>[_layerCount];
+			var solarReflected = new NativeArray<float>[_layerCount];
+			for (int i = 0; i < _layerCount; i++)
+			{
+				solarReflected[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+				thermalRadiationDelta[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+				thermalRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+				thermalRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+				windowRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+				windowRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			}
+
+			bool updateDisplay = tick == ticksToAdvance - 1;
+
 			ref var lastState = ref states[curStateIndex];
 			curStateIndex = (curStateIndex + 1) % stateCount;
 			ref var nextState = ref states[curStateIndex];
@@ -171,19 +177,19 @@ public class WorldSim {
 			float angleToSun = math.atan2(lastState.PlanetState.Position.z, lastState.PlanetState.Position.x);
 			angleToSun += lastState.PlanetState.OrbitSpeed;
 			nextState.PlanetState.Position = new float3(math.cos(angleToSun), 0, math.sin(angleToSun)) * distanceToSun;
-			nextState.PlanetState.Rotation = new float3(lastState.PlanetState.Rotation.x, Mathf.Repeat(lastState.PlanetState.Rotation.y + lastState.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);	
+			nextState.PlanetState.Rotation = new float3(lastState.PlanetState.Rotation.x, Mathf.Repeat(lastState.PlanetState.Rotation.y + lastState.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);
 
 			// SOLAR RADIATION INITIALIZATION
 
 			var solarRadiationJob = new SolarRadiationJob()
 			{
 				SolarRadiation = solarRadiation,
+				DisplaySolarRadiation = displaySolarRadiation,
 				WaterSlopeAlbedo = waterSlopeAlbedo,
 
 				SphericalPosition = staticState.SphericalPosition,
-				IncomingSolarRadiation = lastState.PlanetState.SolarRadiation,
+				IncomingSolarRadiation = lastState.PlanetState.SolarRadiation * worldData.SecondsPerTick,
 				PlanetRotation = quaternion.Euler(lastState.PlanetState.Rotation),
-				SecondsPerTick = worldData.SecondsPerTick,
 				SunToPlanetDir = math.normalize(lastState.PlanetState.Position),
 			};
 			var solarInJobHandle = solarRadiationJob.Schedule(_cellCount, _batchCount, lastJobHandle);
@@ -191,10 +197,12 @@ public class WorldSim {
 			var updateTerrainJob = new UpdateTerrainJob()
 			{
 				Terrain = nextState.Terrain,
+				GroundWater = nextState.GroundWater,
+
 				LastTerrain = lastState.Terrain,
+				LastGroundWater = lastState.GroundWater
 			};
 			var updateTerrainJobHandle = updateTerrainJob.Schedule(_cellCount, _batchCount, lastJobHandle);
-
 
 			
 			// EMISSIVITY
@@ -249,6 +257,8 @@ public class WorldSim {
 					SolarRadiationAbsorbed = solarRadiationIn[layerIndex],
 					SolarRadiationIncoming = solarRadiation,
 					SolarRadiationAbsorbedCloud = solarRadiationIn[_cloudLayer],
+					SolarRadiationReflected = solarReflected[layerIndex],
+					SolarRadiationReflectedCloud = solarReflected[_cloudLayer],
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					CloudMass = lastState.CloudMass,
@@ -263,6 +273,7 @@ public class WorldSim {
 					SolarAbsorptivityCloud = worldData.SolarAbsorptivityCloud,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
+					LayerIndex = j,
 					worldData = worldData
 				};
 				solarInJobHandles[layerIndex] = solarInAtmosphereJob.Schedule(_cellCount, _batchCount, j == 0 ? solarInJobHandle : solarInJobHandles[layerIndex + 1]);
@@ -274,6 +285,7 @@ public class WorldSim {
 			{
 				SolarRadiationAbsorbed = solarRadiationIn[_iceLayer],
 				SolarRadiationIncoming = solarRadiation,
+				SolarRadiationReflected = solarReflected[_iceLayer],
 				AlbedoIce = WorldData.AlbedoIce,
 				IceCoverage = dependent.IceCoverage
 			};
@@ -286,7 +298,8 @@ public class WorldSim {
 				{
 					SolarRadiationAbsorbed = solarRadiationIn[layerIndex],
 					SolarRadiationIncoming = solarRadiation,
-					WaterCoverage = dependent.WaterCoverage,
+					SolarRadiationReflected = solarReflected[layerIndex],
+					WaterCoverage = dependent.WaterCoverage[j],
 					WaterSlopeAlbedo = waterSlopeAlbedo,
 				};
 				solarInJobHandles[layerIndex] = solarRadiationAbsorbedWaterJob.Schedule(_cellCount, _batchCount, solarInJobHandles[layerIndex + 1]);
@@ -296,6 +309,7 @@ public class WorldSim {
 			{
 				SolarRadiationAbsorbed = solarRadiationIn[_terrainLayer],
 				SolarRadiationIncoming = solarRadiation,
+				SolarRadiationReflected = solarReflected[_terrainLayer],
 				VegetationCoverage = dependent.VegetationCoverage,
 				worldData = worldData,
 				LastTerrain = lastState.Terrain,
@@ -311,8 +325,13 @@ public class WorldSim {
 				ThermalRadiationDelta = thermalRadiationDelta[_iceLayer],
 				ThermalRadiationTransmittedUp = thermalRadiationTransmittedUp[_iceLayer],
 				ThermalRadiationTransmittedDown = thermalRadiationTransmittedDown[_iceLayer],
+				WindowRadiationTransmittedUp = windowRadiationTransmittedUp[_iceLayer],
+				WindowRadiationTransmittedDown = windowRadiationTransmittedDown[_iceLayer],
+
+				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 				Emissivity = WorldData.EmissivityIce,
-				Temperature = lastState.IceEnergy, 
+				Temperature = dependent.IceTemperature,
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			thermalOutJobHandles[_iceLayer] = thermalOutJob.Schedule(_cellCount, 100, lastJobHandle);
 
@@ -322,8 +341,13 @@ public class WorldSim {
 				ThermalRadiationDelta = thermalRadiationDelta[_cloudLayer],
 				ThermalRadiationTransmittedUp = thermalRadiationTransmittedUp[_cloudLayer],
 				ThermalRadiationTransmittedDown = thermalRadiationTransmittedDown[_cloudLayer],
+				WindowRadiationTransmittedUp = windowRadiationTransmittedUp[_cloudLayer],
+				WindowRadiationTransmittedDown = windowRadiationTransmittedDown[_cloudLayer],
+
+				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 				Emissivity = WorldData.EmissivityWater,
-				Temperature = lastState.CloudEnergy,
+				Temperature = dependent.CloudTemperature,
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			thermalOutJobHandles[_cloudLayer] = thermalOutJob.Schedule(_cellCount, 100, lastJobHandle);
 
@@ -333,8 +357,12 @@ public class WorldSim {
 			{
 				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
 				ThermalRadiationTransmitted = thermalRadiationTransmittedUp[_terrainLayer],
+				WindowRadiationTransmitted = windowRadiationTransmittedUp[_terrainLayer],
+
+				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 				Emissivity = emissivity[_terrainLayer],
-				Temperature = lastState.TerrainEnergy,
+				Temperature = dependent.TerrainTemperature,
+				SecondsPerTick = worldData.SecondsPerTick
 			};
 			thermalOutJobHandles[_terrainLayer] = thermalOutTerrainJob.Schedule(_cellCount, 100, emissivityJobHandles[_terrainLayer]);
 
@@ -348,8 +376,13 @@ public class WorldSim {
 					ThermalRadiationDelta = thermalRadiationDelta[layer],
 					ThermalRadiationTransmittedUp = thermalRadiationTransmittedUp[layer],
 					ThermalRadiationTransmittedDown = thermalRadiationTransmittedDown[layer],
+					WindowRadiationTransmittedUp = windowRadiationTransmittedUp[layer],
+					WindowRadiationTransmittedDown = windowRadiationTransmittedDown[layer],
+
+					PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 					Emissivity = emissivity[layer],
-					Temperature = lastState.AirEnergy[j]			
+					Temperature = dependent.AirTemperature[j],
+					SecondsPerTick = worldData.SecondsPerTick
 				};
 				thermalOutJobHandles[layer] = thermalOutAirJob.Schedule(_cellCount, 100, emissivityJobHandles[layer]);
 			}
@@ -363,8 +396,13 @@ public class WorldSim {
 					ThermalRadiationDelta = thermalRadiationDelta[layer],
 					ThermalRadiationTransmittedDown = thermalRadiationTransmittedDown[layer],
 					ThermalRadiationTransmittedUp = thermalRadiationTransmittedUp[layer],
+					WindowRadiationTransmittedUp = windowRadiationTransmittedUp[layer],
+					WindowRadiationTransmittedDown = windowRadiationTransmittedDown[layer],
+
+					PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 					Emissivity = emissivity[layer],
-					Temperature = lastState.WaterEnergy[j],
+					Temperature = dependent.WaterTemperature[j],
+					SecondsPerTick = worldData.SecondsPerTick
 				};
 				thermalOutJobHandles[layer] = thermalOutWaterJob.Schedule(_cellCount, 100, emissivityJobHandles[layer]);
 			}
@@ -374,6 +412,8 @@ public class WorldSim {
 			// Start at bottom water layer and go up, then go back down
 			JobHandle[] thermalInUpJobHandles = new JobHandle[_layerCount];
 			JobHandle[] thermalInDownJobHandles = new JobHandle[_layerCount];
+			NativeArray<float> atmosphericWindowUp = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			NativeArray<float> atmosphericWindowDown = new NativeArray<float>(_cellCount, Allocator.TempJob);
 
 			// transmit up from land
 			for (int j = 1; j < _cloudLayer; j++)
@@ -382,44 +422,61 @@ public class WorldSim {
 				var thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalOutJobHandles[j], thermalInUpJobHandles[j - 1]);
 				if (j >= _airLayer0 && j < _airLayer0 + _airLayers)
 				{
+					int airLayer = j - _airLayer0;
 					thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalInDependenciesHandle, thermalOutJobHandles[_cloudLayer]);
 					var thermalInJob = new ThermalEnergyAbsorbedAirJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDelta[j],
 						ThermalRadiationDeltaCloud = thermalRadiationDelta[_cloudLayer],
-						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 						ThermalRadiationTransmitted = thermalRadiationTransmittedUp[j],
+						WindowRadiationTransmitted = windowRadiationTransmittedUp[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedUp[j - 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 						ThermalRadiationEmittedCloudUp = thermalRadiationTransmittedUp[_cloudLayer],
 						ThermalRadiationEmittedCloudDown = thermalRadiationTransmittedDown[_cloudLayer],
-						Emissivity = emissivity[j],
 						CloudElevation = lastState.CloudElevation,
-						CloudCoverage = dependent.CloudCoverage,
-						LayerElevation = dependent.LayerElevation[j - _airLayer0],
-						LayerHeight = dependent.LayerHeight[j - _airLayer0],
+						CloudMass = lastState.CloudMass,
+						LayerElevation = dependent.LayerElevation[airLayer],
+						LayerHeight = dependent.LayerHeight[airLayer],
+						AirMass = dependent.AirMass[airLayer],
+						VaporMass = lastState.AirVapor[airLayer],
+						AirAbsorptivity = worldData.AbsorptivityAir,
+						VaporAbsorptivity = worldData.AbsorptivityWaterVapor,
+						WaterAbsorptivity = worldData.AbsorptivityWaterLiquid,
+						CarbonAbsorptivity = worldData.AbsorptivityCarbonDioxide,
+						LayerIndex = airLayer,
+						FromTop = false
 					};
 					thermalInUpJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
 				else if (j == _iceLayer)
 				{
-					var thermalInJob = new ThermalEnergyAbsorbedPartialCoverageConstantEmissivityJob()
+					var thermalInJob = new ThermalEnergyAbsorbedPartialCoverageJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDeltaIceBottom,
-						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 						ThermalRadiationTransmitted = thermalRadiationTransmittedUp[j],
-						Emissivity = WorldData.EmissivityIce,
-						Coverage = dependent.IceCoverage
+						WindowRadiationTransmitted = windowRadiationTransmittedUp[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedUp[j - 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
+						Coverage = dependent.IceCoverage,
+
 					};
 					thermalInUpJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
-				else if (j == _waterLayer0 + _waterLayers - 1)
+				else if (j >= _waterLayer0 && j < _waterLayer0 + _waterLayers)
 				{
+					thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalInDependenciesHandle, thermalOutJobHandles[j - 1]);
 					var thermalInJob = new ThermalEnergyAbsorbedPartialCoverageJob()
 					{
-						ThermalRadiationDelta = thermalRadiationDelta[j],
-						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
+						ThermalRadiationDelta = thermalRadiationDeltaSurfaceWater,
 						ThermalRadiationTransmitted = thermalRadiationTransmittedUp[j],
-						Emissivity = emissivity[j],
-						Coverage = dependent.WaterCoverage
+						WindowRadiationTransmitted = windowRadiationTransmittedUp[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedUp[j - 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
+						Coverage = dependent.WaterCoverage[j - _waterLayer0],
 					};
 					thermalInUpJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
@@ -429,9 +486,11 @@ public class WorldSim {
 					var thermalInJob = new ThermalEnergyAbsorbedJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDelta[j],
-						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 						ThermalRadiationTransmitted = thermalRadiationTransmittedUp[j],
-						Emissivity = emissivity[j]
+						WindowRadiationTransmitted = windowRadiationTransmittedUp[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedUp[j - 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 					};
 					thermalInUpJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
@@ -453,38 +512,67 @@ public class WorldSim {
 					var thermalInJob = new ThermalEnergyAbsorbedTerrainJob()
 					{
 						ThermalRadiationAbsorbed = thermalRadiationDelta[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedDown[j + 1],
 						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
 					};
 					thermalInDownJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
 				else if (j == _iceLayer)
 				{
-					var thermalInJob = new ThermalEnergyAbsorbedPartialCoverageConstantEmissivityJob()
+					var thermalInJob = new ThermalEnergyAbsorbedPartialCoverageJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDeltaIceTop,
 						ThermalRadiationTransmitted = thermalRadiationTransmittedDown[j],
+						WindowRadiationTransmitted = windowRadiationTransmittedDown[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedDown[j + 1],
 						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
-						Emissivity = WorldData.EmissivityIce,
-						Coverage = dependent.IceCoverage
+						Coverage = dependent.IceCoverage,
+					};
+					thermalInDownJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
+				}
+				else if (j >= _waterLayer0 && j < _waterLayer0 + _waterLayers)
+				{
+					var thermalInJob = new ThermalEnergyAbsorbedPartialCoverageJob()
+					{
+						ThermalRadiationDelta = thermalRadiationDelta[j],
+						ThermalRadiationTransmitted = thermalRadiationTransmittedDown[j],
+						WindowRadiationTransmitted = windowRadiationTransmittedDown[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedDown[j + 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
+						Coverage = dependent.WaterCoverage[j-_waterLayer0],
 					};
 					thermalInDownJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
 				else if (j >= _airLayer0 && j < _airLayer0 + _airLayers)
 				{
+					int airLayer = j - _airLayer0;
 					thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalInDependenciesHandle, thermalOutJobHandles[_cloudLayer], thermalInUpJobHandles[_cloudLayer]);
 					var thermalInJob = new ThermalEnergyAbsorbedAirJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDelta[j],
 						ThermalRadiationDeltaCloud = thermalRadiationDelta[_cloudLayer],
-						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
 						ThermalRadiationTransmitted = thermalRadiationTransmittedDown[j],
+						WindowRadiationTransmitted = windowRadiationTransmittedDown[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedDown[j + 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
 						ThermalRadiationEmittedCloudUp = thermalRadiationTransmittedUp[_cloudLayer],
 						ThermalRadiationEmittedCloudDown = thermalRadiationTransmittedDown[_cloudLayer],
-						Emissivity = emissivity[j],
 						CloudElevation = lastState.CloudElevation,
-						CloudCoverage = dependent.CloudCoverage,
-						LayerElevation = dependent.LayerElevation[j-_airLayer0],
-						LayerHeight = dependent.LayerHeight[j-_airLayer0],
+						LayerElevation = dependent.LayerElevation[airLayer],
+						LayerHeight = dependent.LayerHeight[airLayer],
+						AirMass = dependent.AirMass[airLayer],
+						CloudMass = lastState.CloudMass,
+						VaporMass = lastState.AirVapor[airLayer],
+						AirAbsorptivity = worldData.AbsorptivityAir,
+						VaporAbsorptivity = worldData.AbsorptivityWaterVapor,
+						WaterAbsorptivity = worldData.AbsorptivityWaterLiquid,
+						CarbonAbsorptivity = worldData.AbsorptivityCarbonDioxide,
+						LayerIndex = airLayer,
+						FromTop = true
 					};
 					thermalInDownJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
@@ -493,9 +581,11 @@ public class WorldSim {
 					var thermalInJob = new ThermalEnergyAbsorbedJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDelta[j],
-						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
 						ThermalRadiationTransmitted = thermalRadiationTransmittedDown[j],
-						Emissivity = emissivity[j]
+						WindowRadiationTransmitted = windowRadiationTransmittedDown[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedDown[j + 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
 					};
 					thermalInDownJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
@@ -606,8 +696,8 @@ public class WorldSim {
 				ConductionCoefficientPositive = worldData.AirWaterConductionPositive,
 				ConductionCoefficientNegative = worldData.AirWaterConductionNegative,
 				IceCoverage = dependent.IceCoverage,
-				WaterCoverage = dependent.WaterCoverage
-				
+				WaterCoverage = dependent.WaterCoverage[surfaceWaterLayer]
+
 			};
 			var conductionAirWaterJobHandle = conductionAirWaterJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -635,7 +725,7 @@ public class WorldSim {
 				EnergyB = lastState.WaterEnergy[surfaceWaterLayer],
 				ConductionCoefficient = worldData.IceWaterConduction,
 				IceCoverage = dependent.IceCoverage,
-				WaterCoverage = dependent.WaterCoverage
+				WaterCoverage = dependent.WaterCoverage[surfaceWaterLayer]
 			};
 			var conductionIceWaterJobHandle = conductionIceWaterJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -674,6 +764,7 @@ public class WorldSim {
 			var energyTerrainJob = new EnergyTerrainJob()
 			{
 				Energy = nextState.TerrainEnergy,
+				LastEnergy = lastState.TerrainEnergy,
 				Terrain = lastState.Terrain,
 				SolarRadiationIn = solarRadiationIn[_terrainLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
@@ -734,7 +825,7 @@ public class WorldSim {
 				Advection = advectionCloud,
 				Diffusion = diffusionCloud,
 				LastDropletMass = lastState.CloudDropletMass,
-				LastElevation = lastState.CloudElevation,
+				LastElevation = lastState.CloudElevation
 			};
 			var cloudEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
 			{
@@ -772,7 +863,7 @@ public class WorldSim {
 					ConductionEnergyCloud = conductionCloudAir,
 					ConductionEnergyWater = conductionAirWater,
 					ConductionEnergyIce = conductionAirIce,
-					ConductionEnergyTerrain = conductionAirTerrain
+					ConductionEnergyTerrain = conductionAirTerrain,
 				};
 
 				var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
@@ -809,7 +900,8 @@ public class WorldSim {
 					Diffusion = diffusionWater[j],
 					SolarRadiationIn = solarRadiationIn[layerIndex],
 					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
-					ConductionEnergyTerrain = conductionAirTerrain
+					ConductionEnergyTerrain = conductionAirTerrain,
+					SecondsPerTick = worldData.SecondsPerTick
 				};
 
 				var waterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
@@ -838,6 +930,7 @@ public class WorldSim {
 					Salinity = nextState.WaterSaltMass[waterLayer],
 					Velocity = nextState.WaterVelocity[waterLayer],
 					Mass = nextState.WaterMass[waterLayer],
+					LastMass = lastState.WaterMass[waterLayer],
 					LastEnergy = lastState.WaterEnergy[waterLayer],
 					LastSalinity = lastState.WaterSaltMass[waterLayer],
 					LastVelocity = lastState.WaterVelocity[waterLayer],
@@ -848,7 +941,7 @@ public class WorldSim {
 					ThermalRadiationDeltaBottom = thermalRadiationDeltaSurfaceWater,
 					ConductionEnergyAir = conductionAirWater,
 					ConductionEnergyIce = conductionIceWater,
-					ConductionEnergyTerrain = conductionAirTerrain
+					ConductionEnergyTerrain = conductionAirTerrain,
 				};
 
 				var waterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
@@ -877,10 +970,13 @@ public class WorldSim {
 				{
 					Temperature = dependent.WaterTemperature[j],
 					Salinity = dependent.WaterSalinity[j],
+					WaterCoverage = dependent.WaterCoverage[j],
+
 					Energy = nextState.WaterEnergy[j],
 					SaltMass = nextState.WaterSaltMass[j],
 					WaterMass = nextState.WaterMass[j],
-					worldData = worldData
+					Terrain = nextState.Terrain,
+					worldData = worldData,
 				};
 				updateDependenciesJobHandles.Add(updateDependentWaterLayerJob.Schedule(_cellCount, _batchCount, energyJobHandle));
 			}
@@ -924,68 +1020,116 @@ public class WorldSim {
 				IceCoverage = dependent.IceCoverage,
 				SurfaceElevation = dependent.SurfaceElevation,
 				VegetationCoverage = dependent.VegetationCoverage,
-				WaterCoverage = dependent.WaterCoverage,
 				WaterDepth = dependent.WaterDepth,
+				CloudTemperature = dependent.CloudTemperature,
+				IceTemperature = dependent.IceTemperature,
+				TerrainTemperature = dependent.TerrainTemperature,
 
 				CloudMass = nextState.CloudMass,
 				IceMass = nextState.IceMass,
 				Terrain = nextState.Terrain,
 				WaterSaltMass = waterSaltMass,
+				CloudEnergy = nextState.CloudEnergy,
+				IceEnergy = nextState.IceEnergy,
+				TerrainEnergy = nextState.TerrainEnergy,
+				GroundWater = nextState.GroundWater,
 				worldData = worldData
 			};
-			updateDependenciesJobHandles.Add(updateDependentStateJob.Schedule(_cellCount, _batchCount, summationHandle));
+
+			var updateDependenciesJobHandle = updateDependentStateJob.Schedule(_cellCount, _batchCount, summationHandle);
+			updateDependenciesJobHandles.Add(updateDependenciesJobHandle);
+
 			lastJobHandle = JobHandle.CombineDependencies(updateDependenciesJobHandles);
 			lastJobHandle.Complete();
+
+
+			if (tick == ticksToAdvance-1)
+			{
+				display.Dispose();
+				display = new DisplayState();
+				display.Init(_cellCount, _airLayers, _waterLayers);
+
+				var updateDisplayJob = new UpdateDisplayJob()
+				{
+					SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
+					SolarRadiationInTerrain = solarRadiationIn[_terrainLayer],
+					SolarRadiationInIce = solarRadiationIn[_iceLayer],
+					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _waterLayers - 1],
+				};
+				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
+				updateDisplayJobHandle.Complete();
+
+				var curState = states[curStateIndex];
+				for (int i = 0; i < _cellCount; i++)
+				{
+					display.SolarRadiation += displaySolarRadiation[i];
+					display.GlobalCloudCoverage += dependent.CloudCoverage[i];
+					display.GlobalCloudMass += curState.CloudMass[i];
+					display.GlobalIceMass += curState.IceMass[i];
+					display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers-1][i];
+					display.GlobalTemperature += dependent.AirTemperature[0][i];
+					display.GlobalWaterVapor += curState.AirVapor[0][i];
+					display.GlobalOceanVolume += dependent.WaterDepth[i];
+					display.GlobalSeaLevel += dependent.SurfaceElevation[i];
+					display.GlobalEvaporation += display.Evaporation[i];
+					display.GlobalRainfall += display.Rainfall[i];
+					//display.EnergyDelta += curState.CellDisplays[i].EnergyDelta;
+					//display.EnergyEvapotranspiration += display[i].EnergyEvapotranspiration;
+					//display.EnergyOceanConduction += nextState.CellDisplays[i].EnergyOceanConduction;
+					for (int j = 0; j < _airLayers; j++)
+					{
+						display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
+						display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
+					}
+					for (int j = 0; j < _waterLayers; j++)
+					{
+						float absorbed = solarRadiationIn[j + _waterLayer0][i];
+						display.EnergySolarAbsorbedOcean += absorbed;
+						display.EnergySolarAbsorbedSurface += absorbed;
+						display.EnergySolarReflectedSurface += solarReflected[j + _waterLayer0][i];
+					}
+					display.EnergySolarAbsorbedCloud += solarRadiationIn[_cloudLayer][i];
+					display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
+					display.EnergySolarReflectedCloud += solarReflected[_cloudLayer][i];
+					display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
+					//display.EnergySurfaceConduction += nextState.CellDisplays[i].EnergySurfaceConduction;
+					//display.EnergyThermalAbsorbedAtmosphere += ;
+					display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_iceLayer][i] + thermalRadiationTransmittedDown[_iceLayer][i];
+					display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i] + thermalRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i]) * dependent.WaterCoverage[_waterLayers - 1][i];
+					display.EnergyThermalOutAtmosphere += thermalRadiationTransmittedUp[_airLayer0 + _airLayers - 1][i];
+					display.EnergyThermalSurfaceOutAtmosphericWindow += windowRadiationTransmittedUp[_iceLayer][i];
+					display.EnergyThermalSurfaceRadiation += windowRadiationTransmittedUp[_iceLayer][i] + thermalRadiationTransmittedUp[_iceLayer][i];
+			
+				}
+
+			}
 
 			updateDependenciesJobHandles.Dispose();
 			waterSaltMass.Dispose();
 			energyJobHandles.Dispose();
+			atmosphericWindowUp.Dispose();
+			atmosphericWindowDown.Dispose();
 			foreach (var d in energyJobHandleDependencies)
 			{
 				d.Dispose();
 			}
+			thermalRadiationDeltaIceTop.Dispose();
+			thermalRadiationDeltaIceBottom.Dispose();
+			thermalRadiationDeltaSurfaceWater.Dispose();
+			for (int i = 0; i < _layerCount; i++)
+			{
+				thermalRadiationDelta[i].Dispose();
+				thermalRadiationTransmittedUp[i].Dispose();
+				thermalRadiationTransmittedDown[i].Dispose();
+				windowRadiationTransmittedUp[i].Dispose();
+				windowRadiationTransmittedDown[i].Dispose();
+				solarReflected[i].Dispose();
+			}
+
+
 
 		}
 
-		int outputBuffer = ticksToAdvance % 2;
-		dependent.DisplayPlanet = new PlanetDisplay();
-		var curState = states[curStateIndex];
-		for (int i = 0; i < _cellCount; i++)
-		{
-
-			dependent.DisplayPlanet.CloudCoverage += dependent.CloudCoverage[i];
-			dependent.DisplayPlanet.CloudMass += curState.CloudMass[i];
-			dependent.DisplayPlanet.IceMass += curState.IceMass[i];
-			dependent.DisplayPlanet.OceanCoverage += dependent.WaterCoverage[i];
-			dependent.DisplayPlanet.Temperature += curState.AirEnergy[0][i];
-			dependent.DisplayPlanet.WaterVapor += curState.AirVapor[0][i];
-			//dependent.DisplayPlanet.EnergyDelta += nextState.CellDisplays[i].EnergyDelta;
-			//dependent.DisplayPlanet.EnergyEvapotranspiration += nextState.CellDisplays[i].EnergyEvapotranspiration;
-			//dependent.DisplayPlanet.EnergyIncoming += nextState.CellDisplays[i].EnergyIncoming;
-			//dependent.DisplayPlanet.EnergyLand += nextState.CellStates[i].GroundEnergy;
-			//dependent.DisplayPlanet.EnergyLowerAir += nextState.CellStates[i].AirEnergy;
-			//dependent.DisplayPlanet.EnergyOceanConduction += nextState.CellDisplays[i].EnergyOceanConduction;
-			//dependent.DisplayPlanet.EnergyShallowWater += nextState.CellStates[i].WaterEnergy;
-			//dependent.DisplayPlanet.EnergySolarAbsorbedAtmosphere += nextState.CellDisplays[i].EnergySolarAbsorbedAtmosphere;
-			//dependent.DisplayPlanet.EnergySolarAbsorbedCloud += nextState.CellDisplays[i].EnergySolarAbsorbedCloud;
-			//dependent.DisplayPlanet.EnergySolarAbsorbedOcean += nextState.CellDisplays[i].EnergySolarAbsorbedOcean;
-			//dependent.DisplayPlanet.EnergySolarAbsorbedSurface += nextState.CellDisplays[i].EnergySolarAbsorbedSurface;
-			//dependent.DisplayPlanet.EnergySolarReflectedAtmosphere += nextState.CellDisplays[i].EnergySolarReflectedAtmosphere;
-			//dependent.DisplayPlanet.EnergySolarReflectedCloud += nextState.CellDisplays[i].EnergySolarReflectedCloud;
-			//dependent.DisplayPlanet.EnergySolarReflectedSurface += nextState.CellDisplays[i].EnergySolarReflectedSurface;
-			//dependent.DisplayPlanet.EnergySurfaceConduction += nextState.CellDisplays[i].EnergySurfaceConduction;
-			//dependent.DisplayPlanet.EnergyThermalAbsorbedAtmosphere += nextState.CellDisplays[i].EnergySolarAbsorbedAtmosphere;
-			//dependent.DisplayPlanet.EnergyThermalBackRadiation += nextState.CellDisplays[i].EnergyThermalBackRadiation;
-			//dependent.DisplayPlanet.EnergyThermalOceanRadiation += nextState.CellDisplays[i].EnergyThermalOceanRadiation;
-			//dependent.DisplayPlanet.EnergyThermalOutAtmosphere += nextState.CellDisplays[i].EnergyThermalOutAtmosphere;
-			//dependent.DisplayPlanet.EnergyThermalSurfaceOutAtmosphericWindow += nextState.CellDisplays[i].EnergyThermalSurfaceOutAtmosphericWindow;
-			//dependent.DisplayPlanet.EnergyThermalSurfaceRadiation += nextState.CellDisplays[i].EnergyThermalSurfaceRadiation;
-			//dependent.DisplayPlanet.Evaporation += nextState.CellDisplays[i].Evaporation;
-			//dependent.DisplayPlanet.OceanVolume += nextState.CellDependents[i].WaterAndIceDepth;
-			//dependent.DisplayPlanet.Rainfall += nextState.CellDisplays[i].Rainfall;
-			//dependent.DisplayPlanet.SeaLevel += nextState.CellTerrains[i].Elevation + nextState.CellDependents[i].WaterAndIceDepth;
-
-		}
 
 	}
 }

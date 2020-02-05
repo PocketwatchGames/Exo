@@ -10,8 +10,6 @@ public class WorldSimComponent : MonoBehaviour
 
 	public int Seed;
 	public int Subdivisions = 5;
-	public int AirLayers = 3;
-	public int WaterLayers = 3;
 	public TextAsset WorldGenAsset;
 	public TextAsset WorldDataAsset;
 	public WorldData WorldData;
@@ -22,6 +20,7 @@ public class WorldSimComponent : MonoBehaviour
 	public int CellCount { get; private set; }
 	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
 	public ref DependentState DependentState { get { return ref _dependentState; } }
+	public ref DisplayState DisplayState { get { return ref _displayState; } }
 	public float TimeTillTick { get; private set; }
 
 	public float InverseCellCount { get; private set; }
@@ -31,6 +30,7 @@ public class WorldSimComponent : MonoBehaviour
 	private const int _simStateCount = 2;
 	private SimState[] _simStates;
 	private DependentState _dependentState;
+	private DisplayState _displayState;
 	private int _activeSimState;
 	private float _ticksPerSecond = 1;
 
@@ -54,8 +54,11 @@ public class WorldSimComponent : MonoBehaviour
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i] = new SimState();
-			_simStates[i].Init(CellCount, AirLayers, WaterLayers);
+			_simStates[i].Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
 		}
+
+		_displayState = new DisplayState();
+		_displayState.Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
@@ -68,6 +71,7 @@ public class WorldSimComponent : MonoBehaviour
 		StaticState.Dispose();
 		Icosphere.Dispose();
 		_dependentState.Dispose();
+		_displayState.Dispose();
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i].Dispose();
@@ -95,7 +99,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
-		_worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref StaticState, ref WorldData, ref _activeSimState);
+		_worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref _displayState, ref StaticState, ref WorldData, ref _activeSimState);
 
 		OnTick?.Invoke();
 	}

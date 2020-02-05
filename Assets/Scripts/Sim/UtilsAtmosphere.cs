@@ -157,11 +157,6 @@ public static class Atmosphere {
 		return (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass) / (waterMass + saltMass);
 	}
 
-	static public float GetLandRadiationRate(ref WorldData worldData, float landEnergy, float groundWater, float soilFertility, float canopyCoverage)
-	{
-		float soilTemperature = GetLandTemperature(ref worldData, landEnergy, groundWater, soilFertility, canopyCoverage);
-		return GetRadiationRate(soilTemperature, WorldData.EmissivityDirt) * (1.0f - canopyCoverage * 0.5f);
-	}
 
 	static public float GetRadiationRate(float temperature, float emissivity)
 	{

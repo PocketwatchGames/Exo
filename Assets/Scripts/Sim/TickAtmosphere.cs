@@ -34,18 +34,19 @@ public struct WaterSaltMass {
 [BurstCompile]
 public struct SolarRadiationJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiation;
+	public NativeArray<float> DisplaySolarRadiation;
 	public NativeArray<float> WaterSlopeAlbedo;
 	[ReadOnly] public NativeArray<float3> SphericalPosition;
 	[ReadOnly] public float3 SunToPlanetDir;
 	[ReadOnly] public quaternion PlanetRotation;
-	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float IncomingSolarRadiation;
 	public void Execute(int i)
 	{
-		float sunDotSurface = math.dot(SunToPlanetDir, math.rotate(PlanetRotation, -SphericalPosition[i]));
-		float waterSlopeAlbedo = math.pow(1.0f - math.max(0, sunDotSurface), 9);
-		SolarRadiation[i] = IncomingSolarRadiation * SecondsPerTick * sunDotSurface;
-		WaterSlopeAlbedo[i] = waterSlopeAlbedo;
+		float sunDotSurface = math.max(0, math.dot(SunToPlanetDir, math.rotate(PlanetRotation, -SphericalPosition[i])));
+		WaterSlopeAlbedo[i] = math.pow(1.0f - math.max(0, sunDotSurface), 9);
+		float r = IncomingSolarRadiation * sunDotSurface;
+		SolarRadiation[i] = r;
+		DisplaySolarRadiation[i] = r;
 	}
 }
 
@@ -54,12 +55,14 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationAbsorbedCloud;
 	public NativeArray<float> SolarRadiationIncoming;
-	[ReadOnly] public float LayerElevation;
-	[ReadOnly] public float LayerHeight;
+	public NativeArray<float> SolarRadiationReflected;
+	public NativeArray<float> SolarRadiationReflectedCloud;
 	[ReadOnly] public float SolarReflectivityAir;
 	[ReadOnly] public float SolarAbsorptivityAir;
 	[ReadOnly] public float SolarAbsorptivityWaterVapor;
 	[ReadOnly] public float SolarAbsorptivityCloud;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> CloudCoverage;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudElevation;
@@ -68,6 +71,7 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> WaterSlopeAlbedo;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public int LayerIndex;
 	[ReadOnly] public WorldData worldData;
 	public void Execute(int i)
 	{
@@ -75,56 +79,55 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 		float waterVaporMass = VaporMass[i];
 		float incomingRadiation = SolarRadiationIncoming[i];
 
-		float aboveCloud = 1;
-		float belowCloud = 0;
 
 		float cloudMass = CloudMass[i];
-		if (cloudMass > 0) {
-			float cloudElevation = CloudElevation[i];
-			if (cloudElevation >= LayerElevation && cloudElevation < LayerElevation + LayerHeight)
-			{
-				aboveCloud = (cloudElevation - LayerElevation) / LayerHeight;
-				belowCloud = 1.0f - aboveCloud;
-			}
-		}
+		float cloudElevation = CloudElevation[i];
+		float layerElevation = LayerElevation[LayerIndex];
+		float layerHeight = LayerHeight[LayerIndex];
+		bool isCloudLayer = cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight;
+		float beforeCloud = math.min(1, (cloudElevation - layerElevation) / layerHeight);
+		float afterCloud = 1.0f - beforeCloud;
 
-		float emissivity = SolarAbsorptivityAir * airMass + SolarAbsorptivityWaterVapor * waterVaporMass;
+		float reflectivity = math.min(1, SolarReflectivityAir * (airMass + waterVaporMass));
+		float absorptivity = SolarAbsorptivityAir * airMass + SolarAbsorptivityWaterVapor * waterVaporMass;
 		float absorbed = 0;
-		float energyReflectedAtmosphere = aboveCloud * incomingRadiation * math.min(1, SolarReflectivityAir * (airMass + waterVaporMass));
-		incomingRadiation -= energyReflectedAtmosphere;
-		//displayCell.EnergySolarReflectedAtmosphere += energyReflectedAtmosphere;
 
-		absorbed += aboveCloud * incomingRadiation * emissivity;
+
+		float energyReflectedAtmosphere = incomingRadiation * (1.0f - 1.0f / math.exp10(reflectivity * beforeCloud));
+		incomingRadiation -= energyReflectedAtmosphere;
+		absorbed += incomingRadiation * (1.0f - 1.0f / math.exp10(absorptivity * beforeCloud));
 		incomingRadiation -= absorbed;
 
 		float absorbedByCloudsIncoming = 0;
-		if (cloudMass > 0)
+		float energyReflectedClouds = 0;
+
+		if (isCloudLayer)
 		{
-			float cloudCoverage = CloudCoverage[i];
 			float cloudIceContent = math.saturate((CloudTemperature[i] - worldData.minCloudFreezingTemperature) / (worldData.maxCloudFreezingTemperature - worldData.minCloudFreezingTemperature));
 			float cloudTemperatureAlbedo = WorldData.AlbedoIce + (WorldData.AlbedoWater - WorldData.AlbedoIce) * cloudIceContent;
 			float rainDropSizeAlbedo = math.saturate(1.0f - CloudDropletMass[i] / CloudMass[i]) * (worldData.rainDropSizeAlbedoMax - worldData.rainDropSizeAlbedoMin) + worldData.rainDropSizeAlbedoMin;
 			float cloudAlbedo = math.min(1.0f, worldData.SolarReflectivityCloud * cloudTemperatureAlbedo * CloudMass[i] * rainDropSizeAlbedo / math.max(worldData.maxCloudSlopeAlbedo, 1.0f - WaterSlopeAlbedo[i]));
 
-			float energyReflectedClouds = incomingRadiation * cloudAlbedo * cloudCoverage;
+			energyReflectedClouds = incomingRadiation * (1.0f - 1.0f / math.exp10(cloudAlbedo * cloudMass));
 			incomingRadiation -= energyReflectedClouds;
-			absorbedByCloudsIncoming = incomingRadiation * math.min(1.0f, SolarAbsorptivityCloud * cloudMass) * cloudCoverage;
+			absorbedByCloudsIncoming = incomingRadiation * (1.0f - 1.0f / math.exp10(SolarAbsorptivityCloud * cloudMass));
 			incomingRadiation -= absorbedByCloudsIncoming;
 
-
-			//displayCell.EnergySolarAbsorbedCloud += absorbedByCloudsIncoming;
-			//displayCell.EnergySolarAbsorbedAtmosphere += absorbedByCloudsIncoming;
-			//displayCell.EnergySolarReflectedCloud += energyReflectedClouds;
-
-			// below cloud
-			float absorbedBelow = incomingRadiation * emissivity;
-			absorbed += absorbedBelow;
-			incomingRadiation -= absorbedBelow;
+			SolarRadiationReflectedCloud[i] = energyReflectedClouds;
+			SolarRadiationAbsorbedCloud[i] = absorbedByCloudsIncoming;
 		}
 
-		SolarRadiationAbsorbedCloud[i] = absorbedByCloudsIncoming;
+		// below cloud
+		float reflectedBelow = incomingRadiation * (1.0f - 1.0f / math.exp10(reflectivity * afterCloud));
+		incomingRadiation -= reflectedBelow;
+		energyReflectedAtmosphere += reflectedBelow;
+		float absorbedBelow = incomingRadiation * (1.0f - 1.0f / math.exp10(absorptivity * afterCloud));
+		absorbed += absorbedBelow;
+		incomingRadiation -= absorbedBelow;
+
 		SolarRadiationAbsorbed[i] = absorbed;
 		SolarRadiationIncoming[i] = incomingRadiation;
+		SolarRadiationReflected[i] = energyReflectedAtmosphere;
 	}
 }
 
@@ -132,6 +135,7 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 public struct SolarRadiationAbsorbedIceJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
+	public NativeArray<float> SolarRadiationReflected;
 	[ReadOnly] public float AlbedoIce;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	public void Execute(int i)
@@ -143,12 +147,14 @@ public struct SolarRadiationAbsorbedIceJob : IJobParallelFor {
 		float absorbed = incoming * iceCoverage;
 		SolarRadiationAbsorbed[i] = absorbed;
 		SolarRadiationIncoming[i] = incoming - absorbed;
+		SolarRadiationReflected[i] = reflected;
 	}
 }
 [BurstCompile]
 public struct SolarRadiationAbsorbedWaterJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
+	public NativeArray<float> SolarRadiationReflected;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> WaterSlopeAlbedo;
 	public void Execute(int i)
@@ -160,11 +166,13 @@ public struct SolarRadiationAbsorbedWaterJob : IJobParallelFor {
 		float absorbed = incoming * waterCoverage;
 		SolarRadiationAbsorbed[i] = absorbed;
 		SolarRadiationIncoming[i] = incoming - absorbed;
+		SolarRadiationReflected[i] = reflected;
 	}
 }
 [BurstCompile]
 public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
+	public NativeArray<float> SolarRadiationReflected;
 	[ReadOnly] public NativeArray<float> SolarRadiationIncoming;
 	[ReadOnly] public NativeArray<float> VegetationCoverage;
 	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
@@ -176,9 +184,10 @@ public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 		float slopeAlbedo = 0;
 		float vegetationCoverage = VegetationCoverage[i];
 		float soilReflectivity = Atmosphere.GetAlbedo(WorldData.AlbedoLand - worldData.AlbedoReductionSoilQuality * LastTerrain[i].SoilFertility, slopeAlbedo);
-		float reflected = incoming * vegetationCoverage * WorldData.AlbedoFoliage + math.max(0, 1.0f - vegetationCoverage) * soilReflectivity;
+		float reflected = incoming * vegetationCoverage * WorldData.AlbedoFoliage + (1.0f - vegetationCoverage) * soilReflectivity;
 		incoming -= reflected;
 
+		SolarRadiationReflected[i] = reflected;
 		SolarRadiationAbsorbed[i] = incoming;
 	}
 }
@@ -195,9 +204,9 @@ public struct EmissivityAirJob : IJobParallelFor {
 	[ReadOnly] public float AbsorptivityWaterVapor;
 	public void Execute(int i)
 	{
-		Emissivity[i] = 
+		Emissivity[i] = math.saturate(
 			AirMass[i] * ((1.0f - GreenhouseGasConcentration) * AbsorptivityAir + GreenhouseGasConcentration * AbsorptivityCarbonDioxide) +
-			VaporMass[i] * AbsorptivityWaterVapor;
+			VaporMass[i] * AbsorptivityWaterVapor);
 	}
 }
 
@@ -208,7 +217,7 @@ public struct EmissivityWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> WaterMass;
 	public void Execute(int i)
 	{
-		Emissivity[i] = (WorldData.EmissivityWater * WaterMass[i] + WorldData.EmissivitySalt * WaterSaltMass[i]) / (WaterMass[i] + WaterSaltMass[i]);
+		Emissivity[i] = math.saturate((WorldData.EmissivityWater * WaterMass[i] + WorldData.EmissivitySalt * WaterSaltMass[i]) / (WaterMass[i] + WaterSaltMass[i]));
 	}
 }
 
@@ -219,10 +228,10 @@ public struct EmissivityTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> VegetationCoverage;
 	public void Execute(int i)
 	{
-		Emissivity[i] = math.lerp(
+		Emissivity[i] = math.saturate(math.lerp(
 			math.lerp(WorldData.EmissivitySand, WorldData.EmissivityDirt, Terrain[i].SoilFertility), 
 			WorldData.EmissivityVegetation, 
-			VegetationCoverage[i]);
+			VegetationCoverage[i]));
 	}
 }
 
@@ -232,14 +241,23 @@ public struct ThermalEnergyRadiatedJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmittedUp;
 	public NativeArray<float> ThermalRadiationTransmittedDown;
+	public NativeArray<float> WindowRadiationTransmittedUp;
+	public NativeArray<float> WindowRadiationTransmittedDown;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Emissivity;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
 		// radiate half up and half down
-		float emitted = Atmosphere.GetRadiationRate(Temperature[i], Emissivity[i]);
-		ThermalRadiationDelta[i] = emitted;
-		float transmittedUp = emitted / 2;
+		float transmittedUp = Atmosphere.GetRadiationRate(Temperature[i], Emissivity[i]) * SecondsPerTick;
+		ThermalRadiationDelta[i] = -2 * transmittedUp;
+
+		float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
+		transmittedUp -= windowTransmittedUp;
+
+		WindowRadiationTransmittedUp[i] = windowTransmittedUp;
+		WindowRadiationTransmittedDown[i] = windowTransmittedUp;
 		ThermalRadiationTransmittedUp[i] = transmittedUp;
 		ThermalRadiationTransmittedDown[i] = transmittedUp;
 	}
@@ -249,14 +267,23 @@ public struct ThermalEnergyRadiatedConstantEmissivityJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmittedUp;
 	public NativeArray<float> ThermalRadiationTransmittedDown;
+	public NativeArray<float> WindowRadiationTransmittedUp;
+	public NativeArray<float> WindowRadiationTransmittedDown;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public float Emissivity;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
 		// radiate half up and half down
-		float emitted = Atmosphere.GetRadiationRate(Temperature[i], Emissivity);
-		ThermalRadiationDelta[i] = -emitted;
-		float transmittedUp = emitted / 2;
+		float transmittedUp = Atmosphere.GetRadiationRate(Temperature[i], Emissivity) * SecondsPerTick;
+		ThermalRadiationDelta[i] = -2 * transmittedUp;
+
+		float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
+		transmittedUp -= windowTransmittedUp;
+
+		WindowRadiationTransmittedUp[i] = windowTransmittedUp;
+		WindowRadiationTransmittedDown[i] = windowTransmittedUp;
 		ThermalRadiationTransmittedUp[i] = transmittedUp;
 		ThermalRadiationTransmittedDown[i] = transmittedUp;
 	}
@@ -265,13 +292,20 @@ public struct ThermalEnergyRadiatedConstantEmissivityJob : IJobParallelFor {
 public struct ThermalEnergyRadiatedTerrainJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmitted;
+	public NativeArray<float> WindowRadiationTransmitted;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Emissivity;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
 		// radiate half up and half down
-		float emitted = Atmosphere.GetRadiationRate(Temperature[i], Emissivity[i]) / 2;
+		float emitted = Atmosphere.GetRadiationRate(Temperature[i], Emissivity[i]) * SecondsPerTick;
 		ThermalRadiationDelta[i] = -emitted;
+
+		float emittedOutAtmosphericWindow = emitted * PercentRadiationInAtmosphericWindow;
+		emitted -= emittedOutAtmosphericWindow;
+		WindowRadiationTransmitted[i] = emittedOutAtmosphericWindow;
 		ThermalRadiationTransmitted[i] = emitted;
 	}
 }
@@ -281,21 +315,64 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationDeltaCloud;
 	public NativeArray<float> ThermalRadiationTransmitted;
+	public NativeArray<float> WindowRadiationTransmitted;
+	[ReadOnly] public NativeArray<float> WindowRadiationIncoming;
 	[ReadOnly] public NativeArray<float> ThermalRadiationIncoming;
 	[ReadOnly] public NativeArray<float> ThermalRadiationEmittedCloudUp;
 	[ReadOnly] public NativeArray<float> ThermalRadiationEmittedCloudDown;
-	[ReadOnly] public float LayerElevation;
-	[ReadOnly] public float LayerHeight;
-	[ReadOnly] public NativeArray<float> Emissivity;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float> CloudCoverage;
+	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> VaporMass;
+	[ReadOnly] public float AirAbsorptivity;
+	[ReadOnly] public float VaporAbsorptivity;
+	[ReadOnly] public float WaterAbsorptivity;
+	[ReadOnly] public float CarbonAbsorptivity;
+	[ReadOnly] public float CarbonDioxide;
+	[ReadOnly] public int LayerIndex;
+	[ReadOnly] public bool FromTop;
 	public void Execute(int i)
 	{
-		//float aboveCloud
+		WindowRadiationTransmitted[i] += WindowRadiationIncoming[i];
+
+		float absorptivity = (1.0f - CarbonDioxide) * AirMass[i] * AirAbsorptivity + VaporMass[i] * VaporAbsorptivity + AirMass[i] * CarbonDioxide * CarbonAbsorptivity;
+
+		float cloudMass = CloudMass[i];
+		float cloudElevation = CloudElevation[i];
+		float layerElevation = LayerElevation[LayerIndex];
+		float layerHeight = LayerHeight[LayerIndex];
+		bool isCloudLayer = cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight;
+		float beforeCloud = math.min(1, (cloudElevation - layerElevation) / layerHeight);
+		if (!FromTop)
+		{
+			beforeCloud = 1.0f - beforeCloud;
+		}
+		float afterCloud = 1.0f - beforeCloud;
+
 		float incoming = ThermalRadiationIncoming[i];
-		float absorbed = incoming * Emissivity[i];
-		ThermalRadiationTransmitted[i] += incoming - absorbed;
-		ThermalRadiationDelta[i] += absorbed;
+		if (beforeCloud > 0)
+		{
+			float absorbedBeforeCloud = incoming * (1.0f - 1.0f / math.exp10(absorptivity * beforeCloud));
+			incoming -= absorbedBeforeCloud;
+			ThermalRadiationDelta[i] += absorbedBeforeCloud;
+		}
+
+		if (cloudMass > 0)
+		{
+			float absorbedByCloud = incoming * (1.0f - 1.0f / math.exp10(WaterAbsorptivity * cloudMass));
+			ThermalRadiationDeltaCloud[i] += absorbedByCloud;
+			incoming -= absorbedByCloud;
+		}
+
+		if (afterCloud > 0)
+		{
+			float absorbedAfterCloud = incoming * (1.0f - 1.0f / math.exp10(absorptivity * afterCloud));
+			ThermalRadiationDelta[i] += absorbedAfterCloud;
+			incoming -= absorbedAfterCloud;
+		}
+		ThermalRadiationTransmitted[i] += incoming;
 	}
 }
 
@@ -304,14 +381,22 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 public struct ThermalEnergyAbsorbedJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationTransmitted;
 	public NativeArray<float> ThermalRadiationDelta;
+	public NativeArray<float> WindowRadiationTransmitted;
+	[ReadOnly] public NativeArray<float> WindowRadiationIncoming;
 	[ReadOnly] public NativeArray<float> ThermalRadiationIncoming;
-	[ReadOnly] public NativeArray<float> Emissivity;
 	public void Execute(int i)
 	{
+		float absorptivity = 1;
+
+		float windowIncoming = WindowRadiationIncoming[i];
+		float windowAbsorbed = windowIncoming * absorptivity;
+		WindowRadiationTransmitted[i] += windowIncoming - windowAbsorbed;
+
 		float incoming = ThermalRadiationIncoming[i];
-		float absorbed = incoming * Emissivity[i];
+		float absorbed = incoming * absorptivity;
 		ThermalRadiationTransmitted[i] += incoming - absorbed;
-		ThermalRadiationDelta[i] += absorbed;
+
+		ThermalRadiationDelta[i] += absorbed + windowAbsorbed;
 	}
 }
 
@@ -319,41 +404,34 @@ public struct ThermalEnergyAbsorbedJob : IJobParallelFor {
 public struct ThermalEnergyAbsorbedPartialCoverageJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationTransmitted;
 	public NativeArray<float> ThermalRadiationDelta;
+	public NativeArray<float> WindowRadiationTransmitted;
+	[ReadOnly] public NativeArray<float> WindowRadiationIncoming;
 	[ReadOnly] public NativeArray<float> ThermalRadiationIncoming;
-	[ReadOnly] public NativeArray<float> Emissivity;
 	[ReadOnly] public NativeArray<float> Coverage;
 	public void Execute(int i)
 	{
+		float absorptivity = Coverage[i];
+
+		float windowRadiationIncoming = WindowRadiationIncoming[i];
+		float atmosphericWindowAbsorbed = windowRadiationIncoming * absorptivity;
+		WindowRadiationTransmitted[i] += windowRadiationIncoming - atmosphericWindowAbsorbed;
+
 		float incoming = ThermalRadiationIncoming[i];
-		float absorbed = incoming * Emissivity[i] * Coverage[i];
+		float absorbed = incoming * absorptivity;
 		ThermalRadiationTransmitted[i] += incoming - absorbed;
-		ThermalRadiationDelta[i] += absorbed;
+		ThermalRadiationDelta[i] += absorbed + atmosphericWindowAbsorbed;
 	}
 }
 
-[BurstCompile]
-public struct ThermalEnergyAbsorbedPartialCoverageConstantEmissivityJob : IJobParallelFor {
-	public NativeArray<float> ThermalRadiationTransmitted;
-	public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> ThermalRadiationIncoming;
-	[ReadOnly] public NativeArray<float> Coverage;
-	[ReadOnly] public float Emissivity;
-	public void Execute(int i)
-	{
-		float incoming = ThermalRadiationIncoming[i];
-		float absorbed = incoming * Emissivity * Coverage[i];
-		ThermalRadiationTransmitted[i] += incoming - absorbed;
-		ThermalRadiationDelta[i] += absorbed;
-	}
-}
 
 [BurstCompile]
 public struct ThermalEnergyAbsorbedTerrainJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationAbsorbed;
+	[ReadOnly] public NativeArray<float> WindowRadiationIncoming;
 	[ReadOnly] public NativeArray<float> ThermalRadiationIncoming;
 	public void Execute(int i)
 	{
-		ThermalRadiationAbsorbed[i] += ThermalRadiationIncoming[i];
+		ThermalRadiationAbsorbed[i] += ThermalRadiationIncoming[i] + WindowRadiationIncoming[i];
 	}
 }
 
@@ -632,8 +710,7 @@ public struct EnergyAirJob : IJobParallelFor {
 		// TODO: account for differing Air masses
 		Energy[i] = 
 			LastEnergy[i] + 
-			SolarRadiationIn[i] +
-			conductionTemperatureDelta +
+			SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionTemperatureDelta +
 			(Diffusion[i].Temperature - Advection[i].Temperature) / temperatureToEnergy;
 
 		Vapor[i] = LastVapor[i] + (Diffusion[i].Humidity - Advection[i].Humidity) / (AirMass[i] + LastVapor[i]);
@@ -656,10 +733,11 @@ public struct EnergyWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		float conductionTemperatureDelta = 0;
-		Energy[i] = LastTemperature[i] + Diffusion[i].Temperature - Advection[i].Temperature + ThermalRadiationDelta[i] + SolarRadiationIn[i] + conductionTemperatureDelta;
+		Energy[i] = LastTemperature[i] + Diffusion[i].Temperature - Advection[i].Temperature + SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionTemperatureDelta;
 		Velocity[i] = LastVelocity[i] + Diffusion[i].Velocity - Advection[i].Velocity;
 		Salinity[i] = LastSalinity[i];
 		Mass[i] = LastMass[i];
@@ -671,6 +749,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 	public NativeArray<float> Salinity;
 	public NativeArray<float2> Velocity;
 	public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastEnergy;
 	[ReadOnly] public NativeArray<float> LastSalinity;
 	[ReadOnly] public NativeArray<float2> LastVelocity;
@@ -686,9 +765,10 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 	{
 		float conductionTemperatureDelta = 0;
 		float thermalRadiation = ThermalRadiationDeltaTop[i] + ThermalRadiationDeltaBottom[i];
-		Energy[i] = LastEnergy[i] + Diffusion[i].Temperature - Advection[i].Temperature + thermalRadiation + SolarRadiationIn[i] + conductionTemperatureDelta;
+		Energy[i] = LastEnergy[i] + Diffusion[i].Temperature - Advection[i].Temperature + SolarRadiationIn[i] + thermalRadiation + conductionTemperatureDelta;
 		Salinity[i] = LastSalinity[i] + Diffusion[i].Salinity - Advection[i].Salinity;
 		Velocity[i] = LastVelocity[i] + Diffusion[i].Velocity - Advection[i].Velocity;
+		Mass[i] = LastMass[i];
 	}
 }
 
@@ -713,7 +793,7 @@ public struct EnergyCloudJob : IJobParallelFor {
 	{
 		// evap, ice melting/freezing, cloud sim goes here
 		float conductionTemperatureDelta = 0;
-		Energy[i] = LastEnergy[i] + Diffusion[i].Temperature - Advection[i].Temperature + ThermalRadiationDelta[i] + SolarRadiationIn[i] + conductionTemperatureDelta;
+		Energy[i] = LastEnergy[i] + Diffusion[i].Temperature - Advection[i].Temperature + SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionTemperatureDelta;
 		DropletMass[i] = LastDropletMass[i] + Diffusion[i].DropletMass - Advection[i].DropletMass;
 		Mass[i] = LastMass[i] + Diffusion[i].Mass - Advection[i].Mass;
 		Elevation[i] = LastElevation[i] + Diffusion[i].Elevation - Advection[i].Elevation;
@@ -734,13 +814,14 @@ public struct EnergyIceJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float conductionTemperatureDelta = 0;
-		Energy[i] = LastEnergy[i] + ThermalRadiationDeltaBottom[i] + ThermalRadiationDeltaTop[i] + SolarRadiationIn[i] + conductionTemperatureDelta;
+		Energy[i] = LastEnergy[i] + SolarRadiationIn[i] + ThermalRadiationDeltaBottom[i] + ThermalRadiationDeltaTop[i] + conductionTemperatureDelta;
 	}
 }
 
 [BurstCompile]
 public struct EnergyTerrainJob : IJobParallelFor {
 	public NativeArray<float> Energy;
+	[ReadOnly] public NativeArray<float> LastEnergy;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
@@ -750,17 +831,22 @@ public struct EnergyTerrainJob : IJobParallelFor {
 	[ReadOnly] float GeothermalEnergy;
 	public void Execute(int i)
 	{
+		float conductionTemperatureDelta = 0;
+		Energy[i] = LastEnergy[i] + SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionTemperatureDelta;
 	}
 }
 
 [BurstCompile]
 public struct UpdateTerrainJob : IJobParallelFor {
 	public NativeArray<CellTerrain> Terrain;
+	public NativeArray<float> GroundWater;
 
 	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
+	[ReadOnly] public NativeArray<float> LastGroundWater;
 	public void Execute(int i)
 	{
 		Terrain[i] = LastTerrain[i];
+		GroundWater[i] = LastGroundWater[i];
 	}
 
 }
@@ -785,14 +871,20 @@ public struct UpdateWaterSaltMassJob : IJobParallelFor {
 public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceElevation;
 	public NativeArray<float> IceCoverage;
-	public NativeArray<float> WaterCoverage;
 	public NativeArray<float> VegetationCoverage;
 	public NativeArray<float> CloudCoverage;
 	public NativeArray<float> WaterDepth;
+	public NativeArray<float> CloudTemperature;
+	public NativeArray<float> IceTemperature;
+	public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<WaterSaltMass> WaterSaltMass;
 	[ReadOnly] public NativeArray<float> IceMass;
+	[ReadOnly] public NativeArray<float> IceEnergy;
 	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> CloudEnergy;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public NativeArray<float> TerrainEnergy;
+	[ReadOnly] public NativeArray<float> GroundWater;
 	[ReadOnly] public WorldData worldData;
 	public void Execute(int i)
 	{
@@ -801,9 +893,27 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 		WaterDepth[i] = waterDepth;
 		SurfaceElevation[i] = Terrain[i].Elevation + waterDepth + iceMass / WorldData.MassIce;
 		VegetationCoverage[i] = Terrain[i].Vegetation * worldData.inverseFullCanopyCoverage;
-		WaterCoverage[i] = math.min(1, waterDepth / math.max(1, Terrain[i].Roughness));
-		CloudCoverage[i] = CloudMass[i] * worldData.inverseCloudMassFullAbsorption;
+
 		IceCoverage[i] = iceMass * worldData.inverseFullIceCoverage;
+		if (iceMass == 0)
+		{
+			IceTemperature[i] = 0;
+		} else
+		{
+			IceTemperature[i] = IceEnergy[i] / (iceMass * WorldData.SpecificHeatIce);
+		}
+
+		float cloudMass = CloudMass[i];
+		CloudCoverage[i] = cloudMass * worldData.inverseCloudMassFullAbsorption;
+		if (cloudMass == 0)
+		{
+			CloudTemperature[i] = 0;
+		} else
+		{
+			CloudTemperature[i] = CloudEnergy[i] / (cloudMass * WorldData.SpecificHeatWaterVapor);
+		}
+
+		TerrainTemperature[i] = Atmosphere.GetLandTemperature(ref worldData, TerrainEnergy[i], GroundWater[i], Terrain[i].SoilFertility, VegetationCoverage[i]);
 	}
 
 }
@@ -814,24 +924,24 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 	public NativeArray<float> AbsoluteHumidity;
 	public NativeArray<float> RelativeHumidity;
 	public NativeArray<float> Pressure;
+	public NativeArray<float> LayerElevation;
+	public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> AirVapor;
 	[ReadOnly] public NativeArray<float> AirEnergy;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public WorldData WorldData;
-	[ReadOnly] public float LayerElevation;
-	[ReadOnly] public float LayerHeight;
 	[ReadOnly] public float Gravity;
 
 	[ReadOnly] public NativeArray<float> IceMass;
 	public void Execute(int i)
 	{
-		float layerMiddle = LayerElevation + LayerHeight / 2;
+		float layerMiddle = LayerElevation[i] + LayerHeight[i] / 2;
 
 		Temperature[i] = AirEnergy[i] / (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]);
 		AbsoluteHumidity[i] = AirVapor[i] / (AirVapor[i] + AirMass[i]);
 		RelativeHumidity[i] = Atmosphere.GetRelativeHumidity(ref WorldData, Temperature[i], AirVapor[i], AirMass[i], WorldData.inverseDewPointTemperatureRange);
-		Pressure[i] = Atmosphere.GetAirPressure(ref WorldData, AirMass[i], LayerElevation, Temperature[i], Atmosphere.GetMolarMassAir(AirMass[i], VaporMass[i]), Gravity);
+		Pressure[i] = Atmosphere.GetAirPressure(ref WorldData, AirMass[i], LayerElevation[i], Temperature[i], Atmosphere.GetMolarMassAir(AirMass[i], VaporMass[i]), Gravity);
 	}
 }
 
@@ -839,6 +949,8 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 	public NativeArray<float> Salinity;
 	public NativeArray<float> Temperature;
+	public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
 	[ReadOnly] public NativeArray<float> Energy;
@@ -847,19 +959,31 @@ public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 	{
 		if (WaterMass[i] > 0)
 		{
+			float waterDepth = WaterMass[i] / WorldData.MassWater + SaltMass[i] / WorldData.MassSalt;
+			WaterCoverage[i] = math.min(1, waterDepth / math.max(1, Terrain[i].Roughness));
 			Temperature[i] = Energy[i] / (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt);
 			Salinity[i] = SaltMass[i] / (WaterMass[i] + SaltMass[i]);
 		}
 		else
 		{
+			WaterCoverage[i] = 0;
 			Temperature[i] = 0;
 			Salinity[i] = 0;
 		}
 	}
 }
 
-
-
+[BurstCompile]
+public struct UpdateDisplayJob : IJobParallelFor {
+	public NativeArray<float> SolarRadiationAbsorbedSurface;
+	public NativeArray<float> SolarRadiationInTerrain;
+	public NativeArray<float> SolarRadiationInIce;
+	public NativeArray<float> SolarRadiationInWaterSurface;
+	public void Execute(int i)
+	{
+		SolarRadiationAbsorbedSurface[i] = SolarRadiationInTerrain[i] + SolarRadiationInIce[i] + SolarRadiationInWaterSurface[i];
+	}
+}
 //[BurstCompile]
 //public struct TickEnergyDeltaJob : IJobParallelFor {
 

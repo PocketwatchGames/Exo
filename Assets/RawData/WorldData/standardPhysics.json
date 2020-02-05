@@ -40,12 +40,12 @@
 	"GlobalCoriolisInfluenceWindLower": 0.25,
 	"GlobalCoriolisInfluenceOcean": 0.5,
 
-	"SolarAbsorptivityAir": 0.0000075,
-	"SolarAbsorptivityWaterVapor": 0.0003,
+	"SolarAbsorptivityAir": 0.000002,
+	"SolarAbsorptivityWaterVapor": 0.0001,
 	"SolarAbsorptivityCloud": 0.1,
-	"SolarReflectivityAir": 0.0000125,
+	"SolarReflectivityAir": 0.000002,
 	"SolarReflectivityWaterVapor": 0,
-	"SolarReflectivityCloud": 2.5,
+	"SolarReflectivityCloud": 1.0,
 	"ThermalReflectivityCloud": 0.90,
 	"maxGroundWaterTemperature": 283,
 	"SoilHeatDepth": 2,
@@ -61,7 +61,7 @@
 	"AirWaterConductionDepth": 10.0,
 
 	"AbsorptivityCarbonDioxide": 0.25,
-	"AbsorptivityAir": 0.00005,
+	"AbsorptivityAir": 0.00025,
 	"AbsorptivityWaterLiquid": 0.05,
 	"AbsorptivityWaterVapor": 0.00155,
 
