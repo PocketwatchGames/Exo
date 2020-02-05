@@ -751,6 +751,7 @@ public class WorldView : MonoBehaviour {
 		s += "Surface Humidity: " + (dependent.AirHumidityRelative[0][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
 		s += "Mid Temp: " + GetTemperatureString(dependent.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Upper Temp: " + GetTemperatureString(dependent.AirTemperature[2][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Cloud Temp: " + GetTemperatureString(dependent.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Clouds: " + (state.CloudMass[ActiveCellIndex] / WorldData.MassWater).ToString("0.000") + " m3\n";
 		s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater * state.CloudMass[ActiveCellIndex])).ToString("0.000") + " nm3\n";
 		return s;

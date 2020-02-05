@@ -112,7 +112,7 @@ public static class WorldGen {
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2000, 0, 1), 0.85f) * Mathf.Pow(relativeHumidity, 0.5f);
 			float cloudDropletMass = GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2001, 0, 1) * relativeHumidity * Mathf.Pow(cloudMass, 2) * worldData.rainDropMaxSize;
 			float cloudElevation = 5000;
-			float cloudTemperature = airTemperaturePotential * WorldData.TemperatureLapseRate * cloudElevation;
+			float cloudTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * cloudElevation;
 			float totalAirMass = worldGenData.TroposphereMass * (1.0f - surfaceElevation / worldData.TropopauseElevation);
 
 			float groundWaterDepth = GetPerlinMinMax(pos.x, pos.y, pos.z, 1f, 60423, worldGenData.GroundWaterDepthMin, worldGenData.GroundWaterDepthMax);
@@ -230,7 +230,7 @@ public static class WorldGen {
 			state.CloudDropletMass[i] = cloudDropletMass;
 			state.CloudElevation[i] = cloudElevation;
 			state.CloudMass[i] = cloudMass;
-			state.CloudEnergy[i] = cloudTemperature;
+			state.CloudEnergy[i] = cloudTemperature * WorldData.SpecificHeatWater * cloudMass;
 			state.CloudVelocity[i] = cloudVelocity;
 			state.IceMass[i] = iceMass;
 			state.IceEnergy[i] = WorldData.FreezingTemperature;
