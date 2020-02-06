@@ -109,7 +109,7 @@ public static class WorldGen {
 
 			float airTemperatureSurface = airTemperaturePotential + WorldData.TemperatureLapseRate * surfaceElevation;
 			float airPressure = WorldData.StaticPressure - regionalTemperatureVariation * 1000;
-			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2000, 0, 1), 0.85f) * Mathf.Pow(relativeHumidity, 0.5f);
+			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity, 1.0f);
 			float cloudDropletMass = GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2001, 0, 1) * relativeHumidity * Mathf.Pow(cloudMass, 2) * worldData.rainDropMaxSize;
 			float cloudElevation = 5000;
 			float cloudTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * cloudElevation;
@@ -127,13 +127,11 @@ public static class WorldGen {
 				groundWater = maxGroundWater * 0.2f;
 			}
 
-			//float shallowDepth = Mathf.Min(data.DeepOceanDepth, depth);
-			//float deepDepth = Mathf.Max(0, depth - data.DeepOceanDepth);
 
 			float minOceanTemperature = WorldData.FreezingTemperature + 0.1f;
 			//float oceanDepthMinTemperature = 2000;
 			float waterTemperatureSurface = Mathf.Max(WorldData.FreezingTemperature, airTemperaturePotential + 2);
-			float waterTemperatureBottom = waterTemperatureSurface;
+			float waterTemperatureBottom = math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / (1.0f + waterDepth / 500.0f)) + WorldData.FreezingTemperature;
 
 			float layerElevation = surfaceElevation;
 			float upperAirLayerHeight = (worldData.TropopauseElevation - surfaceElevation - worldData.BoundaryZoneElevation) / (worldData.AirLayers - 1);
@@ -154,13 +152,28 @@ public static class WorldGen {
 				dependent.LayerHeight[j][i] = layerHeight;
 				layerElevation += layerHeight;
 			}
+
+			float[] waterLayerDepth = new float[worldData.WaterLayers];
+			int surfaceWaterLayer = worldData.WaterLayers - 1;
+			float curDepth = math.min(waterDepth, worldData.ThermoclineDepth);
+			waterLayerDepth[surfaceWaterLayer] = curDepth;
+			dependent.WaterTemperature[surfaceWaterLayer][i] = waterTemperatureSurface;
+			float deepWaterLayerDepths = (waterDepth - curDepth) / (worldData.WaterLayers - 1);
+			for (int j = worldData.WaterLayers - 2; j >= 0; j--)
+			{
+				float layerDepth = math.min(deepWaterLayerDepths, waterDepth - curDepth);
+				waterLayerDepth[j] = layerDepth;
+				dependent.WaterTemperature[j][i] = math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / ( 1.0f + curDepth / 500.0f)) + WorldData.FreezingTemperature;
+
+				curDepth += layerDepth;
+			}
+
 			for (int j = 0; j < worldData.WaterLayers; j++)
 			{
-				float layerDepth = j == worldData.WaterLayers - 1 ? waterDepth : 0;
-				float waterTemperature = waterTemperatureSurface;
+				float waterTemperature = dependent.WaterTemperature[j][i];
 				float salinity = waterDepth == 0 ? 0 : (1.0f - Math.Abs(coord.y)) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
 				//float deepSalinity = deepDepth == 0 ? 0 : Math.Abs(coord.y) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
-				float waterAndSaltMass = GetWaterMass(worldData, layerDepth, waterTemperature, salinity);
+				float waterAndSaltMass = GetWaterMass(worldData, waterLayerDepth[j], waterTemperature, salinity);
 				float waterMass = waterAndSaltMass * (1.0f - salinity);
 				float saltMass = waterAndSaltMass * salinity;
 				float2 current = float2.zero;
@@ -185,15 +198,6 @@ public static class WorldGen {
 			state.WaterEnergy[0][i] -= iceMass;
 			float waterAndIceDepth = waterDepth + iceMass / WorldData.MassIce;
 
-			////	float deepOceanTemperature = (state.ShallowWaterTemperature - minOceanTemperature) * (1.0f - Mathf.Pow(Mathf.Clamp01(deepDepth / oceanDepthMinTemperature), 2f)) + minOceanTemperature;
-			//float deepOceanTemperature = minOceanTemperature;
-			//float deepOceanMass = GetWaterMass(world, deepDepth, deepOceanTemperature, deepSalinity);
-			//cell.DeepWaterMass = deepOceanMass * (1.0f - deepSalinity);
-			//cell.DeepSaltMass = deepOceanMass * deepSalinity;
-			//cell.DeepWaterEnergy = Atmosphere.GetWaterEnergy(world, deepOceanTemperature, state.DeepWaterMass, state.DeepSaltMass);
-			//cell.DeepWaterDensity = Atmosphere.GetWaterDensity(world, state.DeepWaterEnergy, state.DeepSaltMass, state.DeepWaterMass);
-
-
 			float waterCoverage = Mathf.Clamp01(waterDepth / worldData.FullWaterCoverage);
 			float iceCoverage = Mathf.Clamp01(iceMass / (WorldData.MassIce * worldData.FullIceCoverage));
 
@@ -203,9 +207,6 @@ public static class WorldGen {
 			}
 
 			// TODO: ground water energy should probably be tracked independently
-			float groundWaterEnergy = groundWater * WorldData.SpecificHeatWater * worldData.maxGroundWaterTemperature;
-			float landMass = (WorldData.MassSand - WorldData.MassSoil) * soilFertility + WorldData.MassSoil;
-			float heatingDepth = soilFertility * worldData.SoilHeatDepth;
 			float terrainTemperature;
 			if (waterCoverage >= 1)
 			{
@@ -215,8 +216,7 @@ public static class WorldGen {
 			{
 				terrainTemperature = airTemperatureSurface;
 			}
-			float soilEnergy = terrainTemperature * WorldData.SpecificHeatSoil * heatingDepth * landMass;
-			float groundEnergy = groundWaterEnergy + soilEnergy;
+			float groundEnergy = Atmosphere.GetTerrainEnergy(ref worldData, terrainTemperature, groundWater, soilFertility, vegetation * worldData.inverseFullCanopyCoverage);
 
 
 
@@ -255,6 +255,7 @@ public static class WorldGen {
 			};
 			updateDependenciesJobHandles.Add(updateDependentWaterLayerJob.Schedule(staticState.Count, batchCount));
 		}
+		JobHandle lowerAirHandle = default(JobHandle);
 		for (int j = 0; j < worldData.AirLayers; j++)
 		{
 			var updateDependentAirLayerJob = new UpdateDependentAirLayerJob()
@@ -273,7 +274,12 @@ public static class WorldGen {
 				Gravity = state.PlanetState.Gravity,
 				WorldData = worldData,
 			};
-			updateDependenciesJobHandles.Add(updateDependentAirLayerJob.Schedule(staticState.Count, batchCount));
+			var h = updateDependentAirLayerJob.Schedule(staticState.Count, batchCount);
+			updateDependenciesJobHandles.Add(h);
+			if (j == 0)
+			{
+				lowerAirHandle = h;
+			}
 		}
 
 		var updateDependentStateJob = new UpdateDependentStateJob()
@@ -286,6 +292,7 @@ public static class WorldGen {
 			CloudTemperature = dependent.CloudTemperature,
 			IceTemperature = dependent.IceTemperature,
 			TerrainTemperature = dependent.TerrainTemperature,
+			SurfaceAirTemperature = dependent.SurfaceAirTemperature,
 
 			WaterSaltMass = waterSaltMass,
 			CloudMass = state.CloudMass,
@@ -295,9 +302,11 @@ public static class WorldGen {
 			Terrain = state.Terrain,
 			TerrainEnergy = state.TerrainEnergy,
 			GroundWater = state.GroundWater,
-			worldData = worldData
+			worldData = worldData,
+			LowerAirTemperature = dependent.AirTemperature[0],
+			lowerAirHeight = dependent.LayerHeight[0]
 		};
-		updateDependenciesJobHandles.Add(updateDependentStateJob.Schedule(staticState.Count, batchCount));
+		updateDependenciesJobHandles.Add(updateDependentStateJob.Schedule(staticState.Count, batchCount, lowerAirHandle));
 		JobHandle.CompleteAll(updateDependenciesJobHandles);
 		updateDependenciesJobHandles.Dispose();
 		waterSaltMass.Dispose();

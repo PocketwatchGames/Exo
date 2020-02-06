@@ -6,7 +6,7 @@
 	"WaterDiffuseSpeed": 0.01,
 	"FullIceCoverage": 3.0,
 	"FullWaterCoverage": 50.0,
-	"FullCanopyCoverage": 2000,
+	"FullVegetationCoverage": 2000,
 
 	"MaxSoilPorousness": 0.1,
 	"GroundWaterReplenishmentSpeed": 0.01,
@@ -85,7 +85,7 @@
 	"DewPointElevationPerDegree": 67.73,
 	"DewPointTemperaturePerRelativeHumidity": 20,
 
-	"DeepOceanDepth": 500,
+	"ThermoclineDepth": 500,
 	"WindToOceanCurrentFactor": 0.25,
 	"OceanCurrentSpeed": 0.2,
 	"OceanHorizontalMixingSpeed": 0.1,

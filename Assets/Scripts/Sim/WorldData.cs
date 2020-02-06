@@ -12,7 +12,7 @@ public struct WorldData {
 	public int WaterLayers;
 	public float FullIceCoverage;
 	public float FullWaterCoverage;
-	public float FullCanopyCoverage;
+	public float FullVegetationCoverage;
 
 	[Header("Fresh Water")]
 	public float MaxSoilPorousness;
@@ -111,7 +111,7 @@ public struct WorldData {
 	public float DewPointTemperaturePerRelativeHumidity;
 
 	[Header("Ocean")]
-	public float DeepOceanDepth;
+	public float ThermoclineDepth;
 	public float WindToOceanCurrentFactor;
 	public float WaterDiffuseSpeed;
 	public float OceanCurrentSpeed;
@@ -207,7 +207,7 @@ public struct WorldData {
 		TicksPerSecond = 1.0f / SecondsPerTick;
 		TicksPerYear = 60 * 60 * 24 * 365 / SecondsPerTick;
 
-		inverseFullCanopyCoverage = 1.0f / FullCanopyCoverage;
+		inverseFullCanopyCoverage = 1.0f / FullVegetationCoverage;
 		inverseFullWaterCoverage = 1.0f / FullWaterCoverage;
 		inverseFullIceCoverage = 1.0f / (MassIce * FullIceCoverage);
 		inverseSpecificHeatIce = 1.0f / SpecificHeatIce;

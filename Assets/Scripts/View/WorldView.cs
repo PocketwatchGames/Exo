@@ -627,8 +627,14 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.ShallowWaterTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.WaterTemperature[Sim.WorldData.WaterLayers - 1]);
 				return true;
+			case MeshOverlay.ShallowWaterSalinity:
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 1]);
+				return true;
 			case MeshOverlay.DeepWaterTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.WaterTemperature[0]);
+				return true;
+			case MeshOverlay.DeepWaterSalinity:
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[0]);
 				return true;
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.TerrainTemperature);
@@ -744,7 +750,7 @@ public class WorldView : MonoBehaviour {
 			return "";
 
 		string s = "";
-		s += "Surface Temp: " + GetTemperatureString(dependent.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Surface Temp: " + GetTemperatureString(dependent.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 5) + "\n";
 		s += "Surface Pressure: " + dependent.AirPressure[0][ActiveCellIndex].ToString("0") + " Pa\n";
 		s += "Surface Wind Horz: (" + state.AirVelocity[0][ActiveCellIndex].x.ToString("0.0") + ", " + state.AirVelocity[0][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
 		s += "Surface Wind Vert: " + dependent.WindVertical[0][ActiveCellIndex].ToString("0.0") + " m/s\n";
@@ -752,7 +758,7 @@ public class WorldView : MonoBehaviour {
 		s += "Mid Temp: " + GetTemperatureString(dependent.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Upper Temp: " + GetTemperatureString(dependent.AirTemperature[2][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Cloud Temp: " + GetTemperatureString(dependent.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Clouds: " + (state.CloudMass[ActiveCellIndex] / WorldData.MassWater).ToString("0.000") + " m3\n";
+		s += "Cloud Mass: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg\n";
 		s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater * state.CloudMass[ActiveCellIndex])).ToString("0.000") + " nm3\n";
 		return s;
 	}

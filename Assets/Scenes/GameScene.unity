@@ -1962,7 +1962,7 @@ MonoBehaviour:
     WaterLayers: 0
     FullIceCoverage: 3
     FullWaterCoverage: 50
-    FullCanopyCoverage: 0
+    FullVegetationCoverage: 0
     MaxSoilPorousness: 0.1
     GroundWaterReplenishmentSpeed: 10
     GroundWaterFlowSpeed: 0.5
@@ -1995,14 +1995,7 @@ MonoBehaviour:
     SolarReflectivityAir: 0
     SolarReflectivityWater: 0
     SolarReflectivityCloud: 0
-    AirIceConduction: 0
     AirWaterConductionPositive: 0
-    AirWaterConductionNegative: 0
-    AirWaterConductionDepth: 0
-    AirTerrainConduction: 0
-    IceWaterConduction: 0
-    IceTerrainConduction: 0
-    WaterTerrainConduction: 0
     maxGroundWaterTemperature: 283
     SoilHeatDepth: 2
     AlbedoReductionSoilQuality: 0.15
@@ -2036,7 +2029,7 @@ MonoBehaviour:
     CloudDissapationRateDryAir: 0.1
     DewPointElevationPerDegree: 67.73
     DewPointTemperaturePerRelativeHumidity: 20
-    DeepOceanDepth: 500
+    ThermoclineDepth: 0
     WindToOceanCurrentFactor: 0.1
     WaterDiffuseSpeed: 0.2
     OceanCurrentSpeed: 0.00001
@@ -2854,7 +2847,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 5, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &487518319
@@ -6059,7 +6052,7 @@ MonoBehaviour:
   DisplayEnergyAborsobedMax: 300
   DisplayRainfallMax: 5
   DisplaySalinityMin: 0
-  DisplaySalinityMax: 50
+  DisplaySalinityMax: 0.05
   DisplayWindSpeedLowerAirMax: 50
   DisplayWindSpeedUpperAirMax: 250
   DisplayWindSpeedSurfaceWaterMax: 5
