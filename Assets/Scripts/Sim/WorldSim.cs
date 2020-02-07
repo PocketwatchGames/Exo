@@ -170,6 +170,7 @@ public class WorldSim {
 			var rainfallEvaporationEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var iceMeltedEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var iceMeltedLatentHeatAir = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var evapotranspiration = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			for (int i = 0; i < _layerCount; i++)
 			{
@@ -839,6 +840,7 @@ public class WorldSim {
 				Mass = nextState.IceMass,
 				MeltedEnergy = iceMeltedEnergy,
 				MeltedMass = iceMeltedMass,
+				LatentHeatAir = iceMeltedLatentHeatAir,
 				LastMass = lastState.IceMass,
 				SolarRadiationIn = solarRadiationIn[_iceLayer],
 				ThermalRadiationDeltaBottom = thermalRadiationDeltaIceBottom,
@@ -883,7 +885,15 @@ public class WorldSim {
 				Advection = advectionCloud,
 				Diffusion = diffusionCloud,
 				LastDropletMass = lastState.CloudDropletMass,
-				LastElevation = lastState.CloudElevation
+				LastElevation = lastState.CloudElevation,
+				AirDensity=worldData.airDensity,
+				Gravity =lastState.PlanetState.Gravity,
+				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
+				RainDropMaxSize =worldData.rainDropMaxSize,
+				RainDropMinSize = worldData.rainDropMinSize,
+				RainfallRate = worldData.RainfallRate,
+				WaterDensity = worldData.waterDensity,
+				WindVertical = dependent.WindVertical[1], // TODO: make this be "wind at cloud elevation"
 			};
 			var cloudEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
 			{
@@ -1026,7 +1036,7 @@ public class WorldSim {
 					SaltMass = nextState.WaterSaltMass[waterLayer],
 					Velocity = nextState.WaterVelocity[waterLayer],
 					WaterMass = nextState.WaterMass[waterLayer],
-					EvaporatedWaterEnergy= evaporationEnergy,
+					EvaporatedWaterEnergy = evaporationEnergy,
 					EvaporatedWaterMass = evaporationMass,
 					Evapotranspiration = evapotranspiration,
 
@@ -1046,6 +1056,11 @@ public class WorldSim {
 					ConductionEnergyIce = conductionIceWater,
 					ConductionEnergyTerrain = conductionWaterTerrain[waterLayer],
 					RelativeHumidity = dependent.AirHumidityRelative[0],
+					IceCoverage = dependent.IceCoverage,
+					WaterCoverage = dependent.WaterCoverage[waterLayer],
+					EvaporationRate = worldData.EvaporationRate,
+					EvapTemperatureMax = worldData.EvapMaxTemperature,
+					EvapTemperatureMin = worldData.EvapMinTemperature,
 				};
 
 				var waterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
@@ -1070,19 +1085,20 @@ public class WorldSim {
 
 			var stateChangeJob = new StateChangeJob()
 			{
-				IceEnergy= nextState.IceEnergy,
+				IceEnergy = nextState.IceEnergy,
 				IceMass = nextState.IceMass,
 				SurfaceWaterEnergy = nextState.WaterEnergy[surfaceWaterLayer],
 				SurfaceWaterMass = nextState.WaterMass[surfaceWaterLayer],
 				SurfaceAirEnergy = nextState.AirEnergy[0],
 				SurfaceAirVapor = nextState.AirVapor[0],
 
-				WaterEvaporatedEnergy= evaporationEnergy,
+				WaterEvaporatedEnergy = evaporationEnergy,
 				WaterEvaporatedMass = evaporationMass,
 				WaterFrozenEnergy = frozenEnergy,
 				WaterFrozenMass = frozenMass,
 				IceMeltedEnergy = iceMeltedEnergy,
 				IceMeltedMass = iceMeltedMass,
+				IceMeltedLatentHeatAir = iceMeltedLatentHeatAir,
 				RainfallIceEnergy = rainfallIceEnergy,
 				RainfallIceMass = rainfallIceMass,
 				RainfallWaterEnergy = rainfallWaterEnergy,
@@ -1263,6 +1279,7 @@ public class WorldSim {
 			rainfallEvaporationEnergy.Dispose();
 			iceMeltedMass.Dispose();
 			iceMeltedEnergy.Dispose();
+			iceMeltedLatentHeatAir.Dispose();
 			foreach (var d in energyJobHandleDependencies)
 			{
 				d.Dispose();

@@ -42,9 +42,7 @@ public struct WorldData {
 	public float WindLandFriction;
 	public float WindAirMovementHorizontal;
 	public float WindAirMovementVertical;
-	public float WindHumidityMovement;
 	public float HumidityToCloudPercent;
-	public float PressureGradientWindMultiplier;
 	// http://tornado.sfsu.edu/geosciences/classes/e260/Coriolis_rdg/GeostrophicApproximation.html
 	// states that geostrophic wind is only realistic at middle altitudes (500M), less so at 10K and at the surface, so we reduce overall coriolis effect by 25% to account
 	public float GlobalCoriolisInfluenceWindUpper;

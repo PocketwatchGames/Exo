@@ -88,7 +88,7 @@ public class WorldView : MonoBehaviour {
 	public float DisplayVegetationMax = 1000;
 	public float DisplayTemperatureMin = 223;
 	public float DisplayTemperatureMax = 323;
-	public float DisplayAbsoluteHumidityMax = 400;
+	public float DisplayAbsoluteHumidityMax = 0.05f;
 	public float DisplayGroundWaterMax = 100000;
 	public float DisplayAirPressureMin = 97000;
 	public float DisplayAirPressureMax = 110000;
@@ -611,10 +611,10 @@ public class WorldView : MonoBehaviour {
 				return true;
 			case MeshOverlay.RelativeHumidity:
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[0]);
-				break;
+				return true;
 			case MeshOverlay.GroundWater:
 				overlay = new MeshOverlayData(0, DisplayGroundWaterMax, _normalizedRainbow, simState.GroundWater);
-				break;
+				return true;
 			case MeshOverlay.LowerAirPressure:
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, dependentState.AirPressure[0]);
 				return true;
@@ -770,7 +770,7 @@ public class WorldView : MonoBehaviour {
 		var terrain = state.Terrain[ActiveCellIndex];
 		string s = "";
 		s += "Fertility: " + terrain.SoilFertility + "\n";
-		s += "Temp: " + GetTemperatureString(dependent.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0);
+		s += "Temp: " + GetTemperatureString(dependent.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "H2O Volume: " + (state.GroundWater[ActiveCellIndex] / WorldData.MassWater).ToString("0.0") + " m3\n";
 		s += "H2O Depth: " + terrain.GroundWaterDepth.ToString("0") + " m\n";
 		s += "Roughness: " + terrain.Roughness.ToString("0") + " m\n";
