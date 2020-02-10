@@ -14,7 +14,6 @@ public class WorldView : MonoBehaviour {
 	public enum MeshOverlay {
 		None,
 		GroundTemperature,
-		GroundWater,
 		DeepWaterTemperature,
 		DeepWaterSalinity,
 		ShallowWaterTemperature,
@@ -89,7 +88,6 @@ public class WorldView : MonoBehaviour {
 	public float DisplayTemperatureMin = 223;
 	public float DisplayTemperatureMax = 323;
 	public float DisplayAbsoluteHumidityMax = 0.05f;
-	public float DisplayGroundWaterMax = 100000;
 	public float DisplayAirPressureMin = 97000;
 	public float DisplayAirPressureMax = 110000;
 	public float DisplayHeatAbsorbedMax = 1000;
@@ -612,32 +610,29 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.RelativeHumidity:
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[0]);
 				return true;
-			case MeshOverlay.GroundWater:
-				overlay = new MeshOverlayData(0, DisplayGroundWaterMax, _normalizedRainbow, simState.GroundWater);
-				return true;
 			case MeshOverlay.LowerAirPressure:
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, dependentState.AirPressure[0]);
 				return true;
 			case MeshOverlay.LowerAirTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.AirTemperature[0]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[0]);
 				return true;
 			case MeshOverlay.UpperAirTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.AirTemperature[Sim.WorldData.AirLayers - 1]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[Sim.WorldData.AirLayers - 1]);
 				return true;
 			case MeshOverlay.ShallowWaterTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.WaterTemperature[Sim.WorldData.WaterLayers - 1]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 1]);
 				return true;
 			case MeshOverlay.ShallowWaterSalinity:
 				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 1]);
 				return true;
 			case MeshOverlay.DeepWaterTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.WaterTemperature[0]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[0]);
 				return true;
 			case MeshOverlay.DeepWaterSalinity:
 				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[0]);
 				return true;
 			case MeshOverlay.GroundTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.TerrainTemperature);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
 				return true;
 			case MeshOverlay.HeatAbsorbed:
 				overlay = new MeshOverlayData(0, DisplayHeatAbsorbedMax, _normalizedRainbow, display.SolarRadiationAbsorbedSurface);
@@ -750,14 +745,14 @@ public class WorldView : MonoBehaviour {
 			return "";
 
 		string s = "";
-		s += "Surface Temp: " + GetTemperatureString(dependent.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 5) + "\n";
+		s += "Surface Temp: " + GetTemperatureString(state.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 5) + "\n";
 		s += "Surface Pressure: " + dependent.AirPressure[0][ActiveCellIndex].ToString("0") + " Pa\n";
 		s += "Surface Wind Horz: (" + state.AirVelocity[0][ActiveCellIndex].x.ToString("0.0") + ", " + state.AirVelocity[0][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
 		s += "Surface Wind Vert: " + dependent.WindVertical[0][ActiveCellIndex].ToString("0.0") + " m/s\n";
 		s += "Surface Humidity: " + (dependent.AirHumidityRelative[0][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
-		s += "Mid Temp: " + GetTemperatureString(dependent.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Upper Temp: " + GetTemperatureString(dependent.AirTemperature[2][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Cloud Temp: " + GetTemperatureString(dependent.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Mid Temp: " + GetTemperatureString(state.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Upper Temp: " + GetTemperatureString(state.AirTemperature[2][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Cloud Temp: " + GetTemperatureString(state.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Cloud Mass: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg\n";
 		s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater * state.CloudMass[ActiveCellIndex])).ToString("0.000") + " nm3\n";
 		return s;
@@ -770,9 +765,7 @@ public class WorldView : MonoBehaviour {
 		var terrain = state.Terrain[ActiveCellIndex];
 		string s = "";
 		s += "Fertility: " + terrain.SoilFertility + "\n";
-		s += "Temp: " + GetTemperatureString(dependent.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "H2O Volume: " + (state.GroundWater[ActiveCellIndex] / WorldData.MassWater).ToString("0.0") + " m3\n";
-		s += "H2O Depth: " + terrain.GroundWaterDepth.ToString("0") + " m\n";
+		s += "Temp: " + GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Roughness: " + terrain.Roughness.ToString("0") + " m\n";
 		return s;
 	}
@@ -783,7 +776,7 @@ public class WorldView : MonoBehaviour {
 
 		string s = "";
 		int waterSurfaceLayer = Sim.WorldData.WaterLayers - 1;
-		s += "Surface Temp: " + GetTemperatureString(dependent.WaterTemperature[Sim.WorldData.WaterLayers - 1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Surface Temp: " + GetTemperatureString(state.WaterTemperature[Sim.WorldData.WaterLayers - 1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Surface Salinity: " + (1000000 * dependent.WaterSalinity[waterSurfaceLayer][ActiveCellIndex]).ToString("0.0") + " ppm\n";
 		return s;
 	}

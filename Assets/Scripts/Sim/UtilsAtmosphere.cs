@@ -157,26 +157,35 @@ public static class Atmosphere {
 		return (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass) / (waterMass + saltMass);
 	}
 
+	static public float GetSpecificHeatOfAir(float airMass, float vaporMass)
+	{
+		return (WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWater * vaporMass) / (airMass + vaporMass);
+	}
+
+	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility, float canopyCoverage)
+	{
+		float landMass = (WorldData.MassSand - WorldData.MassSoil) * soilFertility + WorldData.MassSoil;
+		return (WorldData.SpecificHeatSoil * heatingDepth * soilFertility * landMass);
+	}
+
 
 	static public float GetRadiationRate(float temperature, float emissivity)
 	{
 		return temperature * temperature * temperature * temperature * emissivity * 0.001f * WorldData.StefanBoltzmannConstant;
 	}
 
-	static public float GetTerrainTemperature(ref WorldData worldData, float terrainEnergy, float groundWater, float soilFertility, float canopyCoverage)
+	static public float GetTerrainTemperature(ref WorldData worldData, float terrainEnergy, float soilFertility, float canopyCoverage)
 	{
-		float soilEnergy = terrainEnergy - groundWater * worldData.maxGroundWaterTemperature * WorldData.SpecificHeatWater;
 		float landMass = (WorldData.MassSand - WorldData.MassSoil) * soilFertility + WorldData.MassSoil;
 		float heatingDepth = soilFertility * worldData.SoilHeatDepth;
-		return math.max(0, soilEnergy / (WorldData.SpecificHeatSoil * heatingDepth * landMass));
+		return math.max(0, terrainEnergy / (WorldData.SpecificHeatSoil * heatingDepth * landMass));
 	}
 
-	static public float GetTerrainEnergy(ref WorldData worldData, float terrainTemperature, float groundWater, float soilFertility, float canopyCoverage)
+	static public float GetTerrainEnergy(ref WorldData worldData, float terrainTemperature, float soilFertility, float canopyCoverage)
 	{
-		float waterEnergy = groundWater * worldData.maxGroundWaterTemperature * WorldData.SpecificHeatWater;
 		float landMass = (WorldData.MassSand - WorldData.MassSoil) * soilFertility + WorldData.MassSoil;
 		float heatingDepth = soilFertility * worldData.SoilHeatDepth;
-		return waterEnergy + terrainTemperature * WorldData.SpecificHeatSoil * heatingDepth * landMass;
+		return terrainTemperature * WorldData.SpecificHeatSoil * heatingDepth * landMass;
 	}
 
 	static public float RepeatExclusive(float x, float y)

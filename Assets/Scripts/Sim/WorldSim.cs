@@ -159,19 +159,13 @@ public class WorldSim {
 			var solarReflected = new NativeArray<float>[_layerCount];
 			var conductionWaterTerrainTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var evaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var evaporationEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var frozenMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var frozenEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var evaporationLatentHeat = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var frozenTopMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var frozenBottomMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var rainfallWaterMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var rainfallWaterEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var rainfallIceMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var rainfallIceEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var rainfallEvaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var rainfallEvaporationEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var iceMeltedEnergy = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var iceMeltedLatentHeatAir = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var evapotranspiration = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var iceMeltedTopMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var iceMeltedBottomMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			for (int i = 0; i < _layerCount; i++)
 			{
 				solarReflected[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
@@ -220,10 +214,8 @@ public class WorldSim {
 			var updateTerrainJob = new UpdateTerrainJob()
 			{
 				Terrain = nextState.Terrain,
-				GroundWater = nextState.GroundWater,
 
 				LastTerrain = lastState.Terrain,
-				LastGroundWater = lastState.GroundWater
 			};
 			var updateTerrainJobHandle = updateTerrainJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
@@ -285,7 +277,7 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					CloudMass = lastState.CloudMass,
-					CloudTemperature = dependent.CloudTemperature,
+					CloudTemperature = lastState.CloudTemperature,
 					CloudDropletMass = lastState.CloudDropletMass,
 					CloudElevation = lastState.CloudElevation,
 					CloudCoverage = dependent.CloudCoverage,
@@ -353,8 +345,8 @@ public class WorldSim {
 
 				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 				Emissivity = WorldData.EmissivityIce,
-				Energy = lastState.IceEnergy,
-				Temperature = dependent.IceTemperature,
+				Energy = dependent.IceEnergy,
+				Temperature = lastState.IceTemperature,
 				SecondsPerTick = worldData.SecondsPerTick
 			};
 			thermalOutJobHandles[_iceLayer] = thermalOutJob.Schedule(_cellCount, 100, lastJobHandle);
@@ -370,8 +362,8 @@ public class WorldSim {
 
 				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 				Emissivity = WorldData.EmissivityWater,
-				Energy = lastState.CloudEnergy,
-				Temperature = dependent.CloudTemperature,
+				Energy = dependent.CloudEnergy,
+				Temperature = lastState.CloudTemperature,
 				SecondsPerTick = worldData.SecondsPerTick
 			};
 			thermalOutJobHandles[_cloudLayer] = thermalOutJob.Schedule(_cellCount, 100, lastJobHandle);
@@ -386,8 +378,7 @@ public class WorldSim {
 
 				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 				Emissivity = emissivity[_terrainLayer],
-				Energy = lastState.TerrainEnergy,
-				Temperature = dependent.TerrainTemperature,
+				Temperature = lastState.TerrainTemperature,
 				SecondsPerTick = worldData.SecondsPerTick
 			};
 			thermalOutJobHandles[_terrainLayer] = thermalOutTerrainJob.Schedule(_cellCount, 100, emissivityJobHandles[_terrainLayer]);
@@ -406,9 +397,9 @@ public class WorldSim {
 					WindowRadiationTransmittedDown = windowRadiationTransmittedDown[layer],
 
 					PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
+					Energy = dependent.AirPotentialEnergy[j],
 					Emissivity = emissivity[layer],
-					Energy = lastState.AirEnergy[j],
-					Temperature = dependent.AirTemperature[j],
+					Temperature = lastState.AirTemperature[j],
 					SecondsPerTick = worldData.SecondsPerTick
 				};
 				thermalOutJobHandles[layer] = thermalOutAirJob.Schedule(_cellCount, 100, emissivityJobHandles[layer]);
@@ -428,8 +419,8 @@ public class WorldSim {
 
 					PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 					Emissivity = emissivity[layer],
-					Energy = lastState.WaterEnergy[j],
-					Temperature = dependent.WaterTemperature[j],
+					Energy = dependent.WaterPotentialEnergy[j],
+					Temperature = lastState.WaterTemperature[j],
 					SecondsPerTick = worldData.SecondsPerTick
 				};
 				thermalOutJobHandles[layer] = thermalOutWaterJob.Schedule(_cellCount, 100, emissivityJobHandles[layer]);
@@ -626,7 +617,7 @@ public class WorldSim {
 				var diffusionJob = new DiffusionAirJob()
 				{
 					Delta = diffusionAir[j],
-					Temperature = dependent.AirTemperature[j],
+					Temperature = lastState.AirTemperature[j],
 					Humidity = lastState.AirVapor[j],
 					Velocity = lastState.AirVelocity[j],
 					Neighbors = staticState.Neighbors,
@@ -641,7 +632,7 @@ public class WorldSim {
 				var diffusionJob = new DiffusionWaterJob()
 				{
 					Delta = diffusionWater[j],
-					Temperature = dependent.WaterTemperature[j],
+					Temperature = lastState.WaterTemperature[j],
 					Salt = lastState.WaterSaltMass[j],
 					Velocity = lastState.WaterVelocity[j],
 					Neighbors = staticState.Neighbors,
@@ -661,7 +652,7 @@ public class WorldSim {
 				var advectionJob = new AdvectionAirJob()
 				{
 					Delta = advectionAir[j],
-					Temperature = dependent.AirTemperature[j],
+					Temperature = lastState.AirTemperature[j],
 					Vapor = lastState.AirVapor[j],
 					Velocity = lastState.AirVelocity[j],
 					Neighbors = staticState.Neighbors,
@@ -674,7 +665,7 @@ public class WorldSim {
 				var advectionJob = new AdvectionWaterJob()
 				{
 					Delta = advectionWater[j],
-					Temperature = dependent.WaterTemperature[j],
+					Temperature = lastState.WaterTemperature[j],
 					Salt = lastState.WaterSaltMass[j],
 					Velocity = lastState.WaterVelocity[j],
 					Neighbors = staticState.Neighbors,
@@ -697,13 +688,12 @@ public class WorldSim {
 			//var conductionCloudAirJobHandle = conductionCloudAirJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 
 			// air to ice
-			var conductionAirIceJob = new ConductionPartialJob()
+			var conductionAirIceJob = new ConductionAirIceJob()
 			{
 				EnergyDelta = conductionAirIce,
 				TemperatureA = dependent.SurfaceAirTemperature,
-				TemperatureB = dependent.IceTemperature,
-				EnergyA = lastState.AirEnergy[0],
-				EnergyB = lastState.IceEnergy,
+				TemperatureB = lastState.IceTemperature,
+				EnergyB = dependent.IceEnergy,
 				ConductionCoefficient = WorldData.ConductivityAirIce,
 				Coverage = dependent.IceCoverage,
 				SecondsPerTick = worldData.SecondsPerTick
@@ -716,9 +706,9 @@ public class WorldSim {
 			{
 				EnergyDelta = conductionAirWater,
 				TemperatureA = dependent.SurfaceAirTemperature,
-				TemperatureB = dependent.WaterTemperature[surfaceWaterLayer],
-				EnergyA = lastState.IceEnergy,
-				EnergyB = lastState.WaterEnergy[surfaceWaterLayer],
+				TemperatureB = lastState.WaterTemperature[surfaceWaterLayer],
+				EnergyA = dependent.IceEnergy,
+				EnergyB = dependent.WaterPotentialEnergy[surfaceWaterLayer],
 				ConductionCoefficient = WorldData.ConductivityAirWater,
 				CoverageIce = dependent.IceCoverage,
 				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer],
@@ -731,9 +721,7 @@ public class WorldSim {
 			{
 				EnergyDelta = conductionAirTerrain,
 				TemperatureA = dependent.SurfaceAirTemperature,
-				TemperatureB = dependent.TerrainTemperature,
-				EnergyA = lastState.AirEnergy[0],
-				EnergyB = lastState.TerrainEnergy,
+				TemperatureB = lastState.TerrainTemperature,
 				ConductionCoefficient = WorldData.ConductivityAirTerrain,
 				CoverageIce = dependent.IceCoverage,
 				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer],
@@ -745,10 +733,10 @@ public class WorldSim {
 			var conductionIceWaterJob = new ConductionIceWaterJob()
 			{
 				EnergyDelta = conductionIceWater,
-				TemperatureA = dependent.IceTemperature,
-				TemperatureB = dependent.WaterTemperature[surfaceWaterLayer],
-				EnergyA = lastState.IceEnergy,
-				EnergyB = lastState.WaterEnergy[surfaceWaterLayer],
+				TemperatureA = lastState.IceTemperature,
+				TemperatureB = lastState.WaterTemperature[surfaceWaterLayer],
+				EnergyA = dependent.IceEnergy,
+				EnergyB = dependent.WaterPotentialEnergy[surfaceWaterLayer],
 				ConductionCoefficient = WorldData.ConductivityIceWater,
 				CoverageA = dependent.IceCoverage,
 				CoverageB = dependent.WaterCoverage[surfaceWaterLayer],
@@ -760,10 +748,9 @@ public class WorldSim {
 			var conductionIceTerrainJob = new ConductionIceTerrainJob()
 			{
 				EnergyDelta = conductionIceTerrain,
-				TemperatureA = dependent.IceTemperature,
-				TemperatureB = dependent.TerrainTemperature,
-				EnergyA = lastState.IceEnergy,
-				EnergyB = lastState.TerrainEnergy,
+				TemperatureA = lastState.IceTemperature,
+				TemperatureB = lastState.TerrainTemperature,
+				EnergyA = dependent.IceEnergy,
 				ConductionCoefficient = WorldData.ConductivityIceTerrain,
 				CoverageIce = dependent.IceCoverage,
 				CoverageWater = dependent.WaterCoverage[surfaceWaterLayer],
@@ -778,10 +765,9 @@ public class WorldSim {
 				{
 					EnergyDelta = conductionWaterTerrain[0],
 					EnergyDeltaWaterTotal = conductionWaterTerrainTotal,
-					TemperatureA = dependent.WaterTemperature[0],
-					TemperatureB = dependent.TerrainTemperature,
-					EnergyA = lastState.WaterEnergy[0],
-					EnergyB = lastState.TerrainEnergy,
+					TemperatureA = lastState.WaterTemperature[0],
+					TemperatureB = lastState.TerrainTemperature,
+					EnergyA = dependent.WaterPotentialEnergy[0],
 					ConductionCoefficient = WorldData.ConductivityWaterTerrain,
 					Coverage = dependent.WaterCoverage[0],
 					SecondsPerTick = worldData.SecondsPerTick
@@ -793,10 +779,9 @@ public class WorldSim {
 				{
 					EnergyDelta = conductionWaterTerrain[i],
 					EnergyDeltaWaterTotal = conductionWaterTerrainTotal,
-					TemperatureA = dependent.WaterTemperature[i],
-					TemperatureB = dependent.TerrainTemperature,
-					EnergyA = lastState.WaterEnergy[i],
-					EnergyB = lastState.TerrainEnergy,
+					TemperatureA = lastState.WaterTemperature[i],
+					TemperatureB = lastState.TerrainTemperature,
+					EnergyA = dependent.WaterPotentialEnergy[i],
 					ConductionCoefficient = WorldData.ConductivityWaterTerrain,
 					Coverage = dependent.WaterCoverage[i],
 					CoverageBelow = dependent.WaterCoverage[i-1],
@@ -811,15 +796,17 @@ public class WorldSim {
 			var energyJobHandleDependencies = new List<NativeList<JobHandle>>();
 			var energyTerrainJob = new EnergyTerrainJob()
 			{
-				Energy = nextState.TerrainEnergy,
-				LastEnergy = lastState.TerrainEnergy,
+				Temperature = nextState.TerrainTemperature,
+				LastTemperature = lastState.TerrainTemperature,
 				Terrain = lastState.Terrain,
 				SolarRadiationIn = solarRadiationIn[_terrainLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
 				ConductionEnergyAir = conductionAirTerrain,
 				ConductionEnergyIce = conductionIceTerrain,
 				ConductionEnergyWater = conductionWaterTerrainTotal,
+				VegetationCoverage = dependent.VegetationCoverage,
 				GeothermalEnergy = nextState.PlanetState.GeothermalHeat * worldData.SecondsPerTick,
+				HeatingDepth = worldData.SoilHeatDepth
 			};
 			var terrainEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
 			{
@@ -836,11 +823,10 @@ public class WorldSim {
 
 			var energyIceJob = new EnergyIceJob()
 			{
-				Energy = nextState.IceEnergy,
+				Temperature = nextState.IceTemperature,
 				Mass = nextState.IceMass,
-				MeltedEnergy = iceMeltedEnergy,
-				MeltedMass = iceMeltedMass,
-				LatentHeatAir = iceMeltedLatentHeatAir,
+				MeltedTopMass = iceMeltedTopMass,
+				MeltedBottomMass = iceMeltedBottomMass,
 				LastMass = lastState.IceMass,
 				SolarRadiationIn = solarRadiationIn[_iceLayer],
 				ThermalRadiationDeltaBottom = thermalRadiationDeltaIceBottom,
@@ -848,7 +834,7 @@ public class WorldSim {
 				ConductionEnergyAir = conductionAirIce,
 				ConductionEnergyTerrain = conductionIceTerrain,
 				ConductionEnergyWater = conductionIceWater,
-				LastEnergy = lastState.IceEnergy,
+				LastTemperature = lastState.IceTemperature,
 			};
 			var iceEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
 			{
@@ -865,22 +851,18 @@ public class WorldSim {
 
 			var energyCloudJob = new EnergyCloudJob()
 			{
-				Energy = nextState.CloudEnergy,
+				Temperature = nextState.CloudTemperature,
 				Mass = nextState.CloudMass,
 				DropletMass = nextState.CloudDropletMass,
 				Elevation = nextState.CloudElevation,
 				Velocity = nextState.CloudVelocity,
-				EvaporationEnergy= rainfallEvaporationEnergy,
 				EvaporationMass = rainfallEvaporationMass,
-				RainfallIceEnergy = rainfallIceEnergy,
-				RainfallIceMass = rainfallIceMass,
-				RainfallWaterEnergy = rainfallWaterEnergy,
 				RainfallWaterMass = rainfallWaterMass,
 				SolarRadiationIn = solarRadiationIn[_cloudLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_cloudLayer],
 				ConductionEnergyAir = conductionCloudAir,
 				LastMass = lastState.CloudMass,
-				LastEnergy = lastState.CloudEnergy,
+				LastTemperature = lastState.CloudTemperature,
 				LastVelocity = lastState.CloudVelocity,
 				Advection = advectionCloud,
 				Diffusion = diffusionCloud,
@@ -915,14 +897,14 @@ public class WorldSim {
 			{
 				var energyJob = new EnergySurfaceAirJob()
 				{
-					Energy = nextState.AirEnergy[0],
+					Temperature = nextState.AirTemperature[0],
 					Vapor = nextState.AirVapor[0],
 					Velocity = nextState.AirVelocity[0],
 					CondensationCloudEnergy = condensationCloudEnergy[0],
 					CondensationCloudMass = condensationCloudMass[0],
 					CondensationGroundEnergy = condensationGroundEnergy[0],
 					CondensationGroundMass = condensationGroundMass[0],
-					LastEnergy = lastState.AirEnergy[0],
+					LastTemperature = lastState.AirTemperature[0],
 					LastVapor = lastState.AirVapor[0],
 					LastVelocity = lastState.AirVelocity[0],
 					AirMass = dependent.AirMass[0],
@@ -957,14 +939,14 @@ public class WorldSim {
 				int layerIndex = _airLayer0 + j;
 				var energyJob = new EnergyAirJob()
 				{
-					Energy = nextState.AirEnergy[j],
+					Temperature = nextState.AirTemperature[j],
 					Vapor = nextState.AirVapor[j],
 					Velocity = nextState.AirVelocity[j],	
 					CondensationCloudEnergy = condensationCloudEnergy[j],
 					CondensationCloudMass = condensationCloudMass[j],
 					CondensationGroundEnergy = condensationGroundEnergy[j],
 					CondensationGroundMass = condensationGroundMass[j],
-					LastEnergy = lastState.AirEnergy[j],
+					LastTemperature = lastState.AirTemperature[j],
 					LastVapor = lastState.AirVapor[j],
 					LastVelocity = lastState.AirVelocity[j],
 					AirMass = dependent.AirMass[j],
@@ -994,11 +976,11 @@ public class WorldSim {
 				int layerIndex = _waterLayer0 + j;
 				var energyJob = new EnergyWaterJob()
 				{
-					Energy = nextState.WaterEnergy[j],
+					Temperature = nextState.WaterTemperature[j],
 					SaltMass = nextState.WaterSaltMass[j],
 					Velocity = nextState.WaterVelocity[j],
 					Mass = nextState.WaterMass[j],
-					LastEnergy = lastState.WaterEnergy[j],
+					LastTemperature = lastState.WaterTemperature[j],
 					LastSaltMass = lastState.WaterSaltMass[j],
 					LastVelocity = lastState.WaterVelocity[j],
 					LastMass = lastState.WaterMass[j],
@@ -1032,21 +1014,18 @@ public class WorldSim {
 				int layerIndex = _waterLayer0 + waterLayer;
 				var energyJob = new EnergyWaterJobSurface()
 				{
-					Energy = nextState.WaterEnergy[waterLayer],
+					Temperature = nextState.WaterTemperature[waterLayer],
 					SaltMass = nextState.WaterSaltMass[waterLayer],
 					Velocity = nextState.WaterVelocity[waterLayer],
 					WaterMass = nextState.WaterMass[waterLayer],
-					EvaporatedWaterEnergy = evaporationEnergy,
 					EvaporatedWaterMass = evaporationMass,
-					Evapotranspiration = evapotranspiration,
+					FrozenBottomMass = frozenBottomMass,
+					FrozenTopMass = frozenTopMass,
 
-					FrozenWaterEnergy = frozenEnergy,
-					FrozenWaterMass = frozenMass,
 					LastMass = lastState.WaterMass[waterLayer],
-					LastEnergy = lastState.WaterEnergy[waterLayer],
 					LastSaltMass = lastState.WaterSaltMass[waterLayer],
 					LastVelocity = lastState.WaterVelocity[waterLayer],
-					LastTemperature = dependent.WaterTemperature[waterLayer],
+					LastTemperature = lastState.WaterTemperature[waterLayer],
 					Advection = advectionWater[waterLayer],
 					Diffusion = diffusionWater[waterLayer],
 					SolarRadiationIn = solarRadiationIn[layerIndex],
@@ -1085,23 +1064,22 @@ public class WorldSim {
 
 			var stateChangeJob = new StateChangeJob()
 			{
-				IceEnergy = nextState.IceEnergy,
+				IceTemperature = nextState.IceTemperature,
 				IceMass = nextState.IceMass,
-				SurfaceWaterEnergy = nextState.WaterEnergy[surfaceWaterLayer],
+				SurfaceWaterTemperature = nextState.WaterTemperature[surfaceWaterLayer],
 				SurfaceWaterMass = nextState.WaterMass[surfaceWaterLayer],
-				SurfaceAirEnergy = nextState.AirEnergy[0],
+				SurfaceAirTemperature = nextState.AirTemperature[0],
 				SurfaceAirVapor = nextState.AirVapor[0],
 
-				WaterEvaporatedEnergy = evaporationEnergy,
+				RainfallEvaporatedMass = rainfallEvaporationMass,
+				SurfaceAirMass = dependent.AirMass[0],
+				SurfaceSaltMass = lastState.WaterSaltMass[surfaceWaterLayer],
 				WaterEvaporatedMass = evaporationMass,
-				WaterFrozenEnergy = frozenEnergy,
-				WaterFrozenMass = frozenMass,
-				IceMeltedEnergy = iceMeltedEnergy,
-				IceMeltedMass = iceMeltedMass,
-				IceMeltedLatentHeatAir = iceMeltedLatentHeatAir,
-				RainfallIceEnergy = rainfallIceEnergy,
-				RainfallIceMass = rainfallIceMass,
-				RainfallWaterEnergy = rainfallWaterEnergy,
+				WaterFrozenTopMass = frozenTopMass,
+				WaterFrozenBottomMass = frozenBottomMass,
+				IceMeltedTopMass = iceMeltedTopMass,
+				IceMeltedBottomMass = iceMeltedBottomMass,
+				RainfallTemperature = lastState.CloudTemperature,
 				RainfallWaterMass = rainfallWaterMass,
 			};
 			var stateChangeJobHandle = stateChangeJob.Schedule(_cellCount, _batchCount, energyJobHandle);
@@ -1112,11 +1090,11 @@ public class WorldSim {
 			{
 				var updateDependentWaterLayerJob = new UpdateDependentWaterLayerJob()
 				{
-					Temperature = dependent.WaterTemperature[j],
 					Salinity = dependent.WaterSalinity[j],
 					WaterCoverage = dependent.WaterCoverage[j],
+					PotentialEnergy = dependent.WaterPotentialEnergy[j],
 
-					Energy = nextState.WaterEnergy[j],
+					Temperature = nextState.WaterTemperature[j],
 					SaltMass = nextState.WaterSaltMass[j],
 					WaterMass = nextState.WaterMass[j],
 					Terrain = nextState.Terrain,
@@ -1129,13 +1107,13 @@ public class WorldSim {
 			{
 				var updateDependentAirLayerJob = new UpdateDependentAirLayerJob()
 				{
-					Temperature = dependent.AirTemperature[j],
+					Temperature = lastState.AirTemperature[j],
 					Pressure = dependent.AirPressure[j],
 					RelativeHumidity = dependent.AirHumidityRelative[j],
 					AbsoluteHumidity = dependent.AirHumidityAbsolute[j],
 					AirMass = dependent.AirMass[j],
-					AirEnergy = nextState.AirEnergy[j],
-					AirVapor = nextState.AirVapor[j],
+					PotentialEnergy = dependent.AirPotentialEnergy[j],
+
 					VaporMass = nextState.AirVapor[j],
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
@@ -1171,21 +1149,14 @@ public class WorldSim {
 				SurfaceElevation = dependent.SurfaceElevation,
 				VegetationCoverage = dependent.VegetationCoverage,
 				WaterDepth = dependent.WaterDepth,
-				CloudTemperature = dependent.CloudTemperature,
-				IceTemperature = dependent.IceTemperature,
-				TerrainTemperature = dependent.TerrainTemperature,
 				SurfaceAirTemperature = dependent.SurfaceAirTemperature,
 
 				CloudMass = nextState.CloudMass,
 				IceMass = nextState.IceMass,
 				Terrain = nextState.Terrain,
 				WaterSaltMass = waterSaltMass,
-				CloudEnergy = nextState.CloudEnergy,
-				IceEnergy = nextState.IceEnergy,
-				TerrainEnergy = nextState.TerrainEnergy,
-				GroundWater = nextState.GroundWater,
 				worldData = worldData,
-				LowerAirTemperature = dependent.AirTemperature[0],
+				LowerAirTemperature = lastState.AirTemperature[0],
 				lowerAirHeight = dependent.LayerHeight[0],
 			};
 
@@ -1213,7 +1184,6 @@ public class WorldSim {
 					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _waterLayers - 1],
 					Evaporation = evaporationMass,
 					RainfallWater = rainfallWaterMass,
-					RainfallIce = rainfallIceMass,
 				};
 				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
 				updateDisplayJobHandle.Complete();
@@ -1226,7 +1196,7 @@ public class WorldSim {
 					display.GlobalCloudMass += curState.CloudMass[i];
 					display.GlobalIceMass += curState.IceMass[i];
 					display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers-1][i];
-					display.GlobalTemperature += dependent.AirTemperature[0][i];
+					display.GlobalTemperature += curState.AirTemperature[0][i];
 					display.GlobalWaterVapor += curState.AirVapor[0][i];
 					display.GlobalOceanVolume += dependent.WaterDepth[i];
 					display.GlobalSeaLevel += dependent.SurfaceElevation[i];
@@ -1250,7 +1220,7 @@ public class WorldSim {
 					display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
 					display.EnergySurfaceConduction += conductionAirIce[i] + conductionAirTerrain[i] + conductionAirWater[i];
 					display.EnergyOceanConduction += conductionAirWater[i];
-					display.EnergyEvapotranspiration += evapotranspiration[i];
+					display.EnergyEvapotranspiration += evaporationMass[i] * WorldData.LatentHeatWaterVapor;
 					//display.EnergyThermalAbsorbedAtmosphere += ;
 					display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0][i] + thermalRadiationTransmittedDown[_airLayer0][i];
 					display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i] + thermalRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i]) * dependent.WaterCoverage[_waterLayers - 1][i];
@@ -1268,18 +1238,13 @@ public class WorldSim {
 			atmosphericWindowUp.Dispose();
 			atmosphericWindowDown.Dispose();
 			evaporationMass.Dispose();
-			evaporationEnergy.Dispose();
-			frozenMass.Dispose();
-			frozenEnergy.Dispose();
+			evaporationLatentHeat.Dispose();
+			frozenTopMass.Dispose();
+			frozenBottomMass.Dispose();
 			rainfallWaterMass.Dispose();
-			rainfallWaterEnergy.Dispose();
-			rainfallIceMass.Dispose();
-			rainfallIceEnergy.Dispose();
 			rainfallEvaporationMass.Dispose();
-			rainfallEvaporationEnergy.Dispose();
-			iceMeltedMass.Dispose();
-			iceMeltedEnergy.Dispose();
-			iceMeltedLatentHeatAir.Dispose();
+			iceMeltedTopMass.Dispose();
+			iceMeltedBottomMass.Dispose();
 			foreach (var d in energyJobHandleDependencies)
 			{
 				d.Dispose();

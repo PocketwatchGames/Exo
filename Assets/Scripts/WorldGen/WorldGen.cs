@@ -115,18 +115,6 @@ public static class WorldGen {
 			float cloudTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * cloudElevation;
 			float totalAirMass = worldGenData.TroposphereMass * (1.0f - surfaceElevation / worldData.TropopauseElevation);
 
-			float groundWaterDepth = GetPerlinMinMax(pos.x, pos.y, pos.z, 1f, 60423, worldGenData.GroundWaterDepthMin, worldGenData.GroundWaterDepthMax);
-			float maxGroundWater = groundWaterDepth * soilFertility * WorldData.MassWater * worldData.MaxSoilPorousness;
-			float groundWater;
-			if (waterDepth > 0)
-			{
-				groundWater = maxGroundWater;
-			}
-			else
-			{
-				groundWater = maxGroundWater * 0.2f;
-			}
-
 
 			float minOceanTemperature = WorldData.FreezingTemperature + 0.1f;
 			//float oceanDepthMinTemperature = 2000;
@@ -145,8 +133,8 @@ public static class WorldGen {
 				float airMass = Atmosphere.GetAirMass(ref worldData, airPressure, layerMidHeight, airTemperature, WorldData.MolarMassAir, worldGenData.Gravity);
 				float vaporMass = Atmosphere.GetAbsoluteHumidity(ref worldData, airTemperature, relativeHumidity, totalAirMass, inverseDewPointTemperatureRange);
 				state.AirVapor[j][i] = vaporMass;
-				state.AirEnergy[j][i] = airTemperature * (WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * vaporMass);
 				state.AirVelocity[j][i] = wind;
+				state.AirTemperature[j][i] = airTemperature;
 				dependent.AirMass[j][i] = airMass;
 				dependent.LayerElevation[j][i] = layerElevation;
 				dependent.LayerHeight[j][i] = layerHeight;
@@ -157,20 +145,20 @@ public static class WorldGen {
 			int surfaceWaterLayer = worldData.WaterLayers - 1;
 			float curDepth = math.min(waterDepth, worldData.ThermoclineDepth);
 			waterLayerDepth[surfaceWaterLayer] = curDepth;
-			dependent.WaterTemperature[surfaceWaterLayer][i] = waterTemperatureSurface;
+			state.WaterTemperature[surfaceWaterLayer][i] = waterTemperatureSurface;
 			float deepWaterLayerDepths = (waterDepth - curDepth) / (worldData.WaterLayers - 1);
 			for (int j = worldData.WaterLayers - 2; j >= 0; j--)
 			{
 				float layerDepth = math.min(deepWaterLayerDepths, waterDepth - curDepth);
 				waterLayerDepth[j] = layerDepth;
-				dependent.WaterTemperature[j][i] = math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / ( 1.0f + curDepth / 500.0f)) + WorldData.FreezingTemperature;
+				state.WaterTemperature[j][i] = math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / ( 1.0f + curDepth / 500.0f)) + WorldData.FreezingTemperature;
 
 				curDepth += layerDepth;
 			}
 
 			for (int j = 0; j < worldData.WaterLayers; j++)
 			{
-				float waterTemperature = dependent.WaterTemperature[j][i];
+				float waterTemperature = state.WaterTemperature[j][i];
 				float salinity = waterDepth == 0 ? 0 : (1.0f - Math.Abs(coord.y)) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
 				//float deepSalinity = deepDepth == 0 ? 0 : Math.Abs(coord.y) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
 				float waterAndSaltMass = GetWaterMass(worldData, waterLayerDepth[j], waterTemperature, salinity);
@@ -181,7 +169,6 @@ public static class WorldGen {
 
 				state.WaterMass[j][i] = waterMass;
 				state.WaterSaltMass[j][i] = saltMass;
-				state.WaterEnergy[j][i] = Atmosphere.GetWaterEnergy(waterTemperature, waterMass, saltMass);
 				state.WaterVelocity[j][i] = current;
 				waterSaltMass[i] = new WaterSaltMass()
 				{
@@ -194,8 +181,7 @@ public static class WorldGen {
 
 			float surfaceWaterMass = state.WaterMass[worldData.WaterLayers-1][i];
 			float iceMass = math.min(surfaceWaterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(airTemperaturePotential - WorldData.FreezingTemperature) / 10));
-			state.IceEnergy[i] = iceMass * WorldData.FreezingTemperature * WorldData.SpecificHeatIce;
-			state.WaterEnergy[0][i] -= iceMass;
+			state.IceTemperature[i] = WorldData.FreezingTemperature;
 			float waterAndIceDepth = waterDepth + iceMass / WorldData.MassIce;
 
 			float waterCoverage = Mathf.Clamp01(waterDepth / worldData.FullWaterCoverage);
@@ -203,7 +189,7 @@ public static class WorldGen {
 
 			if (waterDepth == 0)
 			{
-				vegetation = soilFertility * (groundWater) * (1.0f - waterCoverage) * (1.0f - iceCoverage) * Mathf.Clamp01((airTemperatureSurface - worldData.MinTemperatureCanopy) / (worldData.MaxTemperatureCanopy - worldData.MinTemperatureCanopy));
+				vegetation = soilFertility * (1.0f - waterCoverage) * (1.0f - iceCoverage) * Mathf.Clamp01((airTemperatureSurface - worldData.MinTemperatureCanopy) / (worldData.MaxTemperatureCanopy - worldData.MinTemperatureCanopy));
 			}
 
 			// TODO: ground water energy should probably be tracked independently
@@ -216,14 +202,13 @@ public static class WorldGen {
 			{
 				terrainTemperature = airTemperatureSurface;
 			}
-			float groundEnergy = Atmosphere.GetTerrainEnergy(ref worldData, terrainTemperature, groundWater, soilFertility, vegetation * worldData.inverseFullCanopyCoverage);
+			float groundEnergy = Atmosphere.GetTerrainEnergy(ref worldData, terrainTemperature, soilFertility, vegetation * worldData.inverseFullCanopyCoverage);
 
 
 
 			state.Terrain[i] = new CellTerrain()
 			{
 				Elevation = elevation,
-				GroundWaterDepth = groundWaterDepth,
 				Roughness = roughness,
 				SoilFertility = soilFertility,
 				Vegetation = vegetation,
@@ -231,11 +216,10 @@ public static class WorldGen {
 			state.CloudDropletMass[i] = cloudDropletMass;
 			state.CloudElevation[i] = cloudElevation;
 			state.CloudMass[i] = cloudMass;
-			state.CloudEnergy[i] = cloudTemperature * WorldData.SpecificHeatWater * cloudMass;
+			state.CloudTemperature[i] = cloudTemperature;
 			state.CloudVelocity[i] = cloudVelocity;
 			state.IceMass[i] = iceMass;
-			state.TerrainEnergy[i] = groundEnergy;
-			state.GroundWater[i] = groundWater;
+			state.TerrainTemperature[i] = terrainTemperature;
 		}
 
 		int batchCount = 100;
@@ -244,12 +228,13 @@ public static class WorldGen {
 		{
 			var updateDependentWaterLayerJob = new UpdateDependentWaterLayerJob()
 			{
-				Temperature = dependent.WaterTemperature[j],
 				Salinity = dependent.WaterSalinity[j],
 				WaterCoverage = dependent.WaterCoverage[j],
-				Energy = state.WaterEnergy[j],
+				PotentialEnergy = dependent.WaterPotentialEnergy[j],
+
 				SaltMass = state.WaterSaltMass[j],
 				WaterMass = state.WaterMass[j],
+				Temperature = state.WaterTemperature[j],
 				Terrain = state.Terrain,
 				worldData = worldData
 			};
@@ -260,15 +245,15 @@ public static class WorldGen {
 		{
 			var updateDependentAirLayerJob = new UpdateDependentAirLayerJob()
 			{
-				Temperature = dependent.AirTemperature[j],
 				Pressure = dependent.AirPressure[j],
 				RelativeHumidity = dependent.AirHumidityRelative[j],
 				AbsoluteHumidity = dependent.AirHumidityAbsolute[j],
 				LayerElevation = dependent.LayerElevation[j],
 				LayerHeight = dependent.LayerHeight[j],
 				AirMass = dependent.AirMass[j],
-				AirEnergy = state.AirEnergy[j],
-				AirVapor = state.AirVapor[j],
+				PotentialEnergy = dependent.AirPotentialEnergy[j],
+
+				Temperature = state.AirTemperature[j],
 				VaporMass = state.AirVapor[j],
 				IceMass = state.IceMass,
 				Gravity = state.PlanetState.Gravity,
@@ -289,21 +274,14 @@ public static class WorldGen {
 			SurfaceElevation = dependent.SurfaceElevation,
 			VegetationCoverage = dependent.VegetationCoverage,
 			WaterDepth = dependent.WaterDepth,
-			CloudTemperature = dependent.CloudTemperature,
-			IceTemperature = dependent.IceTemperature,
-			TerrainTemperature = dependent.TerrainTemperature,
 			SurfaceAirTemperature = dependent.SurfaceAirTemperature,
 
 			WaterSaltMass = waterSaltMass,
 			CloudMass = state.CloudMass,
-			CloudEnergy = state.CloudEnergy,
 			IceMass = state.IceMass,
-			IceEnergy = state.IceEnergy,
 			Terrain = state.Terrain,
-			TerrainEnergy = state.TerrainEnergy,
-			GroundWater = state.GroundWater,
 			worldData = worldData,
-			LowerAirTemperature = dependent.AirTemperature[0],
+			LowerAirTemperature = state.AirTemperature[0],
 			lowerAirHeight = dependent.LayerHeight[0]
 		};
 		updateDependenciesJobHandles.Add(updateDependentStateJob.Schedule(staticState.Count, batchCount, lowerAirHandle));
