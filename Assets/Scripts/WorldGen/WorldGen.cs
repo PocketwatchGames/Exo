@@ -108,32 +108,39 @@ public static class WorldGen {
 				(1.0f - coord.y * coord.y) * (worldGenData.MaxTemperature - worldGenData.MinTemperature) + worldGenData.MinTemperature;
 
 			float airTemperatureSurface = airTemperaturePotential + WorldData.TemperatureLapseRate * surfaceElevation;
-			float airPressure = WorldData.StaticPressure - regionalTemperatureVariation * 1000;
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity, 1.0f);
 			float cloudDropletMass = GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2001, 0, 1) * relativeHumidity * Mathf.Pow(cloudMass, 2) * worldData.rainDropMaxSize;
 			float cloudElevation = 5000;
 			float cloudTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * cloudElevation;
-			float totalAirMass = worldGenData.TroposphereMass * (1.0f - surfaceElevation / worldData.TropopauseElevation);
+//			float totalAirMass = worldGenData.TroposphereMass * (1.0f - surfaceElevation / worldData.TropopauseElevation);
 
 
-			float minOceanTemperature = WorldData.FreezingTemperature + 0.1f;
-			//float oceanDepthMinTemperature = 2000;
 			float waterTemperatureSurface = Mathf.Max(WorldData.FreezingTemperature, airTemperaturePotential + 2);
-			float waterTemperatureBottom = math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / (1.0f + waterDepth / 500.0f)) + WorldData.FreezingTemperature;
+			float waterTemperatureBottom = math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / (1.0f + waterDepth / worldData.WaterTemperatureDepthFalloff)) + WorldData.FreezingTemperature;
 
 			float layerElevation = surfaceElevation;
 			float upperAirLayerHeight = (worldData.TropopauseElevation - surfaceElevation - worldData.BoundaryZoneElevation) / (worldData.AirLayers - 1);
 			for (int j = 0; j < worldData.AirLayers; j++)
 			{
-				float2 wind = float2.zero;
-				float windVertical = 0;
-				float layerHeight = j == 0 ? worldData.BoundaryZoneElevation : upperAirLayerHeight;
+				//				float layerHeight = j == 0 ? worldData.BoundaryZoneElevation : upperAirLayerHeight;
+				float layerHeight;
+				if (j == 0)
+				{
+					layerHeight = worldData.BoundaryZoneElevation;
+				} else if (j == 1)
+				{
+					layerHeight = worldData.TropopauseElevation - surfaceElevation - worldData.BoundaryZoneElevation;
+				} else
+				{
+					layerHeight = 50000 - worldData.TropopauseElevation;
+				}
 				float layerMidHeight = layerElevation + layerHeight / 2;
 				float airTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * layerMidHeight;
-				float airMass = Atmosphere.GetAirMass(ref worldData, airPressure, layerMidHeight, airTemperature, WorldData.MolarMassAir, worldGenData.Gravity);
-				float vaporMass = Atmosphere.GetAbsoluteHumidity(ref worldData, airTemperature, relativeHumidity, totalAirMass, inverseDewPointTemperatureRange);
+				float airPressure = GetStandardPressureAtElevation(layerMidHeight, airTemperature, state.PlanetState.Gravity);
+				float airMass = Atmosphere.GetStandardAirMass(layerElevation, layerHeight, state.PlanetState.Gravity);
+				float vaporMass = GetWaterVaporMass(ref worldData, airTemperature, relativeHumidity, airMass, inverseDewPointTemperatureRange);
 				state.AirVapor[j][i] = vaporMass;
-				state.AirVelocity[j][i] = wind;
+				state.AirVelocity[j][i] = 0;
 				state.AirTemperature[j][i] = airTemperature;
 				dependent.AirMass[j][i] = airMass;
 				dependent.LayerElevation[j][i] = layerElevation;
@@ -164,12 +171,14 @@ public static class WorldGen {
 				float waterAndSaltMass = GetWaterMass(worldData, waterLayerDepth[j], waterTemperature, salinity);
 				float waterMass = waterAndSaltMass * (1.0f - salinity);
 				float saltMass = waterAndSaltMass * salinity;
-				float2 current = float2.zero;
-				float currentVertical = 0;
 
 				state.WaterMass[j][i] = waterMass;
 				state.WaterSaltMass[j][i] = saltMass;
-				state.WaterVelocity[j][i] = current;
+				state.WaterVelocity[j][i] = 0;
+				if (waterMass == 0)
+				{
+					state.WaterTemperature[j][i] = 0;
+				}
 				waterSaltMass[i] = new WaterSaltMass()
 				{
 					WaterMass = waterSaltMass[i].WaterMass + waterMass,
@@ -189,7 +198,13 @@ public static class WorldGen {
 
 			if (waterDepth == 0)
 			{
-				vegetation = soilFertility * (1.0f - waterCoverage) * (1.0f - iceCoverage) * Mathf.Clamp01((airTemperatureSurface - worldData.MinTemperatureCanopy) / (worldData.MaxTemperatureCanopy - worldData.MinTemperatureCanopy));
+				vegetation = 
+					worldData.FullVegetationCoverage 
+					* soilFertility 
+					* (1.0f - waterCoverage) 
+					* (1.0f - iceCoverage) 
+					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
+					* math.sin(math.PI* math.saturate((airTemperatureSurface - worldData.MinTemperatureCanopy) / (worldData.MaxTemperatureCanopy - worldData.MinTemperatureCanopy)));
 			}
 
 			// TODO: ground water energy should probably be tracked independently
@@ -202,8 +217,6 @@ public static class WorldGen {
 			{
 				terrainTemperature = airTemperatureSurface;
 			}
-			float groundEnergy = Atmosphere.GetTerrainEnergy(ref worldData, terrainTemperature, soilFertility, vegetation * worldData.inverseFullCanopyCoverage);
-
 
 
 			state.Terrain[i] = new CellTerrain()
@@ -252,12 +265,16 @@ public static class WorldGen {
 				LayerHeight = dependent.LayerHeight[j],
 				AirMass = dependent.AirMass[j],
 				PotentialEnergy = dependent.AirPotentialEnergy[j],
+				WindHorizontal = dependent.WindHorizontal[j],
+				WindVertical = dependent.WindVertical[j],
 
 				Temperature = state.AirTemperature[j],
 				VaporMass = state.AirVapor[j],
 				IceMass = state.IceMass,
 				Gravity = state.PlanetState.Gravity,
-				WorldData = worldData,
+				DewPointZero = worldData.DewPointZero,
+				InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
+				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint
 			};
 			var h = updateDependentAirLayerJob.Schedule(staticState.Count, batchCount);
 			updateDependenciesJobHandles.Add(h);
@@ -292,8 +309,28 @@ public static class WorldGen {
 
 	static public float GetWaterMass(WorldData worldData, float depth, float temperature, float salinityPSU)
 	{
-		float density = worldData.waterDensity + worldData.OceanDensityPerDegree * (temperature - WorldData.FreezingTemperature) + worldData.OceanDensityPerSalinity * salinityPSU;
+		float density = WorldData.DensityWater + worldData.WaterDensityPerDegree * (temperature - WorldData.FreezingTemperature) + worldData.WaterDensityPerSalinity * salinityPSU;
 		return depth * density;
 	}
+
+	static public float GetWaterVaporMass(ref WorldData worldData, float temperature, float relativeHumidity, float airMass, float inverseDewPointTemperatureRange)
+	{
+		float maxWaterVaporPerKilogramAtmosphere = worldData.WaterVaporMassToAirMassAtDewPoint * Utils.Sqr(math.max(0, (temperature - worldData.DewPointZero) * inverseDewPointTemperatureRange));
+		float maxHumidity = maxWaterVaporPerKilogramAtmosphere * airMass;
+		if (maxHumidity <= 0)
+		{
+			return 0;
+		}
+		float humidity = relativeHumidity * maxHumidity;
+		return humidity;
+	}
+
+	static public float GetStandardPressureAtElevation(float elevation, float temperature, float gravity)
+	{
+		float pressure = WorldData.StaticPressure * (float)Math.Pow(1.0f + WorldData.TemperatureLapseRate / WorldData.StdTemp * elevation, gravity * WorldData.PressureExponent * WorldData.MolarMassAir);
+		return pressure;
+	}
+
+
 
 }

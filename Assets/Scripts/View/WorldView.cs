@@ -19,13 +19,13 @@ public class WorldView : MonoBehaviour {
 		ShallowWaterTemperature,
 		ShallowWaterSalinity,
 		LowerAirTemperature,
-		LowerAirPressure,
 		UpperAirTemperature,
-		UpperAirPressure,
+		Pressure,
 		VerticalWind,
 		AbsoluteHumidity,
 		RelativeHumidity,
 		CloudMass,
+		CloudTemperature,
 		CloudDropletMass,
 		Evaporation,
 		Rainfall,
@@ -515,7 +515,7 @@ public class WorldView : MonoBehaviour {
 			case CellInfoType.Cell:
 				return GetCellInfoCell(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
 			case CellInfoType.Atmosphere:
-				return GetCellInfoAtmosphere(ref Sim.ActiveSimState, ref Sim.DependentState);
+				return GetCellInfoAtmosphere(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
 			case CellInfoType.Ground:
 				return GetCellInfoGround(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Water:
@@ -600,8 +600,6 @@ public class WorldView : MonoBehaviour {
 	private bool GetMeshOverlayData(MeshOverlay activeOverlay, ref SimState simState, ref DependentState dependentState, ref DisplayState display, out MeshOverlayData overlay)
 	{
 		float ticksPerYear = Sim.WorldData.TicksPerSecond * 60 * 60 * 24 * 365;
-		float maxEvap = DisplayEvaporationMax * WorldData.MassWater / ticksPerYear;
-		float maxRainfall = DisplayRainfallMax * WorldData.MassWater / ticksPerYear;
 		switch (activeOverlay)
 		{
 			case MeshOverlay.AbsoluteHumidity:
@@ -610,14 +608,14 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.RelativeHumidity:
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[0]);
 				return true;
-			case MeshOverlay.LowerAirPressure:
-				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, dependentState.AirPressure[0]);
-				return true;
 			case MeshOverlay.LowerAirTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[0]);
 				return true;
 			case MeshOverlay.UpperAirTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[Sim.WorldData.AirLayers - 1]);
+				return true;
+			case MeshOverlay.Pressure:
+				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure);
 				return true;
 			case MeshOverlay.ShallowWaterTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 1]);
@@ -634,20 +632,23 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
 				return true;
+			case MeshOverlay.CloudTemperature:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.CloudTemperature);
+				return true;
 			case MeshOverlay.HeatAbsorbed:
 				overlay = new MeshOverlayData(0, DisplayHeatAbsorbedMax, _normalizedRainbow, display.SolarRadiationAbsorbedSurface);
 				return true;
 			case MeshOverlay.Rainfall:
-				overlay = new MeshOverlayData(0, maxRainfall, _normalizedRainbow, display.Rainfall);
+				overlay = new MeshOverlayData(0, DisplayRainfallMax, _normalizedRainbow, display.Rainfall);
 				return true;
 			case MeshOverlay.Evaporation:
-				overlay = new MeshOverlayData(0, maxEvap, _normalizedRainbow, display.Evaporation);
+				overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 				return true;
 			case MeshOverlay.VerticalWind:
 				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedRainbow, dependentState.WindVertical[0]);
 				return true;
 		}
-		overlay = new MeshOverlayData(0, maxEvap, _normalizedRainbow, display.Evaporation);
+		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 		return false;
 
 	}
@@ -737,16 +738,18 @@ public class WorldView : MonoBehaviour {
 		s += "Rainfall: " + (display.Rainfall[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
 		s += "Evaporation: " + (display.Evaporation[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
 		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
+
+		Debug.Log(display.Evaporation[ActiveCellIndex]);
 		return s;
 	}
-	private string GetCellInfoAtmosphere(ref SimState state, ref DependentState dependent)
+	private string GetCellInfoAtmosphere(ref SimState state, ref DependentState dependent, ref DisplayState display)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
 
 		string s = "";
-		s += "Surface Temp: " + GetTemperatureString(state.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 5) + "\n";
-		s += "Surface Pressure: " + dependent.AirPressure[0][ActiveCellIndex].ToString("0") + " Pa\n";
+		s += "Surface Temp: " + GetTemperatureString(state.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 1) + "\n";
+		s += "Surface Pressure: " + display.Pressure[ActiveCellIndex].ToString("0") + " Pa\n";
 		s += "Surface Wind Horz: (" + state.AirVelocity[0][ActiveCellIndex].x.ToString("0.0") + ", " + state.AirVelocity[0][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
 		s += "Surface Wind Vert: " + dependent.WindVertical[0][ActiveCellIndex].ToString("0.0") + " m/s\n";
 		s += "Surface Humidity: " + (dependent.AirHumidityRelative[0][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
@@ -755,6 +758,9 @@ public class WorldView : MonoBehaviour {
 		s += "Cloud Temp: " + GetTemperatureString(state.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 		s += "Cloud Mass: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg\n";
 		s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater * state.CloudMass[ActiveCellIndex])).ToString("0.000") + " nm3\n";
+		s += "Air Mass 0: " + dependent.AirMass[0][ActiveCellIndex].ToString("0") + " kg\n";
+		s += "Air Mass 1: " + dependent.AirMass[1][ActiveCellIndex].ToString("0") + " kg\n";
+		s += "Air Mass 2: " + dependent.AirMass[2][ActiveCellIndex].ToString("0") + " kg\n";
 		return s;
 	}
 	private string GetCellInfoGround(ref SimState state, ref DependentState dependent)

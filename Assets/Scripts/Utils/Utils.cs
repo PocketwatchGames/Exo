@@ -7,6 +7,20 @@ using System.Threading.Tasks;
 public static class Utils {
 	public static float Sqr(float x) { return x * x; }
 	public static int Sqr(int x) { return x * x; }
+
+	static public float RepeatExclusive(float x, float y)
+	{
+		while (x < 0)
+		{
+			x += y;
+		}
+		while (x >= y)
+		{
+			x -= y;
+		}
+		return x;
+	}
+
 }
 
 public struct Optional<T> {
@@ -27,3 +41,4 @@ public struct Optional<T> {
 		hasValue = false;
 	}
 }
+

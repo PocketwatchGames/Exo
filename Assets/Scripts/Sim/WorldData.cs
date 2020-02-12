@@ -101,8 +101,6 @@ public struct WorldData {
 	public float rainDropDragCoefficient;
 	public float rainDropMaxSize;
 	public float rainDropMinSize;
-	public float airDensity;
-	public float waterDensity;
 	public float CloudDissapationRateWind;
 	public float CloudDissapationRateDryAir;
 	public float DewPointElevationPerDegree;
@@ -117,9 +115,10 @@ public struct WorldData {
 	public float OceanUpwellingSpeed;
 	public float OceanTemperatureVerticalMixingSpeed;
 	public float SalinityVerticalMixingSpeed;
-	public float OceanDensityPerSalinity;
-	public float OceanDensityPerDegree;
-	public float OceanDensityCurrentSpeed;
+	public float WaterDensityPerSalinity;
+	public float WaterDensityPerDegree;
+	public float WaterDensityCurrentSpeed;
+	public float WaterTemperatureDepthFalloff;
 
 	[Header("Ecology")]
 	public float MinTemperatureCanopy;
@@ -130,8 +129,7 @@ public struct WorldData {
 	public const float AdiabaticLapseRate = 0.0098f;
 	public const float StaticPressure = 101325;
 	public const float StdTemp = 288.15f;
-	public const float MolarMassEarthAir = 0.0289644f;
-	public const float MolarMassAir = 0.02857f;
+	public const float MolarMassAir = 0.0289647f;
 	public const float MolarMassWater = 0.01802f;
 	public const float UniversalGasConstant = 8.3144598f;
 	public const float FreezingTemperature = 273.15f;
@@ -163,28 +161,31 @@ public struct WorldData {
 	public const float MassIce = 919f;
 	public const float MassSoil = 1200f;
 	public const float MassSand = 1600f;
+	public const float DensityWater = 997f;
+	public const float DensityAir = 1.21f;
 	public const float ConductivityAir = 0.0262f;
 	public const float ConductivityWater = 0.606f;
 	public const float ConductivityIce = 2.18f;
 	public const float ConductivityTerrain = 0.2f;
-	public const float ConductivityAirWater = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityWater);
-	public const float ConductivityAirIce = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityIce);
-	public const float ConductivityAirTerrain = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityTerrain);
-	public const float ConductivityIceWater = 1.0f / (1.0f / ConductivityWater + 1.0f / ConductivityIce);
-	public const float ConductivityIceTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityIce);
-	public const float ConductivityWaterTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityWater);
+	public const float ThermalContactResistance = 0.00005f;
+	public const float ConductivityAirWater = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityWater + ThermalContactResistance);
+	public const float ConductivityAirIce = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityIce + ThermalContactResistance);
+	public const float ConductivityAirTerrain = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityTerrain + ThermalContactResistance);
+	public const float ConductivityIceWater = 1.0f / (1.0f / ConductivityWater + 1.0f / ConductivityIce + ThermalContactResistance);
+	public const float ConductivityIceTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityIce + ThermalContactResistance);
+	public const float ConductivityWaterTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityWater + ThermalContactResistance);
+	public const float GasConstantAir = UniversalGasConstant / MolarMassAir * 1000;
+	public const float GasConstantWaterVapor = UniversalGasConstant / MolarMassWater * 1000;
+	public const float PressureExponent = 1.0f / (UniversalGasConstant * TemperatureLapseRate);
+	public const float DryAirAdiabaticLapseRate = AdiabaticLapseRate / SpecificHeatAtmosphere;
+	public const float inverseSpecificHeatIce = 1.0f / SpecificHeatIce;
 
-
-
-	[NonSerialized]	public float SpecificGasConstantDryAir;
-	[NonSerialized]	public float DryAirAdiabaticLapseRate;
 	[NonSerialized]	public float EvapTemperatureRange;
 	[NonSerialized] public float TicksPerSecond;
 	[NonSerialized] public float TicksPerYear;
 	[NonSerialized] public float inverseFullCanopyCoverage;
 	[NonSerialized] public float inverseFullWaterCoverage;
 	[NonSerialized] public float inverseFullIceCoverage;
-	[NonSerialized] public float inverseSpecificHeatIce;
 	[NonSerialized] public float inverseCloudMassFullAbsorption;
 	[NonSerialized] public float inverseBoundaryZoneElevation;
 	[NonSerialized] public float wattsToKJPerTick;
@@ -193,22 +194,17 @@ public struct WorldData {
 	[NonSerialized] public float inverseSunAtmosphereAmount;
 	[NonSerialized] public float inverseDewPointTemperatureRange;
 	[NonSerialized] public float inverseEvapTemperatureRange;
-	[NonSerialized] public float PressureExponent;
 
 	public void Init()
 	{
 		EvapTemperatureRange = EvapMaxTemperature - EvapMinTemperature;
-		SpecificGasConstantDryAir = UniversalGasConstant / MolarMassEarthAir;
-		PressureExponent = 1.0f / (UniversalGasConstant * TemperatureLapseRate);
 
-		DryAirAdiabaticLapseRate = AdiabaticLapseRate / SpecificHeatAtmosphere;
 		TicksPerSecond = 1.0f / SecondsPerTick;
 		TicksPerYear = 60 * 60 * 24 * 365 / SecondsPerTick;
 
 		inverseFullCanopyCoverage = 1.0f / FullVegetationCoverage;
 		inverseFullWaterCoverage = 1.0f / FullWaterCoverage;
 		inverseFullIceCoverage = 1.0f / (MassIce * FullIceCoverage);
-		inverseSpecificHeatIce = 1.0f / SpecificHeatIce;
 		inverseCloudMassFullAbsorption = 1.0f / CloudMassFullAbsorption;
 		inverseBoundaryZoneElevation = 1.0f / BoundaryZoneElevation;
 		wattsToKJPerTick = SecondsPerTick * 1000;

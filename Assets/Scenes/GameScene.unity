@@ -1983,9 +1983,7 @@ MonoBehaviour:
     WindLandFriction: 0.5
     WindAirMovementHorizontal: 0.001
     WindAirMovementVertical: 0.01
-    WindHumidityMovement: 0.1
     HumidityToCloudPercent: 0.1
-    PressureGradientWindMultiplier: 4000
     GlobalCoriolisInfluenceWindUpper: 0.75
     GlobalCoriolisInfluenceWindLower: 0.5
     GlobalCoriolisInfluenceOcean: 0.5
@@ -2023,8 +2021,6 @@ MonoBehaviour:
     rainDropDragCoefficient: 0.5
     rainDropMaxSize: 0.004
     rainDropMinSize: 0.00001
-    airDensity: 1.21
-    waterDensity: 997
     CloudDissapationRateWind: 0.1
     CloudDissapationRateDryAir: 0.1
     DewPointElevationPerDegree: 67.73
@@ -2037,9 +2033,10 @@ MonoBehaviour:
     OceanUpwellingSpeed: 0.0001
     OceanTemperatureVerticalMixingSpeed: 0.0001
     SalinityVerticalMixingSpeed: 0.001
-    OceanDensityPerSalinity: 800
-    OceanDensityPerDegree: 0.2
-    OceanDensityCurrentSpeed: 0.1
+    WaterDensityPerSalinity: 0
+    WaterDensityPerDegree: 0
+    WaterDensityCurrentSpeed: 0
+    WaterTemperatureDepthFalloff: 0
     MinTemperatureCanopy: 223.15
     MaxTemperatureCanopy: 323.15
   TimeScale: 0
@@ -6050,7 +6047,7 @@ MonoBehaviour:
   DisplayCurrentMax: 5
   DisplayCurrentMinDepth: 50
   DisplayEnergyAborsobedMax: 300
-  DisplayRainfallMax: 5
+  DisplayRainfallMax: 0.5
   DisplaySalinityMin: 0
   DisplaySalinityMax: 0.05
   DisplayWindSpeedLowerAirMax: 50
@@ -6058,13 +6055,12 @@ MonoBehaviour:
   DisplayWindSpeedSurfaceWaterMax: 5
   DisplayWindSpeedDeepWaterMax: 0.5
   DisplayVerticalWindSpeedMax: 1
-  DisplayEvaporationMax: 5
+  DisplayEvaporationMax: 0.005
   DisplayVegetationMax: 1000
   DisplayTemperatureMin: 223
   DisplayTemperatureMax: 323
-  DisplayAbsoluteHumidityMax: 1000
-  DisplayGroundWaterMax: 100000
-  DisplayAirPressureMin: 97000
+  DisplayAbsoluteHumidityMax: 10
+  DisplayAirPressureMin: 85000
   DisplayAirPressureMax: 110000
   DisplayHeatAbsorbedMax: 500
   Sim: {fileID: 365555216}

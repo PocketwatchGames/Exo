@@ -13,7 +13,7 @@
 	"GroundWaterFlowSpeed": 0.5,
 
 
-	"TropopauseElevation": 10000,
+	"TropopauseElevation": 11000,
 	"BoundaryZoneElevation": 1000,
 	"stratosphereElevation": 50000,
 	"MaxTropopauseElevation": 17000,
@@ -40,7 +40,7 @@
 
 	"SolarAbsorptivityAir": 0.000002,
 	"SolarAbsorptivityWaterVapor": 0.0001,
-	"SolarAbsorptivityCloud": 0.1,
+	"SolarAbsorptivityCloud": 0.000001,
 	"SolarReflectivityAir": 0.000002,
 	"SolarReflectivityWaterVapor": 0,
 	"SolarReflectivityCloud": 1.0,
@@ -51,10 +51,10 @@
 
 	"AirWaterConductionPositive": 0.5,
 
-	"AbsorptivityCarbonDioxide": 0.25,
-	"AbsorptivityAir": 0.00025,
-	"AbsorptivityWaterLiquid": 0.05,
-	"AbsorptivityWaterVapor": 0.00155,
+	"AbsorptivityCarbonDioxide": 0.0001,
+	"AbsorptivityAir": 0.0001,
+	"AbsorptivityWaterLiquid": 0.0001,
+	"AbsorptivityWaterVapor": 0.0001,
 
 	"CloudMassFullAbsorption": 0.5,
 	"EnergyLostThroughAtmosphereWindow": 0.1007,
@@ -66,18 +66,16 @@
 
 	"DewPointTemperatureRange": 100.0,
 	"DewPointZero": 213.0,
-	"WaterVaporMassToAirMassAtDewPoint": 0.2,
+	"WaterVaporMassToAirMassAtDewPoint": 0.04,
 	"RainfallRate": 0.01,
 	"EvapMinTemperature": 253,
 	"EvapMaxTemperature": 413,
-	"EvaporationRate": 0.004,
+	"EvaporationRate": 5,
 	"RainDropFormationSpeedTemperature": 1,
 	"RainDropCoalescenceWind": 0.1,
 	"rainDropDragCoefficient": 0.5,
 	"rainDropMaxSize": 0.004,
 	"rainDropMinSize": 0.00001,
-	"airDensity": 1.21,
-	"waterDensity": 997,
 	"CloudDissapationRateWind": 0.1,
 	"CloudDissapationRateDryAir": 0.1,
 	"DewPointElevationPerDegree": 67.73,
@@ -90,9 +88,10 @@
 	"OceanUpwellingSpeed": 0.001,
 	"OceanTemperatureVerticalMixingSpeed": 0.01,
 	"SalinityVerticalMixingSpeed": 0.00000001,
-	"OceanDensityPerSalinity": 800,
-	"OceanDensityPerDegree": -0.2,
-	"OceanDensityCurrentSpeed": 0.5,
+	"WaterDensityPerSalinity": 800,
+	"WaterDensityPerDegree": -0.2,
+	"WaterDensityCurrentSpeed": 0.5,
+	"WaterTemperatureDepthFalloff": 500,
 
 	"MinTemperatureCanopy": 223.15,
 	"MaxTemperatureCanopy": 323.15

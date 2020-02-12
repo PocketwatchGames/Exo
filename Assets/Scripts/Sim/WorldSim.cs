@@ -43,9 +43,6 @@ public class WorldSim {
 	private NativeArray<float> conductionIceWater;
 	private NativeArray<float> conductionIceTerrain;
 	private NativeArray<float>[] conductionWaterTerrain;
-	private NativeArray<float> rainfall;
-	private NativeArray<float> iceMelt;
-	private NativeArray<float> waterFrozen;
 	private NativeArray<float> cloudEvaporation;
 	private NativeArray<float> surfaceEvaporation;
 	private NativeArray<float> cloudCondensation;
@@ -101,10 +98,14 @@ public class WorldSim {
 		conductionIceWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionIceTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		displaySolarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		cloudEvaporation = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		surfaceEvaporation = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		cloudCondensation = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		surfaceCondensation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 
-	}
+}
 
-	public void Dispose()
+public void Dispose()
 	{
 		solarRadiation.Dispose();
 		waterSlopeAlbedo.Dispose();
@@ -133,6 +134,10 @@ public class WorldSim {
 		conductionAirTerrain.Dispose();
 		conductionIceWater.Dispose();
 		conductionIceTerrain.Dispose();
+		cloudEvaporation.Dispose();
+		surfaceEvaporation.Dispose();
+		cloudCondensation.Dispose();
+		surfaceCondensation.Dispose();
 
 		displaySolarRadiation.Dispose();
 
@@ -267,6 +272,7 @@ public class WorldSim {
 			for (int j = 0; j < _airLayers; j++)
 			{
 				int layerIndex = _airLayer0 + _airLayers - 1 - j;
+				int airLayerIndex = layerIndex - _airLayer0;
 				var solarInAtmosphereJob = new SolarRadiationAbsorbedAirJob()
 				{
 					SolarRadiationAbsorbed = solarRadiationIn[layerIndex],
@@ -274,8 +280,8 @@ public class WorldSim {
 					SolarRadiationAbsorbedCloud = solarRadiationIn[_cloudLayer],
 					SolarRadiationReflected = solarReflected[layerIndex],
 					SolarRadiationReflectedCloud = solarReflected[_cloudLayer],
-					AirMass = dependent.AirMass[j],
-					VaporMass = lastState.AirVapor[j],
+					AirMass = dependent.AirMass[airLayerIndex],
+					VaporMass = lastState.AirVapor[airLayerIndex],
 					CloudMass = lastState.CloudMass,
 					CloudTemperature = lastState.CloudTemperature,
 					CloudDropletMass = lastState.CloudDropletMass,
@@ -286,12 +292,12 @@ public class WorldSim {
 					SolarAbsorptivityAir = worldData.SolarAbsorptivityAir,
 					SolarAbsorptivityWaterVapor = worldData.SolarAbsorptivityWaterVapor,
 					SolarAbsorptivityCloud = worldData.SolarAbsorptivityCloud,
-					LayerElevation = dependent.LayerElevation[j],
-					LayerHeight = dependent.LayerHeight[j],
-					LayerIndex = j,
+					LayerElevation = dependent.LayerElevation[airLayerIndex],
+					LayerHeight = dependent.LayerHeight[airLayerIndex],
+					LayerIndex = airLayerIndex,
 					worldData = worldData
 				};
-				solarInJobHandles[layerIndex] = solarInAtmosphereJob.Schedule(_cellCount, _batchCount, j == 0 ? solarInJobHandle : solarInJobHandles[layerIndex + 1]);
+				solarInJobHandles[layerIndex] = solarInAtmosphereJob.Schedule(_cellCount, _batchCount, airLayerIndex == _airLayers - 1 ? solarInJobHandle : solarInJobHandles[layerIndex + 1]);
 			}
 
 			
@@ -314,7 +320,7 @@ public class WorldSim {
 					SolarRadiationAbsorbed = solarRadiationIn[layerIndex],
 					SolarRadiationIncoming = solarRadiation,
 					SolarRadiationReflected = solarReflected[layerIndex],
-					WaterCoverage = dependent.WaterCoverage[j],
+					WaterCoverage = dependent.WaterCoverage[layerIndex - _waterLayer0],
 					WaterSlopeAlbedo = waterSlopeAlbedo,
 				};
 				solarInJobHandles[layerIndex] = solarRadiationAbsorbedWaterJob.Schedule(_cellCount, _batchCount, solarInJobHandles[layerIndex + 1]);
@@ -851,8 +857,8 @@ public class WorldSim {
 
 			var energyCloudJob = new EnergyCloudJob()
 			{
-				Temperature = nextState.CloudTemperature,
-				Mass = nextState.CloudMass,
+				CloudTemperature = nextState.CloudTemperature,
+				CloudMass = nextState.CloudMass,
 				DropletMass = nextState.CloudDropletMass,
 				Elevation = nextState.CloudElevation,
 				Velocity = nextState.CloudVelocity,
@@ -861,21 +867,23 @@ public class WorldSim {
 				SolarRadiationIn = solarRadiationIn[_cloudLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_cloudLayer],
 				ConductionEnergyAir = conductionCloudAir,
-				LastMass = lastState.CloudMass,
-				LastTemperature = lastState.CloudTemperature,
+				LastCloudMass = lastState.CloudMass,
+				LastCloudTemperature = lastState.CloudTemperature,
 				LastVelocity = lastState.CloudVelocity,
 				Advection = advectionCloud,
 				Diffusion = diffusionCloud,
 				LastDropletMass = lastState.CloudDropletMass,
 				LastElevation = lastState.CloudElevation,
-				AirDensity=worldData.airDensity,
 				Gravity =lastState.PlanetState.Gravity,
 				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
 				RainDropMaxSize =worldData.rainDropMaxSize,
 				RainDropMinSize = worldData.rainDropMinSize,
 				RainfallRate = worldData.RainfallRate,
-				WaterDensity = worldData.waterDensity,
 				WindVertical = dependent.WindVertical[1], // TODO: make this be "wind at cloud elevation"
+				LastAirMass = dependent.AirMass[1],
+				LastWaterVapor = lastState.AirVapor[1],
+				LastAirTemperature = lastState.AirTemperature[1],
+				LastAirPressure = dependent.AirPressure[1],
 			};
 			var cloudEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
 			{
@@ -1084,6 +1092,34 @@ public class WorldSim {
 			};
 			var stateChangeJobHandle = stateChangeJob.Schedule(_cellCount, _batchCount, energyJobHandle);
 
+			for (int j = 0; j < _airLayers; j++)
+			{
+				int layerIndex = _airLayer0 + j;
+				var stateChangeAirLayerJob = new StateChangeAirLayerJob()
+				{
+					AirTemperature = nextState.AirTemperature[j],
+					VaporMass = nextState.AirVapor[j],
+					CloudDropletMass = nextState.CloudDropletMass,
+					CloudElevation = nextState.CloudElevation,
+					CloudEvaporationMass = cloudEvaporation,
+					CloudMass = nextState.CloudMass,
+					CloudTemperature = nextState.CloudTemperature,
+					SurfaceWaterMass = nextState.WaterMass[surfaceWaterLayer],
+					SurfaceWaterTemperature = nextState.WaterTemperature[surfaceWaterLayer],
+
+					SurfaceSaltMass = nextState.WaterSaltMass[surfaceWaterLayer],
+					CloudCondensationMass = cloudCondensation,
+					GroundCondensationMass = condensationGroundMass[j],
+					AirMass = dependent.AirMass[j],
+					LayerIndex = layerIndex,
+					LayerElevation = dependent.LayerElevation[j],
+					LayerHeight = dependent.LayerHeight[j],
+
+				};
+
+				stateChangeJobHandle = stateChangeAirLayerJob.Schedule(_cellCount, _batchCount, stateChangeJobHandle);
+			}
+
 
 			NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
 			for (int j = 0; j < _waterLayers; j++)
@@ -1113,13 +1149,17 @@ public class WorldSim {
 					AbsoluteHumidity = dependent.AirHumidityAbsolute[j],
 					AirMass = dependent.AirMass[j],
 					PotentialEnergy = dependent.AirPotentialEnergy[j],
+					WindHorizontal = dependent.WindHorizontal[j],
+					WindVertical = dependent.WindVertical[j],					
 
 					VaporMass = nextState.AirVapor[j],
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					IceMass = nextState.IceMass,
 					Gravity = nextState.PlanetState.Gravity,
-					WorldData = worldData,
+					DewPointZero = worldData.DewPointZero,
+					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
+					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint
 				};
 				var h = updateDependentAirLayerJob.Schedule(_cellCount, _batchCount, stateChangeJobHandle);
 				updateDependenciesJobHandles.Add(h);
@@ -1178,12 +1218,21 @@ public class WorldSim {
 					SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
 					DisplayEvaporation = display.Evaporation,
 					DisplayRainfall = display.Rainfall,
+					DisplayPressure = display.Pressure,
 
 					SolarRadiationInTerrain = solarRadiationIn[_terrainLayer],
 					SolarRadiationInIce = solarRadiationIn[_iceLayer],
 					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _waterLayers - 1],
 					Evaporation = evaporationMass,
 					RainfallWater = rainfallWaterMass,
+					AirMass = dependent.AirMass[0],
+					Gravity = nextState.PlanetState.Gravity,
+					AirLayerElevation = dependent.LayerElevation[0],
+					AirLayerHeight = dependent.LayerHeight[0],
+					AirPressure = dependent.AirPressure[0],
+					AirTemperature = nextState.AirTemperature[0],
+					WaterVaporMass = nextState.AirVapor[0],
+
 				};
 				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
 				updateDisplayJobHandle.Complete();
