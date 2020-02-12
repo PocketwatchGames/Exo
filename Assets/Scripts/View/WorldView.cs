@@ -739,7 +739,6 @@ public class WorldView : MonoBehaviour {
 		s += "Evaporation: " + (display.Evaporation[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
 		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
 
-		Debug.Log(display.Evaporation[ActiveCellIndex]);
 		return s;
 	}
 	private string GetCellInfoAtmosphere(ref SimState state, ref DependentState dependent, ref DisplayState display)

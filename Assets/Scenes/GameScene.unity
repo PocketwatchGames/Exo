@@ -6055,11 +6055,11 @@ MonoBehaviour:
   DisplayWindSpeedSurfaceWaterMax: 5
   DisplayWindSpeedDeepWaterMax: 0.5
   DisplayVerticalWindSpeedMax: 1
-  DisplayEvaporationMax: 0.005
+  DisplayEvaporationMax: 1
   DisplayVegetationMax: 1000
   DisplayTemperatureMin: 223
   DisplayTemperatureMax: 323
-  DisplayAbsoluteHumidityMax: 10
+  DisplayAbsoluteHumidityMax: 0.05
   DisplayAirPressureMin: 85000
   DisplayAirPressureMax: 110000
   DisplayHeatAbsorbedMax: 500

@@ -633,7 +633,7 @@ public void Dispose()
 				};
 				diffusionJobHandles[_airLayer0 + j] = diffusionJob.Schedule(_cellCount, _batchCount, lastJobHandle);
 			}
-			for (int j = 0; j < _waterLayer0; j++)
+			for (int j = 0; j < _waterLayers; j++)
 			{
 				var diffusionJob = new DiffusionWaterJob()
 				{
@@ -641,6 +641,7 @@ public void Dispose()
 					Temperature = lastState.WaterTemperature[j],
 					Salt = lastState.WaterSaltMass[j],
 					Velocity = lastState.WaterVelocity[j],
+					WaterMass = lastState.WaterMass[j],
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficientSalinity = worldData.WaterDiffuseSpeed,
 					DiffusionCoefficientTemperature = worldData.WaterDiffuseSpeed,

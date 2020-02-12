@@ -494,6 +494,7 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public float DiffusionCoefficientTemperature;
 	[ReadOnly] public float DiffusionCoefficientSalinity;
 	[ReadOnly] public float DiffusionCoefficientVelocity;
+	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Salt;
 	[ReadOnly] public NativeArray<float2> Velocity;
@@ -503,22 +504,32 @@ public struct DiffusionWaterJob : IJobParallelFor {
 		float gradientSalinity = 0;
 		float gradientTemperature = 0;
 		float2 gradientVelocity = float2.zero;
-		int neighborCount = 0;
-		for (int j = 0; j < 6; j++)
-		{
-			int n = Neighbors[i * 6 + j];
-			if (n >= 0)
+		float neighborMassToDiffuse = 0;
+		float diffuseTotal = 0;
+		float waterMass = WaterMass[i];
+		if (waterMass > 0) {
+			for (int j = 0; j < 6; j++)
 			{
-				gradientSalinity += Salt[n];
-				gradientTemperature += Temperature[n];
-				gradientVelocity += Velocity[n];
+				int n = Neighbors[i * 6 + j];
+				if (n >= 0)
+				{
+					float nMass = WaterMass[n];
+					if (nMass > 0)
+					{
+						float diffuseMass = math.min(nMass, waterMass) / nMass;
+						float diffuse = math.min(nMass, waterMass) / waterMass;
+						gradientSalinity += Salt[n] * diffuseMass;
+						gradientTemperature += Temperature[n] * diffuse;
+						gradientVelocity += Velocity[n] * diffuse;
 
-				neighborCount++;
+						neighborMassToDiffuse += diffuse;
+					}
+				}
 			}
+			gradientSalinity -= Salt[i] * neighborMassToDiffuse;
+			gradientTemperature -= Temperature[i] * neighborMassToDiffuse;
+			gradientVelocity -= Velocity[i] * neighborMassToDiffuse;
 		}
-		gradientSalinity -= Salt[i] * neighborCount;
-		gradientTemperature -= Temperature[i] * neighborCount;
-		gradientVelocity -= Velocity[i] * neighborCount;
 
 		Delta[i] = new DiffusionWater()
 		{
