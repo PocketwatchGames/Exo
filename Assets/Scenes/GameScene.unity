@@ -1983,6 +1983,7 @@ MonoBehaviour:
     WindLandFriction: 0.5
     WindAirMovementHorizontal: 0.001
     WindAirMovementVertical: 0.01
+    CloudDiffusionCoefficient: 0
     HumidityToCloudPercent: 0.1
     GlobalCoriolisInfluenceWindUpper: 0.75
     GlobalCoriolisInfluenceWindLower: 0.5
@@ -6062,7 +6063,7 @@ MonoBehaviour:
   DisplayAbsoluteHumidityMax: 0.05
   DisplayAirPressureMin: 85000
   DisplayAirPressureMax: 110000
-  DisplayHeatAbsorbedMax: 500
+  DisplayHeatAbsorbedMax: 5000
   Sim: {fileID: 365555216}
   Planet: {fileID: 1921819011}
   Sun: {fileID: 575991941}

@@ -166,9 +166,7 @@ public void Dispose()
 			var windowRadiationTransmittedUp = new NativeArray<float>[_layerCount];
 			var windowRadiationTransmittedDown = new NativeArray<float>[_layerCount];
 			var condensationGroundMass = new NativeArray<float>[_layerCount];
-			var condensationGroundEnergy = new NativeArray<float>[_layerCount];
 			var condensationCloudMass = new NativeArray<float>[_layerCount];
-			var condensationCloudEnergy = new NativeArray<float>[_layerCount];
 			var solarReflected = new NativeArray<float>[_layerCount];
 			var conductionWaterTerrainTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var evaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
@@ -188,9 +186,7 @@ public void Dispose()
 				windowRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 				windowRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 				condensationGroundMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				condensationGroundEnergy[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 				condensationCloudMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				condensationCloudEnergy[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			}
 
 			bool updateDisplay = tick == ticksToAdvance - 1;
@@ -938,9 +934,7 @@ public void Dispose()
 					Temperature = nextState.AirTemperature[0],
 					Vapor = nextState.AirVapor[0],
 					Velocity = nextState.AirVelocity[0],
-					CondensationCloudEnergy = condensationCloudEnergy[0],
 					CondensationCloudMass = condensationCloudMass[0],
-					CondensationGroundEnergy = condensationGroundEnergy[0],
 					CondensationGroundMass = condensationGroundMass[0],
 					LastTemperature = lastState.AirTemperature[0],
 					LastVapor = lastState.AirVapor[0],
@@ -955,6 +949,9 @@ public void Dispose()
 					ConductionEnergyIce = conductionAirIce,
 					ConductionEnergyTerrain = conductionAirTerrain,
 					SecondsPerTick = worldData.SecondsPerTick,
+					DewPointZero= worldData.DewPointZero,
+					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
+					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint, 
 				};
 
 				var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
@@ -981,9 +978,7 @@ public void Dispose()
 					Temperature = nextState.AirTemperature[j],
 					Vapor = nextState.AirVapor[j],
 					Velocity = nextState.AirVelocity[j],	
-					CondensationCloudEnergy = condensationCloudEnergy[j],
 					CondensationCloudMass = condensationCloudMass[j],
-					CondensationGroundEnergy = condensationGroundEnergy[j],
 					CondensationGroundMass = condensationGroundMass[j],
 					LastTemperature = lastState.AirTemperature[j],
 					LastVapor = lastState.AirVapor[j],
@@ -995,6 +990,9 @@ public void Dispose()
 					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
 					ConductionEnergyCloud = conductionCloudAir,
 					SecondsPerTick = worldData.SecondsPerTick,
+					DewPointZero = worldData.DewPointZero,
+					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
+					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 				};
 
 				var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
@@ -1344,9 +1342,7 @@ public void Dispose()
 				windowRadiationTransmittedDown[i].Dispose();
 				solarReflected[i].Dispose();
 				condensationGroundMass[i].Dispose();
-				condensationGroundEnergy[i].Dispose();
 				condensationCloudMass[i].Dispose();
-				condensationCloudEnergy[i].Dispose();
 			}
 
 
