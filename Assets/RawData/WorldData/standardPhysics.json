@@ -34,6 +34,7 @@
 	"WindAirMovementHorizontal": 0.001,
 	"WindAirMovementVertical": 0.01,
 	"HumidityToCloudPercent": 0.1,
+	"CloudDiffusionCoefficient": 0.01,
 	"GlobalCoriolisInfluenceWindUpper": 0.75,
 	"GlobalCoriolisInfluenceWindLower": 0.25,
 	"GlobalCoriolisInfluenceOcean": 0.5,

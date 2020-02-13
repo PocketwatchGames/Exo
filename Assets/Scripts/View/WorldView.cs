@@ -735,6 +735,7 @@ public class WorldView : MonoBehaviour {
 		s += "Elevation: " + terrain.Elevation.ToString("0.000") + " m\n";
 		s += "H2O Depth: " + dependent.WaterDepth[ActiveCellIndex].ToString("0.000") + " m\n";
 		s += "Ice Depth: " + (state.IceMass[ActiveCellIndex] / WorldData.MassIce).ToString("0.000") + " m\n";
+		s += "Ice Temperature: " + GetTemperatureString(state.IceTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1) + " m\n";
 		s += "Rainfall: " + (display.Rainfall[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
 		s += "Evaporation: " + (display.Evaporation[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
 		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";

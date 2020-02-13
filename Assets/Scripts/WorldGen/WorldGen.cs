@@ -190,7 +190,7 @@ public static class WorldGen {
 
 			float surfaceWaterMass = state.WaterMass[worldData.WaterLayers-1][i];
 			float iceMass = math.min(surfaceWaterMass, worldData.FullIceCoverage * WorldData.MassIce * Mathf.Clamp01(-(airTemperaturePotential - WorldData.FreezingTemperature) / 10));
-			state.IceTemperature[i] = WorldData.FreezingTemperature;
+			state.IceTemperature[i] = iceMass > 0 ? airTemperaturePotential : 0;
 			float waterAndIceDepth = waterDepth + iceMass / WorldData.MassIce;
 
 			float waterCoverage = Mathf.Clamp01(waterDepth / worldData.FullWaterCoverage);
@@ -265,7 +265,6 @@ public static class WorldGen {
 				LayerHeight = dependent.LayerHeight[j],
 				AirMass = dependent.AirMass[j],
 				PotentialEnergy = dependent.AirPotentialEnergy[j],
-				WindHorizontal = dependent.WindHorizontal[j],
 				WindVertical = dependent.WindVertical[j],
 
 				Temperature = state.AirTemperature[j],

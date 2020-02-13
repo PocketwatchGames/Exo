@@ -13,6 +13,8 @@ public struct StaticState {
 	public float CellSurfaceArea;
 	public float CellDiameter;
 	public float InverseCellDiameter;
+	public float CoordDiameter;
+	public float InverseCoordDiameter;
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
@@ -72,6 +74,8 @@ public struct StaticState {
 				}
 			}
 		}
+		CoordDiameter = math.length(Coordinate[0] - Coordinate[Neighbors[0]]);
+		InverseCoordDiameter = 1.0f / CoordDiameter;
 
 		SortedDictionary<float, SortedDictionary<float, int>> vertsByCoord = new SortedDictionary<float, SortedDictionary<float, int>>();
 		for (int i = 0; i < Coordinate.Length; i++)
