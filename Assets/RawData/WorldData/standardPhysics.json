@@ -1,5 +1,5 @@
 {
-	"AirLayers": 3,
+	"AirLayers": 2,
 	"WaterLayers": 3,
 	
 	"SecondsPerTick": 3600,
@@ -27,7 +27,8 @@
 	"MountainUpdraftWindSpeed": 0.1,
 	"MaxTerrainNormalForFriction": 0.25,
 	"AirMassDiffusionSpeedHorizontal": 0.01,
-	"AirMassDiffusionSpeedVertical": 0.1,
+	"AirMassDiffusionSpeedVertical": 0.01,
+	"MaxBouyancy": 0.1,
 	"WindOceanFriction": 0.2,
 	"WindIceFriction": 0.1,
 	"WindLandFriction": 0.5,
@@ -76,7 +77,7 @@
 	"RainDropCoalescenceWind": 0.1,
 	"rainDropDragCoefficient": 0.5,
 	"rainDropMaxSize": 0.004,
-	"rainDropMinSize": 0.00001,
+	"rainDropMinSize": 0.000002,
 	"CloudDissapationRateWind": 0.1,
 	"CloudDissapationRateDryAir": 0.1,
 	"DewPointElevationPerDegree": 67.73,

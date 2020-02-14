@@ -109,7 +109,7 @@ public static class WorldGen {
 
 			float airTemperatureSurface = airTemperaturePotential + WorldData.TemperatureLapseRate * surfaceElevation;
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity, 1.0f);
-			float cloudDropletMass = GetPerlinMinMax(pos.x, pos.y, pos.z, 1.0f, 2001, 0, 1) * relativeHumidity * Mathf.Pow(cloudMass, 2) * worldData.rainDropMaxSize;
+			float cloudDropletMass = WorldData.MassWater * math.pow(worldData.rainDropMinSize, 3) * 4 / 3 *math.PI;
 			float cloudElevation = 5000;
 			float cloudTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * cloudElevation;
 //			float totalAirMass = worldGenData.TroposphereMass * (1.0f - surfaceElevation / worldData.TropopauseElevation);
@@ -132,7 +132,7 @@ public static class WorldGen {
 					layerHeight = worldData.TropopauseElevation - surfaceElevation - worldData.BoundaryZoneElevation;
 				} else
 				{
-					layerHeight = 50000 - worldData.TropopauseElevation;
+					layerHeight = worldData.stratosphereElevation - worldData.TropopauseElevation;
 				}
 				float layerMidHeight = layerElevation + layerHeight / 2;
 				float airTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * layerMidHeight;
@@ -140,7 +140,7 @@ public static class WorldGen {
 				float airMass = Atmosphere.GetStandardAirMass(layerElevation, layerHeight, state.PlanetState.Gravity);
 				float vaporMass = GetWaterVaporMass(ref worldData, airTemperature, relativeHumidity, airMass, inverseDewPointTemperatureRange);
 				state.AirVapor[j][i] = vaporMass;
-				state.AirVelocity[j][i] = 0;
+				state.Wind[j][i] = 0;
 				state.AirTemperature[j][i] = airTemperature;
 				dependent.AirMass[j][i] = airMass;
 				dependent.LayerElevation[j][i] = layerElevation;
@@ -254,6 +254,7 @@ public static class WorldGen {
 			updateDependenciesJobHandles.Add(updateDependentWaterLayerJob.Schedule(staticState.Count, batchCount));
 		}
 		JobHandle lowerAirHandle = default(JobHandle);
+		JobHandle updateDependentAirLayerJobHandle = default(JobHandle);
 		for (int j = 0; j < worldData.AirLayers; j++)
 		{
 			var updateDependentAirLayerJob = new UpdateDependentAirLayerJob()
@@ -265,21 +266,35 @@ public static class WorldGen {
 				LayerHeight = dependent.LayerHeight[j],
 				AirMass = dependent.AirMass[j],
 				PotentialEnergy = dependent.AirPotentialEnergy[j],
-				WindVertical = dependent.WindVertical[j],
+				AirHumidityRelativeCloud = dependent.AirHumidityRelativeCloud,
+				AirLayerCloud = dependent.AirLayerCloud,
+				AirMassCloud = dependent.AirMassCloud,
+				AirPressureCloud = dependent.AirPressureCloud,
+				AirTemperatureCloud = dependent.AirTemperatureCloud,
+				AirVaporCloud = dependent.AirVaporCloud,
+				WindAtCloudElevation = dependent.WindAtCloudElevation,
+				WindVerticalAtCloudElevation = dependent.WindVerticalAtCloudElevation,
 
-				Temperature = state.AirTemperature[j],
+				Wind = state.Wind[j],
+				WindVertical = state.WindVertical[j],
+				CloudDropletMass = state.CloudDropletMass,
+				CloudElevation = state.CloudElevation,
+				CloudMass = state.CloudMass,
+				CloudTemperature = state.CloudTemperature,
+				AirTemperature = state.AirTemperature[j],
 				VaporMass = state.AirVapor[j],
 				IceMass = state.IceMass,
 				Gravity = state.PlanetState.Gravity,
 				DewPointZero = worldData.DewPointZero,
 				InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint
+				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
+				LayerIndex = j,
 			};
-			var h = updateDependentAirLayerJob.Schedule(staticState.Count, batchCount);
-			updateDependenciesJobHandles.Add(h);
+			updateDependentAirLayerJobHandle = updateDependentAirLayerJob.Schedule(staticState.Count, batchCount, updateDependentAirLayerJobHandle);
+			updateDependenciesJobHandles.Add(updateDependentAirLayerJobHandle);
 			if (j == 0)
 			{
-				lowerAirHandle = h;
+				lowerAirHandle = updateDependentAirLayerJobHandle;
 			}
 		}
 
@@ -291,10 +306,14 @@ public static class WorldGen {
 			VegetationCoverage = dependent.VegetationCoverage,
 			WaterDepth = dependent.WaterDepth,
 			SurfaceAirTemperature = dependent.SurfaceAirTemperature,
+			CloudEnergy = dependent.CloudEnergy,
+			IceEnergy = dependent.IceEnergy,
 
 			WaterSaltMass = waterSaltMass,
 			CloudMass = state.CloudMass,
+			CloudTemperature = state.CloudTemperature,
 			IceMass = state.IceMass,
+			IceTemperature = state.IceTemperature,
 			Terrain = state.Terrain,
 			worldData = worldData,
 			LowerAirTemperature = state.AirTemperature[0],

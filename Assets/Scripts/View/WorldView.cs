@@ -22,8 +22,9 @@ public class WorldView : MonoBehaviour {
 		UpperAirTemperature,
 		Pressure,
 		VerticalWind,
-		AbsoluteHumidity,
-		RelativeHumidity,
+		AbsoluteHumidityLower,
+		RelativeHumidityLower,
+		AbsoluteHumidityUpper,
 		CloudMass,
 		CloudTemperature,
 		CloudDropletMass,
@@ -602,17 +603,20 @@ public class WorldView : MonoBehaviour {
 		float ticksPerYear = Sim.WorldData.TicksPerSecond * 60 * 60 * 24 * 365;
 		switch (activeOverlay)
 		{
-			case MeshOverlay.AbsoluteHumidity:
+			case MeshOverlay.AbsoluteHumidityLower:
 				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, dependentState.AirHumidityAbsolute[0]);
 				return true;
-			case MeshOverlay.RelativeHumidity:
+			case MeshOverlay.AbsoluteHumidityUpper:
+				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityAbsolute[1]);
+				return true;
+			case MeshOverlay.RelativeHumidityLower:
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[0]);
 				return true;
 			case MeshOverlay.LowerAirTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[0]);
 				return true;
 			case MeshOverlay.UpperAirTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[Sim.WorldData.AirLayers - 1]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[1]);
 				return true;
 			case MeshOverlay.Pressure:
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure);
@@ -645,7 +649,7 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 				return true;
 			case MeshOverlay.VerticalWind:
-				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedRainbow, dependentState.WindVertical[0]);
+				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedRainbow, simState.WindVertical[0]);
 				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
@@ -657,10 +661,10 @@ public class WorldView : MonoBehaviour {
 		switch (activeOverlay)
 		{
 			case WindOverlay.LowerAirWind:
-				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.AirVelocity[0]);
+				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.Wind[0]);
 				return true;
 			case WindOverlay.UpperAirWind:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.AirVelocity[Sim.WorldData.AirLayers-1]);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[Sim.WorldData.AirLayers-1]);
 				return true;
 			case WindOverlay.ShallowWaterCurrent:
 				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, false, simState.WaterVelocity[Sim.WorldData.WaterLayers-1]);
@@ -747,20 +751,27 @@ public class WorldView : MonoBehaviour {
 		if (ActiveCellIndex < 0)
 			return "";
 
+		float cloudMass = state.CloudMass[ActiveCellIndex];
+		int upperAtmosphereLayerIndex = 1;
 		string s = "";
 		s += "Surface Temp: " + GetTemperatureString(state.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 1) + "\n";
 		s += "Surface Pressure: " + display.Pressure[ActiveCellIndex].ToString("0") + " Pa\n";
-		s += "Surface Wind Horz: (" + state.AirVelocity[0][ActiveCellIndex].x.ToString("0.0") + ", " + state.AirVelocity[0][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
-		s += "Surface Wind Vert: " + dependent.WindVertical[0][ActiveCellIndex].ToString("0.0") + " m/s\n";
+		s += "Surface Wind Horz: (" + state.Wind[0][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[0][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
+		s += "Surface Wind Vert: " + state.WindVertical[0][ActiveCellIndex].ToString("0.0") + " m/s\n";
 		s += "Surface Humidity: " + (dependent.AirHumidityRelative[0][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
-		s += "Mid Temp: " + GetTemperatureString(state.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Upper Temp: " + GetTemperatureString(state.AirTemperature[2][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Cloud Temp: " + GetTemperatureString(state.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+//		s += "Mid Temp: " + GetTemperatureString(state.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Upper Temp: " + GetTemperatureString(state.AirTemperature[upperAtmosphereLayerIndex][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+		s += "Upper Humidity: " + (dependent.AirHumidityRelative[upperAtmosphereLayerIndex][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
 		s += "Cloud Mass: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg\n";
-		s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater * state.CloudMass[ActiveCellIndex])).ToString("0.000") + " nm3\n";
+		if (cloudMass > 0) {
+			s += "Cloud Temp: " + GetTemperatureString(state.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
+			s += "Cloud Elevation: " + (state.CloudElevation[ActiveCellIndex]).ToString("0") + " m\n";
+			s += "Cloud Velocity Vert: " + (state.CloudVelocityVertical[ActiveCellIndex]).ToString("0") + " m/s\n";
+			s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater* cloudMass)).ToString("0.000") + " nm3\n";
+		}
 		s += "Air Mass 0: " + dependent.AirMass[0][ActiveCellIndex].ToString("0") + " kg\n";
 		s += "Air Mass 1: " + dependent.AirMass[1][ActiveCellIndex].ToString("0") + " kg\n";
-		s += "Air Mass 2: " + dependent.AirMass[2][ActiveCellIndex].ToString("0") + " kg\n";
+//		s += "Air Mass 2: " + dependent.AirMass[2][ActiveCellIndex].ToString("0") + " kg\n";
 		return s;
 	}
 	private string GetCellInfoGround(ref SimState state, ref DependentState dependent)

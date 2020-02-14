@@ -1978,6 +1978,7 @@ MonoBehaviour:
     MaxTerrainNormalForFriction: 0.25
     AirMassDiffusionSpeedHorizontal: 0.1
     AirMassDiffusionSpeedVertical: 0.1
+    MaxBouyancy: 0
     WindOceanFriction: 0.2
     WindIceFriction: 0.1
     WindLandFriction: 0.5
