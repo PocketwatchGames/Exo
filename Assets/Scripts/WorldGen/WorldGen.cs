@@ -273,10 +273,8 @@ public static class WorldGen {
 				AirTemperatureCloud = dependent.AirTemperatureCloud,
 				AirVaporCloud = dependent.AirVaporCloud,
 				WindAtCloudElevation = dependent.WindAtCloudElevation,
-				WindVerticalAtCloudElevation = dependent.WindVerticalAtCloudElevation,
 
 				Wind = state.Wind[j],
-				WindVertical = state.WindVertical[j],
 				CloudDropletMass = state.CloudDropletMass,
 				CloudElevation = state.CloudElevation,
 				CloudMass = state.CloudMass,

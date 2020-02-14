@@ -154,7 +154,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		terrainPosition = icosphere * ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
 		waterPosition = icosphere * ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius * math.saturate(waterDepth / roughness);
 		surfacePosition = icosphere * ((elevation + math.max(roughness, waterDepth)) * TerrainScale + PlanetRadius) / PlanetRadius;
-		cloudPosition = icosphere * (CloudElevation[i] * TerrainScale + PlanetRadius) / PlanetRadius;
+		cloudPosition = icosphere * ((CloudElevation[i] + 100) * TerrainScale + PlanetRadius) / PlanetRadius;
 
 		if (WindOverlayActive)
 		{
