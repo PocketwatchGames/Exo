@@ -762,7 +762,6 @@ public class WorldView : MonoBehaviour {
 		if (cloudMass > 0) {
 			s += "Cloud Temp: " + GetTemperatureString(state.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 			s += "Cloud Elevation: " + (state.CloudElevation[ActiveCellIndex]).ToString("0") + " m\n";
-			s += "Cloud Velocity Vert: " + (state.CloudVelocityVertical[ActiveCellIndex]).ToString("0") + " m/s\n";
 			s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater* cloudMass)).ToString("0.000") + " nm3\n";
 		}
 		s += "Air Mass 0: " + dependent.AirMass[0][ActiveCellIndex].ToString("0") + " kg\n";

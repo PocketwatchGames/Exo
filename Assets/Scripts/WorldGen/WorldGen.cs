@@ -116,7 +116,7 @@ public static class WorldGen {
 
 
 			float waterTemperatureSurface = Mathf.Max(WorldData.FreezingTemperature, airTemperaturePotential + 2);
-			float waterTemperatureBottom = math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / (1.0f + waterDepth / worldData.WaterTemperatureDepthFalloff)) + WorldData.FreezingTemperature;
+			float waterTemperatureBottom = waterDepth > 0 ? math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / (1.0f + waterDepth / worldData.WaterTemperatureDepthFalloff)) + WorldData.FreezingTemperature : waterTemperatureSurface;
 
 			float layerElevation = surfaceElevation;
 			float upperAirLayerHeight = (worldData.TropopauseElevation - surfaceElevation - worldData.BoundaryZoneElevation) / (worldData.AirLayers - 1);

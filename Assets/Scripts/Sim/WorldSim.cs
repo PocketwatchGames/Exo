@@ -142,7 +142,7 @@ public void Dispose()
 
 	}
 
-	public void Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex)
+	public void Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex, bool checkForDegeneracy, bool logState, int logStateIndex)
 	{
 		JobHandle lastJobHandle = default(JobHandle);
 		for (int tick = 0; tick < ticksToAdvance; tick++)
@@ -363,7 +363,7 @@ public void Dispose()
 				WindowRadiationTransmittedDown = windowRadiationTransmittedDown[_cloudLayer],
 
 				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
-				Emissivity = 0, // WorldData.EmissivityWater, // TODO: remove the thermal emissiveness?  it emits too much in the case of small clouds.  this could also be a problem for shallow water!
+				Emissivity = 0, /*WorldData.EmissivityWater,*/ // TODO: limit emissiveness when mass is small to surrounding air
 				Energy = dependent.CloudEnergy,
 				Temperature = lastState.CloudTemperature,
 				SurfaceArea = dependent.CloudCoverage,
@@ -467,7 +467,7 @@ public void Dispose()
 						WaterAbsorptivity = worldData.AbsorptivityWaterLiquid,
 						CarbonAbsorptivity = worldData.AbsorptivityCarbonDioxide,
 						LayerIndex = airLayer,
-						FromTop = false
+						FromTop = false,
 					};
 					thermalInUpJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
@@ -592,7 +592,7 @@ public void Dispose()
 						WaterAbsorptivity = worldData.AbsorptivityWaterLiquid,
 						CarbonAbsorptivity = worldData.AbsorptivityCarbonDioxide,
 						LayerIndex = airLayer,
-						FromTop = true
+						FromTop = true,
 					};
 					thermalInDownJobHandles[j] = thermalInJob.Schedule(_cellCount, _batchCount, thermalInDependenciesHandle);
 				}
@@ -698,7 +698,6 @@ public void Dispose()
 				Elevation = lastState.CloudElevation,
 				DropletSize = lastState.CloudDropletMass,
 				Velocity = lastState.CloudVelocity,
-				VelocityVertical = lastState.CloudVelocityVertical,
 				Neighbors = staticState.Neighbors,
 				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
 			};
@@ -934,7 +933,6 @@ public void Dispose()
 				DropletMass = nextState.CloudDropletMass,
 				CloudElevation = nextState.CloudElevation,
 				Velocity = nextState.CloudVelocity,
-				VelocityVertical = nextState.CloudVelocityVertical,
 				CloudEvaporationMass = cloudEvaporationMass,
 				RainfallWaterMass = rainfallWaterMass,
 				SolarRadiationIn = solarRadiationIn[_cloudLayer],
@@ -947,7 +945,6 @@ public void Dispose()
 				Diffusion = diffusionCloud,
 				LastDropletMass = lastState.CloudDropletMass,
 				LastCloudElevation = lastState.CloudElevation,
-				LastVelocityVertical = lastState.CloudVelocityVertical,
 				LastWind = dependent.WindAtCloudElevation,
 				AirMassCloud = dependent.AirMassCloud,
 				WaterVaporCloud = dependent.AirVaporCloud,
@@ -1320,6 +1317,45 @@ public void Dispose()
 			lastJobHandle = JobHandle.CombineDependencies(updateDependenciesJobHandles);
 			lastJobHandle.Complete();
 
+			if (checkForDegeneracy)
+			{
+				bool degen = false;
+				SortedSet<int> degenIndices = new SortedSet<int>();
+				List<string> degenVarNames = new List<string>();
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 400, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
+				degen |= CheckDegen(_cellCount, degenIndices, "CloudElevation", nextState.CloudElevation, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "CloudTemperature", nextState.CloudTemperature, 0, 400, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 400, degenVarNames);
+				for (int i = 0; i < _airLayers; i++) {
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperature[i], 0, 400, degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], degenVarNames);
+				}
+				for (int i=0;i<_waterLayers;i++)
+				{
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterMass" + i, nextState.WaterMass[i], degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterSaltMass" + i, nextState.WaterSaltMass[i], degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], degenVarNames);
+				}
+				if (degen)
+				{
+					foreach (var i in degenIndices)
+					{
+						PrintState("Degenerate", i, staticState, nextState, degenVarNames);
+						PrintDependentState("Dependent Vars", i, dependent);
+						PrintState("Last State", i, staticState, lastState, new List<string>());
+					}
+					Debug.Break();
+				}
+			}
+
+			if (logState)
+			{
+				PrintState("State", logStateIndex, staticState, nextState, new List<string>());
+				PrintDependentState("Dependent Vars", logStateIndex, dependent);
+			}
 
 			if (tick == ticksToAdvance-1)
 			{
@@ -1433,5 +1469,104 @@ public void Dispose()
 		}
 
 
+	}
+
+	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, List<string> degenVarNames)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			float v = values[i];
+			if (!math.isfinite(v))
+			{
+				degenVarNames.Add(name);
+				degenIndices.Add(i);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static bool CheckDegenPosValues(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, List<string> degenVarNames)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			float v = values[i];
+			if (!math.isfinite(v) || v < 0)
+			{
+				degenVarNames.Add(name);
+				degenIndices.Add(i);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static bool CheckDegenMinMaxValues(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, float min, float max, List<string> degenVarNames)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			float v = values[i];
+			if (!math.isfinite(v) || v < min || v > max)
+			{
+				degenVarNames.Add(name);
+				degenIndices.Add(i);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public void PrintState(string title, int i, StaticState staticState, SimState state, List<string> degenVarNames)
+	{
+		StringBuilder s = new StringBuilder();
+		s.Append(title + " Index: " + i + " Time: " + state.PlanetState.Ticks);
+		foreach (var n in degenVarNames)
+		{
+			s.Append(" | " + n);
+		}
+		s.AppendLine("");
+		s.AppendLine("X: " + staticState.Coordinate[i].x + " Y: " + staticState.Coordinate[i].y);
+		s.AppendLine("Elevation" + ": " + state.Terrain[i].Elevation);
+		s.AppendLine("Roughness" + ": " + state.Terrain[i].Roughness);
+		s.AppendLine("SoilFertility" + ": " + state.Terrain[i].SoilFertility);
+		s.AppendLine("Vegetation" + ": " + state.Terrain[i].Vegetation);
+		s.AppendLine("TerrainTemperature" + ": " + state.TerrainTemperature[i]);
+		s.AppendLine("CloudMass" + ": " + state.CloudMass[i]);
+		s.AppendLine("CloudElevation" + ": " + state.CloudElevation[i]);
+		s.AppendLine("CloudTemperature" + ": " + state.CloudTemperature[i]);
+		s.AppendLine("CloudDropletMass" + ": " + state.CloudDropletMass[i]);
+		s.AppendLine("IceMass" + ": " + state.IceMass[i]);
+		s.AppendLine("IceTemperature" + ": " + state.IceTemperature[i]);
+		for (int j = 0; j < _waterLayers; j++)
+		{
+			s.AppendLine("WaterMass" + j + ": " + state.WaterMass[j][i]);
+			s.AppendLine("WaterSaltMass" + j + ": " + state.WaterSaltMass[j][i]);
+			s.AppendLine("WaterTemperature" + j + ": " + state.WaterTemperature[j][i]);
+			s.AppendLine("WaterVelocity" + j + ": " + state.WaterVelocity[j][i]);
+		}
+		for (int j = 0; j < _airLayers; j++)
+		{
+			s.AppendLine("AirTemperature" + j + ": " + state.AirTemperature[j][i]);
+			s.AppendLine("AirVapor" + j + ": " + state.AirVapor[j][i]);
+			s.AppendLine("Wind" + j + ": " + state.Wind[j][i]);
+		}
+		Debug.Log(s);
+	}
+	public void PrintDependentState(string title, int i, DependentState dependent)
+	{
+		StringBuilder s = new StringBuilder();
+		s.AppendLine(title + " Index: " + i);
+		s.AppendLine("Surface Elevation" + ": " + dependent.SurfaceElevation[i]);
+		s.AppendLine("Water Depth" + ": " + dependent.WaterDepth[i]);
+		s.AppendLine("Ice Coverage" + ": " + dependent.IceCoverage[i]);
+		s.AppendLine("Cloud Coverage" + ": " + dependent.CloudCoverage[i]);
+		for (int j = 0; j < _waterLayers; j++)
+		{
+			s.AppendLine("Water Coverage" + ": " + dependent.WaterCoverage[j][i]);
+		}
+		for (int j = 0; j < _airLayers; j++)
+		{
+		}
+		Debug.Log(s);
 	}
 }

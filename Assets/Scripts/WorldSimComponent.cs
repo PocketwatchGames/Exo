@@ -10,6 +10,9 @@ public class WorldSimComponent : MonoBehaviour
 
 	public int Seed;
 	public int Subdivisions = 5;
+	public bool CheckForDegeneracy;
+	public bool LogState;
+	public int LogStateIndex;
 	public TextAsset WorldGenAsset;
 	public TextAsset WorldDataAsset;
 	public WorldData WorldData;
@@ -99,7 +102,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
-		_worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref _displayState, ref StaticState, ref WorldData, ref _activeSimState);
+		_worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref _displayState, ref StaticState, ref WorldData, ref _activeSimState, CheckForDegeneracy, LogState, LogStateIndex);
 
 		OnTick?.Invoke();
 	}
