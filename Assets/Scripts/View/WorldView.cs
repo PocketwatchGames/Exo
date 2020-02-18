@@ -427,14 +427,14 @@ public class WorldView : MonoBehaviour {
 			for (int i = 0; i < _windArrows.Length; i++)
 			{
 				var wind = _renderStates[_curRenderState].VelocityArrow[i];
-				bool visible = (wind.x == 0 && wind.y  == 0);
+				bool visible = !(wind.x == 0 && wind.y  == 0);
 				_windArrows[i].SetActive(visible);
 				if (visible)
 				{
 					var pos = _renderStates[_curRenderState].SurfacePosition[i];
 					_windArrows[i].transform.localPosition = pos;
 					_windArrows[i].transform.localRotation = Quaternion.LookRotation(-pos, Vector3.Cross(new Vector3(wind.x, wind.y, 0), pos));
-					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.length(wind);
+					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, math.length(wind));
 				}
 			}
 		}

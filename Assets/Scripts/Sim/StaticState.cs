@@ -18,12 +18,7 @@ public struct StaticState {
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
-	public NativeArray<StaticWindInfo> WindInfo;
-
-	public struct StaticWindInfo {
-		public float coriolisParam;
-		public float inverseCoriolisParam;
-	}
+	public NativeArray<float> CoriolisMultiplier;
 
 
 	public void Init(float radius, Icosphere icosphere, ref WorldData worldData)
@@ -32,7 +27,7 @@ public struct StaticState {
 		Count = icosphere.Vertices.Length;
 		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
 		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent); ;
-		WindInfo = new NativeArray<StaticWindInfo>(Count, Allocator.Persistent); ;
+		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent); ;
 		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
@@ -89,11 +84,7 @@ public struct StaticState {
 			}
 			vertsAtLatitude.Add(Coordinate[i].x, i);
 
-			WindInfo[i] = new StaticWindInfo()
-			{
-				coriolisParam = math.sin(latitude),
-				inverseCoriolisParam = 1.0f / math.sin(latitude)
-			};
+			CoriolisMultiplier[i] = math.sin(latitude);
 
 		}
 
@@ -105,7 +96,7 @@ public struct StaticState {
 		Neighbors.Dispose();
 		Coordinate.Dispose();
 		SphericalPosition.Dispose();
-		WindInfo.Dispose();
+		CoriolisMultiplier.Dispose();
 	}
 
 	public int GetWaterIndex(int layer, int i)

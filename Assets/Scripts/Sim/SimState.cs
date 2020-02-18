@@ -134,7 +134,7 @@ public struct DependentState {
 	public NativeArray<float>[] AirPotentialEnergy;
 	public NativeArray<float>[] LayerHeight;
 	public NativeArray<float>[] LayerElevation;
-	public NativeArray<float2> WindAtCloudElevation;
+	public NativeArray<float2> PressureGradientAtCloudElevation;
 	public NativeArray<float> AirMassCloud;
 	public NativeArray<float> AirVaporCloud;
 	public NativeArray<float> AirTemperatureCloud;
@@ -153,7 +153,7 @@ public struct DependentState {
 		IceEnergy = new NativeArray<float>(count, Allocator.Persistent);
 		CloudEnergy = new NativeArray<float>(count, Allocator.Persistent);
 		WindVerticalCloud = new NativeArray<float>(count, Allocator.Persistent);
-		WindAtCloudElevation = new NativeArray<float2>(count, Allocator.Persistent);
+		PressureGradientAtCloudElevation = new NativeArray<float2>(count, Allocator.Persistent);
 		AirMassCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirVaporCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirTemperatureCloud = new NativeArray<float>(count, Allocator.Persistent);
@@ -200,7 +200,7 @@ public struct DependentState {
 		IceEnergy.Dispose();
 		CloudEnergy.Dispose();
 		WindVerticalCloud.Dispose();
-		WindAtCloudElevation.Dispose();
+		PressureGradientAtCloudElevation.Dispose();
 		AirMassCloud.Dispose();
 		AirVaporCloud.Dispose();
 		AirTemperatureCloud.Dispose();

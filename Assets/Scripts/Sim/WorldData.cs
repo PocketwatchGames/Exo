@@ -38,9 +38,10 @@ public struct WorldData {
 	public float AirMassDiffusionSpeedHorizontal;
 	public float AirMassDiffusionSpeedVertical;
 	public float MaxBouyancy;
-	public float WindOceanFriction;
+	public float WindWaterFriction;
 	public float WindIceFriction;
-	public float WindLandFriction;
+	public float WindTerrainFriction;
+	public float WindVegetationFriction;
 	public float WindAirMovementHorizontal;
 	public float WindAirMovementVertical;
 	public float CloudDiffusionCoefficient;
@@ -181,6 +182,7 @@ public struct WorldData {
 	public const float PressureExponent = 1.0f / (UniversalGasConstant * TemperatureLapseRate);
 	public const float DryAirAdiabaticLapseRate = AdiabaticLapseRate / SpecificHeatAtmosphere;
 	public const float inverseSpecificHeatIce = 1.0f / SpecificHeatIce;
+	public const float InverseDensityAir = 1.0f / DensityAir;
 
 	[NonSerialized]	public float EvapTemperatureRange;
 	[NonSerialized] public float TicksPerSecond;

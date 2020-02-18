@@ -1954,6 +1954,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Seed: 0
   Subdivisions: 5
+  CheckForDegeneracy: 0
+  LogState: 0
+  LogStateIndex: 0
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
   WorldDataAsset: {fileID: 4900000, guid: a0e62a68ba207124092d1d775e028c05, type: 3}
   WorldData:

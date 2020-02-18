@@ -61,6 +61,7 @@ public static class WorldGen {
 		float inverseDewPointTemperatureRange = 1.0f / worldData.DewPointTemperatureRange;
 
 		var waterSaltMass = new NativeArray<WaterSaltMass>(staticState.Count, Allocator.TempJob);
+		var pressureGradient = new NativeArray<float2>(staticState.Count, Allocator.TempJob);
 		dependent.Init(staticState.Count, worldData.AirLayers, worldData.WaterLayers);
 
 
@@ -272,9 +273,9 @@ public static class WorldGen {
 				AirPressureCloud = dependent.AirPressureCloud,
 				AirTemperatureCloud = dependent.AirTemperatureCloud,
 				AirVaporCloud = dependent.AirVaporCloud,
-				WindAtCloudElevation = dependent.WindAtCloudElevation,
+				PressureGradientAtCloudElevation = dependent.PressureGradientAtCloudElevation,
 
-				Wind = state.Wind[j],
+				PressureGradient = pressureGradient,
 				CloudDropletMass = state.CloudDropletMass,
 				CloudElevation = state.CloudElevation,
 				CloudMass = state.CloudMass,
@@ -321,6 +322,7 @@ public static class WorldGen {
 		JobHandle.CompleteAll(updateDependenciesJobHandles);
 		updateDependenciesJobHandles.Dispose();
 		waterSaltMass.Dispose();
+		pressureGradient.Dispose();
 	}
 
 	static public float GetWaterMass(WorldData worldData, float depth, float temperature, float salinityPSU)
