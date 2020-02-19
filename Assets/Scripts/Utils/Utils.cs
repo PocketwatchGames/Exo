@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Unity.Mathematics;
+using Unity.Jobs;
 
 public static class Utils {
 	public static float Sqr(float x) { return x * x; }
@@ -56,3 +57,37 @@ public struct Optional<T> {
 	}
 }
 
+[Serializable]
+public class JobHelper {
+
+	public bool Enabled = true;
+	public bool Async = true;
+	private int _cellCount;
+
+	public JobHelper(int cellCount)
+	{
+		_cellCount = cellCount;
+	}
+
+	public static int DefaultBatchCount = 100;
+	public JobHandle Run<T>(T job, JobHandle dependences = default(JobHandle)) where T : struct, IJobParallelFor
+	{
+		return Run(job, Enabled, Async, _cellCount, DefaultBatchCount, dependences);
+	}
+
+	public static JobHandle Run<T>(T job, bool enabled, bool async, int count, int batchCount, JobHandle dependences) where T : struct, IJobParallelFor
+	{
+		if (enabled)
+		{
+			if (async)
+			{
+				return job.Schedule(count, batchCount, dependences);
+			}
+			dependences.Complete();
+			job.Run(count);
+			return default(JobHandle);
+		}
+		return dependences;
+	}
+
+}

@@ -20,7 +20,7 @@ public class WorldView : MonoBehaviour {
 		ShallowWaterSalinity,
 		LowerAirTemperature,
 		UpperAirTemperature,
-		Pressure,
+		LowerPressure,
 		VerticalWind,
 		AbsoluteHumidityLower,
 		RelativeHumidityLower,
@@ -618,8 +618,8 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.UpperAirTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[1]);
 				return true;
-			case MeshOverlay.Pressure:
-				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure);
+			case MeshOverlay.LowerPressure:
+				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[0]);
 				return true;
 			case MeshOverlay.ShallowWaterTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 1]);
@@ -752,7 +752,7 @@ public class WorldView : MonoBehaviour {
 		int upperAtmosphereLayerIndex = 1;
 		string s = "";
 		s += "Surface Temp: " + GetTemperatureString(state.AirTemperature[0][ActiveCellIndex], ActiveTemperatureUnits, 1) + "\n";
-		s += "Surface Pressure: " + display.Pressure[ActiveCellIndex].ToString("0") + " Pa\n";
+		s += "Surface Pressure: " + display.Pressure[0][ActiveCellIndex].ToString("0") + " Pa\n";
 		s += "Surface Wind Horz: (" + state.Wind[0][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[0][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
 		s += "Surface Humidity: " + (dependent.AirHumidityRelative[0][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
 //		s += "Mid Temp: " + GetTemperatureString(state.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";

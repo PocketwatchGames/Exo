@@ -1066,7 +1066,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &265684097
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1117,9 +1117,9 @@ RectTransform:
   m_Father: {fileID: 579616915}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 50, y: -55}
   m_SizeDelta: {x: 900, y: 100}
   m_Pivot: {x: 0, y: 1}
 --- !u!1001 &279396895
@@ -1982,13 +1982,16 @@ MonoBehaviour:
     AirMassDiffusionSpeedHorizontal: 0.1
     AirMassDiffusionSpeedVertical: 0.1
     MaxBouyancy: 0
-    WindOceanFriction: 0.2
+    WindWaterFriction: 0
     WindIceFriction: 0.1
-    WindLandFriction: 0.5
+    WindTerrainFrictionMin: 0
+    WindTerrainFrictionMax: 0
+    WindVegetationFriction: 0
     WindAirMovementHorizontal: 0.001
     WindAirMovementVertical: 0.01
     CloudDiffusionCoefficient: 0
     HumidityToCloudPercent: 0.1
+    MaxTerrainRoughnessForWindFriction: 0
     GlobalCoriolisInfluenceWindUpper: 0.75
     GlobalCoriolisInfluenceWindLower: 0.5
     GlobalCoriolisInfluenceOcean: 0.5
@@ -2045,6 +2048,151 @@ MonoBehaviour:
     MinTemperatureCanopy: 223.15
     MaxTemperatureCanopy: 323.15
   TimeScale: 0
+  _worldSim:
+    SolarRadiationInJob:
+      Enabled: 0
+      Async: 0
+    UpdateTerrainJob:
+      Enabled: 0
+      Async: 0
+    EmissivityAirJob:
+      Enabled: 0
+      Async: 0
+    EmissivityWaterJob:
+      Enabled: 0
+      Async: 0
+    EmissivityTerrainJob:
+      Enabled: 0
+      Async: 0
+    SolarRadiationAbsorbedAirJob:
+      Enabled: 0
+      Async: 0
+    SolarRadiationAbsorbedIceJob:
+      Enabled: 0
+      Async: 0
+    SolarRadiationAbsorbedWaterJob:
+      Enabled: 0
+      Async: 0
+    SolarRadiationAbsorbedTerrainJob:
+      Enabled: 0
+      Async: 0
+    ThermalOutCloudJob:
+      Enabled: 0
+      Async: 0
+    ThermalOutAirJob:
+      Enabled: 0
+      Async: 0
+    ThermalOutIceJob:
+      Enabled: 0
+      Async: 0
+    ThermalOutWaterJob:
+      Enabled: 0
+      Async: 0
+    ThermalOutTerrainJob:
+      Enabled: 0
+      Async: 0
+    ThermalInUpAirJob:
+      Enabled: 0
+      Async: 0
+    ThermalInUpIceJob:
+      Enabled: 0
+      Async: 0
+    ThermalInUpWaterJob:
+      Enabled: 0
+      Async: 0
+    ThermalInDownAirJob:
+      Enabled: 0
+      Async: 0
+    ThermalInDownIceJob:
+      Enabled: 0
+      Async: 0
+    ThermalInDownWaterJob:
+      Enabled: 0
+      Async: 0
+    ThermalInDownTerrainJob:
+      Enabled: 0
+      Async: 0
+    AirVerticalMovementUpJob:
+      Enabled: 0
+      Async: 0
+    AirVerticalMovementDownJob:
+      Enabled: 0
+      Async: 0
+    PressureGradientForceAirJob:
+      Enabled: 0
+      Async: 0
+    WindFrictionJob:
+      Enabled: 0
+      Async: 0
+    AdvectionAirJob:
+      Enabled: 0
+      Async: 0
+    AdvectionWaterJob:
+      Enabled: 0
+      Async: 0
+    AdvectionCloudJob:
+      Enabled: 0
+      Async: 0
+    ConductionCloudAirJob:
+      Enabled: 0
+      Async: 0
+    ConductionAirIceJob:
+      Enabled: 0
+      Async: 0
+    ConductionAirWaterJob:
+      Enabled: 0
+      Async: 0
+    ConductionAirTerrainJob:
+      Enabled: 0
+      Async: 0
+    ConductionIceWaterJob:
+      Enabled: 0
+      Async: 0
+    ConductionIceTerrainJob:
+      Enabled: 0
+      Async: 0
+    ConductionWaterTerrainJob:
+      Enabled: 0
+      Async: 0
+    EnergyTerrainJob:
+      Enabled: 0
+      Async: 0
+    EnergyCloudJob:
+      Enabled: 0
+      Async: 0
+    EnergyIceJob:
+      Enabled: 0
+      Async: 0
+    EnergyWaterJob:
+      Enabled: 0
+      Async: 0
+    EnergyWaterSurfaceJob:
+      Enabled: 0
+      Async: 0
+    EnergyAirJob:
+      Enabled: 0
+      Async: 0
+    EnergyAirSurfaceJob:
+      Enabled: 0
+      Async: 0
+    StateChangeJob:
+      Enabled: 0
+      Async: 0
+    StateChangeAirLayerJob:
+      Enabled: 0
+      Async: 0
+    UpdateDependentWaterLayerJob:
+      Enabled: 0
+      Async: 0
+    UpdateDependentAirLayerJob:
+      Enabled: 0
+      Async: 0
+    UpdateDependentJob:
+      Enabled: 0
+      Async: 0
+    UpdateWaterSaltMassJob:
+      Enabled: 0
+      Async: 0
 --- !u!4 &365555217
 Transform:
   m_ObjectHideFlags: 0
@@ -2908,7 +3056,7 @@ RectTransform:
   - {fileID: 1468767599}
   - {fileID: 530330401}
   m_Father: {fileID: 1510336705}
-  m_RootOrder: 0
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
@@ -3483,7 +3631,7 @@ RectTransform:
   - {fileID: 159293644}
   - {fileID: 265684099}
   m_Father: {fileID: 1510336705}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -4733,6 +4881,93 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 926602484}
   m_CullTransparentMesh: 0
+--- !u!1 &955071243
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 955071244}
+  - component: {fileID: 955071247}
+  - component: {fileID: 955071246}
+  - component: {fileID: 955071245}
+  m_Layer: 5
+  m_Name: BlankBackground
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &955071244
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 955071243}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1510336705}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &955071245
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 955071243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80bce8a36e1369749b87b003b0b565ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hud: {fileID: 1510336706}
+--- !u!114 &955071246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 955071243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
+  m_RaycastTarget: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &955071247
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 955071243}
+  m_CullTransparentMesh: 0
 --- !u!1 &997923417
 GameObject:
   m_ObjectHideFlags: 0
@@ -5152,7 +5387,7 @@ RectTransform:
   - {fileID: 698635557}
   - {fileID: 329645203}
   m_Father: {fileID: 1510336705}
-  m_RootOrder: 1
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
@@ -6820,6 +7055,7 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_Children:
+  - {fileID: 955071244}
   - {fileID: 501465058}
   - {fileID: 1115973252}
   - {fileID: 579616915}

@@ -105,7 +105,6 @@ public struct PlanetState {
 	public float OrbitSpeed;
 	public float GeothermalHeat;
 	public float SolarRadiation;
-	public float StratosphereMass;
 	public float CarbonDioxide;
 	public float DistanceToSun;
 	public float3 Rotation;
@@ -134,7 +133,6 @@ public struct DependentState {
 	public NativeArray<float>[] AirPotentialEnergy;
 	public NativeArray<float>[] LayerHeight;
 	public NativeArray<float>[] LayerElevation;
-	public NativeArray<float2> PressureGradientAtCloudElevation;
 	public NativeArray<float> AirMassCloud;
 	public NativeArray<float> AirVaporCloud;
 	public NativeArray<float> AirTemperatureCloud;
@@ -153,7 +151,6 @@ public struct DependentState {
 		IceEnergy = new NativeArray<float>(count, Allocator.Persistent);
 		CloudEnergy = new NativeArray<float>(count, Allocator.Persistent);
 		WindVerticalCloud = new NativeArray<float>(count, Allocator.Persistent);
-		PressureGradientAtCloudElevation = new NativeArray<float2>(count, Allocator.Persistent);
 		AirMassCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirVaporCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirTemperatureCloud = new NativeArray<float>(count, Allocator.Persistent);
@@ -200,7 +197,6 @@ public struct DependentState {
 		IceEnergy.Dispose();
 		CloudEnergy.Dispose();
 		WindVerticalCloud.Dispose();
-		PressureGradientAtCloudElevation.Dispose();
 		AirMassCloud.Dispose();
 		AirVaporCloud.Dispose();
 		AirTemperatureCloud.Dispose();
@@ -262,14 +258,19 @@ public struct DisplayState {
 	public NativeArray<float> SolarRadiationAbsorbedSurface;
 	public NativeArray<float> Rainfall;
 	public NativeArray<float> Evaporation;
-	public NativeArray<float> Pressure;
+	public NativeArray<float>[] Pressure;
 
 	public void Init(int count, int airLayers, int waterLayers)
 	{
 		SolarRadiationAbsorbedSurface = new NativeArray<float>(count, Allocator.Persistent);
 		Rainfall = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
-		Pressure = new NativeArray<float>(count, Allocator.Persistent);
+
+		Pressure = new NativeArray<float>[airLayers];
+		for (int i = 0; i < airLayers; i++)
+		{
+			Pressure[i] = new NativeArray<float>(count, Allocator.Persistent);
+		}
 	}
 
 	public void Dispose()
@@ -277,7 +278,10 @@ public struct DisplayState {
 		SolarRadiationAbsorbedSurface.Dispose();
 		Rainfall.Dispose();
 		Evaporation.Dispose();
-		Pressure.Dispose();
+		for (int i = 0; i < Pressure.Length; i++)
+		{
+			Pressure[i].Dispose();
+		}
 	}
 
 }

@@ -44,7 +44,7 @@ public static class WorldGen {
 		_noise.SetFrequency(10);
 		_random = new System.Random(seed);
 
-		staticState.Init(worldGenData.Radius, icosphere, ref worldData);
+		staticState.Init(worldGenData.Radius, icosphere, worldGenData.StratosphereMass, ref worldData);
 
 		state.PlanetState.Gravity = worldGenData.Gravity;
 		state.PlanetState.DistanceToSun = worldGenData.DistanceToSun;
@@ -55,13 +55,13 @@ public static class WorldGen {
 		state.PlanetState.AngularSpeed = math.PI * 2 / (worldGenData.SpinTime * 60 * 60);
 		state.PlanetState.GeothermalHeat = worldGenData.GeothermalHeat;
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
-		state.PlanetState.StratosphereMass = worldGenData.StratosphereMass;
 		state.PlanetState.CarbonDioxide = worldGenData.CarbonDioxide;
 
 		float inverseDewPointTemperatureRange = 1.0f / worldData.DewPointTemperatureRange;
 
 		var waterSaltMass = new NativeArray<WaterSaltMass>(staticState.Count, Allocator.TempJob);
 		var pressureGradient = new NativeArray<float2>(staticState.Count, Allocator.TempJob);
+		var airMassTotal = new NativeArray<float>(staticState.StratosphereMass, Allocator.TempJob);
 		dependent.Init(staticState.Count, worldData.AirLayers, worldData.WaterLayers);
 
 
@@ -137,8 +137,7 @@ public static class WorldGen {
 				}
 				float layerMidHeight = layerElevation + layerHeight / 2;
 				float airTemperature = airTemperaturePotential + WorldData.TemperatureLapseRate * layerMidHeight;
-				float airPressure = GetStandardPressureAtElevation(layerMidHeight, airTemperature, state.PlanetState.Gravity);
-				float airMass = Atmosphere.GetStandardAirMass(layerElevation, layerHeight, state.PlanetState.Gravity);
+				float airMass = Atmosphere.GetAirMass(layerElevation, layerHeight, airTemperature, state.PlanetState.Gravity);
 				float vaporMass = GetWaterVaporMass(ref worldData, airTemperature, relativeHumidity, airMass, inverseDewPointTemperatureRange);
 				state.AirVapor[j][i] = vaporMass;
 				state.Wind[j][i] = 0;
@@ -256,7 +255,7 @@ public static class WorldGen {
 		}
 		JobHandle lowerAirHandle = default(JobHandle);
 		JobHandle updateDependentAirLayerJobHandle = default(JobHandle);
-		for (int j = 0; j < worldData.AirLayers; j++)
+		for (int j = worldData.AirLayers-1; j >= 0; j--)
 		{
 			var updateDependentAirLayerJob = new UpdateDependentAirLayerJob()
 			{
@@ -273,9 +272,8 @@ public static class WorldGen {
 				AirPressureCloud = dependent.AirPressureCloud,
 				AirTemperatureCloud = dependent.AirTemperatureCloud,
 				AirVaporCloud = dependent.AirVaporCloud,
-				PressureGradientAtCloudElevation = dependent.PressureGradientAtCloudElevation,
+				AirMassTotal = airMassTotal,
 
-				PressureGradient = pressureGradient,
 				CloudDropletMass = state.CloudDropletMass,
 				CloudElevation = state.CloudElevation,
 				CloudMass = state.CloudMass,
@@ -323,6 +321,7 @@ public static class WorldGen {
 		updateDependenciesJobHandles.Dispose();
 		waterSaltMass.Dispose();
 		pressureGradient.Dispose();
+		airMassTotal.Dispose();
 	}
 
 	static public float GetWaterMass(WorldData worldData, float depth, float temperature, float salinityPSU)
@@ -343,11 +342,6 @@ public static class WorldGen {
 		return humidity;
 	}
 
-	static public float GetStandardPressureAtElevation(float elevation, float temperature, float gravity)
-	{
-		float pressure = WorldData.StaticPressure * (float)Math.Pow(1.0f + WorldData.TemperatureLapseRate / WorldData.StdTemp * elevation, gravity * WorldData.PressureExponent * WorldData.MolarMassAir);
-		return pressure;
-	}
 
 
 

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 public class HUD : MonoBehaviour
 {
@@ -32,17 +34,25 @@ public class HUD : MonoBehaviour
 	}
 
 // Update is called once per frame
-void Update()
+	void Update()
     {
-		
-		if (Input.GetMouseButtonUp(0))
+		PointerEventData ped = new PointerEventData(EventSystem.current);
+		ped.position = Input.mousePosition;
+		List<RaycastResult> results = new List<RaycastResult>();
+		GetComponent<GraphicRaycaster>().Raycast(ped, results);
+		if (results.Count == 0)
 		{
-			int cellHovered = GetMouseCellIndex();
-			View.SetActiveCell(cellHovered, cellHovered >= 0);
-		} else if (!View.ActiveCellLocked)
-		{
-			View.SetActiveCell(GetMouseCellIndex(), false);
+			if (!View.ActiveCellLocked)
+			{
+				View.SetActiveCell(GetMouseCellIndex(), false);
+			}
 		}
+	}
+
+	public void OnBackgroundClicked()
+	{
+		int cellHovered = GetMouseCellIndex();
+		View.SetActiveCell(cellHovered, cellHovered >= 0);
 	}
 
 	private int GetMouseCellIndex()

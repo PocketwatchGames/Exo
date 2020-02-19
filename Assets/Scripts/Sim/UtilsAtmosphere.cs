@@ -17,44 +17,45 @@ public static class Atmosphere {
 
 
 	[BurstCompile]
-	static public float GetAbsolutePressure(float airMass, float waterVapor, float layerHeight, float temperature)
+	static public float GetPressureAtElevation(float elevation, float gravity, float referencePressure, float referenceTemperature, float referenceElevation)
 	{
-		return temperature * airMass / (layerHeight * WorldData.MolarMassAir * WorldData.UniversalGasConstant);
+		float pressure = referencePressure * math.pow(referenceTemperature / (referenceTemperature + (elevation - referenceElevation) * WorldData.TemperatureLapseRate), gravity * WorldData.PressureExponent * WorldData.MolarMassAir);
+		return pressure;
 	}
 
 
 	[BurstCompile]
-	static public float GetAbsolutePressureAtElevation(float airMass, float vaporMass, float elevation, float temperature, float gravity)
+	static public float GetElevationAtPressure(float pressure, float referenceTemperature, float referencePressure, float referenceElevation, float gravity)
 	{
-		float temperatureLapse = -WorldData.TemperatureLapseRate * elevation;
-		float pressure = airMass * gravity * math.pow(1.0f - (temperatureLapse) / (temperature + temperatureLapse), gravity * WorldData.PressureExponent * WorldData.MolarMassAir);
+		float elevation = referenceElevation + referenceTemperature / WorldData.TemperatureLapseRate * (math.pow(pressure / referencePressure, -1.0f / (gravity * WorldData.PressureExponent * WorldData.MolarMassAir)) - 1);
+		return elevation;
+	}
+
+	[BurstCompile]
+	static public float GetStandardPressureAtElevation(float elevation, float temperature, float gravity)
+	{
+		float pressure = Atmosphere.GetPressureAtElevation(elevation, gravity, WorldData.StaticPressure, Atmosphere.GetPotentialTemperature(temperature, elevation), 0);
 		return pressure;
 	}
 
 	[BurstCompile]
-	static public float GetBarometricPressure(float temperature, float elevation, float gravity)
+	static public float GetAirMass(float layerElevation, float layerHeight, float temperature, float gravity)
 	{
-		float pressure = WorldData.StaticPressure * math.pow(WorldData.StdTemp / (temperature - elevation * WorldData.TemperatureLapseRate), gravity * WorldData.PressureExponent * WorldData.MolarMassAir);
-		return pressure;
+		float layerMiddle = layerElevation + layerHeight / 2;
+		float standardPressure = GetStandardPressureAtElevation(layerMiddle, temperature, gravity);
+		return standardPressure* layerHeight * WorldData.MolarMassAir / (WorldData.UniversalGasConstant * temperature);
 	}
 
 	//[BurstCompile]
-	//static public float GetElevationAtAbsolutePressure(float pressure, float temperature, float airMass, float vaporMass, float gravity)
+	//static public float GetStandardAirMass(float elevation, float layerHeight, float gravity)
 	//{
-	//	//float elevation = WorldData.StdTemp / WorldData.TemperatureLapseRate * (math.pow(pressure / WorldData.StaticPressure, 1.0f / (gravity * WorldData.PressureExponent * molarMass)) - 1);
-	//	//return elevation;
+	//	float temperatureLapseA = -WorldData.TemperatureLapseRate * elevation;
+	//	float massA = WorldData.StaticPressure / (gravity * math.pow(1.0f - (temperatureLapseA) / (WorldData.StdTemp + temperatureLapseA), gravity * WorldData.PressureExponent * WorldData.MolarMassAir));
+	//	float temperatureLapseB = -WorldData.TemperatureLapseRate * (elevation + layerHeight);
+	//	float massB = WorldData.StaticPressure / (gravity * math.pow(1.0f - (temperatureLapseB) / (WorldData.StdTemp + temperatureLapseB), gravity * WorldData.PressureExponent * WorldData.MolarMassAir));
+	//	//	Debug.Log("A: " + massA + " B: " + massB + " E: " + elevation + " H: " + layerHeight);
+	//	return massA - massB;
 	//}
-
-	[BurstCompile]
-	static public float GetStandardAirMass(float elevation, float layerHeight, float gravity)
-	{
-		float temperatureLapseA = -WorldData.TemperatureLapseRate * elevation;
-		float massA = WorldData.StaticPressure / (gravity * math.pow(1.0f - (temperatureLapseA) / (WorldData.StdTemp + temperatureLapseA), gravity * WorldData.PressureExponent * WorldData.MolarMassAir));
-		float temperatureLapseB = -WorldData.TemperatureLapseRate * (elevation + layerHeight);
-		float massB = WorldData.StaticPressure / (gravity * math.pow(1.0f - (temperatureLapseB) / (WorldData.StdTemp + temperatureLapseB), gravity * WorldData.PressureExponent * WorldData.MolarMassAir));
-	//	Debug.Log("A: " + massA + " B: " + massB + " E: " + elevation + " H: " + layerHeight);
-		return massA - massB;
-	}
 
 	[BurstCompile]
 	static public float GetMolarMassMoistAir(float airMass, float vaporMass)
@@ -62,11 +63,11 @@ public static class Atmosphere {
 		return (WorldData.GasConstantAir * airMass + WorldData.GasConstantWaterVapor * vaporMass) / (airMass + vaporMass);
 	}
 
-	[BurstCompile]
-	static public float GetAirDensity(float absolutePressure, float temperature, float airMass, float vaporMass)
-	{
-		return absolutePressure * GetMolarMassMoistAir(airMass, vaporMass) / (WorldData.UniversalGasConstant * temperature);
-	}
+	//[BurstCompile]
+	//static public float GetAirDensity(float absolutePressure, float temperature, float airMass, float vaporMass)
+	//{
+	//	return absolutePressure / (WorldData.UniversalGasConstant * temperature * GetMolarMassMoistAir(airMass, vaporMass));
+	//}
 
 	[BurstCompile]
 	static public float GetWaterDensityAtElevation(float temperature, float elevation)

@@ -261,31 +261,3 @@ struct LerpJobfloat2 : IJobParallelFor {
 	}
 }
 
-[BurstCompile]
-struct LerpJobfloat : IJobParallelFor {
-	public NativeArray<float> Out;
-	[ReadOnly] public NativeArray<float> Start;
-	[ReadOnly] public NativeArray<float> End;
-	[ReadOnly] public float Progress;
-	public void Execute(int i)
-	{
-		Out[i] = math.lerp(Start[i], End[i], Progress);
-	}
-	public LerpJobfloat(NativeArray<float> a, NativeArray<float> b, float p)
-	{
-		Out = new NativeArray<float>(a.Length, Allocator.TempJob);
-		Start = new NativeArray<float>(a, Allocator.TempJob);
-		End = new NativeArray<float>(b, Allocator.TempJob);
-		Progress = p;
-	}
-	public void CopyAndDispose(ref NativeArray<float> c)
-	{
-		Out.CopyTo(c);
-		Out.Dispose();
-		Start.Dispose();
-		End.Dispose();
-	}
-}
-
-
-

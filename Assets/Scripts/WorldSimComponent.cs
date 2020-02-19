@@ -29,6 +29,8 @@ public class WorldSimComponent : MonoBehaviour
 	public float InverseCellCount { get; private set; }
 
 	private WorldGenData _worldGenData = new WorldGenData();
+
+	[SerializeField]
 	private WorldSim _worldSim;
 	private const int _simStateCount = 2;
 	private SimState[] _simStates;
@@ -60,11 +62,23 @@ public class WorldSimComponent : MonoBehaviour
 			_simStates[i].Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
 		}
 
-		_displayState = new DisplayState();
-		_displayState.Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
-
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
+
+		_displayState = new DisplayState();
+		_displayState.Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
+		var initDisplayJob = new InitDisplayJob()
+		{
+			DisplayPressure = _displayState.Pressure[0],
+
+			Gravity = ActiveSimState.PlanetState.Gravity,
+			AirTemperature = ActiveSimState.AirTemperature[0],
+			AirLayerElevation = DependentState.LayerElevation[0],
+			AirLayerHeight = DependentState.LayerHeight[0],
+			AirPressure = DependentState.AirPressure[0],
+		};
+		var initDisplayJobHandle = initDisplayJob.Schedule(CellCount, 1);
+		initDisplayJobHandle.Complete();
 
 	}
 
