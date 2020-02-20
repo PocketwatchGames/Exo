@@ -2033,6 +2033,8 @@ MonoBehaviour:
     CloudDissapationRateDryAir: 0.1
     DewPointElevationPerDegree: 67.73
     DewPointTemperaturePerRelativeHumidity: 20
+    IceHeatingDepth: 0
+    WaterHeatingDepth: 0
     ThermoclineDepth: 0
     WindToOceanCurrentFactor: 0.1
     WaterDiffuseSpeed: 0.2
@@ -2112,16 +2114,19 @@ MonoBehaviour:
     ThermalInDownTerrainJob:
       Enabled: 0
       Async: 0
-    AirVerticalMovementUpJob:
-      Enabled: 0
-      Async: 0
-    AirVerticalMovementDownJob:
-      Enabled: 0
-      Async: 0
     PressureGradientForceAirJob:
       Enabled: 0
       Async: 0
     WindFrictionJob:
+      Enabled: 0
+      Async: 0
+    DiffusionAirJob:
+      Enabled: 0
+      Async: 0
+    DiffusionWaterJob:
+      Enabled: 0
+      Async: 0
+    DiffusionCloudJob:
       Enabled: 0
       Async: 0
     AdvectionAirJob:
@@ -2131,9 +2136,6 @@ MonoBehaviour:
       Enabled: 0
       Async: 0
     AdvectionCloudJob:
-      Enabled: 0
-      Async: 0
-    ConductionCloudAirJob:
       Enabled: 0
       Async: 0
     ConductionAirIceJob:
@@ -2170,9 +2172,6 @@ MonoBehaviour:
       Enabled: 0
       Async: 0
     EnergyAirJob:
-      Enabled: 0
-      Async: 0
-    EnergyAirSurfaceJob:
       Enabled: 0
       Async: 0
     StateChangeJob:

@@ -34,8 +34,6 @@ public class WorldSim {
 	public JobHelper ThermalInDownIceJob;
 	public JobHelper ThermalInDownWaterJob;
 	public JobHelper ThermalInDownTerrainJob;
-	public JobHelper AirVerticalMovementUpJob;
-	public JobHelper AirVerticalMovementDownJob;
 	public JobHelper PressureGradientForceAirJob;
 	public JobHelper WindFrictionJob;
 	public JobHelper DiffusionAirJob;
@@ -56,7 +54,6 @@ public class WorldSim {
 	public JobHelper EnergyWaterJob;
 	public JobHelper EnergyWaterSurfaceJob;
 	public JobHelper EnergyAirJob;
-	public JobHelper EnergyAirSurfaceJob;
 	public JobHelper StateChangeJob;
 	public JobHelper StateChangeAirLayerJob;
 	public JobHelper UpdateDependentWaterLayerJob;
@@ -87,23 +84,25 @@ public class WorldSim {
 	private NativeArray<DiffusionWater>[] advectionWater;
 	private NativeArray<DiffusionCloud> diffusionCloud;
 	private NativeArray<DiffusionCloud> advectionCloud;
-	private NativeArray<DiffusionAirVertical>[] verticalMovementAir;
 	private NativeArray<float>[] latentHeat;
 	private NativeArray<float2>[] pressureGradientForce;
 	private NativeArray<float> windFriction;
-	private NativeArray<float> conductionAirIce;
-	private NativeArray<float> conductionAirWater;
-	private NativeArray<float> conductionAirTerrain;
+	private NativeArray<float> conductionSurfaceAirIce;
+	private NativeArray<float> conductionSurfaceAirWater;
+	private NativeArray<float> conductionSurfaceAirTerrain;
+	private NativeArray<float> conductionUpperAirIce;
+	private NativeArray<float> conductionUpperAirWater;
+	private NativeArray<float> conductionUpperAirTerrain;
 	private NativeArray<float> conductionIceWater;
 	private NativeArray<float> conductionIceTerrain;
 	private NativeArray<float>[] conductionWaterTerrain;
 
 	private NativeArray<float> displaySolarRadiation;
 
-	public WorldSim(int cellCount, int atmosphericLayers, int waterLayers)
+	public WorldSim(int cellCount, int airLayers, int waterLayers)
 	{
 		_cellCount = cellCount;
-		_airLayers = atmosphericLayers;
+		_airLayers = airLayers;
 		_waterLayers = waterLayers;
 		_layerCount = _airLayers + _waterLayers + _terrainLayers;
 		_terrainLayer = 0;
@@ -133,8 +132,6 @@ public class WorldSim {
 		ThermalInDownIceJob = new JobHelper(_cellCount);
 		ThermalInDownWaterJob = new JobHelper(_cellCount);
 		ThermalInDownTerrainJob = new JobHelper(_cellCount);
-		AirVerticalMovementUpJob= new JobHelper(_cellCount);
-		AirVerticalMovementDownJob= new JobHelper(_cellCount);
 		PressureGradientForceAirJob= new JobHelper(_cellCount);
 		WindFrictionJob= new JobHelper(_cellCount);
 		DiffusionAirJob = new JobHelper(_cellCount);
@@ -155,7 +152,6 @@ public class WorldSim {
 		EnergyWaterJob= new JobHelper(_cellCount);
 		EnergyWaterSurfaceJob= new JobHelper(_cellCount);
 		EnergyAirJob= new JobHelper(_cellCount);
-		EnergyAirSurfaceJob= new JobHelper(_cellCount);
 		StateChangeJob= new JobHelper(_cellCount);
 		StateChangeAirLayerJob= new JobHelper(_cellCount);
 		UpdateDependentWaterLayerJob= new JobHelper(_cellCount);
@@ -183,11 +179,6 @@ public class WorldSim {
 			advectionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			pressureGradientForce[i] = new NativeArray<float2>(_cellCount, Allocator.Persistent);
 		}
-		verticalMovementAir = new NativeArray<DiffusionAirVertical>[_airLayers];
-		for (int i=0;i<_airLayers;i++)
-		{
-			verticalMovementAir[i] = new NativeArray<DiffusionAirVertical>(_cellCount, Allocator.Persistent);
-		}
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		conductionWaterTerrain = new NativeArray<float>[_waterLayers];
@@ -200,9 +191,12 @@ public class WorldSim {
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		diffusionCloud = new NativeArray<DiffusionCloud>(_cellCount, Allocator.Persistent);
 		advectionCloud = new NativeArray<DiffusionCloud>(_cellCount, Allocator.Persistent);
-		conductionAirIce = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		conductionAirWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		conductionAirTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionSurfaceAirIce = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionSurfaceAirWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionSurfaceAirTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionUpperAirIce = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionUpperAirWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionUpperAirTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionIceWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionIceTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		displaySolarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -225,10 +219,6 @@ public void Dispose()
 			advectionAir[i].Dispose();
 			pressureGradientForce[i].Dispose();
 		}
-		for (int i=0;i<_airLayers;i++)
-		{
-			verticalMovementAir[i].Dispose();
-		}
 		for (int i = 0; i < _waterLayers; i++)
 		{
 			diffusionWater[i].Dispose();
@@ -238,9 +228,12 @@ public void Dispose()
 		windFriction.Dispose();
 		diffusionCloud.Dispose();
 		advectionCloud.Dispose();
-		conductionAirIce.Dispose();
-		conductionAirWater.Dispose();
-		conductionAirTerrain.Dispose();
+		conductionSurfaceAirIce.Dispose();
+		conductionSurfaceAirWater.Dispose();
+		conductionSurfaceAirTerrain.Dispose();
+		conductionUpperAirIce.Dispose();
+		conductionUpperAirWater.Dispose();
+		conductionUpperAirTerrain.Dispose();
 		conductionIceWater.Dispose();
 		conductionIceTerrain.Dispose();
 
@@ -334,7 +327,7 @@ public void Dispose()
 			#region Emissivity Per Cell
 
 			JobHandle[] emissivityJobHandles = new JobHandle[_layerCount];
-			for (int j = 0; j < _airLayers; j++)
+			for (int j = 1; j < _airLayers-1; j++)
 			{
 				int layerIndex = _airLayer0 + j;
 				emissivityJobHandles[layerIndex] = EmissivityAirJob.Run(new EmissivityAirJob()
@@ -369,15 +362,14 @@ public void Dispose()
 
 			// atmosphere
 			JobHandle[] solarInJobHandles = new JobHandle[_layerCount];
-			for (int j = 0; j < _airLayers; j++)
+			for (int j = _airLayer0 + _airLayers - 2; j > _airLayer0; j--)
 			{
-				int layerIndex = _airLayer0 + _airLayers - 1 - j;
-				int airLayerIndex = layerIndex - _airLayer0;
-				solarInJobHandles[layerIndex] = SolarRadiationAbsorbedAirJob.Run(new SolarRadiationAbsorbedAirJob()
+				int airLayerIndex = j - _airLayer0;
+				solarInJobHandles[j] = solarInJobHandle = SolarRadiationAbsorbedAirJob.Run(new SolarRadiationAbsorbedAirJob()
 				{
-					SolarRadiationAbsorbed = solarRadiationIn[layerIndex],
+					SolarRadiationAbsorbed = solarRadiationIn[j],
 					SolarRadiationIncoming = solarRadiation,
-					SolarRadiationReflected = solarReflected[layerIndex],
+					SolarRadiationReflected = solarReflected[j],
 					AirMass = dependent.AirMass[airLayerIndex],
 					VaporMass = lastState.AirVapor[airLayerIndex],
 					CloudMass = lastState.CloudMass,
@@ -394,34 +386,34 @@ public void Dispose()
 					LayerHeight = dependent.LayerHeight[airLayerIndex],
 					LayerIndex = airLayerIndex,
 					worldData = worldData
-				}, airLayerIndex == _airLayers - 1 ? solarInJobHandle : solarInJobHandles[layerIndex + 1]);
+				}, solarInJobHandle);
 			}
 
 			
 			// ice
-			solarInJobHandles[_iceLayer] = SolarRadiationAbsorbedIceJob.Run(new SolarRadiationAbsorbedIceJob()
+			solarInJobHandles[_iceLayer] = solarInJobHandle = SolarRadiationAbsorbedIceJob.Run(new SolarRadiationAbsorbedIceJob()
 			{
 				SolarRadiationAbsorbed = solarRadiationIn[_iceLayer],
 				SolarRadiationIncoming = solarRadiation,
 				SolarRadiationReflected = solarReflected[_iceLayer],
 				AlbedoIce = WorldData.AlbedoIce,
 				IceCoverage = dependent.IceCoverage
-			}, solarInJobHandles[_airLayer0]);
+			}, solarInJobHandle);
 			
-			for (int j = 0; j < _waterLayers; j++)
+			for (int j = _waterLayers - 1; j >= 0; j--)
 			{
-				int layerIndex = _waterLayer0 + _waterLayers - 1 - j;
-				solarInJobHandles[layerIndex] = SolarRadiationAbsorbedWaterJob.Run(new SolarRadiationAbsorbedWaterJob()
+				int layerIndex = _waterLayer0 + j;
+				solarInJobHandles[layerIndex] = solarInJobHandle = SolarRadiationAbsorbedWaterJob.Run(new SolarRadiationAbsorbedWaterJob()
 				{
 					SolarRadiationAbsorbed = solarRadiationIn[layerIndex],
 					SolarRadiationIncoming = solarRadiation,
 					SolarRadiationReflected = solarReflected[layerIndex],
 					WaterCoverage = dependent.WaterCoverage[layerIndex - _waterLayer0],
 					WaterSlopeAlbedo = waterSlopeAlbedo,
-				}, solarInJobHandles[layerIndex + 1]);
+				}, solarInJobHandle);
 			}
 
-			solarInJobHandles[_terrainLayer] = SolarRadiationAbsorbedTerrainJob.Run(new SolarRadiationAbsorbedTerrainJob()
+			solarInJobHandles[_terrainLayer] = solarInJobHandle = SolarRadiationAbsorbedTerrainJob.Run(new SolarRadiationAbsorbedTerrainJob()
 			{
 				SolarRadiationAbsorbed = solarRadiationIn[_terrainLayer],
 				SolarRadiationIncoming = solarRadiation,
@@ -429,7 +421,7 @@ public void Dispose()
 				VegetationCoverage = dependent.VegetationCoverage,
 				worldData = worldData,
 				LastTerrain = lastState.Terrain,
-			}, solarInJobHandles[_terrainLayer + 1]);
+			}, solarInJobHandle);
 			#endregion
 
 			// Calculate how much thermal radition is being emitted out of each layer
@@ -470,7 +462,7 @@ public void Dispose()
 
 
 			// ATMOSPHERE
-			for (int j = 0; j < _airLayers; j++)
+			for (int j = 1; j < _airLayers-1; j++)
 			{
 				int layer = _airLayer0 + j;
 				thermalOutJobHandles[layer] = ThermalOutAirJob.Run(new ThermalEnergyRadiatedJob()
@@ -523,18 +515,18 @@ public void Dispose()
 			for (int j = 1; j < _layerCount; j++)
 			{
 
-				var thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalOutJobHandles[j], thermalInUpJobHandles[j - 1]);
-				if (j >= _airLayer0 && j < _airLayer0 + _airLayers)
+				if (j > _airLayer0 && j < _airLayer0 + _airLayers - 1)
 				{
 					int airLayer = j - _airLayer0;
+					int downIndex = airLayer == 1 ? _iceLayer : (j - 1);
 					thermalInUpJobHandles[j] = ThermalInUpAirJob.Run(new ThermalEnergyAbsorbedAirJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDelta[j],
 						ThermalRadiationTransmitted = thermalRadiationTransmittedUp[j],
 						WindowRadiationTransmitted = windowRadiationTransmittedUp[j],
 
-						WindowRadiationIncoming = windowRadiationTransmittedUp[j - 1],
-						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
+						WindowRadiationIncoming = windowRadiationTransmittedUp[downIndex],
+						ThermalRadiationIncoming = thermalRadiationTransmittedUp[downIndex],
 						CloudSurfaceArea = dependent.CloudCoverage,
 						CloudElevation = dependent.CloudElevation,
 						CloudMass = lastState.CloudMass,
@@ -548,7 +540,7 @@ public void Dispose()
 						CarbonAbsorptivity = worldData.AbsorptivityCarbonDioxide,
 						LayerIndex = airLayer,
 						FromTop = false,
-					}, thermalInDependenciesHandle);
+					}, JobHandle.CombineDependencies(thermalOutJobHandles[j], thermalInUpJobHandles[downIndex]));
 				}
 				else if (j == _iceLayer)
 				{
@@ -562,11 +554,10 @@ public void Dispose()
 						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 						Coverage = dependent.IceCoverage,
 
-					}, thermalInDependenciesHandle);
+					}, JobHandle.CombineDependencies(thermalOutJobHandles[j], thermalInUpJobHandles[j - 1]));
 				}
 				else if (j >= _waterLayer0 && j < _waterLayer0 + _waterLayers)
 				{
-					thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalInDependenciesHandle, thermalOutJobHandles[j - 1]);
 					thermalInUpJobHandles[j] = ThermalInUpWaterJob.Run(new ThermalEnergyAbsorbedPartialCoverageJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDeltaSurfaceWater,
@@ -576,7 +567,7 @@ public void Dispose()
 						WindowRadiationIncoming = windowRadiationTransmittedUp[j - 1],
 						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 						Coverage = dependent.WaterCoverage[j - _waterLayer0],
-					}, thermalInDependenciesHandle);
+					}, JobHandle.CombineDependencies(thermalOutJobHandles[j], thermalInUpJobHandles[j - 1], thermalOutJobHandles[j - 1]));
 				}
 			}
 
@@ -592,7 +583,7 @@ public void Dispose()
 			#region Thermal Radiation Absorbed Down
 
 			// transmit down from top of atmosphere			
-			for (int j = _airLayer0 + _airLayers - 2; j >= 0; j--)
+			for (int j = _layerCount - 2; j >= 0; j--)
 			{
 				var thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalInDownJobHandles[j + 1], thermalInUpJobHandlesCombined);
 
@@ -616,8 +607,8 @@ public void Dispose()
 						ThermalRadiationTransmitted = thermalRadiationTransmittedDown[j],
 						WindowRadiationTransmitted = windowRadiationTransmittedDown[j],
 
-						WindowRadiationIncoming = windowRadiationTransmittedDown[j + 1],
-						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
+						WindowRadiationIncoming = windowRadiationTransmittedDown[_airLayer0 + 1],
+						ThermalRadiationIncoming = thermalRadiationTransmittedDown[_airLayer0 + 1],
 						Coverage = dependent.IceCoverage,
 					}, thermalInDependenciesHandle);
 				}
@@ -666,59 +657,12 @@ public void Dispose()
 
 			// Bouyancy, Updrafts, and mixing occur across air layers and water layers
 			// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
-			#region Vertical mixing
-
-			JobHandle[] airVerticalMovementJobHandles = new JobHandle[_airLayers];
-			for (int j = 0; j < 1; j++)
-			{
-				airVerticalMovementJobHandles[j] = AirVerticalMovementUpJob.Run(new AirVerticalMovementUpJob()
-				{
-					Delta = verticalMovementAir[j],
-					Temperature = lastState.AirTemperature[j],
-					Humidity = lastState.AirVapor[j],
-					AirMass = dependent.AirMass[j],
-					LayerElevation = dependent.LayerElevation[j],
-					LayerHeight = dependent.LayerHeight[j],
-					UpTemperature = lastState.AirTemperature[j + 1],
-					UpHumidity = lastState.AirTemperature[j + 1],
-					UpAirMass = dependent.AirMass[j + 1],
-					UpLayerElevation = dependent.LayerElevation[j + 1],
-					UpLayerHeight = dependent.LayerHeight[j + 1],
-					SecondsPerTick = worldData.SecondsPerTick,
-					MaxVerticalMovement = worldData.MaxBouyancy,
-					DiffusionCoefficient = worldData.AirMassDiffusionSpeedVertical,
-					Gravity = lastState.PlanetState.Gravity
-				}, lastJobHandle);
-			}
-			for (int j = 1; j < _airLayers; j++)
-			{
-				airVerticalMovementJobHandles[j] = AirVerticalMovementDownJob.Run(new AirVerticalMovementDownJob()
-				{
-					Delta = verticalMovementAir[j],
-					Temperature = lastState.AirTemperature[j],
-					Humidity = lastState.AirVapor[j],
-					AirMass = dependent.AirMass[j],
-					LayerElevation = dependent.LayerElevation[j],
-					LayerHeight = dependent.LayerHeight[j],
-					UpTemperature = lastState.AirTemperature[j - 1],
-					UpHumidity = lastState.AirTemperature[j - 1],
-					UpAirMass = dependent.AirMass[j - 1],
-					UpLayerElevation = dependent.LayerElevation[j - 1],
-					UpLayerHeight = dependent.LayerHeight[j - 1],
-					SecondsPerTick = worldData.SecondsPerTick,
-					MaxVerticalMovement = worldData.MaxBouyancy,
-					DiffusionCoefficient = worldData.AirMassDiffusionSpeedVertical,
-					Gravity = lastState.PlanetState.Gravity
-				}, lastJobHandle);
-			}
-			#endregion
-
 			// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
 			// Air, Water, Cloud
 			#region Diffusion
 
 			JobHandle[] diffusionJobHandles = new JobHandle[_layerCount];
-			for (int j = 0; j < _airLayers; j++)
+			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				diffusionJobHandles[_airLayer0 + j] = DiffusionAirJob.Run(new DiffusionAirJob()
 				{
@@ -728,6 +672,24 @@ public void Dispose()
 					Wind = lastState.Wind[j],
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficient = worldData.AirMassDiffusionSpeedHorizontal,
+
+					LayerElevation = dependent.LayerElevation[j],
+					LayerHeight = dependent.LayerHeight[j],
+					UpTemperature = lastState.AirTemperature[j + 1],
+					UpHumidity = lastState.AirTemperature[j + 1],
+					UpAirMass = dependent.AirMass[j + 1],
+					UpLayerElevation = dependent.LayerElevation[j + 1],
+					UpLayerHeight = dependent.LayerHeight[j + 1],
+					DownTemperature = lastState.AirTemperature[j - 1],
+					DownHumidity = lastState.AirTemperature[j - 1],
+					DownAirMass = dependent.AirMass[j - 1],
+					DownLayerElevation = dependent.LayerElevation[j - 1],
+					DownLayerHeight = dependent.LayerHeight[j - 1],
+					SecondsPerTick = worldData.SecondsPerTick,
+					MaxVerticalMovement = worldData.MaxBouyancy,
+					VerticalDiffusionCoefficient = worldData.AirMassDiffusionSpeedVertical,
+					Gravity = lastState.PlanetState.Gravity,
+
 				}, lastJobHandle);
 			}
 			for (int j = 0; j < _waterLayers; j++)
@@ -757,7 +719,7 @@ public void Dispose()
 			#region Pressure Gradient Force
 
 			JobHandle[] pgfJobHandles = new JobHandle[_layerCount];
-			for (int j = 0; j < _airLayers; j++)
+			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				pgfJobHandles[_airLayer0 + j] = PressureGradientForceAirJob.Run(new PressureGradientForceAirJob()
 				{
@@ -799,7 +761,7 @@ public void Dispose()
 			#region Advection
 
 			JobHandle[] advectionJobHandles = new JobHandle[_layerCount];
-			for (int j = 0; j < _airLayers; j++)
+			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layer = _airLayer0 + j;
 				advectionJobHandles[layer] = AdvectionAirJob.Run(new AdvectionAirJob()
@@ -850,7 +812,7 @@ public void Dispose()
 			// air to ice
 			var conductionAirIceJobHandle = ConductionAirIceJob.Run(new ConductionAirIceJob()
 			{
-				EnergyDelta = conductionAirIce,
+				EnergyDelta = conductionSurfaceAirIce,
 				TemperatureA = dependent.SurfaceAirTemperature,
 				TemperatureB = lastState.IceTemperature,
 				EnergyB = dependent.IceEnergy,
@@ -862,7 +824,7 @@ public void Dispose()
 			// air to water
 			var conductionAirWaterJobHandle = ConductionAirWaterJob.Run(new ConductionAirWaterJob()
 			{
-				EnergyDelta = conductionAirWater,
+				EnergyDelta = conductionSurfaceAirWater,
 				TemperatureA = dependent.SurfaceAirTemperature,
 				TemperatureB = lastState.WaterTemperature[_surfaceWaterLayer],
 				EnergyA = dependent.IceEnergy,
@@ -876,7 +838,7 @@ public void Dispose()
 			// air to terrain
 			var conductionAirTerrainJobHandle = ConductionAirTerrainJob.Run(new ConductionAirTerrainJob()
 			{
-				EnergyDelta = conductionAirTerrain,
+				EnergyDelta = conductionSurfaceAirTerrain,
 				TemperatureA = dependent.SurfaceAirTemperature,
 				TemperatureB = lastState.TerrainTemperature,
 				ConductionCoefficient = WorldData.ConductivityAirTerrain,
@@ -967,7 +929,7 @@ public void Dispose()
 				Terrain = lastState.Terrain,
 				SolarRadiationIn = solarRadiationIn[_terrainLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
-				ConductionEnergyAir = conductionAirTerrain,
+				ConductionEnergyAir = conductionSurfaceAirTerrain,
 				ConductionEnergyIce = conductionIceTerrain,
 				ConductionEnergyWater = conductionWaterTerrainTotal,
 				VegetationCoverage = dependent.VegetationCoverage,
@@ -986,7 +948,7 @@ public void Dispose()
 				conductionIceTerrainJobHandle,
 			};
 			energyJobHandleDependencies.Add(iceEnergyJobHandleDependencies);
-			energyJobHandles.Add(EnergyIceJob.Run(new EnergyIceJob()
+			var energyIceHandle = EnergyIceJob.Run(new EnergyIceJob()
 			{
 				Temperature = nextState.IceTemperature,
 				Mass = nextState.IceMass,
@@ -995,115 +957,15 @@ public void Dispose()
 				SolarRadiationIn = solarRadiationIn[_iceLayer],
 				ThermalRadiationDeltaBottom = thermalRadiationDeltaIceBottom,
 				ThermalRadiationDeltaTop = thermalRadiationDeltaIceTop,
-				ConductionEnergyAir = conductionAirIce,
+				ConductionEnergyAir = conductionSurfaceAirIce,
 				ConductionEnergyTerrain = conductionIceTerrain,
 				ConductionEnergyWater = conductionIceWater,
 				LastTemperature = lastState.IceTemperature,
 				IceHeatingDepth = worldData.IceHeatingDepth,
-			}, JobHandle.CombineDependencies(iceEnergyJobHandleDependencies)));
+			}, JobHandle.CombineDependencies(iceEnergyJobHandleDependencies));
+			energyJobHandles.Add(energyIceHandle);
 
-			var cloudEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-			{
-				diffusionJobHandleCloud,
-				advectionJobHandleCloud,
-				pgfJobHandles[_airLayer0+1],
-			};
-			for (int j=_airLayer0;j<_airLayer0+_airLayers;j++)
-			{
-				cloudEnergyJobHandleDependencies.Add(solarInJobHandles[j]);
-				cloudEnergyJobHandleDependencies.Add(thermalInUpJobHandles[j]);
-				cloudEnergyJobHandleDependencies.Add(thermalInDownJobHandles[j]);
-				cloudEnergyJobHandleDependencies.Add(windFrictionJobHandle);				
-			}
-			energyJobHandleDependencies.Add(cloudEnergyJobHandleDependencies);
-			energyJobHandles.Add(EnergyCloudJob.Run(new EnergyCloudJob()
-			{
-				CloudMass = nextState.CloudMass,
-				DropletMass = nextState.CloudDropletMass,
-				Velocity = nextState.CloudVelocity,
-				CloudEvaporationMass = cloudEvaporationMass,
-				RainfallWaterMass = rainfallWaterMass,
-				LastCloudMass = lastState.CloudMass,
-				LastVelocity = lastState.CloudVelocity,
-				Advection = advectionCloud,
-				Diffusion = diffusionCloud,
-				LastDropletMass = lastState.CloudDropletMass,
-				CloudElevation = dependent.CloudElevation,
-				DewPoint = dependent.DewPoint,
-				AirMassCloud = dependent.AirMassCloud,
-				WaterVaporCloud = dependent.AirVaporCloud,
-				AirPressureCloud = dependent.AirPressureCloud,
-				RelativeHumidityCloud = dependent.AirHumidityRelativeCloud,
-				Gravity = lastState.PlanetState.Gravity,
-				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
-				RainDropMaxSize = worldData.rainDropMaxSize,
-				RainDropMinSize = worldData.rainDropMinSize,
-				RainfallRate = worldData.RainfallRate,
-				SecondsPerTick = worldData.SecondsPerTick,
-				CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
-				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
-				InverseCellDiameter = staticState.InverseCellDiameter,
-				SurfaceElevation = dependent.SurfaceElevation,
-				TicksPerSecond = worldData.TicksPerSecond,
-				WindFriction = windFriction,
-				WindFrictionMultiplier = 0,
-				CoriolisMultiplier = staticState.CoriolisMultiplier,
-				CoriolisTerm = coriolisTerm,
-				PressureGradientForce = pressureGradientForce[1], // TODO: use wind at cloud elevation
-			}, JobHandle.CombineDependencies(cloudEnergyJobHandleDependencies)));
-
-			{
-
-				var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-				{
-					advectionJobHandles[_airLayer0],
-					diffusionJobHandles[_airLayer0],
-					solarInJobHandles[_airLayer0],
-					thermalOutJobHandles[_airLayer0],
-					thermalInDownJobHandles[_airLayer0],
-					thermalInUpJobHandles[_airLayer0],
-					conductionAirWaterJobHandle,
-					conductionAirIceJobHandle,
-					conductionAirTerrainJobHandle,
-					airVerticalMovementJobHandles[0],
-					pgfJobHandles[_airLayer0],
-					windFrictionJobHandle,
-				};
-				energyJobHandleDependencies.Add(airDependencies);
-				energyJobHandles.Add(EnergyAirSurfaceJob.Run(new EnergySurfaceAirJob()
-				{
-					Temperature = nextState.AirTemperature[0],
-					Vapor = nextState.AirVapor[0],
-					Wind = nextState.Wind[0],
-					CondensationCloudMass = condensationCloudMass[0],
-					CondensationGroundMass = condensationGroundMass[0],
-					LastTemperature = lastState.AirTemperature[0],
-					LastVapor = lastState.AirVapor[0],
-					LastWind = lastState.Wind[0],
-					AirMass = dependent.AirMass[0],
-					Advection = advectionAir[0],
-					Diffusion = diffusionAir[0],
-					VerticalAirMovement = verticalMovementAir[0],
-					SolarRadiationIn = solarRadiationIn[_airLayer0],
-					ThermalRadiationDelta = thermalRadiationDelta[_airLayer0],
-					ConductionEnergyWater = conductionAirWater,
-					ConductionEnergyIce = conductionAirIce,
-					ConductionEnergyTerrain = conductionAirTerrain,
-					CloudElevation = dependent.CloudElevation,
-					LayerElevation = dependent.LayerElevation[0],
-					LayerHeight = dependent.LayerHeight[0],
-					PressureGradientForce = pressureGradientForce[0],
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
-					WindFriction = windFriction,
-					SecondsPerTick = worldData.SecondsPerTick,
-					DewPointZero = worldData.DewPointZero,
-					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
-					WindFrictionMultiplier = 1.0f,
-				}, JobHandle.CombineDependencies(airDependencies)));
-			}
-			for (int j = 1; j < _airLayers; j++)
+			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layerIndex = _airLayer0 + j;
 
@@ -1115,11 +977,15 @@ public void Dispose()
 					thermalOutJobHandles[layerIndex],
 					thermalInDownJobHandles[layerIndex],
 					thermalInUpJobHandles[layerIndex],
-					airVerticalMovementJobHandles[j],
-					airVerticalMovementJobHandles[j-1],
 					pgfJobHandles[layerIndex],
 					windFrictionJobHandle,
 				};
+				if (j == 1)
+				{
+					airDependencies.Add(conductionAirWaterJobHandle);
+					airDependencies.Add(conductionAirIceJobHandle);
+					airDependencies.Add(conductionAirTerrainJobHandle);
+				}
 				energyJobHandleDependencies.Add(airDependencies);
 				energyJobHandles.Add(EnergyAirJob.Run(new EnergyAirJob()
 				{
@@ -1134,7 +1000,9 @@ public void Dispose()
 					AirMass = dependent.AirMass[j],
 					Advection = advectionAir[j],
 					Diffusion = diffusionAir[j],
-					VerticalAirMovementUp = verticalMovementAir[j],
+					ConductionEnergyWater = j == 1 ? conductionSurfaceAirWater : conductionUpperAirWater,
+					ConductionEnergyIce = j == 1 ? conductionSurfaceAirIce : conductionUpperAirIce,
+					ConductionEnergyTerrain = j == 1 ? conductionSurfaceAirTerrain : conductionUpperAirTerrain,
 					SolarRadiationIn = solarRadiationIn[layerIndex],
 					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
 					CloudElevation = dependent.CloudElevation,
@@ -1189,6 +1057,7 @@ public void Dispose()
 			}
 
 			// surface water
+			JobHandle surfaceWaterEnergyHandle;
 			{
 				int waterLayer = _waterLayers - 1;
 				int layerIndex = _waterLayer0 + waterLayer;
@@ -1206,7 +1075,7 @@ public void Dispose()
 					conductionWaterTerrainJobHandle,
 				};
 				energyJobHandleDependencies.Add(waterDependencies);
-				energyJobHandles.Add(EnergyWaterSurfaceJob.Run(new EnergyWaterJobSurface()
+				surfaceWaterEnergyHandle = EnergyWaterSurfaceJob.Run(new EnergyWaterJobSurface()
 				{
 					Temperature = nextState.WaterTemperature[waterLayer],
 					SaltMass = nextState.WaterSaltMass[waterLayer],
@@ -1219,16 +1088,16 @@ public void Dispose()
 					LastSaltMass = lastState.WaterSaltMass[waterLayer],
 					LastVelocity = lastState.WaterVelocity[waterLayer],
 					LastTemperature = lastState.WaterTemperature[waterLayer],
-					LastSurfaceWind = lastState.Wind[0],
+					LastSurfaceWind = lastState.Wind[1],
 					Advection = advectionWater[waterLayer],
 					Diffusion = diffusionWater[waterLayer],
 					SolarRadiationIn = solarRadiationIn[layerIndex],
 					ThermalRadiationDeltaTop = thermalRadiationDelta[layerIndex],
 					ThermalRadiationDeltaBottom = thermalRadiationDeltaSurfaceWater,
-					ConductionEnergyAir = conductionAirWater,
+					ConductionEnergyAir = conductionSurfaceAirWater,
 					ConductionEnergyIce = conductionIceWater,
 					ConductionEnergyTerrain = conductionWaterTerrain[waterLayer],
-					RelativeHumidity = dependent.AirHumidityRelative[0],
+					RelativeHumidity = dependent.AirHumidityRelative[1],
 					IceCoverage = dependent.IceCoverage,
 					WaterCoverage = dependent.WaterCoverage[waterLayer],
 					EvaporationRate = worldData.EvaporationRate,
@@ -1236,8 +1105,70 @@ public void Dispose()
 					EvapTemperatureMin = worldData.EvapMinTemperature,
 					SecondsPerTick = worldData.SecondsPerTick,
 					WaterHeatingDepth = worldData.WaterHeatingDepth,
-				}, JobHandle.CombineDependencies(waterDependencies)));
+				}, JobHandle.CombineDependencies(waterDependencies));
+				energyJobHandles.Add(surfaceWaterEnergyHandle);
 			}
+
+			// CLOUD
+			var cloudEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			{
+				diffusionJobHandleCloud,
+				advectionJobHandleCloud,
+				pgfJobHandles[_airLayer0+1],
+				windFrictionJobHandle,
+				energyIceHandle,
+				surfaceWaterEnergyHandle,
+			};
+			for (int j = _airLayer0 + 1; j < _airLayer0 + _airLayers - 1; j++)
+			{
+				cloudEnergyJobHandleDependencies.Add(solarInJobHandles[j]);
+				cloudEnergyJobHandleDependencies.Add(thermalInUpJobHandles[j]);
+				cloudEnergyJobHandleDependencies.Add(thermalInDownJobHandles[j]);
+			}
+			energyJobHandleDependencies.Add(cloudEnergyJobHandleDependencies);
+			energyJobHandles.Add(EnergyCloudJob.Run(new EnergyCloudJob()
+			{
+				CloudMass = nextState.CloudMass,
+				DropletMass = nextState.CloudDropletMass,
+				Velocity = nextState.CloudVelocity,
+				CloudEvaporationMass = cloudEvaporationMass,
+				RainfallWaterMass = rainfallWaterMass,
+				IceMass = nextState.IceMass,
+				SurfaceWaterMass = nextState.WaterMass[_surfaceWaterLayer],
+				IceTemperature = nextState.IceTemperature,
+				SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
+				SurfaceAirTemperature = lastState.AirTemperature[1],
+				SurfaceSaltMass = lastState.WaterSaltMass[_surfaceWaterLayer],
+				LastCloudMass = lastState.CloudMass,
+				LastVelocity = lastState.CloudVelocity,
+				Advection = advectionCloud,
+				Diffusion = diffusionCloud,
+				LastDropletMass = lastState.CloudDropletMass,
+				CloudElevation = dependent.CloudElevation,
+				DewPoint = dependent.DewPoint,
+				AirMassCloud = dependent.AirMassCloud,
+				WaterVaporCloud = dependent.AirVaporCloud,
+				AirPressureCloud = dependent.AirPressureCloud,
+				RelativeHumidityCloud = dependent.AirHumidityRelativeCloud,
+				Gravity = lastState.PlanetState.Gravity,
+				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
+				RainDropMaxSize = worldData.rainDropMaxSize,
+				RainDropMinSize = worldData.rainDropMinSize,
+				RainfallRate = worldData.RainfallRate,
+				SecondsPerTick = worldData.SecondsPerTick,
+				CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
+				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
+				InverseCellDiameter = staticState.InverseCellDiameter,
+				SurfaceElevation = dependent.SurfaceElevation,
+				TicksPerSecond = worldData.TicksPerSecond,
+				WindFriction = windFriction,
+				WindFrictionMultiplier = 0,
+				CoriolisMultiplier = staticState.CoriolisMultiplier,
+				CoriolisTerm = coriolisTerm,
+				PressureGradientForce = pressureGradientForce[1], // TODO: use wind at cloud elevation
+			}, JobHandle.CombineDependencies(cloudEnergyJobHandleDependencies)));
+
+
 
 			energyJobHandles.Add(updateTerrainJobHandle);
 			var energyJobHandle = JobHandle.CombineDependencies(energyJobHandles);
@@ -1253,10 +1184,10 @@ public void Dispose()
 				IceMass = nextState.IceMass,
 				SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				SurfaceWaterMass = nextState.WaterMass[_surfaceWaterLayer],
-				SurfaceAirTemperature = nextState.AirTemperature[0],
-				SurfaceAirVapor = nextState.AirVapor[0],
+				SurfaceAirTemperature = nextState.AirTemperature[1],
+				SurfaceAirVapor = nextState.AirVapor[1],
 
-				SurfaceAirMass = dependent.AirMass[0],
+				SurfaceAirMass = dependent.AirMass[1],
 				SurfaceSaltMass = lastState.WaterSaltMass[_surfaceWaterLayer],
 				WaterEvaporatedMass = evaporationMass,
 				WaterFrozenMass = frozenMass,
@@ -1265,7 +1196,7 @@ public void Dispose()
 				RainfallWaterMass = rainfallWaterMass,
 			}, energyJobHandle);
 
-			for (int j = 0; j < _airLayers; j++)
+			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layerIndex = _airLayer0 + j;
 				stateChangeJobHandle = StateChangeAirLayerJob.Run(new StateChangeAirLayerJob()
@@ -1308,9 +1239,8 @@ public void Dispose()
 					worldData = worldData,
 				}, stateChangeJobHandle));
 			}
-			JobHandle surfaceAirJobHandle = default(JobHandle);
 			JobHandle updateDependentAirLayerJobHandle = stateChangeJobHandle;
-			for (int j = _airLayers - 1; j >= 0; j--)
+			for (int j = _airLayers - 2; j > 0; j--)
 			{
 				updateDependentAirLayerJobHandle = UpdateDependentAirLayerJob.Run(new UpdateDependentAirLayerJob()
 				{
@@ -1342,10 +1272,6 @@ public void Dispose()
 					LayerIndex = j,
 				}, updateDependentAirLayerJobHandle);
 				updateDependenciesJobHandles.Add(updateDependentAirLayerJobHandle);
-				if (j == 0)
-				{
-					surfaceAirJobHandle = updateDependentAirLayerJobHandle;
-				}
 			}
 
 
@@ -1377,9 +1303,9 @@ public void Dispose()
 				Terrain = nextState.Terrain,
 				WaterSaltMass = waterSaltMass,
 				worldData = worldData,
-				LowerAirTemperature = lastState.AirTemperature[0],
-				lowerAirHeight = dependent.LayerHeight[0],
-			}, JobHandle.CombineDependencies(surfaceAirJobHandle, summationHandle));
+				LowerAirTemperature = lastState.AirTemperature[1],
+				lowerAirHeight = dependent.LayerHeight[1],
+			}, JobHandle.CombineDependencies(updateDependentAirLayerJobHandle, summationHandle));
 			updateDependenciesJobHandles.Add(updateDependenciesJobHandle);
 			lastJobHandle = JobHandle.CombineDependencies(updateDependenciesJobHandles);
 
@@ -1398,7 +1324,7 @@ public void Dispose()
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 300, degenVarNames);
-				for (int i = 0; i < _airLayers; i++) {
+				for (int i = 1; i < _airLayers - 1; i++) {
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperature[i], 0, 1000, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 1000, degenVarNames);
 				}
@@ -1435,13 +1361,13 @@ public void Dispose()
 				display.Init(_cellCount, _airLayers, _waterLayers);
 				var initDisplayJob = new InitDisplayJob()
 				{
-					DisplayPressure = display.Pressure[0],
+					DisplayPressure = display.Pressure[1],
 
 					Gravity = nextState.PlanetState.Gravity,
-					AirLayerElevation = dependent.LayerElevation[0],
-					AirLayerHeight = dependent.LayerHeight[0],
-					AirPressure = dependent.AirPressure[0],
-					AirTemperature = nextState.AirTemperature[0],
+					AirLayerElevation = dependent.LayerElevation[1],
+					AirLayerHeight = dependent.LayerHeight[1],
+					AirPressure = dependent.AirPressure[1],
+					AirTemperature = nextState.AirTemperature[1],
 				};
 				var initDisplayJobHandle = initDisplayJob.Schedule(_cellCount, _batchCount);
 
@@ -1469,13 +1395,13 @@ public void Dispose()
 					display.GlobalCloudMass += curState.CloudMass[i];
 					display.GlobalIceMass += curState.IceMass[i];
 					display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers-1][i];
-					display.GlobalTemperature += curState.AirTemperature[0][i];
-					display.GlobalWaterVapor += curState.AirVapor[0][i];
+					display.GlobalTemperature += curState.AirTemperature[1][i];
+					display.GlobalWaterVapor += curState.AirVapor[1][i];
 					display.GlobalOceanVolume += dependent.WaterDepth[i];
 					display.GlobalSeaLevel += dependent.SurfaceElevation[i];
 					display.GlobalEvaporation += display.Evaporation[i];
 					display.GlobalRainfall += display.Rainfall[i];
-					for (int j = 0; j < _airLayers; j++)
+					for (int j = 1; j < _airLayers - 1; j++)
 					{
 						display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
 						display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
@@ -1489,13 +1415,13 @@ public void Dispose()
 					}
 					display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
 					display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
-					display.EnergySurfaceConduction += conductionAirIce[i] + conductionAirTerrain[i] + conductionAirWater[i];
-					display.EnergyOceanConduction += conductionAirWater[i];
+					display.EnergySurfaceConduction += conductionSurfaceAirIce[i] + conductionSurfaceAirTerrain[i] + conductionSurfaceAirWater[i];
+					display.EnergyOceanConduction += conductionSurfaceAirWater[i];
 					display.EnergyEvapotranspiration += evaporationMass[i] * WorldData.LatentHeatWaterVapor;
 					//display.EnergyThermalAbsorbedAtmosphere += ;
-					display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0][i] + thermalRadiationTransmittedDown[_airLayer0][i];
+					display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0 + 1][i] + thermalRadiationTransmittedDown[_airLayer0 + 1][i];
 					display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i] + thermalRadiationTransmittedUp[_waterLayer0 + _waterLayers - 1][i]) * dependent.WaterCoverage[_waterLayers - 1][i];
-					display.EnergyThermalOutAtmosphere += thermalRadiationTransmittedUp[_airLayer0 + _airLayers - 1][i];
+					display.EnergyThermalOutAtmosphere += thermalRadiationTransmittedUp[_airLayer0 + _airLayers - 2][i];
 					display.EnergyThermalSurfaceOutAtmosphericWindow += windowRadiationTransmittedUp[_iceLayer][i];
 					display.EnergyThermalSurfaceRadiation += windowRadiationTransmittedUp[_iceLayer][i] + thermalRadiationTransmittedUp[_iceLayer][i];
 			
@@ -1615,7 +1541,7 @@ public void Dispose()
 			s.AppendLine("WaterTemperature" + j + ": " + state.WaterTemperature[j][i]);
 			s.AppendLine("WaterVelocity" + j + ": " + state.WaterVelocity[j][i]);
 		}
-		for (int j = 0; j < _airLayers; j++)
+		for (int j = 1; j < _airLayers - 1; j++)
 		{
 			s.AppendLine("AirTemperature" + j + ": " + state.AirTemperature[j][i]);
 			s.AppendLine("AirVapor" + j + ": " + state.AirVapor[j][i]);
@@ -1635,7 +1561,7 @@ public void Dispose()
 		{
 			s.AppendLine("Water Coverage" + ": " + dependent.WaterCoverage[j][i]);
 		}
-		for (int j = 0; j < _airLayers; j++)
+		for (int j = 1; j < _airLayers - 1; j++)
 		{
 		}
 		Debug.Log(s);

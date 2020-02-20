@@ -66,16 +66,16 @@ public class WorldSimComponent : MonoBehaviour
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
 
 		_displayState = new DisplayState();
-		_displayState.Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
+		_displayState.Init(CellCount, WorldData.AirLayers+2, WorldData.WaterLayers);
 		var initDisplayJob = new InitDisplayJob()
 		{
-			DisplayPressure = _displayState.Pressure[0],
+			DisplayPressure = _displayState.Pressure[1],
 
 			Gravity = ActiveSimState.PlanetState.Gravity,
-			AirTemperature = ActiveSimState.AirTemperature[0],
-			AirLayerElevation = DependentState.LayerElevation[0],
-			AirLayerHeight = DependentState.LayerHeight[0],
-			AirPressure = DependentState.AirPressure[0],
+			AirTemperature = ActiveSimState.AirTemperature[1],
+			AirLayerElevation = DependentState.LayerElevation[1],
+			AirLayerHeight = DependentState.LayerHeight[1],
+			AirPressure = DependentState.AirPressure[1],
 		};
 		var initDisplayJobHandle = initDisplayJob.Schedule(CellCount, 1);
 		initDisplayJobHandle.Complete();
