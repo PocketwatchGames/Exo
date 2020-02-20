@@ -16,7 +16,6 @@ public struct SimState {
 	public NativeArray<float> TerrainTemperature;
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> IceMass;
-	public NativeArray<float> CloudTemperature;
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> CloudDropletMass;
 	public NativeArray<float2> CloudVelocity;
@@ -34,7 +33,6 @@ public struct SimState {
 		TerrainTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
-		CloudTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudDropletMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudVelocity = new NativeArray<float2>(count, Allocator.Persistent);
@@ -67,7 +65,6 @@ public struct SimState {
 		TerrainTemperature.Dispose();
 		IceTemperature.Dispose();
 		IceMass.Dispose();
-		CloudTemperature.Dispose();
 		CloudMass.Dispose();
 		CloudDropletMass.Dispose();
 		CloudVelocity.Dispose();
@@ -118,7 +115,6 @@ public struct DependentState {
 	public NativeArray<float> IceCoverage;
 	public NativeArray<float> SurfaceAirTemperature;
 	public NativeArray<float> IceEnergy;
-	public NativeArray<float> CloudEnergy;
 	public NativeArray<float> WindVerticalCloud;
 	public NativeArray<float>[] AirMass;
 	public NativeArray<float>[] AirPressure;
@@ -131,9 +127,9 @@ public struct DependentState {
 	public NativeArray<float>[] LayerHeight;
 	public NativeArray<float>[] LayerElevation;
 	public NativeArray<float> CloudElevation;
+	public NativeArray<float> DewPoint;
 	public NativeArray<float> AirMassCloud;
 	public NativeArray<float> AirVaporCloud;
-	public NativeArray<float> AirTemperatureCloud;
 	public NativeArray<float> AirPressureCloud;
 	public NativeArray<float> AirHumidityRelativeCloud;
 	public NativeArray<int> AirLayerCloud;
@@ -147,11 +143,10 @@ public struct DependentState {
 		IceCoverage = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAirTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceEnergy = new NativeArray<float>(count, Allocator.Persistent);
-		CloudEnergy = new NativeArray<float>(count, Allocator.Persistent);
+		DewPoint = new NativeArray<float>(count, Allocator.Persistent);
 		WindVerticalCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirMassCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirVaporCloud = new NativeArray<float>(count, Allocator.Persistent);
-		AirTemperatureCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirPressureCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirHumidityRelativeCloud = new NativeArray<float>(count, Allocator.Persistent);
 		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
@@ -194,11 +189,10 @@ public struct DependentState {
 		IceCoverage.Dispose();
 		SurfaceAirTemperature.Dispose();
 		IceEnergy.Dispose();
-		CloudEnergy.Dispose();
+		DewPoint.Dispose();
 		WindVerticalCloud.Dispose();
 		AirMassCloud.Dispose();
 		AirVaporCloud.Dispose();
-		AirTemperatureCloud.Dispose();
 		AirPressureCloud.Dispose();
 		AirHumidityRelativeCloud.Dispose();
 		CloudElevation.Dispose();
@@ -227,10 +221,8 @@ public struct DependentState {
 
 public struct DisplayState {
 	public float SolarRadiation;
-	public float EnergySolarReflectedCloud;
 	public float EnergySolarReflectedAtmosphere;
 	public float EnergySolarReflectedSurface;
-	public float EnergySolarAbsorbedCloud;
 	public float EnergySolarAbsorbedAtmosphere;
 	public float EnergySolarAbsorbedSurface;
 	public float EnergySolarAbsorbedOcean;

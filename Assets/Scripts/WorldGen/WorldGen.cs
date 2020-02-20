@@ -227,7 +227,6 @@ public static class WorldGen {
 			};
 			state.CloudDropletMass[i] = cloudDropletMass;
 			state.CloudMass[i] = cloudMass;
-			state.CloudTemperature[i] = cloudTemperature;
 			state.CloudVelocity[i] = cloudVelocity;
 			state.IceMass[i] = iceMass;
 			state.TerrainTemperature[i] = terrainTemperature;
@@ -268,14 +267,13 @@ public static class WorldGen {
 				AirLayerCloud = dependent.AirLayerCloud,
 				AirMassCloud = dependent.AirMassCloud,
 				AirPressureCloud = dependent.AirPressureCloud,
-				AirTemperatureCloud = dependent.AirTemperatureCloud,
 				AirVaporCloud = dependent.AirVaporCloud,
 				CloudElevation = dependent.CloudElevation,
+				DewPoint = dependent.DewPoint,
 				AirMassTotal = airMassTotal,
 
 				CloudDropletMass = state.CloudDropletMass,
 				CloudMass = state.CloudMass,
-				CloudTemperature = state.CloudTemperature,
 				AirTemperature = state.AirTemperature[j],
 				VaporMass = state.AirVapor[j],
 				IceMass = state.IceMass,
@@ -301,12 +299,10 @@ public static class WorldGen {
 			VegetationCoverage = dependent.VegetationCoverage,
 			WaterDepth = dependent.WaterDepth,
 			SurfaceAirTemperature = dependent.SurfaceAirTemperature,
-			CloudEnergy = dependent.CloudEnergy,
 			IceEnergy = dependent.IceEnergy,
 
 			WaterSaltMass = waterSaltMass,
 			CloudMass = state.CloudMass,
-			CloudTemperature = state.CloudTemperature,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
 			Terrain = state.Terrain,

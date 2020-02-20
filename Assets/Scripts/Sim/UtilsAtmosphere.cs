@@ -118,9 +118,8 @@ public static class Atmosphere {
 	}
 
 	[BurstCompile]
-	static public float GetElevationAtDewPoint(float relativeHumidity, float temperature, float referenceElevation)
+	static public float GetElevationAtDewPoint(float dewPoint, float temperature, float referenceElevation)
 	{
-		float dewPoint = GetDewPoint(relativeHumidity, temperature);
 		return referenceElevation + (dewPoint - temperature) / WorldData.TemperatureLapseRate;
 	}
 

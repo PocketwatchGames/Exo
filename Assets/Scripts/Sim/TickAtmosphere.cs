@@ -31,7 +31,6 @@ public struct DiffusionAirVertical {
 	public float Humidity;
 }
 public struct DiffusionCloud {
-	public float Temperature;
 	public float Mass;
 	public float DropletMass;
 	public float2 Velocity;
@@ -72,10 +71,8 @@ public struct SolarRadiationJob : IJobParallelFor {
 #endif
 public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
-	public NativeArray<float> SolarRadiationAbsorbedCloud;
 	public NativeArray<float> SolarRadiationIncoming;
 	public NativeArray<float> SolarRadiationReflected;
-	public NativeArray<float> SolarRadiationReflectedCloud;
 	[ReadOnly] public float SolarReflectivityAir;
 	[ReadOnly] public float SolarAbsorptivityAir;
 	[ReadOnly] public float SolarAbsorptivityWaterVapor;
@@ -85,7 +82,7 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudCoverage;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float> CloudTemperature;
+	[ReadOnly] public NativeArray<float> DewPoint;
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> WaterSlopeAlbedo;
 	[ReadOnly] public NativeArray<float> VaporMass;
@@ -125,7 +122,7 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 
 		if (isCloudLayer)
 		{
-			float cloudIceContent = math.saturate((CloudTemperature[i] - worldData.minCloudFreezingTemperature) / (worldData.maxCloudFreezingTemperature - worldData.minCloudFreezingTemperature));
+			float cloudIceContent = math.saturate((DewPoint[i] - worldData.minCloudFreezingTemperature) / (worldData.maxCloudFreezingTemperature - worldData.minCloudFreezingTemperature));
 			float cloudTemperatureAlbedo = WorldData.AlbedoIce + (WorldData.AlbedoWater - WorldData.AlbedoIce) * cloudIceContent;
 			float rainDropSizeAlbedo = math.saturate(1.0f - CloudDropletMass[i] / CloudMass[i]) * (worldData.rainDropSizeAlbedoMax - worldData.rainDropSizeAlbedoMin) + worldData.rainDropSizeAlbedoMin;
 			float cloudAlbedo = math.min(1.0f, worldData.SolarReflectivityCloud * cloudTemperatureAlbedo * CloudMass[i] * rainDropSizeAlbedo / math.max(worldData.maxCloudSlopeAlbedo, 1.0f - WaterSlopeAlbedo[i]));
@@ -135,8 +132,7 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 			absorbedByCloudsIncoming = incomingRadiation * math.max(0, 1.0f - 1.0f / math.exp10(SolarAbsorptivityCloud * cloudMass));
 			incomingRadiation -= absorbedByCloudsIncoming;
 
-			SolarRadiationReflectedCloud[i] = energyReflectedClouds;
-			//			SolarRadiationAbsorbedCloud[i] = absorbedByCloudsIncoming;
+			energyReflectedAtmosphere += energyReflectedClouds;
 			absorbed += absorbedByCloudsIncoming;
 		}
 
@@ -360,14 +356,13 @@ public struct ThermalEnergyRadiatedTerrainJob : IJobParallelFor {
 #endif
 public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
-	public NativeArray<float> ThermalRadiationDeltaCloud;
 	public NativeArray<float> ThermalRadiationTransmitted;
 	public NativeArray<float> WindowRadiationTransmitted;
 	[ReadOnly] public NativeArray<float> WindowRadiationIncoming;
 	[ReadOnly] public NativeArray<float> ThermalRadiationIncoming;
-	[ReadOnly] public NativeArray<float> ThermalRadiationTransmittedCloud;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> CloudSurfaceArea;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> AirMass;
@@ -412,11 +407,9 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 			float absorbance = math.max(0, 1.0f - 1.0f / math.exp10(WaterAbsorptivity * cloudMass));
 			float incomingAbsorbedByCloud = incoming * absorbance;
 			float transmittingAbsorbedByCloud = beforeCloud * transmitting * absorbance;
-			//	ThermalRadiationDeltaCloud[i] += incomingAbsorbedByCloud + transmittingAbsorbedByCloud;
 			ThermalRadiationDelta[i] += incomingAbsorbedByCloud + transmittingAbsorbedByCloud;
 
-
-			incoming += ThermalRadiationTransmittedCloud[i] - incomingAbsorbedByCloud;
+			incoming -= incomingAbsorbedByCloud;
 			transmittingAbsorbedByCloud -= transmittingAbsorbedByCloud;
 		}
 
@@ -641,14 +634,12 @@ public struct DiffusionCloudJob : IJobParallelFor {
 	public NativeArray<DiffusionCloud> Delta;
 	[ReadOnly] public float DiffusionCoefficient;
 	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> DropletSize;
 	[ReadOnly] public NativeArray<float2> Velocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	public void Execute(int i)
 	{
 		float gradientMass = 0;
-		float gradientTemperature = 0;
 		float gradientDropletSize = 0;
 		float2 gradientVelocity = float2.zero;
 		int neighborCount = 0;
@@ -662,7 +653,6 @@ public struct DiffusionCloudJob : IJobParallelFor {
 			{
 				float nMass = Mass[n];
 				gradientMass += nMass;
-				gradientTemperature += Temperature[n] * nMass;
 				gradientDropletSize += DropletSize[n] * nMass;
 				gradientVelocity += Velocity[n] * nMass;
 				neighborCount++;
@@ -671,7 +661,6 @@ public struct DiffusionCloudJob : IJobParallelFor {
 		if (neighborMassTotal > 0)
 		{
 			float massDivisor = 1.0f / neighborMassTotal;
-			gradientTemperature = gradientTemperature * massDivisor - Temperature[i];
 			gradientDropletSize = gradientDropletSize * massDivisor - DropletSize[i];
 			gradientVelocity = gradientVelocity * massDivisor - Velocity[i];
 		}
@@ -680,7 +669,6 @@ public struct DiffusionCloudJob : IJobParallelFor {
 		Delta[i] = new DiffusionCloud()
 		{
 			Mass = gradientMass * DiffusionCoefficient,
-			Temperature = gradientTemperature * DiffusionCoefficient,
 			DropletMass = gradientDropletSize * DiffusionCoefficient,
 			Velocity = gradientVelocity * DiffusionCoefficient,
 		};
@@ -800,7 +788,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 #endif
 public struct AdvectionCloudJob : IJobParallelFor {
 	public NativeArray<DiffusionCloud> Delta;
-	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> DropletMass;
 	[ReadOnly] public NativeArray<float2> Velocity;
@@ -812,7 +799,6 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 #if !DISABLE_CLOUD_ADVECTION
-		float gradientTemperature = 0;
 		float gradientMass = 0;
 		float gradientDropletMass = 0;
 		float2 gradientVelocity = float2.zero;
@@ -831,7 +817,6 @@ public struct AdvectionCloudJob : IJobParallelFor {
 				if (velDotDir < 0)
 				{
 					// TODO: account for differing masses having smaller or larger effects on cloud properties
-					gradientTemperature -= velDotDir * Temperature[n];
 					gradientMass -= velDotDir * Mass[n];
 					gradientDropletMass -= velDotDir * DropletMass[n];
 					gradientVelocity -= velDotDir * Velocity[n];
@@ -839,14 +824,12 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			}
 		}
 		float outgoing = math.length(velocity) * InverseCellDiameter;
-		gradientTemperature -= Temperature[i] * outgoing;
 		gradientMass -= Mass[i] * outgoing;
 		gradientDropletMass -= DropletMass[i] * outgoing;
 		gradientVelocity -= velocity * outgoing;
 
 		Delta[i] = new DiffusionCloud()
 		{
-			Temperature = gradientTemperature,
 			Mass = gradientMass,
 			DropletMass = gradientDropletMass,
 			Velocity = gradientVelocity
@@ -941,53 +924,6 @@ public struct WindFrictionJob : IJobParallelFor {
 			exposedVegetation * VegetationFriction +
 			exposedTerrain * (TerrainFrictionMin + (TerrainFrictionMax - TerrainFrictionMin) * math.saturate(Terrain[i].Roughness / MaxTerrainRoughness));
 		//Debug.Log("I: " + i + " F: " + Friction[i]);
-	}
-}
-
-#if !ConductionCloudAirJobDebug
-[BurstCompile]
-#endif
-public struct ConductionCloudAirJob : IJobParallelFor {
-	public NativeArray<float> EnergyDelta;
-
-	[ReadOnly] public NativeArray<float> CloudMass;
-	[ReadOnly] public NativeArray<float> CloudDropletSize;
-	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float> ThermalDelta;
-	[ReadOnly] public NativeArray<float> SolarIn;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> AirTemperature;
-	[ReadOnly] public NativeArray<float> CloudTemperature;
-	[ReadOnly] public NativeArray<float> CloudEnergy;
-	[ReadOnly] public NativeArray<float> CloudCoverage;
-	[ReadOnly] public float ConductionCoefficient;
-	[ReadOnly] public float SecondsPerTick;
-
-	public void Execute(int i)
-	{
-		float cloudElevation = CloudElevation[i];
-		float layerElevation = LayerElevation[i];
-		float layerHeight = LayerHeight[i];
-		if (cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight)
-		{
-			float specificHeat = CloudMass[i] * WorldData.SpecificHeatWater;
-			float cloudMass = CloudMass[i];
-			float cloudTemp = CloudTemperature[i] + (ThermalDelta[i] + SolarIn[i]) / specificHeat;
-			float tempDiff = AirTemperature[i] - cloudTemp;
-
-			float delta = math.max(tempDiff * ConductionCoefficient * SecondsPerTick * CloudCoverage[i], -CloudEnergy[i]);
-			float energyToEquilibrium = tempDiff * specificHeat;
-			if (delta > 0)
-			{
-				delta = math.min(delta, energyToEquilibrium);
-			}
-			else
-			{
-				delta = math.max(delta, energyToEquilibrium);
-			}
-			EnergyDelta[i] = delta;
-		}
 	}
 }
 
@@ -1207,7 +1143,6 @@ public struct StateChangeJob : IJobParallelFor {
 #endif
 public struct StateChangeAirLayerJob : IJobParallelFor {
 	public NativeArray<float> CloudMass;
-	public NativeArray<float> CloudTemperature;
 	public NativeArray<float> CloudDropletMass;
 	public NativeArray<float> SurfaceWaterMass;
 	public NativeArray<float> SurfaceWaterTemperature;
@@ -1232,7 +1167,6 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 		//bool isCloudLayer = newCloudElevation >= layerElevation && newCloudElevation < layerElevation + layerHeight;
 
 		float cloudMass = CloudMass[i];
-		float cloudTemperature = CloudTemperature[i];
 		float cloudDropletMass = CloudDropletMass[i];
 		float groundCondensationMass = GroundCondensationMass[i];
 		float cloudCondensationMass = CloudCondensationMass[i];
@@ -1246,20 +1180,15 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 		float newDropletSize = 0;
 		if (newCloudMass > 0)
 		{
-			// TODO: use dew point and dew point elevation for condensation values
-	//		cloudTemperature = ((cloudMass - cloudEvaporationMass) * cloudTemperature + airTemperature * cloudCondensationMass) / (cloudMass - cloudEvaporationMass + cloudCondensationMass); 
-	//		cloudElevation = ((cloudMass - cloudEvaporationMass) * cloudElevation + (LayerElevation[i] + LayerHeight[i] / 2) * cloudCondensationMass) / (cloudMass - cloudEvaporationMass + cloudCondensationMass);
 			newDropletSize = cloudDropletMass * (cloudMass - cloudEvaporationMass) / (cloudMass + cloudCondensationMass);
 		}
 		else
 		{
-			cloudTemperature = 0;
 			newDropletSize = 0;
 		}
 
 		CloudMass[i] = newCloudMass;
 		CloudDropletMass[i] = newDropletSize;
-		CloudTemperature[i] = cloudTemperature;
 
 		float newWaterMass = SurfaceWaterMass[i] + groundCondensationMass;
 		if (newWaterMass == 0)
@@ -1293,7 +1222,6 @@ public struct EnergySurfaceAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<DiffusionAirVertical> VerticalAirMovement;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
-	[ReadOnly] public NativeArray<float> ConductionEnergyCloud;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
@@ -1313,7 +1241,6 @@ public struct EnergySurfaceAirJob : IJobParallelFor {
 	{
 		float airMass = AirMass[i];
 		float conductionDelta =
-			-ConductionEnergyCloud[i]
 			+ ConductionEnergyIce[i]
 			+ ConductionEnergyTerrain[i]
 			+ ConductionEnergyWater[i];
@@ -1377,7 +1304,6 @@ public struct EnergyAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<DiffusionAirVertical> VerticalAirMovementUp;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
-	[ReadOnly] public NativeArray<float> ConductionEnergyCloud;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
@@ -1393,11 +1319,10 @@ public struct EnergyAirJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float airMass = AirMass[i];
-		float conductionDelta =	-ConductionEnergyCloud[i];
 		float specificHeat = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * LastVapor[i];
 
 		// TODO: account for differing Air masses
-		float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta;
+		float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i];
 		float temperature = LastTemperature[i] + Diffusion[i].Temperature - Advection[i].Temperature /*+ VerticalAirMovementUp[i].Temperature*/ + energy / specificHeat;
 		float vapor = LastVapor[i] + Diffusion[i].Humidity - Advection[i].Humidity /*+ VerticalAirMovementUp[i].Humidity*/;
 		float2 lastWind = LastWind[i];
@@ -1593,7 +1518,6 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct EnergyCloudJob : IJobParallelFor {
-	public NativeArray<float> CloudTemperature;
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> DropletMass;
 	public NativeArray<float2> Velocity;
@@ -1601,17 +1525,13 @@ public struct EnergyCloudJob : IJobParallelFor {
 	public NativeArray<float> CloudEvaporationMass;
 	[ReadOnly] public NativeArray<DiffusionCloud> Advection;
 	[ReadOnly] public NativeArray<DiffusionCloud> Diffusion;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
-	[ReadOnly] public NativeArray<float> LastCloudTemperature;
 	[ReadOnly] public NativeArray<float2> LastVelocity;
 	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeArray<float> DewPoint;
 	[ReadOnly] public NativeArray<float> LastDropletMass;
 	[ReadOnly] public NativeArray<float> LastCloudMass;
-	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> AirMassCloud;
 	[ReadOnly] public NativeArray<float> WaterVaporCloud;
-	[ReadOnly] public NativeArray<float> AirTemperatureCloud;
 	[ReadOnly] public NativeArray<float> AirPressureCloud;
 	[ReadOnly] public NativeArray<float> RelativeHumidityCloud;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
@@ -1633,22 +1553,15 @@ public struct EnergyCloudJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float surfaceElevation = SurfaceElevation[i];
-		float airTemperatureAtCloud = AirTemperatureCloud[i];
 
 		float cloudMass = LastCloudMass[i] + Diffusion[i].Mass - Advection[i].Mass;
-		float cloudTemperature = LastCloudTemperature[i];
 		float dropletMass = LastDropletMass[i];
 		float cloudElevation = CloudElevation[i];
 		float2 lastVelocity = LastVelocity[i];
 		float rainfallWaterMass = 0;
 		float cloudEvaporationMass = 0;
+		float dewPoint = DewPoint[i];
 
-		float energySources = 0;
-		if (cloudMass > 0)
-		{
-			energySources = (SolarRadiationIn[i] + ThermalRadiationDelta[i] + ConductionEnergyAir[i]) / (WorldData.SpecificHeatWater * cloudMass);
-			cloudTemperature += Diffusion[i].Temperature - Advection[i].Temperature + energySources;
-		}
 		dropletMass += Diffusion[i].DropletMass - Advection[i].DropletMass;
 
 		float2 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + Diffusion[i].Velocity - Advection[i].Velocity + PressureGradientForce[i] * SecondsPerTick;
@@ -1657,8 +1570,8 @@ public struct EnergyCloudJob : IJobParallelFor {
 
 
 #if !DISABLE_RAINFALL
-		float airDensityAtElevation = Atmosphere.GetAirDensity(AirPressureCloud[i], airTemperatureAtCloud, AirMassCloud[i], WaterVaporCloud[i]);
-		float waterDensityAtElevation = Atmosphere.GetWaterDensityAtElevation(CloudTemperature[i], cloudElevation);
+		float airDensityAtElevation = Atmosphere.GetAirDensity(AirPressureCloud[i], dewPoint, AirMassCloud[i], WaterVaporCloud[i]);
+		float waterDensityAtElevation = Atmosphere.GetWaterDensityAtElevation(dewPoint, cloudElevation);
 		float rainDropRadius = math.clamp(math.pow(dropletMass / waterDensityAtElevation * 3 / (4 * math.PI), 0.333f), RainDropMinSize, RainDropMaxSize);
 		float rainDropVolume = 4 / 3 * math.PI * math.pow(rainDropRadius, 3);
 		float velocityVertical = math.sqrt(8 * rainDropRadius * waterDensityAtElevation * Gravity / (3 * airDensityAtElevation * RainDropDragCoefficient));
@@ -1689,13 +1602,11 @@ public struct EnergyCloudJob : IJobParallelFor {
 
 		if (cloudMass <= 0)
 		{
-			cloudTemperature = 0;
 			dropletMass = 0;
 			velocityVertical = 0;
 			velocity = 0;
 		}
 
-		CloudTemperature[i] = cloudTemperature;
 		DropletMass[i] = dropletMass;
 		CloudMass[i] = cloudMass;
 		Velocity[i] = velocity;
@@ -1840,14 +1751,12 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> CloudCoverage;
 	public NativeArray<float> WaterDepth;
 	public NativeArray<float> SurfaceAirTemperature;
-	public NativeArray<float> CloudEnergy;
 	public NativeArray<float> IceEnergy;
 	[ReadOnly] public NativeArray<WaterSaltMass> WaterSaltMass;
 	[ReadOnly] public NativeArray<float> LowerAirTemperature;
 	[ReadOnly] public NativeArray<float> IceMass;
 	[ReadOnly] public NativeArray<float> IceTemperature;
 	[ReadOnly] public NativeArray<float> CloudMass;
-	[ReadOnly] public NativeArray<float> CloudTemperature;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public WorldData worldData;
 	[ReadOnly] public NativeArray<float> lowerAirHeight;
@@ -1864,7 +1773,6 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 
 		float cloudMass = CloudMass[i];
 		CloudCoverage[i] = math.saturate(cloudMass * worldData.inverseCloudMassFullAbsorption);
-		CloudEnergy[i] = WorldData.SpecificHeatWater * cloudMass * CloudTemperature[i];
 
 		SurfaceAirTemperature[i] = LowerAirTemperature[i] - WorldData.TemperatureLapseRate * lowerAirHeight[i] / 2;
 	}
@@ -1908,10 +1816,10 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 	public NativeArray<float> AirMassTotal;
 	public NativeArray<float> AirMassCloud;
 	public NativeArray<float> AirVaporCloud;
-	public NativeArray<float> AirTemperatureCloud;
 	public NativeArray<float> AirPressureCloud;
 	public NativeArray<float> AirHumidityRelativeCloud;
 	public NativeArray<float> CloudElevation;
+	public NativeArray<float> DewPoint;
 	public NativeArray<int> AirLayerCloud;
 
 	[ReadOnly] public NativeArray<float> LayerElevation;
@@ -1921,7 +1829,6 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> AirTemperature;
-	[ReadOnly] public NativeArray<float> CloudTemperature;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public float DewPointZero;
 	[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
@@ -1943,7 +1850,8 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 
 		float layerElevation = LayerElevation[i];
 		float layerHeight = LayerHeight[i];
-		float cloudElevation = Atmosphere.GetElevationAtDewPoint(RelativeHumidity[i], AirTemperature[i], layerElevation + layerHeight / 2);
+		float dewPoint = Atmosphere.GetDewPoint(RelativeHumidity[i], AirTemperature[i]);
+		float cloudElevation = Atmosphere.GetElevationAtDewPoint(dewPoint, AirTemperature[i], layerElevation + layerHeight / 2);
 		if (cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight)
 		{
 			float airMassCloud = AirMass[i];
@@ -1951,11 +1859,11 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 			float airTemperatureCloud = airTemperature;
 			AirLayerCloud[i] = LayerIndex;
 			AirMassCloud[i] = airMassCloud;
-			AirTemperatureCloud[i] = airTemperatureCloud;
 			AirVaporCloud[i] = VaporMass[i];
 			AirPressureCloud[i] = (AirMassTotal[i] + airMass * (1.0f - (cloudElevation - layerElevation) / layerHeight)) * Gravity;
 			AirHumidityRelativeCloud[i] = Atmosphere.GetRelativeHumidity(airMassCloud, vaporMassCloud, airTemperatureCloud, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
 		}
+		DewPoint[i] = dewPoint;
 		CloudElevation[i] = cloudElevation;
 		AirMassTotal[i] += airMass;
 

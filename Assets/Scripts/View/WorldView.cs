@@ -636,9 +636,6 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
 				return true;
-			case MeshOverlay.CloudTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.CloudTemperature);
-				return true;
 			case MeshOverlay.HeatAbsorbed:
 				overlay = new MeshOverlayData(0, DisplayHeatAbsorbedMax, _normalizedRainbow, display.SolarRadiationAbsorbedSurface);
 				return true;
@@ -695,16 +692,14 @@ public class WorldView : MonoBehaviour {
 	{
 		string s = "";
 
-		var totalReflected = display.EnergySolarReflectedCloud + display.EnergySolarReflectedAtmosphere + display.EnergySolarReflectedSurface;
+		var totalReflected = display.EnergySolarReflectedAtmosphere + display.EnergySolarReflectedSurface;
 		var totalOutgoing = display.EnergyThermalSurfaceOutAtmosphericWindow + display.EnergyThermalOutAtmosphere;
 		s += "Delta: " + ConvertTileEnergyToWatts((display.SolarRadiation - totalReflected - totalOutgoing) * Sim.InverseCellCount).ToString("0.0");
 		s += "\nS Incoming: " + ConvertTileEnergyToWatts(display.SolarRadiation * Sim.InverseCellCount).ToString("0.0");
 		s += "\nS Reflected: " + ConvertTileEnergyToWatts((totalReflected) * Sim.InverseCellCount).ToString("0.0");
-		s += "\nS Reflected Cloud: " + ConvertTileEnergyToWatts(display.EnergySolarReflectedCloud * Sim.InverseCellCount).ToString("0.0");
 		s += "\nS Reflected Atmos: " + ConvertTileEnergyToWatts(display.EnergySolarReflectedAtmosphere * Sim.InverseCellCount).ToString("0.0");
 		s += "\nS Reflected Surf: " + ConvertTileEnergyToWatts(display.EnergySolarReflectedSurface * Sim.InverseCellCount).ToString("0.0");
-		s += "\nS Abs Atm Total: " + ConvertTileEnergyToWatts(display.EnergySolarAbsorbedAtmosphere * Sim.InverseCellCount).ToString("0.0");
-		s += "\nS Abs Clouds: " + ConvertTileEnergyToWatts(display.EnergySolarAbsorbedCloud * Sim.InverseCellCount).ToString("0.0");
+		s += "\nS Abs Atm: " + ConvertTileEnergyToWatts(display.EnergySolarAbsorbedAtmosphere * Sim.InverseCellCount).ToString("0.0");
 		s += "\nS Abs Surface Total: " + ConvertTileEnergyToWatts(display.EnergySolarAbsorbedSurface * Sim.InverseCellCount).ToString("0.0");
 		s += "\nS Abs Ocean: " + ConvertTileEnergyToWatts(display.EnergySolarAbsorbedOcean * Sim.InverseCellCount).ToString("0.0");
 		s += "\nT Outgoing: " + ConvertTileEnergyToWatts(totalOutgoing * Sim.InverseCellCount).ToString("0.0");
@@ -760,7 +755,6 @@ public class WorldView : MonoBehaviour {
 		s += "Upper Humidity: " + (dependent.AirHumidityRelative[upperAtmosphereLayerIndex][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
 		s += "Cloud Mass: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg\n";
 		if (cloudMass > 0) {
-			s += "Cloud Temp: " + GetTemperatureString(state.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
 			s += "Cloud Elevation: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + " m\n";
 			s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater* cloudMass)).ToString("0.000") + " nm3\n";
 		}
