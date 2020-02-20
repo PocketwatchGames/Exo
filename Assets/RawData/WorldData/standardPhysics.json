@@ -85,6 +85,8 @@
 	"CloudDissapationRateDryAir": 0.1,
 	"DewPointElevationPerDegree": 67.73,
 	"DewPointTemperaturePerRelativeHumidity": 20,
+	"IceHeatingDepth": 0.1,
+	"WaterHeatingDepth": 0.1,
 
 	"ThermoclineDepth": 500,
 	"WindToOceanCurrentFactor": 0.25,

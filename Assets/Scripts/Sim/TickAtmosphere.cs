@@ -1,9 +1,15 @@
-﻿#define DISABLE_MELTING
-#define DISABLE_CLOUD_DISSAPATION
+﻿//#define DISABLE_CLOUD_DISSAPATION
 #define DISABLE_CLOUD_ELEVATION
-#define DISABLE_RAINFALL
-#define DISABLE_CONDENSATION
+//#define DISABLE_RAINFALL
+//#define DISABLE_CONDENSATION
 #define DISABLE_VERTICAL_AIR_MOVEMENT
+#define DISABLE_CLOUD_ADVECTION
+#define DISABLE_AIR_ADVECTION
+//#define DISABLE_EVAPORATION
+//#define DISABLE_FREEZE_TOP
+//#define DISABLE_FREEZE_BOTTOM
+//#define DISABLE_MELTING_TOP
+//#define DISABLE_MELTING_BOTTOM
 
 using System;
 using System.Collections.Generic;
@@ -756,6 +762,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public float InverseCoordDiff;
 	public void Execute(int i)
 	{
+#if !DISABLE_AIR_ADVECTION
 		float gradientTemperature = 0;
 		float gradientWaterVapor = 0;
 		float2 gradientVelocity = float2.zero;
@@ -769,12 +776,15 @@ public struct AdvectionAirJob : IJobParallelFor {
 			if (n >= 0)
 			{
 				float2 coordDiff = Coords[n] - coord;
-				float2 diff = math.float2(Utils.WrapAngle(coordDiff.x), Utils.WrapAngle(coordDiff.y));
+				float2 diff = math.normalize(math.float2(Utils.WrapAngle(coordDiff.x), Utils.WrapAngle(coordDiff.y)));
 				// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-				float velDotDir = math.max(0, math.dot(Wind[n], diff * InverseCoordDiff)) * InverseCellDiameter;
-				gradientWaterVapor += velDotDir * Vapor[n];
-				gradientVelocity += velDotDir * Wind[n];
-				gradientTemperature += velDotDir * Temperature[n];
+				float velDotDir = math.max(0, math.dot(Wind[n], diff)) * InverseCellDiameter;
+				if (velDotDir < 0)
+				{
+					gradientWaterVapor -= velDotDir * Vapor[n];
+					gradientVelocity -= velDotDir * Wind[n];
+					gradientTemperature -= velDotDir * Temperature[n];
+				}
 			}
 		}
 		float outgoing = math.length(velocity) * InverseCellDiameter;
@@ -788,7 +798,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 			Humidity = gradientWaterVapor,
 			Velocity = gradientVelocity
 		};
-
+#endif
 	}
 }
 
@@ -809,6 +819,7 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public float InverseCoordDiff;
 	public void Execute(int i)
 	{
+#if !DISABLE_CLOUD_ADVECTION
 		float gradientTemperature = 0;
 		float gradientMass = 0;
 		float gradientElevation = 0;
@@ -823,14 +834,18 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			if (n >= 0)
 			{
 				float2 coordDiff = Coords[n] - coord;
-				float2 diff = math.float2(Utils.WrapAngle(coordDiff.x), Utils.WrapAngle(coordDiff.y));
+				float2 diff = math.normalize(math.float2(Utils.WrapAngle(coordDiff.x), Utils.WrapAngle(coordDiff.y)));
 				// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-				float velDotDir = math.max(0, math.dot(Velocity[n], diff * InverseCoordDiff)) * InverseCellDiameter;
-				gradientTemperature += velDotDir * Temperature[n];
-				gradientMass += velDotDir * Mass[n];
-				gradientElevation += velDotDir * Elevation[n];
-				gradientDropletMass += velDotDir * DropletMass[n];
-				gradientVelocity += velDotDir * Velocity[n];
+				float velDotDir = math.max(0, math.dot(Velocity[n], diff)) * InverseCellDiameter;
+				if (velDotDir < 0)
+				{
+					// TODO: account for differing masses having smaller or larger effects on cloud properties
+					gradientTemperature -= velDotDir * Temperature[n];
+					gradientMass -= velDotDir * Mass[n];
+					gradientElevation -= velDotDir * Elevation[n];
+					gradientDropletMass -= velDotDir * DropletMass[n];
+					gradientVelocity -= velDotDir * Velocity[n];
+				}
 			}
 		}
 		float outgoing = math.length(velocity) * InverseCellDiameter;
@@ -849,6 +864,7 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			Velocity = gradientVelocity
 		};
 
+#endif
 	}
 }
 
@@ -1135,11 +1151,9 @@ public struct StateChangeJob : IJobParallelFor {
 	public NativeArray<float> SurfaceWaterTemperature;
 	public NativeArray<float> IceMass;
 	public NativeArray<float> IceTemperature;
-	[ReadOnly] public NativeArray<float> IceMeltedTopMass;
-	[ReadOnly] public NativeArray<float> IceMeltedBottomMass;
+	[ReadOnly] public NativeArray<float> IceMeltedMass;
 	[ReadOnly] public NativeArray<float> WaterEvaporatedMass;
-	[ReadOnly] public NativeArray<float> WaterFrozenTopMass;
-	[ReadOnly] public NativeArray<float> WaterFrozenBottomMass;
+	[ReadOnly] public NativeArray<float> WaterFrozenMass;
 	[ReadOnly] public NativeArray<float> RainfallWaterMass;
 	[ReadOnly] public NativeArray<float> RainfallTemperature;
 	[ReadOnly] public NativeArray<float> SurfaceAirMass;
@@ -1154,20 +1168,16 @@ public struct StateChangeJob : IJobParallelFor {
 		float waterTemperature = SurfaceWaterTemperature[i];
 		float rainfallTemperature = RainfallTemperature[i];
 		float airTemperature = SurfaceAirTemperature[i];
-		float iceMeltedTopMass = IceMeltedTopMass[i];
-		float iceMeltedBottomMass = IceMeltedBottomMass[i];
-		float waterFrozenBottomMass = WaterFrozenBottomMass[i];
-		float waterFrozenTopMass = WaterFrozenTopMass[i];
+		float iceMeltedMass = IceMeltedMass[i];
+		float waterFrozenMass = WaterFrozenMass[i];
 		float iceMass = IceMass[i];
 		float saltMass = SurfaceSaltMass[i];
 
-		float newWaterMass = waterMass + rainfallMass + iceMeltedTopMass + iceMeltedBottomMass;
+		float newWaterMass = waterMass + rainfallMass + iceMeltedMass;
 		float newVaporMass = vaporMass + evaporatedMass;
 		float newAirTemperature = airTemperature;
 
 		float specificHeatAir = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWater * vaporMass;
-		float latentHeatAir = -evaporatedMass * WorldData.LatentHeatWaterVapor + (waterFrozenTopMass - iceMeltedTopMass) * WorldData.LatentHeatWaterLiquid;
-		newAirTemperature += latentHeatAir / specificHeatAir;
 		newAirTemperature = (newAirTemperature * (airMass + vaporMass) + evaporatedMass * waterTemperature) / (airMass + vaporMass + evaporatedMass);
 
 		float newWaterTemperature;
@@ -1176,21 +1186,18 @@ public struct StateChangeJob : IJobParallelFor {
 			newWaterTemperature = (
 				waterTemperature * (saltMass + waterMass)
 				+ rainfallTemperature * rainfallMass
-				+ WorldData.FreezingTemperature * (iceMeltedBottomMass + iceMeltedTopMass))
-				/ (waterMass + saltMass + rainfallMass + iceMeltedBottomMass + iceMeltedTopMass);
-			float specificHeatWater = Atmosphere.GetSpecificHeatOfWater(newWaterMass, saltMass);
-			float latentHeatWater = (waterFrozenBottomMass - iceMeltedBottomMass) * WorldData.LatentHeatWaterLiquid;
-			newWaterTemperature += latentHeatWater / (specificHeatWater * (newWaterMass + saltMass));
+				+ WorldData.FreezingTemperature * iceMeltedMass)
+				/ (waterMass + saltMass + rainfallMass + iceMeltedMass);
 		} else
 		{
 			newWaterTemperature = 0;
 		}
 
-		float newIceMass = iceMass + waterFrozenTopMass + waterFrozenBottomMass;
+		float newIceMass = iceMass + waterFrozenMass;
 		float newIceTemperature;
 		if (newIceMass > 0)
 		{
-			newIceTemperature = (IceTemperature[i] * iceMass + WorldData.FreezingTemperature * (waterFrozenTopMass + waterFrozenBottomMass)) / newIceMass;
+			newIceTemperature = (IceTemperature[i] * iceMass + WorldData.FreezingTemperature * waterFrozenMass) / newIceMass;
 		} else
 		{
 			newIceTemperature = 0;
@@ -1246,10 +1253,10 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 		float cloudEvaporationMass = CloudEvaporationMass[i];
 		float airTemperature = AirTemperature[i];
 
+
 		float cloudMassDelta = math.max(-cloudMass, cloudCondensationMass - cloudEvaporationMass);
 		float newCloudMass = cloudMass + cloudMassDelta;
-		float specificHeatAir = WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWater * VaporMass[i];
-		float latentHeatAir = (cloudMassDelta + groundCondensationMass) * WorldData.LatentHeatWaterVapor / specificHeatAir;
+
 		float newDropletSize = 0;
 		if (newCloudMass > 0)
 		{
@@ -1280,7 +1287,6 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 			SurfaceWaterTemperature[i] = ((SurfaceWaterMass[i] + SurfaceSaltMass[i]) * SurfaceWaterTemperature[i] + groundCondensationMass * AirTemperature[i]) / (newWaterMass + SurfaceSaltMass[i]);
 			SurfaceWaterMass[i] = newWaterMass;
 		}
-		AirTemperature[i] += latentHeatAir;
 	}
 }
 
@@ -1334,8 +1340,8 @@ public struct EnergySurfaceAirJob : IJobParallelFor {
 		float temperature = LastTemperature[i] + Diffusion[i].Temperature - Advection[i].Temperature + energy / specificHeat;
 		float vapor = LastVapor[i] + Diffusion[i].Humidity - Advection[i].Humidity;
 #if !DISABLE_VERTICAL_AIR_MOVEMENT
-		temperature += + VerticalAirMovementUp[i].Temperature;
-		vapor += VerticalAirMovementUp[i].Humidity;
+		temperature += + VerticalAirMovement[i].Temperature;
+		vapor += VerticalAirMovement[i].Humidity;
 
 #endif
 
@@ -1487,8 +1493,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 	public NativeArray<float2> Velocity;
 	public NativeArray<float> WaterMass;
 	public NativeArray<float> EvaporatedWaterMass;
-	public NativeArray<float> FrozenTopMass;
-	public NativeArray<float> FrozenBottomMass;
+	public NativeArray<float> FrozenMass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
@@ -1508,6 +1513,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 	[ReadOnly] public float EvaporationRate;
 	[ReadOnly] public float EvapTemperatureMin;
 	[ReadOnly] public float EvapTemperatureMax;
+	[ReadOnly] public float WaterHeatingDepth;
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
@@ -1528,6 +1534,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 		if (waterMass > 0)
 		{
 
+#if !DISABLE_EVAPORATION
 			if (energyTop > 0)
 			{
 				float evapRate = math.saturate((1.0f - RelativeHumidity[i]) * math.max(0, WaterCoverage[i] - IceCoverage[i]) * EvaporationRate * (LastTemperature[i] - EvapTemperatureMin) / (EvapTemperatureMax - EvapTemperatureMin));
@@ -1539,34 +1546,44 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 				}
 				waterMass -= evapMass;
 			}
+#endif
 
+#if !DISABLE_FREEZE_TOP
 			if (waterMass > 0)
 			{
-				float temperatureDelta = math.max(0, WorldData.FreezingTemperature - temperature);
-				float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass);
-				float frozenTopEnergy = temperatureDelta / WorldData.SpecificHeatWater;
-				frozenTopMass = math.clamp(waterMass, 0, frozenTopEnergy / WorldData.LatentHeatWaterLiquid);
-				// TODO: this is overshooting how much needs to be frozen to reach equilibrium -- redo the formula
-				frozenTopEnergy = frozenTopMass * (WorldData.FreezingTemperature - lastTemperature) * WorldData.SpecificHeatWater;
-				waterMass -= frozenTopMass;
-				temperature += frozenTopEnergy / (WorldData.SpecificHeatWater * waterMass);
+				float heatingMass = math.min(waterMass, WaterHeatingDepth * WorldData.MassWater);
+				float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass) / (waterMass + saltMass);
+				float newTempTop = temperature + energyTop / (specificHeatSaltWater * heatingMass);
+				if (newTempTop < WorldData.FreezingTemperature)
+				{
+					float energyToRelease = (WorldData.FreezingTemperature - newTempTop) * specificHeatSaltWater * heatingMass;
+					frozenTopMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
+					energyTop += frozenTopMass * WorldData.LatentHeatWaterLiquid;
+					waterMass -= frozenTopMass;
+				}
 			}
+#endif
 
+#if !DISABLE_FREEZE_BOTTOM
 			if (waterMass > 0)
 			{
-				float temperatureDelta = math.max(0, WorldData.FreezingTemperature - temperature);
-				float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass);
-				float frozenBottomEnergy = temperatureDelta / specificHeatSaltWater;
-				// TODO: this is overshooting how much needs to be frozen to reach equilibrium -- redo the formula
-				frozenBottomMass = math.clamp(waterMass, 0, frozenBottomEnergy / WorldData.LatentHeatWaterLiquid);
-				waterMass -= frozenBottomMass;
-				temperature += frozenBottomEnergy / (WorldData.SpecificHeatWater * waterMass);
+				float heatingMass = math.min(waterMass, WaterHeatingDepth * WorldData.MassWater);
+				float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass) / (waterMass + saltMass);
+				float newTempBottom = temperature + energyBottom / (specificHeatSaltWater * heatingMass);
+				if (newTempBottom < WorldData.FreezingTemperature)
+				{
+					float energyToRelease = (WorldData.FreezingTemperature - newTempBottom) * specificHeatSaltWater * heatingMass;
+					frozenBottomMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
+					energyBottom += frozenBottomMass * WorldData.LatentHeatWaterLiquid;
+					waterMass -= frozenBottomMass;
+				}
 			}
+#endif
 		}
 
+
 		EvaporatedWaterMass[i] = evapMass;
-		FrozenTopMass[i] = frozenTopMass;
-		FrozenBottomMass[i] = frozenBottomMass;
+		FrozenMass[i] = frozenTopMass + frozenBottomMass;
 
 		SaltMass[i] = saltMass + Diffusion[i].Salinity - Advection[i].Salinity;
 		WaterMass[i] = waterMass;
@@ -1651,7 +1668,9 @@ public struct EnergyCloudJob : IJobParallelFor {
 			cloudTemperature += Diffusion[i].Temperature - Advection[i].Temperature + energySources;
 		}
 		dropletMass += Diffusion[i].DropletMass - Advection[i].DropletMass;
+#if !DISABLE_CLOUD_ELEVATION
 		cloudElevation = math.max(surfaceElevation, cloudElevation + Diffusion[i].Elevation - Advection[i].Elevation);
+#endif
 
 		float2 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + Diffusion[i].Velocity - Advection[i].Velocity + PressureGradientForce[i] * SecondsPerTick;
 		float2 coriolisForce = CoriolisMultiplier[i] * CoriolisTerm * new float2(velocity.y, -velocity.x);
@@ -1686,7 +1705,7 @@ public struct EnergyCloudJob : IJobParallelFor {
 		// dissapation
 		if (cloudMass > 0)
 		{
-			float dissapationSpeed = math.min(1.0f, CloudDissapationRateWind * math.max(0, -velocityVertical) + CloudDissapationRateDryAir) * (1.0f - RelativeHumidityCloud[i]);
+			float dissapationSpeed = math.min(1.0f, CloudDissapationRateWind * math.max(0, -velocityVertical) + CloudDissapationRateDryAir) * math.max(0, 1.0f - RelativeHumidityCloud[i]);
 			cloudEvaporationMass = cloudMass * dissapationSpeed;
 			dropletMass *= 1.0f - dissapationSpeed;
 			cloudMass -= cloudEvaporationMass;
@@ -1723,8 +1742,7 @@ public struct EnergyCloudJob : IJobParallelFor {
 public struct EnergyIceJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	public NativeArray<float> Mass;
-	public NativeArray<float> MeltedTopMass;
-	public NativeArray<float> MeltedBottomMass;
+	public NativeArray<float> MeltedMass;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaBottom;
@@ -1733,6 +1751,7 @@ public struct EnergyIceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+	[ReadOnly] public float IceHeatingDepth;
 	public void Execute(int i)
 	{
 		float energyTop = -ConductionEnergyAir[i] + ThermalRadiationDeltaTop[i] + SolarRadiationIn[i];
@@ -1743,43 +1762,42 @@ public struct EnergyIceJob : IJobParallelFor {
 		float iceMass = LastMass[i];
 		float iceTemperature = LastTemperature[i];
 
-#if !DISABLE_MELTING
+#if !DISABLE_MELTING_TOP
 		if (iceMass > 0)
 		{
-			float maxHeatingDepth = 0.1f;
 			float iceDepth = iceMass / WorldData.MassIce;
-			float heatingDepth = math.min(maxHeatingDepth, iceDepth);
+			float heatingDepth = math.min(IceHeatingDepth, iceDepth);
 			float heatingMass = heatingDepth * WorldData.MassIce;
 			float newTempTop = iceTemperature + energyTop / (WorldData.SpecificHeatIce * heatingMass);
 			if (newTempTop > WorldData.FreezingTemperature)
 			{
-				float energyToMeltTop = (newTempTop - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce;
-				meltedTopMass = math.min(iceMass, heatingMass * energyToMeltTop);
+				float energyToAbsorb = (newTempTop - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
+				meltedTopMass = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
+				energyTop -= meltedTopMass * WorldData.LatentHeatWaterLiquid;
 				iceMass -= meltedTopMass;
-				energyTop -= meltedTopMass * WorldData.SpecificHeatIce * (WorldData.FreezingTemperature - iceTemperature);
 			}
 		}
+#endif
 
+#if !DISABLE_MELTING_BOTTOM
 		if (iceMass > 0)
 		{
-			float maxHeatingDepth = 0.1f;
 			float iceDepth = iceMass / WorldData.MassIce;
-			float heatingDepth = math.min(maxHeatingDepth, iceDepth);
+			float heatingDepth = math.min(IceHeatingDepth, iceDepth);
 			float heatingMass = heatingDepth * WorldData.MassIce;
 			float newTempBottom = iceTemperature + energyBottom / (WorldData.SpecificHeatIce * heatingMass);
 			if (newTempBottom > WorldData.FreezingTemperature)
 			{
-				float energyToMeltBottom = (newTempBottom - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce;
-				meltedBottomMass = math.min(iceMass, heatingMass * energyToMeltBottom);
+				float energyToAbsorb = (newTempBottom - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
+				meltedBottomMass = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
+				energyBottom -= meltedBottomMass * WorldData.LatentHeatWaterLiquid;
 				iceMass -= meltedBottomMass;
-				energyTop -= meltedBottomMass * WorldData.SpecificHeatIce * (WorldData.FreezingTemperature - iceTemperature);
 			}
 		}
 #endif
 
 		Mass[i] = iceMass;
-		MeltedTopMass[i] = meltedTopMass;
-		MeltedBottomMass[i] = meltedBottomMass;
+		MeltedMass[i] = meltedTopMass + meltedBottomMass;
 		Temperature[i] = iceMass > 0 ? iceTemperature + (energyTop + energyBottom) / (iceMass * WorldData.SpecificHeatIce) : 0;
 	}
 }

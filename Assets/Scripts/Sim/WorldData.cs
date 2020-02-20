@@ -110,6 +110,8 @@ public struct WorldData {
 	public float CloudDissapationRateDryAir;
 	public float DewPointElevationPerDegree;
 	public float DewPointTemperaturePerRelativeHumidity;
+	public float IceHeatingDepth;
+	public float WaterHeatingDepth;
 
 	[Header("Ocean")]
 	public float ThermoclineDepth;
