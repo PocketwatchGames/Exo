@@ -392,7 +392,7 @@ public void Dispose()
 					CloudMass = lastState.CloudMass,
 					CloudTemperature = lastState.CloudTemperature,
 					CloudDropletMass = lastState.CloudDropletMass,
-					CloudElevation = lastState.CloudElevation,
+					CloudElevation = dependent.CloudElevation,
 					CloudCoverage = dependent.CloudCoverage,
 					WaterSlopeAlbedo = waterSlopeAlbedo,
 					SolarReflectivityAir = worldData.SolarReflectivityAir,
@@ -563,7 +563,7 @@ public void Dispose()
 						WindowRadiationIncoming = windowRadiationTransmittedUp[j - 1],
 						ThermalRadiationIncoming = thermalRadiationTransmittedUp[j - 1],
 						ThermalRadiationTransmittedCloud = thermalRadiationTransmittedUp[_cloudLayer],
-						CloudElevation = lastState.CloudElevation,
+						CloudElevation = dependent.CloudElevation,
 						CloudMass = lastState.CloudMass,
 						LayerElevation = dependent.LayerElevation[airLayer],
 						LayerHeight = dependent.LayerHeight[airLayer],
@@ -676,7 +676,7 @@ public void Dispose()
 						WindowRadiationIncoming = windowRadiationTransmittedDown[j + 1],
 						ThermalRadiationIncoming = thermalRadiationTransmittedDown[j + 1],
 						ThermalRadiationTransmittedCloud = thermalRadiationTransmittedDown[_cloudLayer],
-						CloudElevation = lastState.CloudElevation,
+						CloudElevation = dependent.CloudElevation,
 						LayerElevation = dependent.LayerElevation[airLayer],
 						LayerHeight = dependent.LayerHeight[airLayer],
 						AirMass = dependent.AirMass[airLayer],
@@ -777,7 +777,6 @@ public void Dispose()
 				Delta = diffusionCloud,
 				Mass = lastState.CloudMass,
 				Temperature = lastState.CloudTemperature,
-				Elevation = lastState.CloudElevation,
 				DropletSize = lastState.CloudDropletMass,
 				Velocity = lastState.CloudVelocity,
 				Neighbors = staticState.Neighbors,
@@ -864,7 +863,6 @@ public void Dispose()
 				Delta = advectionCloud,
 				Temperature = lastState.CloudTemperature,
 				Mass = lastState.CloudMass,
-				Elevation = lastState.CloudElevation,
 				DropletMass = lastState.CloudDropletMass,
 				Velocity = lastState.CloudVelocity,
 				Neighbors = staticState.Neighbors,
@@ -989,7 +987,7 @@ public void Dispose()
 					CloudMass = lastState.CloudMass,
 					CloudDropletSize = lastState.CloudDropletMass,
 					CloudTemperature = lastState.CloudTemperature,
-					CloudElevation = lastState.CloudElevation,
+					CloudElevation = dependent.CloudElevation,
 					CloudEnergy = dependent.CloudEnergy,
 					CloudCoverage = dependent.CloudCoverage,
 					SecondsPerTick = worldData.SecondsPerTick,
@@ -1081,7 +1079,6 @@ public void Dispose()
 				CloudTemperature = nextState.CloudTemperature,
 				CloudMass = nextState.CloudMass,
 				DropletMass = nextState.CloudDropletMass,
-				CloudElevation = nextState.CloudElevation,
 				Velocity = nextState.CloudVelocity,
 				CloudEvaporationMass = cloudEvaporationMass,
 				RainfallWaterMass = rainfallWaterMass,
@@ -1094,7 +1091,7 @@ public void Dispose()
 				Advection = advectionCloud,
 				Diffusion = diffusionCloud,
 				LastDropletMass = lastState.CloudDropletMass,
-				LastCloudElevation = lastState.CloudElevation,
+				CloudElevation = dependent.CloudElevation,
 				AirMassCloud = dependent.AirMassCloud,
 				WaterVaporCloud = dependent.AirVaporCloud,
 				AirTemperatureCloud = dependent.AirTemperatureCloud,
@@ -1157,7 +1154,7 @@ public void Dispose()
 					ConductionEnergyWater = conductionAirWater,
 					ConductionEnergyIce = conductionAirIce,
 					ConductionEnergyTerrain = conductionAirTerrain,
-					CloudElevation = lastState.CloudElevation,
+					CloudElevation = dependent.CloudElevation,
 					LayerElevation = dependent.LayerElevation[0],
 					LayerHeight = dependent.LayerHeight[0],
 					PressureGradientForce = pressureGradientForce[0],
@@ -1207,7 +1204,7 @@ public void Dispose()
 					SolarRadiationIn = solarRadiationIn[layerIndex],
 					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
 					ConductionEnergyCloud = conductionCloudAir,
-					CloudElevation = lastState.CloudElevation,
+					CloudElevation = dependent.CloudElevation,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					PressureGradientForce = pressureGradientForce[j],
@@ -1343,7 +1340,6 @@ public void Dispose()
 					AirTemperature = nextState.AirTemperature[j],
 					VaporMass = nextState.AirVapor[j],
 					CloudDropletMass = nextState.CloudDropletMass,
-					CloudElevation = nextState.CloudElevation,
 					CloudEvaporationMass = cloudEvaporationMass,
 					CloudMass = nextState.CloudMass,
 					CloudTemperature = nextState.CloudTemperature,
@@ -1397,11 +1393,11 @@ public void Dispose()
 					AirPressureCloud = dependent.AirPressureCloud,
 					AirHumidityRelativeCloud = dependent.AirHumidityRelativeCloud,
 					AirLayerCloud = dependent.AirLayerCloud,
+					CloudElevation = dependent.CloudElevation,
 					AirMassTotal = airMassTotal,
 
 					AirTemperature = lastState.AirTemperature[j],
 					CloudDropletMass = nextState.CloudDropletMass,
-					CloudElevation = nextState.CloudElevation,
 					CloudMass = nextState.CloudMass,
 					CloudTemperature = nextState.CloudTemperature,
 					VaporMass = nextState.AirVapor[j],
@@ -1470,7 +1466,6 @@ public void Dispose()
 				List<string> degenVarNames = new List<string>();
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 1000, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
-				degen |= CheckDegen(_cellCount, degenIndices, "CloudElevation", nextState.CloudElevation, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "CloudTemperature", nextState.CloudTemperature, 0, 1000, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
@@ -1684,7 +1679,6 @@ public void Dispose()
 		s.AppendLine("Vegetation" + ": " + state.Terrain[i].Vegetation);
 		s.AppendLine("TerrainTemperature" + ": " + state.TerrainTemperature[i]);
 		s.AppendLine("CloudMass" + ": " + state.CloudMass[i]);
-		s.AppendLine("CloudElevation" + ": " + state.CloudElevation[i]);
 		s.AppendLine("CloudTemperature" + ": " + state.CloudTemperature[i]);
 		s.AppendLine("CloudDropletMass" + ": " + state.CloudDropletMass[i]);
 		s.AppendLine("IceMass" + ": " + state.IceMass[i]);

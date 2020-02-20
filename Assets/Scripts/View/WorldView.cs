@@ -327,7 +327,7 @@ public class WorldView : MonoBehaviour {
 			WindMaskedByLand = windOverlayData.MaskLand,
 			MeshOverlayMin = meshOverlay.Min,
 			MeshOverlayInverseRange = meshOverlay.InverseRange,
-			CloudElevation = from.CloudElevation,
+			CloudElevation = dependent.CloudElevation,
 			Icosphere = Sim.Icosphere.Vertices,
 			Terrain = from.Terrain,
 			CloudDropletMass = from.CloudDropletMass,
@@ -761,7 +761,7 @@ public class WorldView : MonoBehaviour {
 		s += "Cloud Mass: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg\n";
 		if (cloudMass > 0) {
 			s += "Cloud Temp: " + GetTemperatureString(state.CloudTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-			s += "Cloud Elevation: " + (state.CloudElevation[ActiveCellIndex]).ToString("0") + " m\n";
+			s += "Cloud Elevation: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + " m\n";
 			s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater* cloudMass)).ToString("0.000") + " nm3\n";
 		}
 		s += "Air Mass 0: " + dependent.AirMass[0][ActiveCellIndex].ToString("0") + " kg\n";

@@ -17,7 +17,6 @@ public struct SimState {
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> IceMass;
 	public NativeArray<float> CloudTemperature;
-	public NativeArray<float> CloudElevation;
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> CloudDropletMass;
 	public NativeArray<float2> CloudVelocity;
@@ -35,7 +34,6 @@ public struct SimState {
 		TerrainTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
-		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
 		CloudTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudDropletMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -69,7 +67,6 @@ public struct SimState {
 		TerrainTemperature.Dispose();
 		IceTemperature.Dispose();
 		IceMass.Dispose();
-		CloudElevation.Dispose();
 		CloudTemperature.Dispose();
 		CloudMass.Dispose();
 		CloudDropletMass.Dispose();
@@ -133,6 +130,7 @@ public struct DependentState {
 	public NativeArray<float>[] AirPotentialEnergy;
 	public NativeArray<float>[] LayerHeight;
 	public NativeArray<float>[] LayerElevation;
+	public NativeArray<float> CloudElevation;
 	public NativeArray<float> AirMassCloud;
 	public NativeArray<float> AirVaporCloud;
 	public NativeArray<float> AirTemperatureCloud;
@@ -156,6 +154,7 @@ public struct DependentState {
 		AirTemperatureCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirPressureCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirHumidityRelativeCloud = new NativeArray<float>(count, Allocator.Persistent);
+		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
 		AirLayerCloud = new NativeArray<int>(count, Allocator.Persistent);
 
 		AirMass = new NativeArray<float>[airLayers];
@@ -202,6 +201,7 @@ public struct DependentState {
 		AirTemperatureCloud.Dispose();
 		AirPressureCloud.Dispose();
 		AirHumidityRelativeCloud.Dispose();
+		CloudElevation.Dispose();
 		AirLayerCloud.Dispose();
 
 		for (int i = 0; i < AirPressure.Length; i++)

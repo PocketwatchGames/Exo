@@ -110,6 +110,19 @@ public static class Atmosphere {
 	//	return math.saturate((1.0f - iceCoverage) * (1.0f - relativeHumidity) * Utils.Sqr(evapTemperature)) * worldData.EvaporationRate * WorldData.MassWater;
 	//}
 
+	//https://en.wikipedia.org/wiki/Dew_point
+	[BurstCompile]
+	static public float GetDewPoint(float relativeHumidity, float temperature)
+	{
+		return math.log(relativeHumidity) + (18.678f * (temperature - WorldData.FreezingTemperature)) / (temperature - 16.01f) + WorldData.FreezingTemperature;
+	}
+
+	[BurstCompile]
+	static public float GetElevationAtDewPoint(float relativeHumidity, float temperature, float referenceElevation)
+	{
+		float dewPoint = GetDewPoint(relativeHumidity, temperature);
+		return referenceElevation + (dewPoint - temperature) / WorldData.TemperatureLapseRate;
+	}
 
 	[BurstCompile]
 	static public float GetRelativeHumidity(float airMass, float waterVaporMass, float temperature, float dewPointZero, float waterVaporMassToAirMassAtDewPoint, float inverseDewPointTemperatureRange)
