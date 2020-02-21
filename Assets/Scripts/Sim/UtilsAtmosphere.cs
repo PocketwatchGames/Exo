@@ -60,7 +60,7 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetMolarMassMoistAir(float airMass, float vaporMass)
 	{
-		return (WorldData.GasConstantAir * airMass + WorldData.GasConstantWaterVapor * vaporMass) / (airMass + vaporMass);
+		return (airMass * WorldData.MolarMassAir + vaporMass * WorldData.MolarMassWater) / (airMass + vaporMass);
 	}
 
 	[BurstCompile]

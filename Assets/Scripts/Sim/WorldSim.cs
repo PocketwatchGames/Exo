@@ -78,6 +78,7 @@ public class WorldSim {
 	private NativeArray<float> waterSlopeAlbedo;
 	private NativeArray<float>[] emissivity;
 	private NativeArray<float>[] solarRadiationIn;
+	private NativeArray<float>[] bouyancy;
 	private NativeArray<DiffusionAir>[] diffusionAir;
 	private NativeArray<DiffusionWater>[] diffusionWater;
 	private NativeArray<DiffusionAir>[] advectionAir;
@@ -111,6 +112,7 @@ public class WorldSim {
 		_airLayer0 = _iceLayer + 1;
 		_surfaceWaterLayer = _waterLayers - 1;
 
+		#region Job Initialization
 		SolarRadiationInJob = new JobHelper(_cellCount);
 		UpdateTerrainJob = new JobHelper(_cellCount);
 		EmissivityAirJob = new JobHelper(_cellCount);
@@ -159,194 +161,194 @@ public class WorldSim {
 		UpdateDependentJob = new JobHelper(_cellCount);
 		UpdateWaterSaltMassJob = new JobHelper(_cellCount);
 
-		#if SolarRadiationInJobDebug
+#if SolarRadiationInJobDebug
 		SolarRadiationInJob.Async = false;
-		#endif
+#endif
 
-		#if UpdateTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if UpdateTerrainJobDebug
+		UpdateTerrainJob.Async = false;
+#endif
 
-		#if EmissivityAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EmissivityAirJobDebug
+		EmissivityAirJob.Async = false;
+#endif
 
-		#if EmissivityWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EmissivityWaterJobDebug
+		EmissivityWaterJob.Async = false;
+#endif
 
-		#if EmissivityTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EmissivityTerrainJobDebug
+		EmissivityTerrainJob.Async = false;
+#endif
 
-		#if SolarRadiationAbsorbedAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if SolarRadiationAbsorbedAirJobDebug
+		SolarRadiationAbsorbedAirJob.Async = false;
+#endif
 
-		#if SolarRadiationAbsorbedIceJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if SolarRadiationAbsorbedIceJobDebug
+		SolarRadiationAbsorbedIceJob.Async = false;
+#endif
 
-		#if SolarRadiationAbsorbedWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if SolarRadiationAbsorbedWaterJobDebug
+		SolarRadiationAbsorbedWaterJob.Async = false;
+#endif
 
-		#if SolarRadiationAbsorbedTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if SolarRadiationAbsorbedTerrainJobDebug
+		SolarRadiationAbsorbedTerrainJob.Async = false;
+#endif
 
-		#if ThermalOutCloudJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalOutCloudJobDebug
+		ThermalOutCloudJob.Async = false;
+#endif
 
-		#if ThermalOutAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalOutAirJobDebug
+		ThermalOutAirJob.Async = false;
+#endif
 
-		#if ThermalOutIceJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalOutIceJobDebug
+		ThermalOutIceJob.Async = false;
+#endif
 
-		#if ThermalOutWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalOutWaterJobDebug
+		ThermalOutWaterJob.Async = false;
+#endif
 
-		#if ThermalOutTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalOutTerrainJobDebug
+		ThermalOutTerrainJob.Async = false;
+#endif
 
-		#if ThermalInUpAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalInUpAirJobDebug
+		ThermalInUpAirJob.Async = false;
+#endif
 
-		#if ThermalInUpIceJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalInUpIceJobDebug
+		ThermalInUpIceJob.Async = false;
+#endif
 
-		#if ThermalInUpWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalInUpWaterJobDebug
+		ThermalInUpWaterJob.Async = false;
+#endif
 
-		#if ThermalInDownAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalInDownAirJobDebug
+		ThermalInDownAirJob.Async = false;
+#endif
 
-		#if ThermalInDownIceJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalInDownIceJobDebug
+		ThermalInDownIceJob.Async = false;
+#endif
 
-		#if ThermalInDownWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalInDownWaterJobDebug
+		ThermalInDownWaterJob.Async = false;
+#endif
 
-		#if ThermalInDownTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ThermalInDownTerrainJobDebug
+		ThermalInDownTerrainJob.Async = false;
+#endif
 
-		#if PressureGradientForceAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if PressureGradientForceAirJobDebug
+		PressureGradientForceAirJob.Async = false;
+#endif
 
-		#if WindFrictionJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if WindFrictionJobDebug
+		WindFrictionJob.Async = false;
+#endif
 
-		#if DiffusionAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if DiffusionAirJobDebug
+		DiffusionAirJob.Async = false;
+#endif
 
-		#if DiffusionWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if DiffusionWaterJobDebug
+		DiffusionWaterJob.Async = false;
+#endif
 
-		#if DiffusionCloudJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if DiffusionCloudJobDebug
+		DiffusionCloudJob.Async = false;
+#endif
 
-		#if AdvectionAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if AdvectionAirJobDebug
+		AdvectionAirJob.Async = false;
+#endif
 
-		#if AdvectionWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if AdvectionWaterJobDebug
+		AdvectionWaterJob.Async = false;
+#endif
 
-		#if AdvectionCloudJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if AdvectionCloudJobDebug
+		AdvectionCloudJob.Async = false;
+#endif
 
-		#if ConductionAirIceJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ConductionAirIceJobDebug
+		ConductionAirIceJob.Async = false;
+#endif
 
-		#if ConductionAirWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ConductionAirWaterJobDebug
+		ConductionAirWaterJob.Async = false;
+#endif
 
-		#if ConductionAirTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ConductionAirTerrainJobDebug
+		ConductionAirTerrainJob.Async = false;
+#endif
 
-		#if ConductionIceWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ConductionIceWaterJobDebug
+		ConductionIceWaterJob.Async = false;
+#endif
 
-		#if ConductionIceTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ConductionIceTerrainJobDebug
+		ConductionIceTerrainJob.Async = false;
+#endif
 
-		#if ConductionWaterTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if ConductionWaterTerrainJobDebug
+		ConductionWaterTerrainJob.Async = false;
+#endif
 
-		#if EnergyTerrainJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EnergyTerrainJobDebug
+		EnergyTerrainJob.Async = false;
+#endif
 
-		#if EnergyCloudJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EnergyCloudJobDebug
+		EnergyCloudJob.Async = false;
+#endif
 
-		#if EnergyIceJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EnergyIceJobDebug
+		EnergyIceJob.Async = false;
+#endif
 
-		#if EnergyWaterJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EnergyWaterJobDebug
+		EnergyWaterJob.Async = false;
+#endif
 
-		#if EnergyWaterSurfaceJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EnergyWaterSurfaceJobDebug
+		EnergyWaterSurfaceJob.Async = false;
+#endif
 
-		#if EnergyAirJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if EnergyAirJobDebug
+		EnergyAirJob.Async = false;
+#endif
 
-		#if StateChangeJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if StateChangeJobDebug
+		StateChangeJob.Async = false;
+#endif
 
-		#if StateChangeAirLayerJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if StateChangeAirLayerJobDebug
+		StateChangeAirLayerJob.Async = false;
+#endif
 
-		#if UpdateDependentWaterLayerJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if UpdateDependentWaterLayerJobDebug
+		UpdateDependentWaterLayerJob.Async = false;
+#endif
 
-		#if UpdateDependentAirLayerJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if UpdateDependentAirLayerJobDebug
+		UpdateDependentAirLayerJob.Async = false;
+#endif
 
-		#if UpdateDependentJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
+#if UpdateDependentJobDebug
+		UpdateDependentJob.Async = false;
+#endif
 
-		#if UpdateWaterSaltMassJobDebug
-		SolarRadiationInJob.Async = false;
-		#endif
-
+#if UpdateWaterSaltMassJobDebug
+		UpdateWaterSaltMassJob.Async = false;
+#endif
+		#endregion
 
 		solarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterSlopeAlbedo = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -362,11 +364,13 @@ public class WorldSim {
 		diffusionAir = new NativeArray<DiffusionAir>[_airLayers];
 		advectionAir = new NativeArray<DiffusionAir>[_airLayers];
 		pressureGradientForce = new NativeArray<float2>[_airLayers];
+		bouyancy = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
 		{
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			advectionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			pressureGradientForce[i] = new NativeArray<float2>(_cellCount, Allocator.Persistent);
+			bouyancy[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
@@ -407,6 +411,7 @@ public class WorldSim {
 			diffusionAir[i].Dispose();
 			advectionAir[i].Dispose();
 			pressureGradientForce[i].Dispose();
+			bouyancy[i].Dispose();
 		}
 		for (int i = 0; i < _waterLayers; i++)
 		{
@@ -861,9 +866,11 @@ public class WorldSim {
 					Wind = lastState.Wind[j],
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficient = worldData.AirMassDiffusionSpeedHorizontal,
+					Bouyancy = bouyancy[j],
 
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
+					AirMass = dependent.AirMass[j],
 					UpTemperature = lastState.AirTemperature[j + 1],
 					UpHumidity = lastState.AirTemperature[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
@@ -878,6 +885,8 @@ public class WorldSim {
 					MaxVerticalMovement = worldData.MaxBouyancy,
 					VerticalDiffusionCoefficient = worldData.AirMassDiffusionSpeedVertical,
 					Gravity = lastState.PlanetState.Gravity,
+					IsTop = j == _airLayers - 2,
+					IsBottom = j == 1
 
 				}, lastJobHandle);
 			}
@@ -1303,10 +1312,11 @@ public class WorldSim {
 			{
 				diffusionJobHandleCloud,
 				advectionJobHandleCloud,
-				pgfJobHandles[_airLayer0+1],
+				pgfJobHandles[_airLayer0+2],
 				windFrictionJobHandle,
 				energyIceHandle,
 				surfaceWaterEnergyHandle,
+				diffusionJobHandles[_airLayer0+2],
 			};
 			for (int j = _airLayer0 + 1; j < _airLayer0 + _airLayers - 1; j++)
 			{
@@ -1354,7 +1364,11 @@ public class WorldSim {
 				WindFrictionMultiplier = 0,
 				CoriolisMultiplier = staticState.CoriolisMultiplier,
 				CoriolisTerm = coriolisTerm,
-				PressureGradientForce = pressureGradientForce[1], // TODO: use wind at cloud elevation
+				PressureGradientForce = pressureGradientForce[2], // TODO: use wind at cloud elevation
+				Bouyancy = bouyancy[2], // TODO: use wind at cloud elevation
+				EvaporationRate = worldData.EvaporationRate,
+				EvapTemperatureMax = worldData.EvapMaxTemperature,
+				EvapTemperatureMin = worldData.EvapMinTemperature,
 			}, JobHandle.CombineDependencies(cloudEnergyJobHandleDependencies)));
 
 
