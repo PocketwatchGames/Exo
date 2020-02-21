@@ -113,13 +113,13 @@ public class WorldSim {
 
 		SolarRadiationInJob = new JobHelper(_cellCount);
 		UpdateTerrainJob = new JobHelper(_cellCount);
-		EmissivityAirJob =  new JobHelper(_cellCount);
-		EmissivityWaterJob =  new JobHelper(_cellCount);
-		EmissivityTerrainJob =  new JobHelper(_cellCount);
-		SolarRadiationAbsorbedAirJob =  new JobHelper(_cellCount);
-		SolarRadiationAbsorbedIceJob =  new JobHelper(_cellCount);
-		SolarRadiationAbsorbedWaterJob =  new JobHelper(_cellCount);
-		SolarRadiationAbsorbedTerrainJob =  new JobHelper(_cellCount);
+		EmissivityAirJob = new JobHelper(_cellCount);
+		EmissivityWaterJob = new JobHelper(_cellCount);
+		EmissivityTerrainJob = new JobHelper(_cellCount);
+		SolarRadiationAbsorbedAirJob = new JobHelper(_cellCount);
+		SolarRadiationAbsorbedIceJob = new JobHelper(_cellCount);
+		SolarRadiationAbsorbedWaterJob = new JobHelper(_cellCount);
+		SolarRadiationAbsorbedTerrainJob = new JobHelper(_cellCount);
 		ThermalOutCloudJob = new JobHelper(_cellCount);
 		ThermalOutAirJob = new JobHelper(_cellCount);
 		ThermalOutIceJob = new JobHelper(_cellCount);
@@ -132,32 +132,221 @@ public class WorldSim {
 		ThermalInDownIceJob = new JobHelper(_cellCount);
 		ThermalInDownWaterJob = new JobHelper(_cellCount);
 		ThermalInDownTerrainJob = new JobHelper(_cellCount);
-		PressureGradientForceAirJob= new JobHelper(_cellCount);
-		WindFrictionJob= new JobHelper(_cellCount);
+		PressureGradientForceAirJob = new JobHelper(_cellCount);
+		WindFrictionJob = new JobHelper(_cellCount);
 		DiffusionAirJob = new JobHelper(_cellCount);
 		DiffusionWaterJob = new JobHelper(_cellCount);
 		DiffusionCloudJob = new JobHelper(_cellCount);
 		AdvectionAirJob = new JobHelper(_cellCount);
 		AdvectionWaterJob = new JobHelper(_cellCount);
 		AdvectionCloudJob = new JobHelper(_cellCount);
-		ConductionAirIceJob= new JobHelper(_cellCount);
-		ConductionAirWaterJob= new JobHelper(_cellCount);
-		ConductionAirTerrainJob= new JobHelper(_cellCount);
-		ConductionIceWaterJob= new JobHelper(_cellCount);
-		ConductionIceTerrainJob= new JobHelper(_cellCount);
-		ConductionWaterTerrainJob= new JobHelper(_cellCount);
-		EnergyTerrainJob= new JobHelper(_cellCount);
-		EnergyCloudJob= new JobHelper(_cellCount);
-		EnergyIceJob= new JobHelper(_cellCount);
-		EnergyWaterJob= new JobHelper(_cellCount);
-		EnergyWaterSurfaceJob= new JobHelper(_cellCount);
-		EnergyAirJob= new JobHelper(_cellCount);
-		StateChangeJob= new JobHelper(_cellCount);
-		StateChangeAirLayerJob= new JobHelper(_cellCount);
-		UpdateDependentWaterLayerJob= new JobHelper(_cellCount);
-		UpdateDependentAirLayerJob= new JobHelper(_cellCount);
-		UpdateDependentJob= new JobHelper(_cellCount);
-		UpdateWaterSaltMassJob= new JobHelper(_cellCount);
+		ConductionAirIceJob = new JobHelper(_cellCount);
+		ConductionAirWaterJob = new JobHelper(_cellCount);
+		ConductionAirTerrainJob = new JobHelper(_cellCount);
+		ConductionIceWaterJob = new JobHelper(_cellCount);
+		ConductionIceTerrainJob = new JobHelper(_cellCount);
+		ConductionWaterTerrainJob = new JobHelper(_cellCount);
+		EnergyTerrainJob = new JobHelper(_cellCount);
+		EnergyCloudJob = new JobHelper(_cellCount);
+		EnergyIceJob = new JobHelper(_cellCount);
+		EnergyWaterJob = new JobHelper(_cellCount);
+		EnergyWaterSurfaceJob = new JobHelper(_cellCount);
+		EnergyAirJob = new JobHelper(_cellCount);
+		StateChangeJob = new JobHelper(_cellCount);
+		StateChangeAirLayerJob = new JobHelper(_cellCount);
+		UpdateDependentWaterLayerJob = new JobHelper(_cellCount);
+		UpdateDependentAirLayerJob = new JobHelper(_cellCount);
+		UpdateDependentJob = new JobHelper(_cellCount);
+		UpdateWaterSaltMassJob = new JobHelper(_cellCount);
+
+		#if SolarRadiationInJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if UpdateTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EmissivityAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EmissivityWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EmissivityTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if SolarRadiationAbsorbedAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if SolarRadiationAbsorbedIceJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if SolarRadiationAbsorbedWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if SolarRadiationAbsorbedTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalOutCloudJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalOutAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalOutIceJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalOutWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalOutTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalInUpAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalInUpIceJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalInUpWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalInDownAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalInDownIceJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalInDownWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ThermalInDownTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if PressureGradientForceAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if WindFrictionJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if DiffusionAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if DiffusionWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if DiffusionCloudJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if AdvectionAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if AdvectionWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if AdvectionCloudJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ConductionAirIceJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ConductionAirWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ConductionAirTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ConductionIceWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ConductionIceTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if ConductionWaterTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EnergyTerrainJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EnergyCloudJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EnergyIceJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EnergyWaterJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EnergyWaterSurfaceJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if EnergyAirJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if StateChangeJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if StateChangeAirLayerJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if UpdateDependentWaterLayerJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if UpdateDependentAirLayerJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if UpdateDependentJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
+		#if UpdateWaterSaltMassJobDebug
+		SolarRadiationInJob.Async = false;
+		#endif
+
 
 		solarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterSlopeAlbedo = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -203,7 +392,7 @@ public class WorldSim {
 
 	}
 
-public void Dispose()
+	public void Dispose()
 	{
 		solarRadiation.Dispose();
 		waterSlopeAlbedo.Dispose();
@@ -247,7 +436,7 @@ public void Dispose()
 		JobHandle lastJobHandle = default(JobHandle);
 		for (int tick = 0; tick < ticksToAdvance; tick++)
 		{
-			#region Init Time step
+#region Init Time step
 
 			bool updateDisplay = tick == ticksToAdvance - 1;
 
@@ -284,9 +473,9 @@ public void Dispose()
 				condensationGroundMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 				condensationCloudMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			}
-			#endregion
+#endregion
 
-			#region Update Planetary Globals
+#region Update Planetary Globals
 			nextState.PlanetState = lastState.PlanetState;
 			nextState.PlanetState.Ticks++;
 
@@ -298,9 +487,9 @@ public void Dispose()
 			nextState.PlanetState.Rotation = new float3(lastState.PlanetState.Rotation.x, Mathf.Repeat(lastState.PlanetState.Rotation.y + lastState.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);
 
 			float coriolisTerm = 2 * lastState.PlanetState.SpinSpeed;
-			#endregion
+#endregion
 
-			#region Init Solar Radiation Per Cell
+#region Init Solar Radiation Per Cell
 			var solarInJobHandle = SolarRadiationInJob.Run(new SolarRadiationJob()
 			{
 				SolarRadiation = solarRadiation,
@@ -319,12 +508,12 @@ public void Dispose()
 
 				LastTerrain = lastState.Terrain,
 			}, lastJobHandle);
-			#endregion
+#endregion
 
 			// Calculate emissivity per cell
 			// TODO: combine cloud emissivity with cloud conduction
 			// TODO: we can probably combine this step with the thermal radiation step
-			#region Emissivity Per Cell
+#region Emissivity Per Cell
 
 			JobHandle[] emissivityJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers-1; j++)
@@ -354,10 +543,10 @@ public void Dispose()
 				Terrain = lastState.Terrain,
 				VegetationCoverage = dependent.VegetationCoverage
 			}, lastJobHandle);
-			#endregion
+#endregion
 
 			// Follow the solar radiation down from the top of the atmosphere to ther terrain, and absorb some as it passes through each layer
-			#region Solar Radiation Absorbed
+#region Solar Radiation Absorbed
 			// process each vertical layer in order
 
 			// atmosphere
@@ -422,10 +611,10 @@ public void Dispose()
 				worldData = worldData,
 				LastTerrain = lastState.Terrain,
 			}, solarInJobHandle);
-			#endregion
+#endregion
 
 			// Calculate how much thermal radition is being emitted out of each layer
-			#region Thermal Radiation
+#region Thermal Radiation
 			JobHandle[] thermalOutJobHandles = new JobHandle[_layerCount];
 
 			// ICE
@@ -500,11 +689,11 @@ public void Dispose()
 					SecondsPerTick = worldData.SecondsPerTick
 				}, emissivityJobHandles[layer]);
 			}
-			#endregion
+#endregion
 
 
 			// Thermal radiation travels upwards, partially reflecting downwards (clouds), partially absorbed, and partially lost to space
-			#region Thermal Radiation Absorbed Up
+#region Thermal Radiation Absorbed Up
 			// Start at bottom water layer and go up, then go back down
 			JobHandle[] thermalInUpJobHandles = new JobHandle[_layerCount];
 			JobHandle[] thermalInDownJobHandles = new JobHandle[_layerCount];
@@ -576,11 +765,11 @@ public void Dispose()
 			{
 				thermalInUpJobHandlesCombined = JobHandle.CombineDependencies(thermalInUpJobHandlesCombined, thermalInUpJobHandles[j]);
 			}
-			#endregion
+#endregion
 
 			// Thermal radiation is absorbed travelling downwards, collecting and then eventually hitting the earth (back radiation)
 			// TODO: we need to include the top layer of atmosphere here, since we calculate cloud absorption as part of the air layer step
-			#region Thermal Radiation Absorbed Down
+#region Thermal Radiation Absorbed Down
 
 			// transmit down from top of atmosphere			
 			for (int j = _layerCount - 2; j >= 0; j--)
@@ -653,13 +842,13 @@ public void Dispose()
 					}, thermalInDependenciesHandle);
 				}
 			}
-			#endregion
+#endregion
 
 			// Bouyancy, Updrafts, and mixing occur across air layers and water layers
 			// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
 			// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
 			// Air, Water, Cloud
-			#region Diffusion
+#region Diffusion
 
 			JobHandle[] diffusionJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers - 1; j++)
@@ -714,9 +903,9 @@ public void Dispose()
 				Neighbors = staticState.Neighbors,
 				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
 			}, lastJobHandle);
-			#endregion
+#endregion
 
-			#region Pressure Gradient Force
+#region Pressure Gradient Force
 
 			JobHandle[] pgfJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers - 1; j++)
@@ -753,12 +942,12 @@ public void Dispose()
 			}, lastJobHandle);
 
 
-			#endregion
+#endregion
 
 			// Wind and currents move temperature and trace elements horizontally
 			// Air, Water, Cloud
 			// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-			#region Advection
+#region Advection
 
 			JobHandle[] advectionJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers - 1; j++)
@@ -804,11 +993,11 @@ public void Dispose()
 			}, lastJobHandle);
 
 
-			#endregion
+#endregion
 
 			// Conduction is calculated for each Surface that might touch another surface
 			// Air to Cloud, Air to Ice, Air to Water, Air to Terrain, Ice to Water, Ice to Terrain, Water to Terrain
-			#region Conduction
+#region Conduction
 			// air to ice
 			var conductionAirIceJobHandle = ConductionAirIceJob.Run(new ConductionAirIceJob()
 			{
@@ -904,10 +1093,10 @@ public void Dispose()
 				}, conductionWaterTerrainJobHandle));
 			}
 
-			#endregion
+#endregion
 
 
-			#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
+#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
 
 			var energyJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
 			var energyJobHandleDependencies = new List<NativeList<JobHandle>>();
@@ -1173,10 +1362,10 @@ public void Dispose()
 			energyJobHandles.Add(updateTerrainJobHandle);
 			var energyJobHandle = JobHandle.CombineDependencies(energyJobHandles);
 
-			#endregion
+#endregion
 
 
-			#region State Changes - Evaporation, Condensation, Melting, Rainfall
+#region State Changes - Evaporation, Condensation, Melting, Rainfall
 
 			var stateChangeJobHandle = StateChangeJob.Run(new StateChangeJob()
 			{
@@ -1219,10 +1408,10 @@ public void Dispose()
 
 				}, stateChangeJobHandle);
 			}
-			#endregion
+#endregion
 
 
-			#region Update dependent variables
+#region Update dependent variables
 			NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
 			for (int j = 0; j < _waterLayers; j++)
 			{
@@ -1309,11 +1498,11 @@ public void Dispose()
 			updateDependenciesJobHandles.Add(updateDependenciesJobHandle);
 			lastJobHandle = JobHandle.CombineDependencies(updateDependenciesJobHandles);
 
-			#endregion
+#endregion
 
 			lastJobHandle.Complete();
 
-			#region Debug
+#region Debug
 			if (checkForDegeneracy)
 			{
 				bool degen = false;
@@ -1351,9 +1540,9 @@ public void Dispose()
 				PrintState("State", logStateIndex, staticState, nextState, new List<string>());
 				PrintDependentState("Dependent Vars", logStateIndex, dependent);
 			}
-			#endregion
+#endregion
 
-			#region Update Display
+#region Update Display
 			if (tick == ticksToAdvance-1)
 			{
 				display.Dispose();
@@ -1429,9 +1618,9 @@ public void Dispose()
 
 			}
 
-			#endregion
+#endregion
 
-			#region Dispose Temporary Arrays
+#region Dispose Temporary Arrays
 			updateDependenciesJobHandles.Dispose();
 			waterSaltMass.Dispose();
 			energyJobHandles.Dispose();
@@ -1462,7 +1651,7 @@ public void Dispose()
 				condensationGroundMass[i].Dispose();
 				condensationCloudMass[i].Dispose();
 			}
-			#endregion
+#endregion
 
 
 		}

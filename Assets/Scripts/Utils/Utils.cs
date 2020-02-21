@@ -61,6 +61,7 @@ public struct Optional<T> {
 public class JobHelper {
 
 	public bool Enabled = true;
+	[NonSerialized]
 	public bool Async = true;
 	private int _cellCount;
 

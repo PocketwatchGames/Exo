@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define ASYNC_WORLDGEN
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -33,8 +35,9 @@ public static class WorldGen {
 		dependent.Init(staticState.Count, worldData.AirLayers, worldData.WaterLayers);
 	}
 
-
+#if ASYNC_WORLDGEN
 	[BurstCompile]
+#endif
 	private struct WorldGenInitJob {
 
 		public NativeArray<float> relativeHumidity;
@@ -88,7 +91,7 @@ public static class WorldGen {
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 15460, -5, 5) +
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.2f, 431, -10, 10) +
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 6952, -10, 10);
-			float airTemperaturePotential =
+			potentialTemperature[i] =
 				regionalTemperatureVariation + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.15f, 80, -5, 5) +
 				(1.0f - coord.y * coord.y) * (MaxTemperature - MinTemperature) + MinTemperature;
 
@@ -116,7 +119,9 @@ public static class WorldGen {
 		}
 	}
 
+#if ASYNC_WORLDGEN
 	[BurstCompile]
+#endif
 	private struct WorldGenJob : IJobParallelFor {
 
 		public NativeArray<float> IceTemperature;
@@ -170,7 +175,9 @@ public static class WorldGen {
 	}
 
 
+#if ASYNC_WORLDGEN
 	[BurstCompile]
+#endif
 	private struct WorldGenAirLayerJob : IJobParallelFor {
 
 		public NativeArray<float> AirVapor;
@@ -179,6 +186,7 @@ public static class WorldGen {
 		public NativeArray<float> LayerHeight;
 
 		[ReadOnly] public NativeArray<float> LayerElevationBelow;
+		[ReadOnly] public NativeArray<float> LayerHeightBelow;
 		[ReadOnly] public NativeArray<float> potentialTemperature;
 		[ReadOnly] public NativeArray<float> relativeHumidity;
 		[ReadOnly] public float inverseDewPointTemperatureRange;
@@ -190,7 +198,7 @@ public static class WorldGen {
 		[ReadOnly] public float LayerCeilingCount;
 		public void Execute(int i)
 		{
-			float layerElevation = LayerElevationBelow[i];
+			float layerElevation = LayerElevationBelow[i] + LayerHeightBelow[i];
 			float layerHeight;
 			if (SetLayerHeight > 0)
 			{
@@ -207,20 +215,21 @@ public static class WorldGen {
 			AirTemperature[i] = airTemperature;
 			LayerElevation[i] = layerElevation;
 			LayerHeight[i] = layerHeight;
-			LayerElevationBelow[i] += layerHeight;
 		}
 	}
 
+#if ASYNC_WORLDGEN
 	[BurstCompile]
+#endif
 	private struct WorldGenWaterLayerJob : IJobParallelFor {
 
 		public NativeArray<float> WaterMass;
 		public NativeArray<float> SaltMass;
 		public NativeArray<float> WaterTemperature;
+		public NativeArray<float> ElevationTop;
 
 		[ReadOnly] public NativeArray<float> WaterTemperatureSurface;
 		[ReadOnly] public NativeArray<float> WaterTemperatureBottom;
-		[ReadOnly] public NativeArray<float> ElevationTop;
 		[ReadOnly] public NativeArray<float2> coord;
 		[ReadOnly] public NativeArray<CellTerrain> terrain;
 		[ReadOnly] public float MinSalinity;
@@ -254,7 +263,9 @@ public static class WorldGen {
 	}
 
 
+#if ASYNC_WORLDGEN
 	[BurstCompile]
+#endif
 	public static void Generate(int seed, WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref DependentState dependent)
 	{
 
@@ -265,8 +276,15 @@ public static class WorldGen {
 
 		InitSync(worldGenData, icosphere, ref worldData, ref staticState, ref state, ref dependent);
 
+		JobHelper worldGenJobHelper = new JobHelper(staticState.Count);
+#if ASYNC_WORLDGEN
+		worldGenJobHelper.Async = true;
+#else
+		worldGenJobHelper.Async = false;
+#endif
+
 		var waterSaltMass = new NativeArray<WaterSaltMass>(staticState.Count, Allocator.TempJob);
-		var airMassTotal = new NativeArray<float>(staticState.Count, Allocator.TempJob);
+		var airMassTotal = new NativeArray<float>(staticState.StratosphereMass, Allocator.TempJob);
 		var potentialTemperature = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var WaterTemperatureBottom = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var WaterTemperatureTop = new NativeArray<float>(staticState.Count, Allocator.TempJob);
@@ -279,6 +297,7 @@ public static class WorldGen {
 			CloudMass = state.CloudMass,
 			potentialTemperature =potentialTemperature,
 			relativeHumidity =RelativeHumidity,
+
 
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
@@ -294,7 +313,7 @@ public static class WorldGen {
 		};
 		worldGenInitJob.Run(staticState.Count);
 
-		var worldGenJobHandle = new WorldGenJob()
+		var worldGenJobHandle = worldGenJobHelper.Run(new WorldGenJob()
 		{
 			terrain = state.Terrain,
 			TerrainTemperature = state.TerrainTemperature,
@@ -312,10 +331,10 @@ public static class WorldGen {
 			TropopauseElevation = worldData.TropopauseElevation,
 			WaterTemperatureDepthFalloff = worldData.WaterTemperatureDepthFalloff,
 			BoundaryZoneElevation = worldData.BoundaryZoneElevation,
-		}.Schedule(staticState.Count, 100);
+		});
 
 		var worldGenWaterLayerJobHandle = worldGenJobHandle;
-		for (int i = 0; i < worldData.WaterLayers; i++)
+		for (int i = worldData.WaterLayers - 1; i >= 0; i--)
 		{
 			float layerDepthMax;
 			float layerCount;
@@ -328,7 +347,7 @@ public static class WorldGen {
 				layerDepthMax = float.MaxValue;
 				layerCount = worldData.WaterLayers - i;
 			}
-			worldGenWaterLayerJobHandle = new WorldGenWaterLayerJob()
+			worldGenWaterLayerJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
 			{
 				WaterTemperature = state.WaterTemperature[i],
 				SaltMass = state.WaterSaltMass[i],
@@ -345,7 +364,7 @@ public static class WorldGen {
 				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
 				WaterTemperatureBottom = WaterTemperatureBottom,
 				WaterTemperatureSurface = WaterTemperatureTop,
-			}.Schedule(staticState.Count, 100, worldGenWaterLayerJobHandle);
+			}, worldGenWaterLayerJobHandle);
 		}
 
 		var worldGenAirLayerJobHandle = worldGenJobHandle;
@@ -363,24 +382,25 @@ public static class WorldGen {
 				layerCeilingCount = worldData.AirLayers - 1 - i;
 			}
 
-			worldGenAirLayerJobHandle = new WorldGenAirLayerJob()
+			worldGenAirLayerJobHandle = worldGenJobHelper.Run(new WorldGenAirLayerJob()
 			{
 				AirTemperature = state.AirTemperature[i],
 				AirVapor = state.AirVapor[i],
 				LayerElevation = dependent.LayerElevation[i],
+				LayerHeight = dependent.LayerHeight[i],
 
-				LayerElevationBelow = dependent.LayerElevation[i-1],
+				LayerElevationBelow = dependent.LayerElevation[i - 1],
+				LayerHeightBelow = dependent.LayerHeight[i - 1],
 				SetLayerHeight = setLayerHeight,
 				LayerCeiling = layerCeiling,
 				LayerCeilingCount = layerCeilingCount,
-				LayerHeight = dependent.LayerHeight[i],
 				potentialTemperature = potentialTemperature,
 				relativeHumidity = RelativeHumidity,
 				DewPointZero = worldData.DewPointZero,
 				Gravity = state.PlanetState.Gravity,
 				inverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
 				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
-			}.Schedule(staticState.Count, 100, worldGenAirLayerJobHandle);
+			}, worldGenAirLayerJobHandle);
 		}
 
 		int batchCount = 100;
@@ -388,18 +408,18 @@ public static class WorldGen {
 		JobHandle summationHandle = worldGenWaterLayerJobHandle;
 		for (int j = 0; j < worldData.WaterLayers; j++)
 		{
-			summationHandle = new UpdateWaterSaltMassJob()
+			summationHandle = worldGenJobHelper.Run(new UpdateWaterSaltMassJob()
 			{
 				WaterSaltMass = waterSaltMass,
 				WaterLayerMass = state.WaterMass[j],
 				SaltLayerMass = state.WaterSaltMass[j]
-			}.Schedule(staticState.Count, batchCount, summationHandle);
+			}, summationHandle);
 		}
 
 		NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
 		for (int j = 0; j < worldData.WaterLayers; j++)
 		{
-			var updateDependentWaterLayerJob = new UpdateDependentWaterLayerJob()
+			var updateDependentWaterLayerJobHandle = worldGenJobHelper.Run( new UpdateDependentWaterLayerJob()
 			{
 				Salinity = dependent.WaterSalinity[j],
 				WaterCoverage = dependent.WaterCoverage[j],
@@ -410,14 +430,14 @@ public static class WorldGen {
 				Temperature = state.WaterTemperature[j],
 				Terrain = state.Terrain,
 				worldData = worldData
-			};
-			updateDependenciesJobHandles.Add(updateDependentWaterLayerJob.Schedule(staticState.Count, batchCount, worldGenWaterLayerJobHandle));
+			}, worldGenWaterLayerJobHandle);
+			updateDependenciesJobHandles.Add(updateDependentWaterLayerJobHandle);
 		}
 		JobHandle lowerAirHandle = default(JobHandle);
-		JobHandle updateDependentAirLayerJobHandle = default(JobHandle);
+		JobHandle updateDependentAirLayerJobHandle = worldGenAirLayerJobHandle;
 		for (int j = worldData.AirLayers-2; j >= 1; j--)
 		{
-			var updateDependentAirLayerJob = new UpdateDependentAirLayerJob()
+			updateDependentAirLayerJobHandle = worldGenJobHelper.Run(new UpdateDependentAirLayerJob()
 			{
 				Pressure = dependent.AirPressure[j],
 				RelativeHumidity = dependent.AirHumidityRelative[j],
@@ -445,8 +465,7 @@ public static class WorldGen {
 				InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
 				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 				LayerIndex = j,
-			};
-			updateDependentAirLayerJobHandle = updateDependentAirLayerJob.Schedule(staticState.Count, batchCount, updateDependentAirLayerJobHandle);
+			}, updateDependentAirLayerJobHandle);
 			updateDependenciesJobHandles.Add(updateDependentAirLayerJobHandle);
 			if (j == 1)
 			{
@@ -454,7 +473,7 @@ public static class WorldGen {
 			}
 		}
 
-		var updateDependentStateJob = new UpdateDependentStateJob()
+		var updateDependentStateJobHandle = worldGenJobHelper.Run(new UpdateDependentStateJob()
 		{
 			CloudCoverage = dependent.CloudCoverage,
 			IceCoverage = dependent.IceCoverage,
@@ -472,8 +491,9 @@ public static class WorldGen {
 			worldData = worldData,
 			LowerAirTemperature = state.AirTemperature[1],
 			lowerAirHeight = dependent.LayerHeight[1]
-		};
-		updateDependenciesJobHandles.Add(updateDependentStateJob.Schedule(staticState.Count, batchCount, lowerAirHandle));
+		}, JobHandle.CombineDependencies(summationHandle, lowerAirHandle));
+		updateDependenciesJobHandles.Add(updateDependentStateJobHandle);
+
 		JobHandle.CompleteAll(updateDependenciesJobHandles);
 		updateDependenciesJobHandles.Dispose();
 		waterSaltMass.Dispose();
@@ -482,14 +502,21 @@ public static class WorldGen {
 		WaterTemperatureBottom.Dispose();
 		WaterTemperatureTop.Dispose();
 		WaterLayerElevation.Dispose();
+		RelativeHumidity.Dispose();
 	}
 
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	static public float GetWaterMass(float depth, float temperature, float salinityPSU, float WaterDensityPerDegree, float WaterDensityPerSalinity)
 	{
 		float density = WorldData.DensityWater + WaterDensityPerDegree * (temperature - WorldData.FreezingTemperature) + WaterDensityPerSalinity * salinityPSU;
 		return depth * density;
 	}
 
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	static public float GetWaterVaporMass(float temperature, float relativeHumidity, float airMass, float inverseDewPointTemperatureRange, float WaterVaporMassToAirMassAtDewPoint, float DewPointZero)
 	{
 		float maxWaterVaporPerKilogramAtmosphere = WaterVaporMassToAirMassAtDewPoint * Utils.Sqr(math.max(0, (temperature - DewPointZero) * inverseDewPointTemperatureRange));
@@ -502,6 +529,9 @@ public static class WorldGen {
 		return humidity;
 	}
 
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	private static float GetWaterTemperatureBottom(float waterTemperatureSurface, float waterDepth, float WaterTemperatureDepthFalloff)
 	{
 		return math.pow(waterTemperatureSurface - WorldData.FreezingTemperature, 1.0f / (1.0f + waterDepth / WaterTemperatureDepthFalloff)) + WorldData.FreezingTemperature;
@@ -510,31 +540,49 @@ public static class WorldGen {
 
 
 	#region PerlinUtils
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	private static float GetPerlinMinMax(float x, float y, float frequency, float hash, float min, float max)
 	{
 		return (_noise.GetPerlin(x * frequency + hash, y * frequency) + 1.0f) * (max - min) / 2 + min;
 	}
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	private static float GetPerlinMinMax(float x, float y, float z, float frequency, float hash, float min, float max)
 	{
 		return (_noise.GetPerlin(x * frequency + hash, y * frequency, z * frequency) + 1.0f) * (max - min) / 2 + min;
 	}
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	private static float GetPerlinNormalized(float x, float y, float frequency, float hash)
 	{
 		return (_noise.GetPerlin(x * frequency + hash, y * frequency) + 1.0f) / 2;
 	}
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	private static float GetPerlinNormalized(float x, float y, float z, float frequency, float hash)
 	{
 		return (_noise.GetPerlin(x * frequency + hash, y * frequency, z * frequency) + 1.0f) / 2;
 	}
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	private static float GetPerlin(float x, float y, float frequency, float hash)
 	{
 		return _noise.GetPerlin(x * frequency + hash, y * frequency);
 	}
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
 	private static float GetPerlin(float x, float y, float z, float frequency, float hash)
 	{
 		return _noise.GetPerlin(x * frequency + hash, y * frequency, z * frequency);
 	}
-	#endregion
+#endregion
 
 
 }

@@ -2053,145 +2053,98 @@ MonoBehaviour:
   _worldSim:
     SolarRadiationInJob:
       Enabled: 0
-      Async: 0
     UpdateTerrainJob:
       Enabled: 0
-      Async: 0
     EmissivityAirJob:
       Enabled: 0
-      Async: 0
     EmissivityWaterJob:
       Enabled: 0
-      Async: 0
     EmissivityTerrainJob:
       Enabled: 0
-      Async: 0
     SolarRadiationAbsorbedAirJob:
       Enabled: 0
-      Async: 0
     SolarRadiationAbsorbedIceJob:
       Enabled: 0
-      Async: 0
     SolarRadiationAbsorbedWaterJob:
       Enabled: 0
-      Async: 0
     SolarRadiationAbsorbedTerrainJob:
       Enabled: 0
-      Async: 0
     ThermalOutCloudJob:
       Enabled: 0
-      Async: 0
     ThermalOutAirJob:
       Enabled: 0
-      Async: 0
     ThermalOutIceJob:
       Enabled: 0
-      Async: 0
     ThermalOutWaterJob:
       Enabled: 0
-      Async: 0
     ThermalOutTerrainJob:
       Enabled: 0
-      Async: 0
     ThermalInUpAirJob:
       Enabled: 0
-      Async: 0
     ThermalInUpIceJob:
       Enabled: 0
-      Async: 0
     ThermalInUpWaterJob:
       Enabled: 0
-      Async: 0
     ThermalInDownAirJob:
       Enabled: 0
-      Async: 0
     ThermalInDownIceJob:
       Enabled: 0
-      Async: 0
     ThermalInDownWaterJob:
       Enabled: 0
-      Async: 0
     ThermalInDownTerrainJob:
       Enabled: 0
-      Async: 0
     PressureGradientForceAirJob:
       Enabled: 0
-      Async: 0
     WindFrictionJob:
       Enabled: 0
-      Async: 0
     DiffusionAirJob:
       Enabled: 0
-      Async: 0
     DiffusionWaterJob:
       Enabled: 0
-      Async: 0
     DiffusionCloudJob:
       Enabled: 0
-      Async: 0
     AdvectionAirJob:
       Enabled: 0
-      Async: 0
     AdvectionWaterJob:
       Enabled: 0
-      Async: 0
     AdvectionCloudJob:
       Enabled: 0
-      Async: 0
     ConductionAirIceJob:
       Enabled: 0
-      Async: 0
     ConductionAirWaterJob:
       Enabled: 0
-      Async: 0
     ConductionAirTerrainJob:
       Enabled: 0
-      Async: 0
     ConductionIceWaterJob:
       Enabled: 0
-      Async: 0
     ConductionIceTerrainJob:
       Enabled: 0
-      Async: 0
     ConductionWaterTerrainJob:
       Enabled: 0
-      Async: 0
     EnergyTerrainJob:
       Enabled: 0
-      Async: 0
     EnergyCloudJob:
       Enabled: 0
-      Async: 0
     EnergyIceJob:
       Enabled: 0
-      Async: 0
     EnergyWaterJob:
       Enabled: 0
-      Async: 0
     EnergyWaterSurfaceJob:
       Enabled: 0
-      Async: 0
     EnergyAirJob:
       Enabled: 0
-      Async: 0
     StateChangeJob:
       Enabled: 0
-      Async: 0
     StateChangeAirLayerJob:
       Enabled: 0
-      Async: 0
     UpdateDependentWaterLayerJob:
       Enabled: 0
-      Async: 0
     UpdateDependentAirLayerJob:
       Enabled: 0
-      Async: 0
     UpdateDependentJob:
       Enabled: 0
-      Async: 0
     UpdateWaterSaltMassJob:
       Enabled: 0
-      Async: 0
 --- !u!4 &365555217
 Transform:
   m_ObjectHideFlags: 0
