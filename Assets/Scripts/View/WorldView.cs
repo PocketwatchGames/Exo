@@ -748,13 +748,13 @@ public class WorldView : MonoBehaviour {
 		{
 			s += "CLOUD: 0kg\n";
 		}
-		s += "RAIN: " + (display.Rainfall[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
-		s += "EVAP: " + (display.Evaporation[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
+		s += "RAIN: " + (display.Rainfall[ActiveCellIndex]).ToString("0.000") + " kg\n";
+		s += "EVAP: " + (display.Evaporation[ActiveCellIndex]).ToString("0.000") + " kg\n";
 		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
 		s += "\n";
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
 		{
-			s += "LAYER " + i + ": " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
+			s += "LAYER " + i + " | TEMP: " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
 			s += "ELE:" + ": " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P:" + ": " + display.Pressure[i][ActiveCellIndex].ToString("0") + "Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ")\n";
 			s += "MASS: " + dependent.AirMass[i][ActiveCellIndex].ToString("0") + "kg " + " VAPOR: " + state.AirVapor[i][ActiveCellIndex].ToString("0") + " kg\n";
 			s += "\n";
@@ -794,7 +794,7 @@ public class WorldView : MonoBehaviour {
 			int layerIndex = (Sim.WorldData.WaterLayers - 1 - i);
 			if (state.WaterMass[i][ActiveCellIndex] > 0)
 			{
-				s += "LAYER " + layerIndex + ": " + GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0) + " SALT: " + layerIndex + ": " + (1000000 * dependent.WaterSalinity[i][ActiveCellIndex]).ToString("0.0") + " ppm\n";
+				s += "LAYER " + layerIndex + " | TEMP: " + GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0) + " SALT: " + (1000000 * dependent.WaterSalinity[i][ActiveCellIndex]).ToString("0.0") + " ppm\n";
 				s += "MASS: " + (state.WaterSaltMass[i][ActiveCellIndex]).ToString("0.0") + " kg VEL: " + ": " + (state.WaterVelocity[i][ActiveCellIndex]) + " m/s\n";
 				s += "\n";
 			}

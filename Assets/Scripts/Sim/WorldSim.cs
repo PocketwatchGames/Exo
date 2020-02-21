@@ -1,7 +1,10 @@
-﻿#define EnergyTerrainJobDebug
-#define ConductionWaterBottomJobDebug
-#define ConductionWaterTerrainJobDebug
-#define SolarRadiationAbsorbedTerrainJobDebug
+﻿//#define EnergyTerrainJobDebug
+//#define ConductionWaterBottomJobDebug
+//#define ConductionWaterTerrainJobDebug
+//#define SolarRadiationAbsorbedTerrainJobDebug
+//#define EnergyAirJobDebug
+//#define EnergyWaterJobSurfaceDebug
+//#define DiffusionAirJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -876,12 +879,12 @@ public class WorldSim {
 					LayerHeight = dependent.LayerHeight[j],
 					AirMass = dependent.AirMass[j],
 					UpTemperature = lastState.AirTemperature[j + 1],
-					UpHumidity = lastState.AirTemperature[j + 1],
+					UpHumidity = lastState.AirVapor[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
 					DownTemperature = lastState.AirTemperature[j - 1],
-					DownHumidity = lastState.AirTemperature[j - 1],
+					DownHumidity = lastState.AirVapor[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
 					DownLayerElevation = dependent.LayerElevation[j - 1],
 					DownLayerHeight = dependent.LayerHeight[j - 1],

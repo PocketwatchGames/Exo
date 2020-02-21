@@ -9,10 +9,14 @@
 //#define DISABLE_FREEZE_BOTTOM
 //#define DISABLE_MELTING_TOP
 //#define DISABLE_MELTING_BOTTOM
-#define EnergyTerrainJobDebug
-#define ConductionWaterBottomJobDebug
-#define ConductionWaterTerrainJobDebug
-#define SolarRadiationAbsorbedTerrainJobDebug
+
+//#define EnergyTerrainJobDebug
+//#define ConductionWaterBottomJobDebug
+//#define ConductionWaterTerrainJobDebug
+//#define SolarRadiationAbsorbedTerrainJobDebug
+//#define EnergyAirJobDebug
+//#define EnergyWaterJobSurfaceDebug
+//#define DiffusionAirJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -1167,7 +1171,7 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 }
 
 
-#if !EnergySurfaceAirJobDebug
+#if !EnergyAirJobDebug
 [BurstCompile]
 #endif
 public struct EnergyAirJob : IJobParallelFor {
@@ -1225,8 +1229,8 @@ public struct EnergyAirJob : IJobParallelFor {
 		var relativeHumidity = Atmosphere.GetRelativeHumidity(airMass, vapor, temperature, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
 		if (relativeHumidity > 1.0f)
 		{
-			float aboveCloud = math.saturate((CloudElevation[i] - LayerElevation[i]) / LayerHeight[i]);
-			float vaporToCondense = (1.0f - 1.0f / relativeHumidity) * vapor;
+			float aboveCloud = math.saturate((LayerElevation[i] - CloudElevation[i]) / LayerHeight[i]);
+			float vaporToCondense = (relativeHumidity - 1.0f) / relativeHumidity * vapor;
 			condensationCloudMass = aboveCloud * vaporToCondense;
 			condensationGroundMass = (1.0f - aboveCloud) * vaporToCondense;
 			vapor -= vaporToCondense;
@@ -1340,7 +1344,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 				evapMass = math.clamp(evapRate * energyTop / WorldData.LatentHeatWaterVapor, 0, waterMass);
 				if (evapRate > 0)
 				{
-					float evapEnergy = evapMass * WorldData.LatentHeatWaterVapor / evapRate;
+					float evapEnergy = evapMass * WorldData.LatentHeatWaterVapor;
 					energyTop -= evapEnergy;
 				}
 				waterMass -= evapMass;
