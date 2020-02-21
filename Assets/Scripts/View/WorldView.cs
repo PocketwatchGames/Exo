@@ -725,19 +725,8 @@ public class WorldView : MonoBehaviour {
 		var terrain = state.Terrain[ActiveCellIndex];
 		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
 		string s = "";
-		s += "Index: " + ActiveCellIndex + "\n";
-		s += "Coord: (" + math.degrees(coord.x).ToString("0.0") + ", " + math.degrees(coord.y).ToString("0.0") + ")\n";
-		s += "Surface: " + (dependent.SurfaceElevation[ActiveCellIndex]).ToString("0.000") + " m\n";
-		s += "Elevation: " + terrain.Elevation.ToString("0.000") + " m\n";
-		s += "H2O Depth: " + dependent.WaterDepth[ActiveCellIndex].ToString("0.000") + " m\n";
-		s += "Ice Depth: " + (state.IceMass[ActiveCellIndex] / WorldData.MassIce).ToString(state.IceMass[ActiveCellIndex] > 0 ? "0.000" : "0") + " m\n";
-		if (state.IceMass[ActiveCellIndex] > 0)
-		{
-			s += "Ice Temperature: " + GetTemperatureString(state.IceTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1) + " \n";
-		}
-		s += "Rainfall: " + (display.Rainfall[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
-		s += "Evaporation: " + (display.Evaporation[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
-		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
+		s += "INDEX: " + ActiveCellIndex + "\n";
+		s += "COORD: (" + math.degrees(coord.x).ToString("0.0") + ", " + math.degrees(coord.y).ToString("0.0") + ")\n";
 
 		return s;
 	}
@@ -749,20 +738,27 @@ public class WorldView : MonoBehaviour {
 		float cloudMass = state.CloudMass[ActiveCellIndex];
 		int upperAtmosphereLayerIndex = Sim.WorldData.AirLayers - 2;
 		string s = "";
-		s += "Surface Temp: " + GetTemperatureString(state.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 1) + "\n";
-		s += "Surface Pressure: " + display.Pressure[1][ActiveCellIndex].ToString("0") + " Pa\n";
-		s += "Surface Wind Horz: (" + state.Wind[1][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[1][ActiveCellIndex].y.ToString("0.0") + ") m/s\n";
-		s += "Surface Humidity: " + (dependent.AirHumidityRelative[1][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
-//		s += "Mid Temp: " + GetTemperatureString(state.AirTemperature[1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Upper Temp: " + GetTemperatureString(state.AirTemperature[upperAtmosphereLayerIndex][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Upper Humidity: " + (dependent.AirHumidityRelative[upperAtmosphereLayerIndex][ActiveCellIndex] * 100).ToString("0.0") + "%\n";
-		s += "Cloud Mass: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg\n";
-		if (cloudMass > 0) {
-			s += "Cloud Elevation: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + " m\n";
-			s += "Droplets: " + (state.CloudDropletMass[ActiveCellIndex] * 1000000 / (WorldData.MassWater* cloudMass)).ToString("0.000") + " nm3\n";
+
+		if (cloudMass > 0)
+		{
+			float dropletSize = 1000000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
+			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + "kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + "nm\n";
 		}
-		s += "Air Mass 1: " + dependent.AirMass[1][ActiveCellIndex].ToString("0") + " kg\n";
-		s += "Air Mass 2: " + dependent.AirMass[2][ActiveCellIndex].ToString("0") + " kg\n";
+		else
+		{
+			s += "CLOUD: 0kg\n";
+		}
+		s += "RAIN: " + (display.Rainfall[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
+		s += "EVAP: " + (display.Evaporation[ActiveCellIndex] / WorldData.MassWater * 1000).ToString("0.000") + " mm\n";
+		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
+		s += "\n";
+		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
+		{
+			s += "LAYER " + i + ": " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
+			s += "ELE:" + ": " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P:" + ": " + display.Pressure[i][ActiveCellIndex].ToString("0") + "Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ")\n";
+			s += "MASS: " + dependent.AirMass[i][ActiveCellIndex].ToString("0") + "kg " + " VAPOR: " + state.AirVapor[i][ActiveCellIndex].ToString("0") + " kg\n";
+			s += "\n";
+		}
 		return s;
 	}
 	private string GetCellInfoGround(ref SimState state, ref DependentState dependent)
@@ -772,9 +768,11 @@ public class WorldView : MonoBehaviour {
 
 		var terrain = state.Terrain[ActiveCellIndex];
 		string s = "";
-		s += "Fertility: " + terrain.SoilFertility + "\n";
-		s += "Temp: " + GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Roughness: " + terrain.Roughness.ToString("0") + " m\n";
+		s += "ELE: " + (terrain.Elevation).ToString("0") + " m\n";
+		s += "ROUGH: " + terrain.Roughness.ToString("0") + " m\n";
+		s += "TEMP: " + GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1) + "\n";
+		s += "FERT: " + terrain.SoilFertility.ToString("0.00") + "\n";
+		s += "VEG: " + terrain.Vegetation.ToString("0.00") + "\n";
 		return s;
 	}
 	private string GetCellInfoWater(ref SimState state, ref DependentState dependent)
@@ -783,9 +781,24 @@ public class WorldView : MonoBehaviour {
 			return "";
 
 		string s = "";
-		int waterSurfaceLayer = Sim.WorldData.WaterLayers - 1;
-		s += "Surface Temp: " + GetTemperatureString(state.WaterTemperature[Sim.WorldData.WaterLayers - 1][ActiveCellIndex], ActiveTemperatureUnits, 0) + "\n";
-		s += "Surface Salinity: " + (1000000 * dependent.WaterSalinity[waterSurfaceLayer][ActiveCellIndex]).ToString("0.0") + " ppm\n";
+		if (state.IceMass[ActiveCellIndex] > 0)
+		{
+			s += "ICE: " + (state.IceMass[ActiveCellIndex] / WorldData.MassIce).ToString(state.IceMass[ActiveCellIndex] > 0 ? "0.000" : "0") + " m TEMP:" + GetTemperatureString(state.IceTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1) + "\n";
+		} else
+		{
+			s += "ICE: 0 m\n";
+		}
+		s += "DEPTH: " + dependent.WaterDepth[ActiveCellIndex].ToString("0.000") + " m\n\n";
+
+		for (int i = Sim.WorldData.WaterLayers - 1; i >= 0; i--) {
+			int layerIndex = (Sim.WorldData.WaterLayers - 1 - i);
+			if (state.WaterMass[i][ActiveCellIndex] > 0)
+			{
+				s += "LAYER " + layerIndex + ": " + GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0) + " SALT: " + layerIndex + ": " + (1000000 * dependent.WaterSalinity[i][ActiveCellIndex]).ToString("0.0") + " ppm\n";
+				s += "MASS: " + (state.WaterSaltMass[i][ActiveCellIndex]).ToString("0.0") + " kg VEL: " + ": " + (state.WaterVelocity[i][ActiveCellIndex]) + " m/s\n";
+				s += "\n";
+			}
+		}
 		return s;
 	}
 

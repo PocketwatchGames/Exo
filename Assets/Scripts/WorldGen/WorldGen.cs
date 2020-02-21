@@ -1,4 +1,4 @@
-﻿#define ASYNC_WORLDGEN
+﻿//#define ASYNC_WORLDGEN
 
 using System;
 using System.Collections.Generic;
@@ -44,6 +44,7 @@ public static class WorldGen {
 		public NativeArray<float> potentialTemperature;
 		public NativeArray<float> CloudMass;
 		public NativeArray<CellTerrain> Terrain;
+		public NativeArray<float> LayerElevationBase;
 
 		[ReadOnly] public NativeArray<float2> Coordinate;
 		[ReadOnly] public NativeArray<float3> SphericalPosition;
@@ -85,7 +86,7 @@ public static class WorldGen {
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 40) +
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 40);
 
-
+			float surfaceElevation = math.max(0, elevation);
 
 			float regionalTemperatureVariation =
 				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 15460, -5, 5) +
@@ -95,7 +96,7 @@ public static class WorldGen {
 				regionalTemperatureVariation + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.15f, 80, -5, 5) +
 				(1.0f - coord.y * coord.y) * (MaxTemperature - MinTemperature) + MinTemperature;
 
-			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * math.max(0, elevation);
+			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * surfaceElevation;
 			float vegetation = 0;
 			if (elevation > 0)
 			{
@@ -107,6 +108,7 @@ public static class WorldGen {
 			}
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 1.0f);
 
+			LayerElevationBase[i] = surfaceElevation;
 			Terrain[i] = new CellTerrain()
 			{
 				Elevation = elevation,
@@ -254,7 +256,7 @@ public static class WorldGen {
 				float waterAndSaltMass = GetWaterMass(layerDepth, WaterTemperature[i], salinity, WaterDensityPerDegree, WaterDensityPerSalinity);
 				float waterMass = waterAndSaltMass * (1.0f - salinity);
 				float saltMass = waterAndSaltMass * salinity;
-				WaterTemperature[i] = math.pow(WaterTemperatureSurface[i] - WorldData.FreezingTemperature, 1.0f / (1.0f + ElevationTop[i] / 500.0f)) + WorldData.FreezingTemperature;
+				WaterTemperature[i] = math.pow(WaterTemperatureSurface[i] - WorldData.FreezingTemperature, 1.0f / (1.0f - ElevationTop[i] / 500.0f)) + WorldData.FreezingTemperature;
 				WaterMass[i] = waterMass;
 				SaltMass[i] = saltMass;
 				ElevationTop[i] -= layerDepth;
@@ -295,9 +297,9 @@ public static class WorldGen {
 		{
 			Terrain = state.Terrain,
 			CloudMass = state.CloudMass,
-			potentialTemperature =potentialTemperature,
-			relativeHumidity =RelativeHumidity,
-
+			potentialTemperature = potentialTemperature,
+			relativeHumidity = RelativeHumidity,
+			LayerElevationBase = dependent.LayerElevation[0],
 
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
@@ -338,14 +340,14 @@ public static class WorldGen {
 		{
 			float layerDepthMax;
 			float layerCount;
-			if (i==0)
+			if (i== worldData.WaterLayers - 1)
 			{
 				layerDepthMax = worldData.ThermoclineDepth;
 				layerCount = 1;
 			} else
 			{
 				layerDepthMax = float.MaxValue;
-				layerCount = worldData.WaterLayers - i;
+				layerCount = i + 1;
 			}
 			worldGenWaterLayerJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
 			{

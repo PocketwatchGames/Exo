@@ -19,6 +19,6 @@
 	"NumPlates": 12,
 	"CarbonDioxide": 0.001,
 	"SolarRadiation": 1.367,
-	"GeothermalHeat": 0.5,
+	"GeothermalHeat": 0.06,
 	"Gravity": 9.80665
 }

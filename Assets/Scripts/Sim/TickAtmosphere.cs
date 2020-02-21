@@ -9,7 +9,10 @@
 //#define DISABLE_FREEZE_BOTTOM
 //#define DISABLE_MELTING_TOP
 //#define DISABLE_MELTING_BOTTOM
-
+#define EnergyTerrainJobDebug
+#define ConductionWaterBottomJobDebug
+#define ConductionWaterTerrainJobDebug
+#define SolarRadiationAbsorbedTerrainJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -163,7 +166,7 @@ public struct SolarRadiationAbsorbedIceJob : IJobParallelFor {
 	{
 		float incoming = SolarRadiationIncoming[i];
 		float iceCoverage = IceCoverage[i];
-		float reflected = incoming * AlbedoIce * iceCoverage;
+		float reflected = incoming * (AlbedoIce * iceCoverage);
 		incoming -= reflected;
 		float absorbed = incoming * iceCoverage;
 		SolarRadiationAbsorbed[i] = absorbed;
@@ -185,7 +188,7 @@ public struct SolarRadiationAbsorbedWaterJob : IJobParallelFor {
 	{
 		float incoming = SolarRadiationIncoming[i];
 		float waterCoverage = WaterCoverage[i];
-		float reflected = incoming * WaterSlopeAlbedo[i] * waterCoverage;
+		float reflected = incoming * (WaterSlopeAlbedo[i] * waterCoverage);
 		incoming -= reflected;
 		float absorbed = incoming * waterCoverage;
 		SolarRadiationAbsorbed[i] = absorbed;
@@ -211,7 +214,7 @@ public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 		float slopeAlbedo = 0;
 		float vegetationCoverage = VegetationCoverage[i];
 		float soilReflectivity = Atmosphere.GetAlbedo(WorldData.AlbedoLand - worldData.AlbedoReductionSoilQuality * LastTerrain[i].SoilFertility, slopeAlbedo);
-		float reflected = incoming * vegetationCoverage * WorldData.AlbedoFoliage + (1.0f - vegetationCoverage) * soilReflectivity;
+		float reflected = incoming * (vegetationCoverage * WorldData.AlbedoFoliage + (1.0f - vegetationCoverage) * soilReflectivity);
 		incoming -= reflected;
 
 		SolarRadiationReflected[i] = reflected;
@@ -543,7 +546,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 
 #if !DISABLE_VERTICAL_AIR_MOVEMENT
-		float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 
 		//TODO: account for different size air columns, similar to water
 		float atmosphereMass = Humidity[i] + AirMass[i];
@@ -551,6 +553,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 		float bouyancy = 0;
 		if (!IsTop)
 		{
+			float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float atmosphereMassUp = UpHumidity[i] + UpAirMass[i];
 			float absoluteHumidityUp = UpHumidity[i] / atmosphereMassUp;
 			gradientWaterVapor += (absoluteHumidityUp - absoluteHumidity) * math.min(atmosphereMass, atmosphereMassUp) * VerticalDiffusionCoefficient;
@@ -561,6 +564,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 		}
 		if (!IsBottom)
 		{
+			float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float atmosphereMassDown = DownHumidity[i] + DownAirMass[i];
 			float absoluteHumidityDown = DownHumidity[i] / atmosphereMassDown;
 			gradientWaterVapor += (absoluteHumidityDown - absoluteHumidity) * math.min(atmosphereMass, atmosphereMassDown) * VerticalDiffusionCoefficient;
@@ -1205,7 +1209,7 @@ public struct EnergyAirJob : IJobParallelFor {
 		float specificHeat = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * LastVapor[i];
 
 		float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta;
-		float temperature = LastTemperature[i] + Diffusion[i].Temperature - Advection[i].Temperature + energy / specificHeat;
+		float temperature = LastTemperature[i];
 		float vapor = LastVapor[i] + Diffusion[i].Humidity - Advection[i].Humidity;
 
 		float2 lastWind = LastWind[i];
@@ -1226,8 +1230,10 @@ public struct EnergyAirJob : IJobParallelFor {
 			condensationCloudMass = aboveCloud * vaporToCondense;
 			condensationGroundMass = (1.0f - aboveCloud) * vaporToCondense;
 			vapor -= vaporToCondense;
+			energy += vaporToCondense * WorldData.LatentHeatWaterVapor;
 		}
 #endif
+		temperature += Diffusion[i].Temperature - Advection[i].Temperature + energy / specificHeat;
 
 		CondensationGroundMass[i] = condensationGroundMass;
 		CondensationCloudMass[i] = condensationCloudMass;
@@ -1476,11 +1482,10 @@ public struct EnergyCloudJob : IJobParallelFor {
 			// TODO: improve this somehow
 			dropletMass += cloudMass * 0.00000001f;
 
-			const float ThreeQuarterInversePi = 3 / (4 * math.PI);
 
 			float airDensityAtElevation = Atmosphere.GetAirDensity(AirPressureCloud[i], dewPoint, AirMassCloud[i], WaterVaporCloud[i]);
 			float waterDensityAtElevation = Atmosphere.GetWaterDensityAtElevation(dewPoint, cloudElevation);
-			float rainDropRadius = math.clamp(math.pow(dropletMass / waterDensityAtElevation * ThreeQuarterInversePi, 0.333f), RainDropMinSize, RainDropMaxSize);
+			float rainDropRadius = math.clamp(Atmosphere.GetDropletRadius(dropletMass, waterDensityAtElevation), RainDropMinSize, RainDropMaxSize);
 			float rainDropVolume = 4 / 3 * math.PI * math.pow(rainDropRadius, 3);
 			float verticalForce = Bouyancy[i] - Gravity;
 			if (verticalForce < 0 && dropletMass > 0)

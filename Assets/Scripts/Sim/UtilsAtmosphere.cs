@@ -208,4 +208,11 @@ public static class Atmosphere {
 		return math.max(0, terrainEnergy / (WorldData.SpecificHeatSoil * heatingDepth * landMass));
 	}
 
+	[BurstCompile]
+	static public float GetDropletRadius(float mass, float waterDensity)
+	{
+		const float ThreeQuarterInversePi = 3 / (4 * math.PI);
+		return math.pow(mass / waterDensity * ThreeQuarterInversePi, 0.333f);
+	}
+
 }

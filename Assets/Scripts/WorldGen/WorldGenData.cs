@@ -25,6 +25,8 @@ public class WorldGenData {
 	public float SpinAngle;
 	public float SpinTime;
 	public float OrbitTime;
+	// http://zebu.uoregon.edu/1996/ph162/l18.html
+	// Averaged over the earths surface, the heat energy flow is 0.06 Watts per square meter
 	public float GeothermalHeat;
 	public float MaxSalinity;
 	public float MinSalinity;
