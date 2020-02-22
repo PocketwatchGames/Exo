@@ -499,7 +499,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 	[ReadOnly] public float DiffusionCoefficient;
 	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float> Humidity;
+	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float2> Wind;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> AirMass;
@@ -524,10 +524,16 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 	public void Execute(int i)
 	{
+		float vaporMass = VaporMass[i];
+		float airMass = AirMass[i];
+		float atmosphereMass = vaporMass + airMass;
+		float absoluteHumidity = vaporMass / atmosphereMass;
+
 		float gradientTemperature = 0;
 		float gradientWaterVapor = 0;
 		float2 gradientVelocity = float2.zero;
 		int neighborCount = 0;
+		float totalMass = 0;
 		//TODO: account for different size air columns, similar to water
 		for (int j = 0; j < 6; j++)
 		{
@@ -535,15 +541,16 @@ public struct DiffusionAirJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				gradientWaterVapor += Humidity[n];
-				gradientVelocity += Wind[n];
-				gradientTemperature += Temperature[n];
+				float neighborMass = AirMass[n] + VaporMass[n];
+				float diffusionAmount = AirMass[n] / (AirMass[n] + airMass);
+				float neighborHumidity = VaporMass[n] / neighborMass;
+				gradientWaterVapor += (neighborHumidity - absoluteHumidity) * diffusionAmount * airMass;
+				gradientVelocity += (Wind[n] - Wind[i]) * diffusionAmount;
+				gradientTemperature += (Temperature[n] - Temperature[i]) * diffusionAmount;
 				neighborCount++;
+				totalMass += neighborMass;
 			}
 		}
-		gradientTemperature -= Temperature[i] * neighborCount;
-		gradientWaterVapor -= Humidity[i] * neighborCount;
-		gradientVelocity -= Wind[i] * neighborCount;
 		gradientTemperature *= DiffusionCoefficient;
 		gradientWaterVapor *= DiffusionCoefficient;
 		gradientVelocity *= DiffusionCoefficient;
@@ -552,29 +559,29 @@ public struct DiffusionAirJob : IJobParallelFor {
 #if !DISABLE_VERTICAL_AIR_MOVEMENT
 
 		//TODO: account for different size air columns, similar to water
-		float atmosphereMass = Humidity[i] + AirMass[i];
-		float absoluteHumidity = Humidity[i] / atmosphereMass;
 		float bouyancy = 0;
 		if (!IsTop)
 		{
+			float diffusionAmount = UpAirMass[i] / (UpAirMass[i] + airMass);
+
+			float absoluteHumidityUp = UpHumidity[i] / (UpHumidity[i] + UpAirMass[i]);
+			gradientWaterVapor += (absoluteHumidityUp - absoluteHumidity) * diffusionAmount * VerticalDiffusionCoefficient;
+
 			float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-			float atmosphereMassUp = UpHumidity[i] + UpAirMass[i];
-			float absoluteHumidityUp = UpHumidity[i] / atmosphereMassUp;
-			gradientWaterVapor += (absoluteHumidityUp - absoluteHumidity) * math.min(atmosphereMass, atmosphereMassUp) * VerticalDiffusionCoefficient;
 			float potentialTemperatureUp = UpTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
-			float temperatureGradientUp = (potentialTemperatureUp - Temperature[i]) * VerticalDiffusionCoefficient;
-			gradientTemperature += temperatureGradientUp;
+			gradientTemperature += (potentialTemperatureUp - Temperature[i]) * diffusionAmount * VerticalDiffusionCoefficient;
 			bouyancy += Temperature[i] / potentialTemperatureUp - 1;
 		}
 		if (!IsBottom)
 		{
+			float diffusionAmount = DownAirMass[i] / (DownAirMass[i] + airMass);
+
+			float absoluteHumidityDown = DownHumidity[i] / (DownHumidity[i] + DownAirMass[i]);
+			gradientWaterVapor += (absoluteHumidityDown - absoluteHumidity) * diffusionAmount * VerticalDiffusionCoefficient;
+
 			float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-			float atmosphereMassDown = DownHumidity[i] + DownAirMass[i];
-			float absoluteHumidityDown = DownHumidity[i] / atmosphereMassDown;
-			gradientWaterVapor += (absoluteHumidityDown - absoluteHumidity) * math.min(atmosphereMass, atmosphereMassDown) * VerticalDiffusionCoefficient;
 			float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
-			float temperatureGradientDown = (potentialTemperatureDown - Temperature[i]) * VerticalDiffusionCoefficient;
-			gradientTemperature += temperatureGradientDown;
+			gradientTemperature += (potentialTemperatureDown - Temperature[i]) * diffusionAmount * VerticalDiffusionCoefficient;
 			bouyancy += potentialTemperatureDown / Temperature[i] - 1;
 		}
 		//		float moveToNeutralBouyancy = (UpTemperature[i] - Temperature[i]) / WorldData.TemperatureLapseRate - heightDiff;

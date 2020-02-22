@@ -869,7 +869,7 @@ public class WorldSim {
 				{
 					Delta = diffusionAir[j],
 					Temperature = lastState.AirTemperature[j],
-					Humidity = lastState.AirVapor[j],
+					VaporMass = lastState.AirVapor[j],
 					Wind = lastState.Wind[j],
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficient = worldData.AirMassDiffusionSpeedHorizontal,
