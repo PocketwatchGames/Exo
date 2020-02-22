@@ -118,10 +118,8 @@ public struct WorldData {
 	public float WindToOceanCurrentFactor;
 	public float WaterDiffuseSpeed;
 	public float OceanCurrentSpeed;
-	public float OceanHorizontalMixingSpeed;
 	public float OceanUpwellingSpeed;
-	public float OceanTemperatureVerticalMixingSpeed;
-	public float SalinityVerticalMixingSpeed;
+	public float WaterDiffuseSpeedVertical;
 	public float WaterDensityPerSalinity;
 	public float WaterDensityPerDegree;
 	public float WaterDensityCurrentSpeed;
@@ -163,6 +161,7 @@ public struct WorldData {
 	public const float EmissivityDirt = 0.92f;
 	public const float EmissivitySand = 0.76f;
 	public const float EmissivityAir = 0.8f;
+	public const float EmissivityWaterVapor = 0.4f;
 	public const float EmissivityVegetation = 0.95f;
 	public const float MassEarthAir = 1.29f;
 	public const float MassWater = 1000f;

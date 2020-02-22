@@ -16,7 +16,7 @@
 //#define SolarRadiationAbsorbedTerrainJobDebug
 //#define EnergyAirJobDebug
 //#define EnergyWaterJobSurfaceDebug
-//#define DiffusionAirJobDebug
+#define DiffusionAirJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -235,7 +235,7 @@ public struct EmissivityAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> VaporMass;
 	public void Execute(int i)
 	{
-		Emissivity[i] = (AirMass[i] * WorldData.EmissivityAir +	VaporMass[i] * WorldData.EmissivityWater) / (AirMass[i] + VaporMass[i]);
+		Emissivity[i] = (AirMass[i] * WorldData.EmissivityAir +	VaporMass[i] * WorldData.EmissivityWaterVapor) / (AirMass[i] + VaporMass[i]);
 	}
 }
 
@@ -534,7 +534,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 		float2 gradientVelocity = float2.zero;
 		int neighborCount = 0;
 		float totalMass = 0;
-		//TODO: account for different size air columns, similar to water
 		for (int j = 0; j < 6; j++)
 		{
 			int neighborIndex = i * 6 + j;
@@ -661,6 +660,16 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Salt;
 	[ReadOnly] public NativeArray<float2> Current;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float> UpTemperature;
+	[ReadOnly] public NativeArray<float> UpSalt;
+	[ReadOnly] public NativeArray<float> UpMass;
+	[ReadOnly] public NativeArray<float> DownTemperature;
+	[ReadOnly] public NativeArray<float> DownSalt;
+	[ReadOnly] public NativeArray<float> DownMass;
+	[ReadOnly] public float MaxVerticalMovement;
+	[ReadOnly] public float VerticalDiffusionCoefficient;
+	[ReadOnly] public bool IsBottom;
+	[ReadOnly] public bool IsTop;
 	public void Execute(int i)
 	{
 		float gradientSalinity = 0;

@@ -2039,10 +2039,8 @@ MonoBehaviour:
     WindToOceanCurrentFactor: 0.1
     WaterDiffuseSpeed: 0.2
     OceanCurrentSpeed: 0.00001
-    OceanHorizontalMixingSpeed: 0.01
     OceanUpwellingSpeed: 0.0001
-    OceanTemperatureVerticalMixingSpeed: 0.0001
-    SalinityVerticalMixingSpeed: 0.001
+    WaterDiffuseSpeedVertical: 0
     WaterDensityPerSalinity: 0
     WaterDensityPerDegree: 0
     WaterDensityCurrentSpeed: 0

@@ -1,9 +1,8 @@
 {
 	"AirLayers": 5,
-	"WaterLayers": 3,
+	"WaterLayers": 5,
 	
 	"SecondsPerTick": 3600,
-	"WaterDiffuseSpeed": 0.01,
 	"FullIceCoverage": 3.0,
 	"FullWaterCoverage": 50.0,
 	"FullVegetationCoverage": 2000,
@@ -88,12 +87,12 @@
 	"IceHeatingDepth": 0.1,
 	"WaterHeatingDepth": 0.1,
 
+	"WaterDiffuseSpeed": 0.01,
+	"WaterDiffuseSpeedVertical": 0.01,
 	"ThermoclineDepth": 500,
 	"WindToOceanCurrentFactor": 0.25,
 	"OceanCurrentSpeed": 0.2,
-	"OceanHorizontalMixingSpeed": 0.1,
 	"OceanUpwellingSpeed": 0.001,
-	"OceanTemperatureVerticalMixingSpeed": 0.01,
 	"SalinityVerticalMixingSpeed": 0.00000001,
 	"WaterDensityPerSalinity": 800,
 	"WaterDensityPerDegree": -0.2,

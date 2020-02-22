@@ -18,7 +18,7 @@ public class WorldView : MonoBehaviour {
 		DeepWaterSalinity,
 		ShallowWaterTemperature,
 		ShallowWaterSalinity,
-		LowerAirTemperature,
+		SurfaceTemperature,
 		UpperAirTemperature,
 		LowerPressure,
 		VerticalWind,
@@ -334,7 +334,7 @@ public class WorldView : MonoBehaviour {
 			CloudCoverage = dependent.CloudCoverage,
 			IceCoverage = dependent.IceCoverage,
 			VegetationCoverage = dependent.VegetationCoverage,
-			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers-1],
+			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers-2],
 			WaterDepth = dependent.WaterDepth,
 			SurfaceElevation = dependent.SurfaceElevation,
 			MeshOverlayData = meshOverlay.Values,
@@ -612,8 +612,8 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.RelativeHumidityLower:
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[1]);
 				return true;
-			case MeshOverlay.LowerAirTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[1]);
+			case MeshOverlay.SurfaceTemperature:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperature);
 				return true;
 			case MeshOverlay.UpperAirTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[Sim.WorldData.AirLayers - 2]);
@@ -622,16 +622,16 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[1]);
 				return true;
 			case MeshOverlay.ShallowWaterTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 1]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 2]);
 				return true;
 			case MeshOverlay.ShallowWaterSalinity:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 1]);
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 2]);
 				return true;
 			case MeshOverlay.DeepWaterTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[0]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[1]);
 				return true;
 			case MeshOverlay.DeepWaterSalinity:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[0]);
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[1]);
 				return true;
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
@@ -661,13 +661,13 @@ public class WorldView : MonoBehaviour {
 				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[Sim.WorldData.AirLayers-2]);
 				return true;
 			case WindOverlay.ShallowWaterCurrent:
-				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, false, simState.WaterVelocity[Sim.WorldData.WaterLayers-1]);
+				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, false, simState.WaterVelocity[Sim.WorldData.WaterLayers-2]);
 				return true;
 			case WindOverlay.DeepWaterCurrent:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[0]);
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
 				return true;
 		}
-		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[0]);
+		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
 		return false;
 	}
 
@@ -742,7 +742,7 @@ public class WorldView : MonoBehaviour {
 		if (cloudMass > 0)
 		{
 			float dropletSize = 1000000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
-			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + "kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + "nm\n";
+			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + " nm\n";
 		}
 		else
 		{
@@ -755,7 +755,7 @@ public class WorldView : MonoBehaviour {
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
 		{
 			s += "LAYER " + i + " | TEMP: " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
-			s += "ELE:" + ": " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P:" + ": " + display.Pressure[i][ActiveCellIndex].ToString("0") + "Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ")\n";
+			s += "ELE:" + ": " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P:" + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ")\n";
 			s += "MASS: " + dependent.AirMass[i][ActiveCellIndex].ToString("0") + "kg " + " VAPOR: " + state.AirVapor[i][ActiveCellIndex].ToString("0") + " kg\n";
 			s += "\n";
 		}
@@ -790,11 +790,11 @@ public class WorldView : MonoBehaviour {
 		}
 		s += "DEPTH: " + dependent.WaterDepth[ActiveCellIndex].ToString("0.000") + " m\n\n";
 
-		for (int i = Sim.WorldData.WaterLayers - 1; i >= 0; i--) {
-			int layerIndex = (Sim.WorldData.WaterLayers - 1 - i);
+		for (int i = Sim.WorldData.WaterLayers - 2; i >= 1; i--) {
+			int layerIndex = (Sim.WorldData.WaterLayers - 2 - i);
 			if (state.WaterMass[i][ActiveCellIndex] > 0)
 			{
-				s += "LAYER " + layerIndex + " | TEMP: " + GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0) + " SALT: " + (1000000 * dependent.WaterSalinity[i][ActiveCellIndex]).ToString("0.0") + " ppm\n";
+				s += "LAYER " + layerIndex + " | TEMP: " + GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0) + " SALT: " + (100*dependent.WaterSalinity[i][ActiveCellIndex]).ToString("0.000") + "%\n";
 				s += "MASS: " + (state.WaterSaltMass[i][ActiveCellIndex]).ToString("0.0") + " kg VEL: " + ": " + (state.WaterVelocity[i][ActiveCellIndex]) + " m/s\n";
 				s += "\n";
 			}

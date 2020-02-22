@@ -336,20 +336,26 @@ public static class WorldGen {
 		});
 
 		var worldGenWaterLayerJobHandle = worldGenJobHandle;
-		for (int i = worldData.WaterLayers - 1; i >= 0; i--)
+		for (int i = worldData.WaterLayers - 2; i >= 1; i--)
 		{
 			float layerDepthMax;
 			float layerCount;
-			if (i== worldData.WaterLayers - 1)
+			if (i== worldData.WaterLayers - 2)
 			{
 				layerDepthMax = worldData.ThermoclineDepth;
 				layerCount = 1;
-			} else
+			}
+			else if (i == worldData.WaterLayers - 3)
+			{
+				layerDepthMax = worldData.ThermoclineDepth * 2;
+				layerCount = 1;
+			}
+			else
 			{
 				layerDepthMax = float.MaxValue;
-				layerCount = i + 1;
+				layerCount = i;
 			}
-			worldGenWaterLayerJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
+		worldGenWaterLayerJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
 			{
 				WaterTemperature = state.WaterTemperature[i],
 				SaltMass = state.WaterSaltMass[i],
@@ -408,7 +414,7 @@ public static class WorldGen {
 		int batchCount = 100;
 
 		JobHandle summationHandle = worldGenWaterLayerJobHandle;
-		for (int j = 0; j < worldData.WaterLayers; j++)
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			summationHandle = worldGenJobHelper.Run(new UpdateWaterSaltMassJob()
 			{
@@ -419,7 +425,7 @@ public static class WorldGen {
 		}
 
 		NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
-		for (int j = 0; j < worldData.WaterLayers; j++)
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			var updateDependentWaterLayerJobHandle = worldGenJobHelper.Run( new UpdateDependentWaterLayerJob()
 			{
