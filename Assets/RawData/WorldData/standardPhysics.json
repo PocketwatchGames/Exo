@@ -27,7 +27,7 @@
 	"MaxTerrainNormalForFriction": 0.25,
 	"AirMassDiffusionSpeedHorizontal": 0.01,
 	"AirMassDiffusionSpeedVertical": 0.01,
-	"MaxBouyancy": 0.1,
+	"MaxBuoyancy": 0.1,
 	"WindWaterFriction": 0.2,
 	"WindIceFriction": 0.1,
 	"WindTerrainFrictionMax": 0.5,

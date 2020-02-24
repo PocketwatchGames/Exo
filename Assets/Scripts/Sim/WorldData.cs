@@ -37,7 +37,7 @@ public struct WorldData {
 	public float MaxTerrainNormalForFriction;
 	public float AirMassDiffusionSpeedHorizontal;
 	public float AirMassDiffusionSpeedVertical;
-	public float MaxBouyancy;
+	public float MaxBuoyancy;
 	public float WindWaterFriction;
 	public float WindIceFriction;
 	public float WindTerrainFrictionMin;

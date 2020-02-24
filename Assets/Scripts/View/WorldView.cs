@@ -645,6 +645,9 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.Evaporation:
 				overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 				return true;
+			case MeshOverlay.VerticalWind:
+				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, simState.WindVertical[1]);
+				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 		return false;
@@ -755,7 +758,7 @@ public class WorldView : MonoBehaviour {
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
 		{
 			s += "LAYER " + i + " | TEMP: " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
-			s += "ELE:" + ": " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P:" + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ")\n";
+			s += "ELE:" + ": " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P:" + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ", " + state.WindVertical[i][ActiveCellIndex].ToString("0.00") + ")\n";
 			s += "MASS: " + dependent.AirMass[i][ActiveCellIndex].ToString("0") + "kg " + " VAPOR: " + state.AirVapor[i][ActiveCellIndex].ToString("0") + " kg\n";
 			s += "\n";
 		}

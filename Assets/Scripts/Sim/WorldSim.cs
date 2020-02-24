@@ -4,7 +4,7 @@
 //#define SolarRadiationAbsorbedTerrainJobDebug
 //#define EnergyAirJobDebug
 //#define EnergyWaterJobSurfaceDebug
-#define DiffusionAirJobDebug
+//#define DiffusionAirJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -85,7 +85,7 @@ public class WorldSim {
 	private NativeArray<float> waterSlopeAlbedo;
 	private NativeArray<float>[] emissivity;
 	private NativeArray<float>[] solarRadiationIn;
-	private NativeArray<float>[] bouyancy;
+	private NativeArray<float>[] buoyancy;
 	private NativeArray<DiffusionAir>[] diffusionAir;
 	private NativeArray<DiffusionWater>[] diffusionWater;
 	private NativeArray<DiffusionAir>[] advectionAir;
@@ -371,13 +371,13 @@ public class WorldSim {
 		diffusionAir = new NativeArray<DiffusionAir>[_airLayers];
 		advectionAir = new NativeArray<DiffusionAir>[_airLayers];
 		pressureGradientForce = new NativeArray<float2>[_airLayers];
-		bouyancy = new NativeArray<float>[_airLayers];
+		buoyancy = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
 		{
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			advectionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			pressureGradientForce[i] = new NativeArray<float2>(_cellCount, Allocator.Persistent);
-			bouyancy[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
+			buoyancy[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
@@ -418,7 +418,7 @@ public class WorldSim {
 			diffusionAir[i].Dispose();
 			advectionAir[i].Dispose();
 			pressureGradientForce[i].Dispose();
-			bouyancy[i].Dispose();
+			buoyancy[i].Dispose();
 		}
 		for (int i = 0; i < _waterLayers; i++)
 		{
@@ -867,7 +867,7 @@ public class WorldSim {
 			}
 #endregion
 
-			// Bouyancy, Updrafts, and mixing occur across air layers and water layers
+			// Buoyancy, Updrafts, and mixing occur across air layers and water layers
 			// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
 			// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
 			// Air, Water, Cloud
@@ -884,7 +884,6 @@ public class WorldSim {
 					Wind = lastState.Wind[j],
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficient = worldData.AirMassDiffusionSpeedHorizontal,
-					Bouyancy = bouyancy[j],
 
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
@@ -900,7 +899,7 @@ public class WorldSim {
 					DownLayerElevation = dependent.LayerElevation[j - 1],
 					DownLayerHeight = dependent.LayerHeight[j - 1],
 					SecondsPerTick = worldData.SecondsPerTick,
-					MaxVerticalMovement = worldData.MaxBouyancy,
+					MaxVerticalMovement = worldData.MaxBuoyancy,
 					VerticalDiffusionCoefficient = worldData.AirMassDiffusionSpeedVertical,
 					Gravity = lastState.PlanetState.Gravity,
 					IsTop = j == _airLayers - 2,
@@ -949,6 +948,8 @@ public class WorldSim {
 				pgfJobHandles[_airLayer0 + j] = PressureGradientForceAirJob.Run(new PressureGradientForceAirJob()
 				{
 					Delta = pressureGradientForce[j],
+					Buoyancy = buoyancy[j],
+
 					Pressure = dependent.AirPressure[j],
 					AirMass = dependent.AirMass[j],
 					Temperature = lastState.AirTemperature[j],
@@ -960,6 +961,19 @@ public class WorldSim {
 					InverseCellDiameter = staticState.InverseCellDiameter,
 					InverseCoordDiff = staticState.InverseCoordDiameter,
 					Gravity = lastState.PlanetState.Gravity,
+					UpTemperature = lastState.AirTemperature[j + 1],
+					UpHumidity = lastState.AirVapor[j + 1],
+					UpAirMass = dependent.AirMass[j + 1],
+					UpLayerElevation = dependent.LayerElevation[j + 1],
+					UpLayerHeight = dependent.LayerHeight[j + 1],
+					DownTemperature = lastState.AirTemperature[j - 1],
+					DownHumidity = lastState.AirVapor[j - 1],
+					DownAirMass = dependent.AirMass[j - 1],
+					DownLayerElevation = dependent.LayerElevation[j - 1],
+					DownLayerHeight = dependent.LayerHeight[j - 1],
+					IsTop = j == _airLayers - 2,
+					IsBottom = j == 1
+
 				}, lastJobHandle);
 			}
 			var windFrictionJobHandle = WindFrictionJob.Run(new WindFrictionJob()
@@ -1217,6 +1231,7 @@ public class WorldSim {
 					Temperature = nextState.AirTemperature[j],
 					Vapor = nextState.AirVapor[j],
 					Wind = nextState.Wind[j],
+					WindVertical = nextState.WindVertical[j],
 					CondensationCloudMass = condensationCloudMass[j],
 					CondensationGroundMass = condensationGroundMass[j],
 					LastTemperature = lastState.AirTemperature[j],
@@ -1233,6 +1248,7 @@ public class WorldSim {
 					CloudElevation = dependent.CloudElevation,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
+					Buoyancy = buoyancy[j],
 					PressureGradientForce = pressureGradientForce[j],
 					CoriolisMultiplier = staticState.CoriolisMultiplier,
 					CoriolisTerm = coriolisTerm,
@@ -1367,6 +1383,7 @@ public class WorldSim {
 				SurfaceSaltMass = lastState.WaterSaltMass[_surfaceWaterLayer],
 				LastCloudMass = lastState.CloudMass,
 				LastVelocity = lastState.CloudVelocity,
+				WindVertical = lastState.WindVertical[2], // TODO: use wind at cloud elevation
 				Advection = advectionCloud,
 				Diffusion = diffusionCloud,
 				LastDropletMass = lastState.CloudDropletMass,
@@ -1392,7 +1409,6 @@ public class WorldSim {
 				CoriolisMultiplier = staticState.CoriolisMultiplier,
 				CoriolisTerm = coriolisTerm,
 				PressureGradientForce = pressureGradientForce[2], // TODO: use wind at cloud elevation
-				Bouyancy = bouyancy[2], // TODO: use wind at cloud elevation
 				EvaporationRate = worldData.EvaporationRate,
 				EvapTemperatureMax = worldData.EvapMaxTemperature,
 				EvapTemperatureMin = worldData.EvapMinTemperature,
