@@ -29,30 +29,18 @@ public struct WorldData {
 
 
 	[Header("Pressure and Wind")]
-	//public float tradeWindSpeed = 12.0f; // average wind speeds around trade winds around 12 m/s
-	//	public float pressureDifferentialWindSpeed = 70.0f; // hurricane wind speeds 70 m/s
-	public float PressureToVerticalWindSpeed;
-	public float DestinationPressureDifferentialToVerticalWindSpeed;
-	public float MountainUpdraftWindSpeed;
-	public float MaxTerrainNormalForFriction;
-	public float AirMassDiffusionSpeedHorizontal;
-	public float AirMassDiffusionSpeedVertical;
+	public float AirDiffusionCoefficientHorizontal;
+	public float AirDiffusionCoefficientVertical;
+	public float WaterDiffusionCoefficientHorizontal;
+	public float WaterDiffusionCoefficientVertical;
 	public float MaxBuoyancy;
 	public float WindWaterFriction;
 	public float WindIceFriction;
 	public float WindTerrainFrictionMin;
 	public float WindTerrainFrictionMax;
 	public float WindVegetationFriction;
-	public float WindAirMovementHorizontal;
-	public float WindAirMovementVertical;
 	public float CloudDiffusionCoefficient;
-	public float HumidityToCloudPercent;
 	public float MaxTerrainRoughnessForWindFriction;
-	// http://tornado.sfsu.edu/geosciences/classes/e260/Coriolis_rdg/GeostrophicApproximation.html
-	// states that geostrophic wind is only realistic at middle altitudes (500M), less so at 10K and at the surface, so we reduce overall coriolis effect by 25% to account
-	public float GlobalCoriolisInfluenceWindUpper;
-	public float GlobalCoriolisInfluenceWindLower;
-	public float GlobalCoriolisInfluenceOcean;
 
 	[Header("Atmospheric Energy Cycle")]
 	// atmospheric heat balance https://energyeducation.ca/encyclopedia/Earth%27s_heat_balance
@@ -116,10 +104,8 @@ public struct WorldData {
 	[Header("Ocean")]
 	public float ThermoclineDepth;
 	public float WindToOceanCurrentFactor;
-	public float WaterDiffuseSpeed;
 	public float OceanCurrentSpeed;
 	public float OceanUpwellingSpeed;
-	public float WaterDiffuseSpeedVertical;
 	public float WaterDensityPerSalinity;
 	public float WaterDensityPerDegree;
 	public float WaterDensityCurrentSpeed;

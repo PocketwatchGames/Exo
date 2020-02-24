@@ -460,6 +460,14 @@ public class WorldView : MonoBehaviour {
 		ActiveWindOverlay = (WorldView.WindOverlay)dropdown.value;
 		_tickLerpTime = 0;
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+
+		for (int i = 0; i < _windArrows.Length; i++)
+		{
+			var wind = _renderStates[_curRenderState].VelocityArrow[i];
+			bool visible = ActiveWindOverlay != WindOverlay.None && !(wind.x == 0 && wind.y == 0);
+			_windArrows[i].SetActive(visible);
+
+		}
 	}
 
 	public void OnHUDTemperatureUnitsChanged(UnityEngine.UI.Dropdown dropdown)
@@ -758,7 +766,7 @@ public class WorldView : MonoBehaviour {
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
 		{
 			s += "LAYER " + i + " | TEMP: " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
-			s += "ELE:" + ": " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P:" + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ", " + state.WindVertical[i][ActiveCellIndex].ToString("0.00") + ")\n";
+			s += "ELE: " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P: " + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ", " + state.WindVertical[i][ActiveCellIndex].ToString("0.00") + ")\n";
 			s += "MASS: " + dependent.AirMass[i][ActiveCellIndex].ToString("0") + "kg " + " VAPOR: " + state.AirVapor[i][ActiveCellIndex].ToString("0") + " kg\n";
 			s += "\n";
 		}
