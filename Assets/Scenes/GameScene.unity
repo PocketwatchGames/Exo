@@ -1975,26 +1975,18 @@ MonoBehaviour:
     MaxTropopauseElevation: 17000
     MinTropopauseElevation: 9000
     TropopauseElevationSeason: 1000
-    PressureToVerticalWindSpeed: 0.0001
-    DestinationPressureDifferentialToVerticalWindSpeed: 0.0001
-    MountainUpdraftWindSpeed: 0.1
-    MaxTerrainNormalForFriction: 0.25
-    AirMassDiffusionSpeedHorizontal: 0.1
-    AirMassDiffusionSpeedVertical: 0.1
-    MaxBouyancy: 0
+    AirDiffusionCoefficientHorizontal: 0
+    AirDiffusionCoefficientVertical: 0
+    WaterDiffusionCoefficientHorizontal: 0
+    WaterDiffusionCoefficientVertical: 0
+    MaxBuoyancy: 0
     WindWaterFriction: 0
     WindIceFriction: 0.1
     WindTerrainFrictionMin: 0
     WindTerrainFrictionMax: 0
     WindVegetationFriction: 0
-    WindAirMovementHorizontal: 0.001
-    WindAirMovementVertical: 0.01
     CloudDiffusionCoefficient: 0
-    HumidityToCloudPercent: 0.1
     MaxTerrainRoughnessForWindFriction: 0
-    GlobalCoriolisInfluenceWindUpper: 0.75
-    GlobalCoriolisInfluenceWindLower: 0.5
-    GlobalCoriolisInfluenceOcean: 0.5
     SolarAbsorptivityAir: 0
     SolarAbsorptivityWaterVapor: 0
     SolarAbsorptivityCloud: 0
@@ -2037,10 +2029,8 @@ MonoBehaviour:
     WaterHeatingDepth: 0
     ThermoclineDepth: 0
     WindToOceanCurrentFactor: 0.1
-    WaterDiffuseSpeed: 0.2
     OceanCurrentSpeed: 0.00001
     OceanUpwellingSpeed: 0.0001
-    WaterDiffuseSpeedVertical: 0
     WaterDensityPerSalinity: 0
     WaterDensityPerDegree: 0
     WaterDensityCurrentSpeed: 0
@@ -2095,18 +2085,6 @@ MonoBehaviour:
       Enabled: 0
     WindFrictionJob:
       Enabled: 0
-    DiffusionAirJob:
-      Enabled: 0
-    DiffusionWaterJob:
-      Enabled: 0
-    DiffusionCloudJob:
-      Enabled: 0
-    AdvectionAirJob:
-      Enabled: 0
-    AdvectionWaterJob:
-      Enabled: 0
-    AdvectionCloudJob:
-      Enabled: 0
     ConductionAirIceJob:
       Enabled: 0
     ConductionAirWaterJob:
@@ -2134,6 +2112,18 @@ MonoBehaviour:
     StateChangeJob:
       Enabled: 0
     StateChangeAirLayerJob:
+      Enabled: 0
+    AdvectionAirJob:
+      Enabled: 0
+    AdvectionWaterJob:
+      Enabled: 0
+    AdvectionCloudJob:
+      Enabled: 0
+    ApplyAdvectionAirJob:
+      Enabled: 0
+    ApplyAdvectionWaterJob:
+      Enabled: 0
+    ApplyAdvectionCloudJob:
       Enabled: 0
     UpdateDependentWaterLayerJob:
       Enabled: 0

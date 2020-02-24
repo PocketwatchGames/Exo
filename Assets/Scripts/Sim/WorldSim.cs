@@ -261,18 +261,6 @@ public class WorldSim {
 		WindFrictionJob.Async = false;
 #endif
 
-#if DiffusionAirJobDebug
-		DiffusionAirJob.Async = false;
-#endif
-
-#if DiffusionWaterJobDebug
-		DiffusionWaterJob.Async = false;
-#endif
-
-#if DiffusionCloudJobDebug
-		DiffusionCloudJob.Async = false;
-#endif
-
 #if AdvectionAirJobDebug
 		AdvectionAirJob.Async = false;
 #endif
@@ -1135,7 +1123,7 @@ public class WorldSim {
 					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
 					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 					WindFriction = windFriction,
-					WindFrictionMultiplier = 0,
+					WindFrictionMultiplier = j==1 ? 1 : 0,
 					MaxBuoyancy = worldData.MaxBuoyancy, // TODO: this is probably dumb
 				}, JobHandle.CombineDependencies(airDependencies)));
 			}
@@ -1352,7 +1340,6 @@ public class WorldSim {
 					Neighbors = staticState.Neighbors,
 					Coords = staticState.Coordinate,
 					InverseCellDiameter = staticState.InverseCellDiameter,
-					InverseCoordDiff = staticState.InverseCoordDiameter,
 					SecondsPerTick = worldData.SecondsPerTick,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
@@ -1382,9 +1369,13 @@ public class WorldSim {
 				{
 					Delta = advectionWater[j],
 					Temperature = nextState.WaterTemperature[j],
+					Mass = nextState.WaterMass[j],
 					Salt = nextState.WaterSaltMass[j],
 					Current = nextState.WaterVelocity[j],
 					Neighbors = staticState.Neighbors,
+					Coords = staticState.Coordinate,
+					InverseCellDiameter = staticState.InverseCellDiameter,
+					SecondsPerTick = worldData.SecondsPerTick,
 					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
 				}, stateChangeJobHandle);
@@ -1399,7 +1390,6 @@ public class WorldSim {
 				Neighbors = staticState.Neighbors,
 				Coords = staticState.Coordinate,
 				InverseCellDiameter = staticState.InverseCellDiameter,
-				InverseCoordDiff = staticState.InverseCoordDiameter,
 				SecondsPerTick = worldData.SecondsPerTick,
 				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
 			}, stateChangeJobHandle);

@@ -752,8 +752,8 @@ public class WorldView : MonoBehaviour {
 
 		if (cloudMass > 0)
 		{
-			float dropletSize = 1000000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
-			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + " nm\n";
+			float dropletSize = 1000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
+			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + " mm\n";
 		}
 		else
 		{
