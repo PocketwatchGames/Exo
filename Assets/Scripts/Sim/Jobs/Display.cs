@@ -28,15 +28,18 @@ public struct UpdateDisplayJob : IJobParallelFor {
 #if !InitDisplayJobDebug
 [BurstCompile]
 #endif
-public struct InitDisplayJob : IJobParallelFor {
+public struct InitDisplayAirLayerJob : IJobParallelFor {
 	public NativeArray<float> DisplayPressure;
+	public NativeArray<float3> DisplayPressureGradientForce;
 	[ReadOnly] public NativeArray<float> AirLayerElevation;
 	[ReadOnly] public NativeArray<float> AirLayerHeight;
 	[ReadOnly] public NativeArray<float> AirTemperature;
 	[ReadOnly] public NativeArray<float> AirPressure;
+	[ReadOnly] public NativeArray<float3> PressureGradientForce;
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
 		DisplayPressure[i] = Atmosphere.GetPressureAtElevation(0, Gravity, AirPressure[i], AirTemperature[i], AirLayerElevation[i] + AirLayerHeight[i] / 2);
+		DisplayPressureGradientForce[i] = PressureGradientForce[i];
 	}
 }

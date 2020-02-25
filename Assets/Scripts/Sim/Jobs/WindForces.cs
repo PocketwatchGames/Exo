@@ -1,4 +1,6 @@
-﻿using Unity.Burst;
+﻿#define PressureGradientForceAirJobDebug
+
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -37,7 +39,7 @@ public struct WindFrictionJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct PressureGradientForceAirJob : IJobParallelFor {
-	public NativeArray<float2> Delta;
+	public NativeArray<float3> Delta;
 	public NativeArray<float> Buoyancy;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
@@ -46,7 +48,7 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<float2> Coords;
+	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float> UpTemperature;
 	[ReadOnly] public NativeArray<float> UpHumidity;
 	[ReadOnly] public NativeArray<float> UpAirMass;
@@ -64,8 +66,8 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 	[ReadOnly] public bool IsBottom;
 	public void Execute(int i)
 	{
-		float2 gradientPressure = 0;
-		float2 coord = Coords[i];
+		float3 gradientPressure = 0;
+		float3 position = Positions[i];
 		float elevation = LayerElevation[i] + LayerHeight[i] / 2;
 		float pressure = Pressure[i];
 
@@ -75,13 +77,11 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				float2 coordDiff = Coords[n] - coord;
-				float2 diff = math.normalize(math.float2(Utils.WrapAngle(coordDiff.x), Utils.WrapAngle(coordDiff.y))); // TODO: cache the normalized vectors in staticstate
+				float3 diff = math.normalize(position - Positions[n]);
 
 				float neighborMidElevation = LayerElevation[n] + LayerHeight[n] / 2;
 				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, Temperature[n], Pressure[n], neighborMidElevation, Gravity);
 				gradientPressure += diff * (neighborElevationAtPressure - elevation);
-				//	Debug.Log("I: " + i + " D: " + diff + " P: " + pressure + " E: " + (neighborElevationAtPressure - elevation) + " NT: " + Temperature[n] + " NP: " + Pressure[n] + " NE: " + neighborMidElevation + " NEAP: " + neighborElevationAtPressure);
 			}
 		}
 		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Temperature[i], AirMass[i], VaporMass[i]);

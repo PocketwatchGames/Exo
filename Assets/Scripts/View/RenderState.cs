@@ -40,7 +40,7 @@ public struct RenderState {
 	public NativeArray<Vector3> WaterNormal;
 	public NativeArray<Vector3> CloudNormal;
 	public NativeArray<float3> SurfacePosition;
-	public NativeArray<float2> VelocityArrow;
+	public NativeArray<float3> VelocityArrow;
 
 	public void Init(int count)
 	{
@@ -53,7 +53,7 @@ public struct RenderState {
 		CloudColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		CloudNormal = new NativeArray<Vector3>(count, Allocator.Persistent);
 		CloudPosition = new NativeArray<Vector3>(count, Allocator.Persistent);
-		VelocityArrow = new NativeArray<float2>(count, Allocator.Persistent);
+		VelocityArrow = new NativeArray<float3>(count, Allocator.Persistent);
 		SurfacePosition = new NativeArray<float3>(count, Allocator.Persistent);
 	}
 
@@ -85,7 +85,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	public NativeArray<Vector3> WaterNormal;
 	public NativeArray<Vector3> CloudNormal;
 	public NativeArray<float3> SurfacePosition;
-	public NativeArray<float2> VelocityArrow;
+	public NativeArray<float3> VelocityArrow;
 
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public NativeArray<float> CloudElevation;
@@ -99,7 +99,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Icosphere;
 	[ReadOnly] public NativeArray<float> MeshOverlayData;
 	[ReadOnly] public NativeArray<CVP> MeshOverlayColors;
-	[ReadOnly] public NativeArray<float2> WindOverlayData;
+	[ReadOnly] public NativeArray<float3> WindOverlayData;
 	[ReadOnly] public bool MeshOverlayActive;
 	[ReadOnly] public float MeshOverlayMin;
 	[ReadOnly] public float MeshOverlayInverseRange;
@@ -122,7 +122,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		float3 terrainPosition;
 		float3 waterPosition;
 		float3 cloudPosition;
-		float2 velocityArrow;
+		float3 velocityArrow;
 		float3 surfacePosition;
 
 
@@ -161,15 +161,15 @@ public struct BuildRenderStateJob : IJobParallelFor {
 			velocityArrow = WindOverlayData[i] / WindVelocityMax;
 			if (math.length(velocityArrow) < 0.01f)
 			{
-				velocityArrow = float2.zero;
+				velocityArrow = float3.zero;
 			}
 			else if (WindMaskedByLand && waterDepth < roughness)
 			{
-				velocityArrow = float2.zero;
+				velocityArrow = float3.zero;
 			}
 		} else
 		{
-			velocityArrow = float2.zero;
+			velocityArrow = float3.zero;
 		}
 
 		TerrainColor[i] = terrainColor;

@@ -1,5 +1,5 @@
 ﻿#define EnergyAirJobDebug
-
+//#define DISABLE_CORIOLIS
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -13,14 +13,13 @@ using Unity.Mathematics;
 public struct EnergyAirJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	public NativeArray<float> Vapor;
-	public NativeArray<float2> Wind;
-	public NativeArray<float> WindVertical;
+	public NativeArray<float3> Wind;
 	public NativeArray<float> CondensationGroundMass;
 	public NativeArray<float> CondensationCloudMass;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> LastVapor;
 	[ReadOnly] public NativeArray<float> LastTemperature;
-	[ReadOnly] public NativeArray<float2> LastWind;
+	[ReadOnly] public NativeArray<float3> LastWind;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
@@ -31,8 +30,9 @@ public struct EnergyAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> WindFriction;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
-	[ReadOnly] public NativeArray<float2> PressureGradientForce;
+	[ReadOnly] public NativeArray<float3> PressureGradientForce;
 	[ReadOnly] public NativeArray<float> Buoyancy;
+	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float WindFrictionMultiplier;
 	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float SecondsPerTick;
@@ -53,18 +53,21 @@ public struct EnergyAirJob : IJobParallelFor {
 		float temperature = LastTemperature[i];
 		float vapor = LastVapor[i];
 
-		float2 lastWind = LastWind[i];
+		float3 lastWind = LastWind[i];
 
-		float2 wind = lastWind;
+		float3 wind = lastWind;
+		wind *= (1.0f - WindFriction[i] * WindFrictionMultiplier);
 		wind += PressureGradientForce[i] * SecondsPerTick;
-		float2 frictionForce = -wind * WindFriction[i] * WindFrictionMultiplier;
-		float2 coriolisForce = math.clamp(CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick, -1, 1) * new float2(wind.y, -wind.x);
-		wind += coriolisForce + frictionForce;
 
-		float lastWindVertical = WindVertical[i];
-		WindVertical[i] = lastWindVertical;
-		// TODO: this can overshoot
-		//		WindVertical[i] += +math.clamp(Buoyancy[i], -MaxBuoyancy, MaxBuoyancy) * SecondsPerTick;
+#if !DISABLE_CORIOLIS
+//		var windUp = math.dot(Position[i], lastWind) * Position[i];
+		var windRight = math.cross(Position[i], lastWind);
+		wind += windRight * math.clamp(CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick, -1, 1);
+#endif
+		//float lastWindVertical = WindVertical[i];
+		//WindVertical[i] = lastWindVertical;
+		//// TODO: this can overshoot
+		//WindVertical[i] += Buoyancy[i] /* * SecondsPerTick */;
 
 		float condensationGroundMass = 0;
 		float condensationCloudMass = 0;
@@ -99,11 +102,11 @@ public struct EnergyAirJob : IJobParallelFor {
 public struct EnergyWaterJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	public NativeArray<float> SaltMass;
-	public NativeArray<float2> Velocity;
+	public NativeArray<float3> Velocity;
 	public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
-	[ReadOnly] public NativeArray<float2> LastVelocity;
+	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
@@ -122,8 +125,8 @@ public struct EnergyWaterJob : IJobParallelFor {
 		SaltMass[i] = LastSaltMass[i];
 		Mass[i] = LastMass[i];
 
-		float2 pressureGradientForce = float2.zero;
-		float2 coriolisForce = float2.zero;
+		float3 pressureGradientForce = float3.zero;
+		float3 coriolisForce = float3.zero;
 
 		Velocity[i] = LastVelocity[i] + (pressureGradientForce + coriolisForce) * SecondsPerTick;
 	}
@@ -135,15 +138,15 @@ public struct EnergyWaterJob : IJobParallelFor {
 public struct EnergyWaterJobSurface : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	public NativeArray<float> SaltMass;
-	public NativeArray<float2> Velocity;
+	public NativeArray<float3> Velocity;
 	public NativeArray<float> WaterMass;
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
-	[ReadOnly] public NativeArray<float2> LastVelocity;
-	[ReadOnly] public NativeArray<float2> LastSurfaceWind;
+	[ReadOnly] public NativeArray<float3> LastVelocity;
+	[ReadOnly] public NativeArray<float3> LastSurfaceWind;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaTop;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaBottom;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
@@ -168,7 +171,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 
 		float temperature = lastTemperature;
 		float saltMass = LastSaltMass[i];
-		float2 velocity = LastVelocity[i];
+		float3 velocity = LastVelocity[i];
 		float waterMass = lastMassWater;
 
 		float evapMass = 0;
@@ -241,8 +244,8 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 			float energySources = (energyTop + energyBottom) / specificHeat;
 			Temperature[i] = temperature + energySources;
 
-			float2 pressureGradientForce = float2.zero;
-			float2 coriolisForce = float2.zero;
+			float3 pressureGradientForce = float3.zero;
+			float3 coriolisForce = float3.zero;
 
 			Velocity[i] = velocity + (pressureGradientForce + coriolisForce) * SecondsPerTick;
 		}
@@ -259,11 +262,10 @@ public struct EnergyCloudJob : IJobParallelFor {
 	public NativeArray<float> IceMass;
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> DropletMass;
-	public NativeArray<float2> Velocity;
+	public NativeArray<float3> Velocity;
 	public NativeArray<float> RainfallWaterMass;
 	public NativeArray<float> CloudEvaporationMass;
-	[ReadOnly] public NativeArray<float2> LastVelocity;
-	[ReadOnly] public NativeArray<float> WindVertical;
+	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> DewPoint;
 	[ReadOnly] public NativeArray<float> LastDropletMass;
@@ -277,7 +279,8 @@ public struct EnergyCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
 	[ReadOnly] public NativeArray<float> SurfaceAirTemperature;
-	[ReadOnly] public NativeArray<float2> PressureGradientForce;
+	[ReadOnly] public NativeArray<float3> PressureGradientForce;
+	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float WindFrictionMultiplier;
 	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float Gravity;
@@ -300,14 +303,16 @@ public struct EnergyCloudJob : IJobParallelFor {
 		float cloudMass = LastCloudMass[i];
 		float dropletMass = LastDropletMass[i];
 		float cloudElevation = CloudElevation[i];
-		float2 lastVelocity = LastVelocity[i];
+		float3 lastVelocity = LastVelocity[i];
 		float rainfallWaterMass = 0;
 		float cloudEvaporationMass = 0;
 		float dewPoint = DewPoint[i];
 
-		float2 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + PressureGradientForce[i] * SecondsPerTick;
-		float2 coriolisForce = CoriolisMultiplier[i] * CoriolisTerm * new float2(velocity.y, -velocity.x);
-		velocity += coriolisForce * SecondsPerTick;
+		float3 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + PressureGradientForce[i] * SecondsPerTick;
+
+		var velocityUp = math.dot(Position[i], velocity) * Position[i];
+		var velocityRight = math.cross(Position[i], velocity - velocityUp);
+		velocity += velocityRight * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
 
 		float precipitationMass = 0;
 		if (cloudElevation <= surfaceElevation)
@@ -332,7 +337,8 @@ public struct EnergyCloudJob : IJobParallelFor {
 			//https://en.wikipedia.org/wiki/Terminal_velocity
 			// We shouldn't be using the Air's buoyancy force as a stand in for the water droplets buoyancy
 			// We should instead just be adding the vertical velocity of the air parcel
-			float terminalVelocity = WindVertical[i] - math.sqrt(8 * rainDropRadius * waterDensityAtElevation * Gravity / (3 * airDensityAtElevation * RainDropDragCoefficient));
+			float windVertical = math.dot(lastVelocity, Position[i]);
+			float terminalVelocity = windVertical - math.sqrt(8 * rainDropRadius * waterDensityAtElevation * Gravity / (3 * airDensityAtElevation * RainDropDragCoefficient));
 			if (terminalVelocity < 0 && dropletMass > 0)
 			{
 

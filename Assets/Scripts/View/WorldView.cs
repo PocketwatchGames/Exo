@@ -18,9 +18,13 @@ public class WorldView : MonoBehaviour {
 		DeepWaterSalinity,
 		ShallowWaterTemperature,
 		ShallowWaterSalinity,
-		SurfaceTemperature,
-		UpperAirTemperature,
-		LowerPressure,
+		TemperatureSurface,
+		Temperature0,
+		Temperature1,
+		Temperature2,
+		Pressure0,
+		Pressure1,
+		Pressure2,
 		VerticalWind,
 		AbsoluteHumidityLower,
 		RelativeHumidityLower,
@@ -38,8 +42,13 @@ public class WorldView : MonoBehaviour {
 		None,
 		DeepWaterCurrent,
 		ShallowWaterCurrent,
-		LowerAirWind,
-		UpperAirWind
+		Wind0,
+		Wind1,
+		Wind2,
+		PGF0,
+		PGF1,
+		PGF2
+
 	}
 
 	public enum TemperatureUnits {
@@ -81,6 +90,7 @@ public class WorldView : MonoBehaviour {
 	public float DisplaySalinityMax = 50;
 	public float DisplayWindSpeedLowerAirMax = 50;
 	public float DisplayWindSpeedUpperAirMax = 250;
+	public float DisplayPressureGradientForceMax = 0.01f;
 	public float DisplayWindSpeedSurfaceWaterMax = 5;
 	public float DisplayWindSpeedDeepWaterMax = 0.5f;
 	public float DisplayVerticalWindSpeedMax = 1.0f;
@@ -301,7 +311,7 @@ public class WorldView : MonoBehaviour {
 		bool useMeshOverlay = GetMeshOverlayData(ActiveMeshOverlay, ref from, ref dependent, ref display, out meshOverlay);
 
 		WindOverlayData windOverlayData;
-		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, out windOverlayData);
+		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
 		var buildRenderStateJob = new BuildRenderStateJob()
 		{ 
@@ -376,7 +386,7 @@ public class WorldView : MonoBehaviour {
 		}
 		if (ActiveWindOverlay != WindOverlay.None)
 		{
-			dependencies.Add((new LerpJobfloat2 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
+			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
 		}
 
 		JobHandle.CompleteAll(dependencies);
@@ -427,14 +437,15 @@ public class WorldView : MonoBehaviour {
 			for (int i = 0; i < _windArrows.Length; i++)
 			{
 				var wind = _renderStates[_curRenderState].VelocityArrow[i];
-				bool visible = !(wind.x == 0 && wind.y  == 0);
+				float windLength = math.length(wind);
+				var pos = _renderStates[_curRenderState].SurfacePosition[i];
+				bool visible = !(wind.x == 0 && wind.y  == 0 && wind.z==0) && math.dot(wind, pos) != windLength;
 				_windArrows[i].SetActive(visible);
 				if (visible)
 				{
-					var pos = _renderStates[_curRenderState].SurfacePosition[i];
 					_windArrows[i].transform.localPosition = pos;
-					_windArrows[i].transform.localRotation = Quaternion.LookRotation(-pos, Vector3.Cross(new Vector3(wind.x, wind.y, 0), pos));
-					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, math.length(wind));
+					_windArrows[i].transform.localRotation = Quaternion.LookRotation(wind, pos);
+					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, windLength);
 				}
 			}
 		}
@@ -524,7 +535,7 @@ public class WorldView : MonoBehaviour {
 			case CellInfoType.Cell:
 				return GetCellInfoCell(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
 			case CellInfoType.Atmosphere:
-				return GetCellInfoAtmosphere(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
+				return GetCellInfoAtmosphere(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
 			case CellInfoType.Ground:
 				return GetCellInfoGround(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Water:
@@ -591,7 +602,7 @@ public class WorldView : MonoBehaviour {
 	}
 
 	public struct WindOverlayData {
-		public WindOverlayData(float maxVelocity, bool maskLand, NativeArray<float2> values)
+		public WindOverlayData(float maxVelocity, bool maskLand, NativeArray<float3> values)
 		{
 			MaxVelocity = maxVelocity;
 			MaskLand = maskLand;
@@ -599,7 +610,7 @@ public class WorldView : MonoBehaviour {
 		}
 		public float MaxVelocity { get; private set; }
 		public bool MaskLand { get; private set; }
-		public NativeArray<float2> Values { get; private set; }
+		public NativeArray<float3> Values { get; private set; }
 	}
 
 
@@ -620,14 +631,26 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.RelativeHumidityLower:
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[1]);
 				return true;
-			case MeshOverlay.SurfaceTemperature:
+			case MeshOverlay.TemperatureSurface:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperature);
 				return true;
-			case MeshOverlay.UpperAirTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[Sim.WorldData.AirLayers - 2]);
+			case MeshOverlay.Temperature0:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[1]);
 				return true;
-			case MeshOverlay.LowerPressure:
+			case MeshOverlay.Temperature1:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[2]);
+				return true;
+			case MeshOverlay.Temperature2:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[3]);
+				return true;
+			case MeshOverlay.Pressure0:
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[1]);
+				return true;
+			case MeshOverlay.Pressure1:
+				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[2]);
+				return true;
+			case MeshOverlay.Pressure2:
+				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[3]);
 				return true;
 			case MeshOverlay.ShallowWaterTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 2]);
@@ -653,23 +676,35 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.Evaporation:
 				overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 				return true;
-			case MeshOverlay.VerticalWind:
-				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, simState.WindVertical[1]);
-				return true;
+			//case MeshOverlay.VerticalWind:
+			//	overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, simState.WindVertical[1]);
+			//	return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 		return false;
 
 	}
-	private bool GetWindOverlayData(WindOverlay activeOverlay, ref SimState simState, ref DependentState dependentState, out WindOverlayData overlay)
+	private bool GetWindOverlayData(WindOverlay activeOverlay, ref SimState simState, ref DependentState dependentState, ref DisplayState displayState, out WindOverlayData overlay)
 	{
 		switch (activeOverlay)
 		{
-			case WindOverlay.LowerAirWind:
+			case WindOverlay.Wind0:
 				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.Wind[1]);
 				return true;
-			case WindOverlay.UpperAirWind:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[Sim.WorldData.AirLayers-2]);
+			case WindOverlay.Wind1:
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[2]);
+				return true;
+			case WindOverlay.Wind2:
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[3]);
+				return true;
+			case WindOverlay.PGF0:
+				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[1]);
+				return true;
+			case WindOverlay.PGF1:
+				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[2]);
+				return true;
+			case WindOverlay.PGF2:
+				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[3]);
 				return true;
 			case WindOverlay.ShallowWaterCurrent:
 				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, false, simState.WaterVelocity[Sim.WorldData.WaterLayers-2]);
@@ -735,13 +770,15 @@ public class WorldView : MonoBehaviour {
 
 		var terrain = state.Terrain[ActiveCellIndex];
 		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
+		var pos = Sim.StaticState.SphericalPosition[ActiveCellIndex];
 		string s = "";
 		s += "INDEX: " + ActiveCellIndex + "\n";
 		s += "COORD: (" + math.degrees(coord.x).ToString("0.0") + ", " + math.degrees(coord.y).ToString("0.0") + ")\n";
+		s += "POS: (" + pos.x.ToString("0.0") + ", " + pos.y.ToString("0.0") + ", " + pos.z.ToString("0.0") + ")\n";
 
 		return s;
 	}
-	private string GetCellInfoAtmosphere(ref SimState state, ref DependentState dependent, ref DisplayState display)
+	private string GetCellInfoAtmosphere(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
@@ -765,8 +802,9 @@ public class WorldView : MonoBehaviour {
 		s += "\n";
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
 		{
+			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.Wind[i][ActiveCellIndex]);
 			s += "LAYER " + i + " | TEMP: " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
-			s += "ELE: " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P: " + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + state.Wind[i][ActiveCellIndex].x.ToString("0.0") + ", " + state.Wind[i][ActiveCellIndex].y.ToString("0.0") + ", " + state.WindVertical[i][ActiveCellIndex].ToString("0.00") + ")\n";
+			s += "ELE: " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P: " + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + wind.x.ToString("0.0") + ", " + wind.y.ToString("0.0") + ", " + wind.z.ToString("0.00") + ")\n";
 			s += "MASS: " + dependent.AirMass[i][ActiveCellIndex].ToString("0") + "kg " + " VAPOR: " + state.AirVapor[i][ActiveCellIndex].ToString("0") + " kg\n";
 			s += "\n";
 		}
@@ -812,6 +850,7 @@ public class WorldView : MonoBehaviour {
 		}
 		return s;
 	}
+
 
 	#endregion
 }

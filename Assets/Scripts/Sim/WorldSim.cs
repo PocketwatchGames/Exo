@@ -6,6 +6,8 @@
 //#define EnergyWaterJobSurfaceDebug
 //#define DiffusionAirJobDebug
 #define AdvectionAirJobDebug
+#define PressureGradientForceAirJobDebug
+
 
 using System;
 using System.Collections.Generic;
@@ -94,7 +96,7 @@ public class WorldSim {
 	private NativeArray<DiffusionCloud> diffusionCloud;
 	private NativeArray<DiffusionCloud> advectionCloud;
 	private NativeArray<float>[] latentHeat;
-	private NativeArray<float2>[] pressureGradientForce;
+	private NativeArray<float3>[] pressureGradientForce;
 	private NativeArray<float> windFriction;
 	private NativeArray<float> conductionSurfaceAirIce;
 	private NativeArray<float> conductionSurfaceAirWater;
@@ -359,13 +361,13 @@ public class WorldSim {
 		}
 		diffusionAir = new NativeArray<DiffusionAir>[_airLayers];
 		advectionAir = new NativeArray<DiffusionAir>[_airLayers];
-		pressureGradientForce = new NativeArray<float2>[_airLayers];
+		pressureGradientForce = new NativeArray<float3>[_airLayers];
 		buoyancy = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
 		{
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			advectionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
-			pressureGradientForce[i] = new NativeArray<float2>(_cellCount, Allocator.Persistent);
+			pressureGradientForce[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 			buoyancy[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
@@ -877,7 +879,7 @@ public class WorldSim {
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					Neighbors = staticState.Neighbors,
-					Coords = staticState.Coordinate,
+					Positions = staticState.SphericalPosition,
 					InverseCellDiameter = staticState.InverseCellDiameter,
 					InverseCoordDiff = staticState.InverseCoordDiameter,
 					Gravity = lastState.PlanetState.Gravity,
@@ -1099,7 +1101,6 @@ public class WorldSim {
 					Temperature = nextState.AirTemperature[j],
 					Vapor = nextState.AirVapor[j],
 					Wind = nextState.Wind[j],
-					WindVertical = nextState.WindVertical[j],
 					CondensationCloudMass = condensationCloudMass[j],
 					CondensationGroundMass = condensationGroundMass[j],
 					LastTemperature = lastState.AirTemperature[j],
@@ -1116,6 +1117,7 @@ public class WorldSim {
 					LayerHeight = dependent.LayerHeight[j],
 					Buoyancy = buoyancy[j],
 					PressureGradientForce = pressureGradientForce[j],
+					Position = staticState.SphericalPosition,
 					CoriolisMultiplier = staticState.CoriolisMultiplier,
 					CoriolisTerm = coriolisTerm,
 					SecondsPerTick = worldData.SecondsPerTick,
@@ -1239,7 +1241,6 @@ public class WorldSim {
 				SurfaceSaltMass = lastState.WaterSaltMass[_surfaceWaterLayer],
 				LastCloudMass = lastState.CloudMass,
 				LastVelocity = lastState.CloudVelocity,
-				WindVertical = lastState.WindVertical[2], // TODO: use wind at cloud elevation
 				LastDropletMass = lastState.CloudDropletMass,
 				CloudElevation = dependent.CloudElevation,
 				DewPoint = dependent.DewPoint,
@@ -1247,6 +1248,7 @@ public class WorldSim {
 				WaterVaporCloud = dependent.AirVaporCloud,
 				AirPressureCloud = dependent.AirPressureCloud,
 				RelativeHumidityCloud = dependent.AirHumidityRelativeCloud,
+				Position = staticState.SphericalPosition,
 				Gravity = lastState.PlanetState.Gravity,
 				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
 				RainDropMaxSize = worldData.rainDropMaxSize,
@@ -1336,9 +1338,9 @@ public class WorldSim {
 					Temperature = nextState.AirTemperature[j],
 					Vapor = nextState.AirVapor[j],
 					Wind = nextState.Wind[j],
-					WindVertical = nextState.WindVertical[j],
 					Neighbors = staticState.Neighbors,
 					Coords = staticState.Coordinate,
+					Position = staticState.SphericalPosition,
 					InverseCellDiameter = staticState.InverseCellDiameter,
 					SecondsPerTick = worldData.SecondsPerTick,
 					LayerElevation = dependent.LayerElevation[j],
@@ -1349,13 +1351,11 @@ public class WorldSim {
 					UpAirMass = dependent.AirMass[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
-					UpWindVertical = nextState.WindVertical[j + 1],
 					DownTemperature = nextState.AirTemperature[j - 1],
 					DownHumidity = nextState.AirVapor[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
 					DownLayerElevation = dependent.LayerElevation[j - 1],
 					DownLayerHeight = dependent.LayerHeight[j - 1],
-					DownWindVertical = lastState.WindVertical[j - 1],
 					IsTop = j == _airLayers - 2,
 					IsBottom = j == 1,
 					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
@@ -1373,7 +1373,7 @@ public class WorldSim {
 					Salt = nextState.WaterSaltMass[j],
 					Current = nextState.WaterVelocity[j],
 					Neighbors = staticState.Neighbors,
-					Coords = staticState.Coordinate,
+					Position = staticState.SphericalPosition,
 					InverseCellDiameter = staticState.InverseCellDiameter,
 					SecondsPerTick = worldData.SecondsPerTick,
 					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
@@ -1388,7 +1388,7 @@ public class WorldSim {
 				DropletMass = nextState.CloudDropletMass,
 				Velocity = nextState.CloudVelocity,
 				Neighbors = staticState.Neighbors,
-				Coords = staticState.Coordinate,
+				Position = staticState.SphericalPosition,
 				InverseCellDiameter = staticState.InverseCellDiameter,
 				SecondsPerTick = worldData.SecondsPerTick,
 				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
@@ -1428,7 +1428,6 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[i],
 					Temperature = nextState.AirTemperature[i],
 					Wind = nextState.Wind[i],
-					WindVertical = nextState.WindVertical[i]
 				}, advectionJobHandles[i+_airLayer0]));
 			}
 
@@ -1568,20 +1567,27 @@ public class WorldSim {
 #region Update Display
 			if (tick == ticksToAdvance-1)
 			{
+				var curState = states[curStateIndex];
+
 				display.Dispose();
 				display = new DisplayState();
 				display.Init(_cellCount, _airLayers, _waterLayers);
-				var initDisplayJob = new InitDisplayJob()
+				JobHandle initDisplayHandle = default(JobHandle);
+				for (int i = 1; i < _airLayers - 1; i++)
 				{
-					DisplayPressure = display.Pressure[1],
+					initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, (new InitDisplayAirLayerJob()
+					{
+						DisplayPressure = display.Pressure[i],
+						DisplayPressureGradientForce = display.PressureGradientForce[i],
 
-					Gravity = nextState.PlanetState.Gravity,
-					AirLayerElevation = dependent.LayerElevation[1],
-					AirLayerHeight = dependent.LayerHeight[1],
-					AirPressure = dependent.AirPressure[1],
-					AirTemperature = nextState.AirTemperature[1],
-				};
-				var initDisplayJobHandle = initDisplayJob.Schedule(_cellCount, _batchCount);
+						Gravity = curState.PlanetState.Gravity,
+						AirTemperature = curState.AirTemperature[i],
+						AirLayerElevation = dependent.LayerElevation[i],
+						AirLayerHeight = dependent.LayerHeight[i],
+						AirPressure = dependent.AirPressure[i],
+						PressureGradientForce = pressureGradientForce[i],
+					}).Schedule(_cellCount, _batchCount));
+				}
 
 				var updateDisplayJob = new UpdateDisplayJob()
 				{
@@ -1596,10 +1602,9 @@ public class WorldSim {
 					RainfallWater = rainfallWaterMass,
 				};
 				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
-				var displayHandles = JobHandle.CombineDependencies(initDisplayJobHandle, updateDisplayJobHandle);
+				var displayHandles = JobHandle.CombineDependencies(initDisplayHandle, updateDisplayJobHandle);
 				displayHandles.Complete();
 
-				var curState = states[curStateIndex];
 				for (int i = 0; i < _cellCount; i++)
 				{
 					display.SolarRadiation += displaySolarRadiation[i];

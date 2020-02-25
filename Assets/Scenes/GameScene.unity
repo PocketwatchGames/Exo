@@ -1398,7 +1398,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_MouseDragSensitivity: 200
   m_MouseZoomSensitivity: 2
-  m_MinZoom: 2
+  m_MinZoom: 1.25
   m_MaxZoom: 10
   Target: {fileID: 1921819013}
 --- !u!20 &282840813
@@ -6232,6 +6232,7 @@ MonoBehaviour:
   DisplaySalinityMax: 0.05
   DisplayWindSpeedLowerAirMax: 50
   DisplayWindSpeedUpperAirMax: 250
+  DisplayPressureGradientForceMax: 0.005
   DisplayWindSpeedSurfaceWaterMax: 5
   DisplayWindSpeedDeepWaterMax: 0.5
   DisplayVerticalWindSpeedMax: 1

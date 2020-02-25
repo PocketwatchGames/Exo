@@ -10,6 +10,27 @@ public static class Utils {
 	public static float Sqr(float x) { return x * x; }
 	public static int Sqr(int x) { return x * x; }
 
+	public static float2 GetPolarCoordinates(float3 referencePos)
+	{
+		return math.float2(math.atan2(referencePos.z, referencePos.x), math.asin(referencePos.y));
+	}
+
+	public static float3 GetPolarCoordinates(float3 referencePos, float3 vector)
+	{
+		float up = math.dot(referencePos, vector);
+		float3 tangent = vector - up * referencePos;
+		if (referencePos.y < 1 && referencePos.y > -1)
+		{
+			var east = math.cross(referencePos, math.float3(0, 1, 0));
+			var north = math.cross(east, referencePos);
+			return math.float3(math.dot(tangent, east), math.dot(tangent, north), up);
+		}
+		else
+		{
+			return math.float3(0, math.length(tangent), up);
+		}
+	}
+
 	static public float RepeatExclusive(float x, float y)
 	{
 		while (x < 0)

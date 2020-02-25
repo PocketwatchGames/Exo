@@ -128,7 +128,7 @@ public static class WorldGen {
 
 		public NativeArray<float> IceTemperature;
 		public NativeArray<float> CloudDropletMass;
-		public NativeArray<float2> CloudVelocity;
+		public NativeArray<float3> CloudVelocity;
 		public NativeArray<float> IceMass;
 		public NativeArray<float> TerrainTemperature;
 		public NativeArray<float> WaterTemperatureSurface;
@@ -170,7 +170,7 @@ public static class WorldGen {
 			}
 
 
-			CloudVelocity[i] = float2.zero;
+			CloudVelocity[i] = float3.zero;
 			TerrainTemperature[i] = terrainTemperature;
 
 		}
@@ -411,8 +411,6 @@ public static class WorldGen {
 			}, worldGenAirLayerJobHandle);
 		}
 
-		int batchCount = 100;
-
 		JobHandle summationHandle = worldGenWaterLayerJobHandle;
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
@@ -443,6 +441,7 @@ public static class WorldGen {
 		}
 		JobHandle lowerAirHandle = default(JobHandle);
 		JobHandle updateDependentAirLayerJobHandle = worldGenAirLayerJobHandle;
+		// Top to bottom so we can add up air mass for pressure calculation
 		for (int j = worldData.AirLayers-2; j >= 1; j--)
 		{
 			updateDependentAirLayerJobHandle = worldGenJobHelper.Run(new UpdateDependentAirLayerJob()

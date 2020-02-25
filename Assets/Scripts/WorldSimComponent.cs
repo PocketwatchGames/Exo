@@ -67,18 +67,25 @@ public class WorldSimComponent : MonoBehaviour
 
 		_displayState = new DisplayState();
 		_displayState.Init(CellCount, WorldData.AirLayers+2, WorldData.WaterLayers);
-		var initDisplayJob = new InitDisplayJob()
-		{
-			DisplayPressure = _displayState.Pressure[1],
 
-			Gravity = ActiveSimState.PlanetState.Gravity,
-			AirTemperature = ActiveSimState.AirTemperature[1],
-			AirLayerElevation = DependentState.LayerElevation[1],
-			AirLayerHeight = DependentState.LayerHeight[1],
-			AirPressure = DependentState.AirPressure[1],
-		};
-		var initDisplayJobHandle = initDisplayJob.Schedule(CellCount, 1);
-		initDisplayJobHandle.Complete();
+		JobHandle initDisplayHandle = default(JobHandle);
+		for (int i = 1; i < WorldData.AirLayers - 1; i++)
+		{
+			var initDisplayJob = new InitDisplayAirLayerJob()
+			{
+				DisplayPressure = _displayState.Pressure[i],
+				DisplayPressureGradientForce = _displayState.PressureGradientForce[i],
+
+				Gravity = ActiveSimState.PlanetState.Gravity,
+				AirTemperature = ActiveSimState.AirTemperature[i],
+				AirLayerElevation = DependentState.LayerElevation[i],
+				AirLayerHeight = DependentState.LayerHeight[i],
+				AirPressure = DependentState.AirPressure[i],
+				PressureGradientForce = ActiveSimState.Wind[i], // TODO: using wind as placeholder, this is kinda broken
+			};
+			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(CellCount, 1));
+		}
+		initDisplayHandle.Complete();
 
 	}
 
