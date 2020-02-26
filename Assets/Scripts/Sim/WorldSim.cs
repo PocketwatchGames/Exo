@@ -60,6 +60,9 @@ public class WorldSim {
 	public JobHelper EnergyAirJob;
 	public JobHelper StateChangeJob;
 	public JobHelper StateChangeAirLayerJob;
+	public JobHelper DiffusionAirJob;
+	public JobHelper DiffusionWaterJob;
+	public JobHelper DiffusionCloudJob;
 	public JobHelper AdvectionAirJob;
 	public JobHelper AdvectionWaterJob;
 	public JobHelper AdvectionCloudJob;
@@ -123,6 +126,9 @@ public class WorldSim {
 		_surfaceWaterLayer = _waterLayers - 2;
 
 		#region Job Initialization
+		DiffusionAirJob = new JobHelper(_cellCount);
+		DiffusionWaterJob = new JobHelper(_cellCount);
+		DiffusionCloudJob = new JobHelper(_cellCount);
 		SolarRadiationInJob = new JobHelper(_cellCount);
 		UpdateTerrainJob = new JobHelper(_cellCount);
 		EmissivityAirJob = new JobHelper(_cellCount);
@@ -490,7 +496,7 @@ public class WorldSim {
 			nextState.PlanetState.Rotation = new float3(lastState.PlanetState.Rotation.x, Mathf.Repeat(lastState.PlanetState.Rotation.y + lastState.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);
 
 			float coriolisTerm = 2 * lastState.PlanetState.SpinSpeed;
-#endregion
+			#endregion
 
 #region Init Solar Radiation Per Cell
 			var solarInJobHandle = SolarRadiationInJob.Run(new SolarRadiationJob()
@@ -527,7 +533,7 @@ public class WorldSim {
 					Emissivity = emissivity[layerIndex],
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
-				}, lastJobHandle);
+				});
 			}
 
 			for (int j = 1; j < _waterLayers-1; j++)
@@ -538,14 +544,14 @@ public class WorldSim {
 					Emissivity = emissivity[layerIndex],
 					WaterMass = lastState.WaterMass[j],
 					WaterSaltMass = lastState.WaterSaltMass[j]
-				}, lastJobHandle);
+				});
 			}
 			emissivityJobHandles[_terrainLayer] = EmissivityTerrainJob.Run(new EmissivityTerrainJob()
 			{
 				Emissivity = emissivity[_terrainLayer],
 				Terrain = lastState.Terrain,
 				VegetationCoverage = dependent.VegetationCoverage
-			}, lastJobHandle);
+			});
 #endregion
 
 			// Follow the solar radiation down from the top of the atmosphere to ther terrain, and absorb some as it passes through each layer
@@ -1015,10 +1021,11 @@ public class WorldSim {
 				}, conductionWaterTerrainJobHandle));
 			}
 
-#endregion
+			#endregion
 
 
-#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
+
+			#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
 
 			var energyJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
 			var energyJobHandleDependencies = new List<NativeList<JobHandle>>();
@@ -1323,6 +1330,110 @@ public class WorldSim {
 			}
 			#endregion
 
+			// Diffuse from last time step
+			// Air, Water, Cloud
+#region Diffusion
+
+			JobHandle[] diffusionJobHandles = new JobHandle[_layerCount];
+			for (int j = 1; j < _airLayers - 1; j++)
+			{
+				int layer = _airLayer0 + j;
+				diffusionJobHandles[layer] = DiffusionAirJob.Run(new DiffusionAirJob()
+				{
+					Delta = diffusionAir[j],
+
+					LastTemperature = lastState.AirTemperature[j],
+					LastVapor = lastState.AirVapor[j],
+					LastWind = lastState.Wind[j],
+					Neighbors = staticState.Neighbors,
+					LayerElevation = dependent.LayerElevation[j],
+					LayerHeight = dependent.LayerHeight[j],
+					AirMass = dependent.AirMass[j],
+					UpTemperature = lastState.AirTemperature[j + 1],
+					UpHumidity = lastState.AirVapor[j + 1],
+					UpAirMass = dependent.AirMass[j + 1],
+					UpLayerElevation = dependent.LayerElevation[j + 1],
+					UpLayerHeight = dependent.LayerHeight[j + 1],
+					DownTemperature = lastState.AirTemperature[j - 1],
+					DownHumidity = lastState.AirVapor[j - 1],
+					DownAirMass = dependent.AirMass[j - 1],
+					DownLayerElevation = dependent.LayerElevation[j - 1],
+					DownLayerHeight = dependent.LayerHeight[j - 1],
+					IsTop = j == _airLayers - 2,
+					IsBottom = j == 1,
+					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
+					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
+				}, stateChangeJobHandle);
+			}
+			for (int j = 1; j < _waterLayers - 1; j++)
+			{
+				int layer = _waterLayer0 + j;
+				diffusionJobHandles[layer] = DiffusionWaterJob.Run(new DiffusionWaterJob()
+				{
+					Delta = diffusionWater[j],
+
+					LastTemperature = lastState.WaterTemperature[j],
+					LastSalt = lastState.WaterSaltMass[j],
+					LastCurrent = lastState.WaterVelocity[j],
+					LastMass = lastState.WaterMass[j],
+					Neighbors = staticState.Neighbors,
+					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
+					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
+				}, stateChangeJobHandle);
+			}
+
+			var diffusionCloudHandle = DiffusionCloudJob.Run(new DiffusionCloudJob()
+			{
+				Delta = diffusionCloud,
+
+				LastMass = lastState.CloudMass,
+				LastDropletMass = lastState.CloudDropletMass,
+				LastVelocity = lastState.CloudVelocity,
+				Neighbors = staticState.Neighbors,
+				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
+			}, stateChangeJobHandle);
+
+#endregion
+
+#region Apply Diffusion
+
+			JobHandle diffusionJobHandle = default(JobHandle);
+			diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, ApplyAdvectionCloudJob.Run(new ApplyAdvectionCloudJob()
+			{
+				Advection = diffusionCloud,
+				CloudMass = nextState.CloudMass,
+				DropletMass = nextState.CloudDropletMass,
+				Velocity = nextState.CloudVelocity
+			}, diffusionCloudHandle));
+
+			for (int i = 1; i < _waterLayers - 1; i++)
+			{
+				diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, ApplyAdvectionWaterJob.Run(new ApplyAdvectionWaterJob()
+				{
+					Advection = diffusionWater[i],
+					SaltMass = nextState.WaterSaltMass[i],
+					Temperature = nextState.WaterTemperature[i],
+					Velocity = nextState.WaterVelocity[i],
+					Mass = nextState.WaterMass[i]
+				}, diffusionJobHandles[i + _waterLayer0]));
+			}
+
+			for (int i = 1; i < _airLayers - 1; i++)
+			{
+				diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, ApplyAdvectionAirJob.Run(new ApplyAdvectionAirJob()
+				{
+					Advection = diffusionAir[i],
+					Vapor = nextState.AirVapor[i],
+					Temperature = nextState.AirTemperature[i],
+					Wind = nextState.Wind[i],
+				}, diffusionJobHandles[i + _airLayer0]));
+			}
+
+			#endregion
+
+
+
+
 			// Wind and currents move temperature and trace elements horizontally
 			// Air, Water, Cloud
 			// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
@@ -1358,9 +1469,7 @@ public class WorldSim {
 					DownLayerHeight = dependent.LayerHeight[j - 1],
 					IsTop = j == _airLayers - 2,
 					IsBottom = j == 1,
-					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
-					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
-				}, stateChangeJobHandle);
+				}, diffusionJobHandle);
 			}
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
@@ -1376,9 +1485,7 @@ public class WorldSim {
 					Position = staticState.SphericalPosition,
 					InverseCellDiameter = staticState.InverseCellDiameter,
 					SecondsPerTick = worldData.SecondsPerTick,
-					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
-					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
-				}, stateChangeJobHandle);
+				}, diffusionJobHandle);
 			}
 
 			var advectionJobHandleCloud = AdvectionCloudJob.Run(new AdvectionCloudJob()
@@ -1391,8 +1498,7 @@ public class WorldSim {
 				Position = staticState.SphericalPosition,
 				InverseCellDiameter = staticState.InverseCellDiameter,
 				SecondsPerTick = worldData.SecondsPerTick,
-				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
-			}, stateChangeJobHandle);
+			}, diffusionJobHandle);
 
 
 			#endregion

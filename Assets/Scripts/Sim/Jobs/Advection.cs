@@ -8,7 +8,7 @@ using Unity.Mathematics;
 
 public struct DiffusionAir {
 	public float Temperature;
-	public float Humidity;
+	public float WaterVapor;
 	public float3 Velocity;
 }
 public struct DiffusionCloud {
@@ -18,7 +18,7 @@ public struct DiffusionCloud {
 }
 public struct DiffusionWater {
 	public float Temperature;
-	public float Salinity;
+	public float SaltMass;
 	public float3 Velocity;
 }
 
@@ -51,8 +51,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DownLayerHeight;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
-	[ReadOnly] public float DiffusionCoefficientHoriztonal;
-	[ReadOnly] public float DiffusionCoefficientVertical;
 	public void Execute(int i)
 	{
 		float gradientTemperature = 0;
@@ -79,15 +77,17 @@ public struct AdvectionAirJob : IJobParallelFor {
 				float3 diff = math.normalize(pos - nPos);
 				float3 nVelocity = Wind[n];
 
+				float cosAngleBetweenCells = 0.5f;
+
 				// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-				float velDotDir = math.clamp((math.max(0, math.dot(nVelocity, diff)) + math.max(0, math.dot(velocity, -diff))) * InverseCellDiameter * SecondsPerTick, 0, 0.5f);
+				float velDotDir = math.clamp((math.max(0, (math.dot(nVelocity, diff)- cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells)) + (math.max(0, math.dot(velocity, -diff))) / (1.0f - cosAngleBetweenCells)) * InverseCellDiameter * SecondsPerTick, 0, 0.5f);
 
 				float neighborMass = AirMass[n] + Vapor[n];
 				float diffusionAmount = AirMass[n] / (AirMass[n] + airMass);
 				float neighborHumidity = Vapor[n] / neighborMass;
-				gradientWaterVapor += (neighborHumidity - absoluteHumidity) * airMass * diffusionAmount * math.min(1, DiffusionCoefficientHoriztonal + velDotDir);
-				gradientWind += (nVelocity - velocity) * diffusionAmount * math.min(1, DiffusionCoefficientHoriztonal + velDotDir);
-				gradientTemperature += (Temperature[n] - Temperature[i]) * diffusionAmount * math.min(1, DiffusionCoefficientHoriztonal + velDotDir);
+				gradientWaterVapor += (neighborHumidity - absoluteHumidity) * airMass * diffusionAmount * velDotDir;
+				gradientWind += (nVelocity - velocity) * diffusionAmount * velDotDir;
+				gradientTemperature += (Temperature[n] - Temperature[i]) * diffusionAmount * velDotDir;
 
 			}
 		}
@@ -137,7 +137,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 		Delta[i] = new DiffusionAir()
 		{
 			Temperature = gradientTemperature,
-			Humidity = gradientWaterVapor,
+			WaterVapor = gradientWaterVapor,
 			Velocity = gradientWind,
 		};
 
@@ -157,7 +157,6 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float InverseCellDiameter;
-	[ReadOnly] public float DiffusionCoefficient;
 	public void Execute(int i)
 	{
 #if !DISABLE_CLOUD_ADVECTION
@@ -182,19 +181,15 @@ public struct AdvectionCloudJob : IJobParallelFor {
 
 					float3 diff = position - Position[n];
 					// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-					float velDotDir = math.clamp((math.max(0, math.dot(Velocity[n], diff)) + math.max(0, math.dot(velocity, -diff))) * InverseCellDiameter * SecondsPerTick, 0, 0.5f);
+					float velDotDir = math.clamp((math.max(0, math.dot(Velocity[n], diff)) + math.max(0, math.dot(velocity, -diff))) * InverseCellDiameter * SecondsPerTick, 0, 1.0f);
 					float diffusionAmount = nMass / (nMass + mass);
 
-					gradientMass += (Mass[n] - mass) * diffusionAmount * math.min(1, DiffusionCoefficient + velDotDir);
-					gradientDropletMass += (DropletMass[n] - dropletMass) * diffusionAmount * math.min(1, DiffusionCoefficient + velDotDir);
-					gradientVelocity += (Velocity[n] - velocity) * diffusionAmount * math.min(1, DiffusionCoefficient + velDotDir);
+					gradientMass += (Mass[n] - mass) * diffusionAmount * velDotDir;
+					gradientDropletMass += (DropletMass[n] - dropletMass) * diffusionAmount * velDotDir;
+					gradientVelocity += (Velocity[n] - velocity) * diffusionAmount * velDotDir;
 				}
 			}
 		}
-		float outgoing = math.length(velocity) * InverseCellDiameter;
-		gradientMass -= Mass[i] * outgoing;
-		gradientDropletMass -= DropletMass[i] * outgoing;
-		gradientVelocity -= velocity * outgoing;
 
 		Delta[i] = new DiffusionCloud()
 		{
@@ -221,8 +216,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float InverseCellDiameter;
 	[ReadOnly] public float InverseCoordDiff;
-	[ReadOnly] public float DiffusionCoefficientHoriztonal;
-	[ReadOnly] public float DiffusionCoefficientVertical;
 	public void Execute(int i)
 	{
 		float gradientSalinity = 0;
@@ -251,9 +244,9 @@ public struct AdvectionWaterJob : IJobParallelFor {
 						float diffusionAmount = nMass / (nMass + mass);
 						float neighborSalinity = Salt[n] / (nMass + Salt[n]);
 
-						gradientSalinity += (neighborSalinity - salinity) * mass * diffusionAmount * math.min(1, velDotDir + DiffusionCoefficientHoriztonal);
-						gradientTemperature += (Temperature[n] - temperature) * diffusionAmount * math.min(1, velDotDir + DiffusionCoefficientHoriztonal);
-						gradientVelocity += (Current[n] - velocity) * diffusionAmount * math.min(1, velDotDir + DiffusionCoefficientHoriztonal);
+						gradientSalinity += (neighborSalinity - salinity) * mass * diffusionAmount * velDotDir;
+						gradientTemperature += (Temperature[n] - temperature) * diffusionAmount * velDotDir;
+						gradientVelocity += (Current[n] - velocity) * diffusionAmount * velDotDir;
 					}
 				}
 			}
@@ -261,9 +254,9 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 		Delta[i] = new DiffusionWater()
 		{
-			Temperature = gradientTemperature * DiffusionCoefficientHoriztonal,
-			Salinity = gradientSalinity * DiffusionCoefficientHoriztonal,
-			Velocity = gradientVelocity * DiffusionCoefficientHoriztonal
+			Temperature = gradientTemperature,
+			SaltMass = gradientSalinity,
+			Velocity = gradientVelocity
 		};
 
 
@@ -282,7 +275,7 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		Temperature[i] += Advection[i].Temperature;
-		Vapor[i] += Advection[i].Humidity;
+		Vapor[i] += Advection[i].WaterVapor;
 		Wind[i] += Advection[i].Velocity;
 	}
 }
@@ -299,7 +292,7 @@ public struct ApplyAdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<DiffusionWater> Advection;
 	public void Execute(int i)
 	{
-		SaltMass[i] += Advection[i].Salinity;
+		SaltMass[i] += Advection[i].SaltMass;
 		Temperature[i] += Advection[i].Temperature;
 		Velocity[i] += Advection[i].Velocity;
 	}

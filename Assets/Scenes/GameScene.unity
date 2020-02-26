@@ -2113,6 +2113,12 @@ MonoBehaviour:
       Enabled: 0
     StateChangeAirLayerJob:
       Enabled: 0
+    DiffusionAirJob:
+      Enabled: 0
+    DiffusionWaterJob:
+      Enabled: 0
+    DiffusionCloudJob:
+      Enabled: 0
     AdvectionAirJob:
       Enabled: 0
     AdvectionWaterJob:
