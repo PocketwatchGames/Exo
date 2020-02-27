@@ -165,6 +165,14 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastSalt;
 	[ReadOnly] public NativeArray<float3> LastCurrent;
+	[ReadOnly] public NativeArray<float> UpMass;
+	[ReadOnly] public NativeArray<float> UpTemperature;
+	[ReadOnly] public NativeArray<float> UpSalt;
+	[ReadOnly] public NativeArray<float3> UpCurrent;
+	[ReadOnly] public NativeArray<float> DownMass;
+	[ReadOnly] public NativeArray<float> DownTemperature;
+	[ReadOnly] public NativeArray<float> DownSalt;
+	[ReadOnly] public NativeArray<float3> DownCurrent;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public float DiffusionCoefficientHoriztonal;
 	[ReadOnly] public float DiffusionCoefficientVertical;
@@ -187,7 +195,7 @@ public struct DiffusionWaterJob : IJobParallelFor {
 					float nMass = LastMass[n];
 					if (nMass > 0)
 					{
-						float diffusionAmount = nMass / (nMass + mass);
+						float diffusionAmount = nMass / (nMass + mass) * DiffusionCoefficientHoriztonal;
 						float neighborSalinity = LastSalt[n] / (nMass + LastSalt[n]);
 
 						newSaltMass += (neighborSalinity - salinity) * mass * diffusionAmount;
@@ -196,13 +204,37 @@ public struct DiffusionWaterJob : IJobParallelFor {
 					}
 				}
 			}
+
+			float upMass = UpMass[i];
+			if (upMass > 0)
+			{
+				// TODO: shouldn't shorter water columns diffuse faster?
+				// If so we should divide (again) by total mass (which is proportional to height) of the shared cells...
+				// ...clamp it to 1/6th (or so) of the total, and clamp the height to the diffusion range (10 meters?)
+				float diffusionAmount = upMass / (upMass + mass)* DiffusionCoefficientVertical;
+				float neighborSalinity = UpSalt[i] / (upMass + LastSalt[i]);
+				newSaltMass += (neighborSalinity - salinity) * mass * diffusionAmount;
+				newTemperature += (UpTemperature[i] - LastTemperature[i]) * diffusionAmount;
+				newVelocity += (UpCurrent[i] - LastCurrent[i]) * diffusionAmount;
+			}
+			float downMass = DownMass[i];
+			if (downMass > 0)
+			{
+				float diffusionAmount = downMass / (downMass + mass)* DiffusionCoefficientVertical;
+				float neighborSalinity = DownSalt[i] / (downMass + DownSalt[i]);
+
+				newSaltMass += (neighborSalinity - salinity) * mass * diffusionAmount;
+				newTemperature += (DownTemperature[i] - LastTemperature[i]) * diffusionAmount;
+				newVelocity += (DownCurrent[i] - LastCurrent[i]) * diffusionAmount;
+			}
+
 		}
 
 		Delta[i] = new DiffusionWater()
 		{
-			Temperature = newTemperature * DiffusionCoefficientHoriztonal,
-			SaltMass = newSaltMass * DiffusionCoefficientHoriztonal,
-			Velocity = newVelocity * DiffusionCoefficientHoriztonal
+			Temperature = newTemperature,
+			SaltMass = newSaltMass,
+			Velocity = newVelocity
 		};
 
 	}

@@ -14,10 +14,6 @@ public class WorldView : MonoBehaviour {
 	public enum MeshOverlay {
 		None,
 		GroundTemperature,
-		DeepWaterTemperature,
-		DeepWaterSalinity,
-		ShallowWaterTemperature,
-		ShallowWaterSalinity,
 		TemperatureSurface,
 		PotentialTemperature0,
 		PotentialTemperature1,
@@ -25,13 +21,17 @@ public class WorldView : MonoBehaviour {
 		Pressure0,
 		Pressure1,
 		Pressure2,
+		WaterTemperature0,
+		WaterTemperature1,
+		WaterTemperature2,
+		Salinity0,
+		Salinity1,
+		Salinity2,
 		VerticalWind,
-		AbsoluteHumidityLower,
-		RelativeHumidityLower,
-		AbsoluteHumidityUpper,
-		CloudMass,
-		CloudTemperature,
-		CloudDropletMass,
+		AbsoluteHumidity0,
+		AbsoluteHumidity1,
+		AbsoluteHumidity2,
+		RelativeHumidity0,
 		Evaporation,
 		Rainfall,
 		Condensation,
@@ -623,13 +623,16 @@ public class WorldView : MonoBehaviour {
 		float ticksPerYear = Sim.WorldData.TicksPerSecond * 60 * 60 * 24 * 365;
 		switch (activeOverlay)
 		{
-			case MeshOverlay.AbsoluteHumidityLower:
+			case MeshOverlay.AbsoluteHumidity0:
 				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, dependentState.AirHumidityAbsolute[1]);
 				return true;
-			case MeshOverlay.AbsoluteHumidityUpper:
-				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityAbsolute[Sim.WorldData.AirLayers-2]);
+			case MeshOverlay.AbsoluteHumidity1:
+				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityAbsolute[2]);
 				return true;
-			case MeshOverlay.RelativeHumidityLower:
+			case MeshOverlay.AbsoluteHumidity2:
+				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityAbsolute[3]);
+				return true;
+			case MeshOverlay.RelativeHumidity0:
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[1]);
 				return true;
 			case MeshOverlay.TemperatureSurface:
@@ -653,17 +656,23 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.Pressure2:
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[3]);
 				return true;
-			case MeshOverlay.ShallowWaterTemperature:
+			case MeshOverlay.WaterTemperature0:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 2]);
 				return true;
-			case MeshOverlay.ShallowWaterSalinity:
+			case MeshOverlay.WaterTemperature1:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 3]);
+				return true;
+			case MeshOverlay.WaterTemperature2:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 4]);
+				return true;
+			case MeshOverlay.Salinity0:
 				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 2]);
 				return true;
-			case MeshOverlay.DeepWaterTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[1]);
+			case MeshOverlay.Salinity1:
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 3]);
 				return true;
-			case MeshOverlay.DeepWaterSalinity:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[1]);
+			case MeshOverlay.Salinity2:
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 4]);
 				return true;
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);

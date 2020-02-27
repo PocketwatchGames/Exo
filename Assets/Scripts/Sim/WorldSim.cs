@@ -1408,9 +1408,17 @@ public class WorldSim {
 					LastSalt = nextState.WaterSaltMass[j],
 					LastCurrent = nextState.WaterVelocity[j],
 					LastMass = nextState.WaterMass[j],
+					UpTemperature = nextState.WaterTemperature[j + 1],
+					UpSalt = nextState.WaterSaltMass[j + 1],
+					UpCurrent = nextState.WaterVelocity[j + 1],
+					UpMass = nextState.WaterMass[j + 1],
+					DownTemperature = nextState.WaterTemperature[j - 1],
+					DownSalt = nextState.WaterSaltMass[j - 1],
+					DownCurrent = nextState.WaterVelocity[j - 1],
+					DownMass = nextState.WaterMass[j - 1],
 					Neighbors = staticState.Neighbors,
-					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
-					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
+					DiffusionCoefficientHoriztonal = worldData.WaterDiffusionCoefficientHorizontal,
+					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
 				}, stateChangeJobHandle);
 			}
 
@@ -1447,7 +1455,7 @@ public class WorldSim {
 					Temperature = nextState.WaterTemperature[i],
 					Velocity = nextState.WaterVelocity[i],
 					Mass = nextState.WaterMass[i]
-				}, diffusionJobHandles[i + _waterLayer0]));
+				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _waterLayer0], diffusionJobHandles[i + _waterLayer0 + 1], diffusionJobHandles[i + _waterLayer0 - 1])));
 			}
 
 			for (int i = 1; i < _airLayers - 1; i++)
