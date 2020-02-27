@@ -19,9 +19,9 @@ public class WorldView : MonoBehaviour {
 		ShallowWaterTemperature,
 		ShallowWaterSalinity,
 		TemperatureSurface,
-		Temperature0,
-		Temperature1,
-		Temperature2,
+		PotentialTemperature0,
+		PotentialTemperature1,
+		PotentialTemperature2,
 		Pressure0,
 		Pressure1,
 		Pressure2,
@@ -47,7 +47,8 @@ public class WorldView : MonoBehaviour {
 		Wind2,
 		PGF0,
 		PGF1,
-		PGF2
+		PGF2,
+		WindCloud,
 
 	}
 
@@ -634,14 +635,14 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.TemperatureSurface:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperature);
 				return true;
-			case MeshOverlay.Temperature0:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[1]);
+			case MeshOverlay.PotentialTemperature0:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, display.PotentialTemperature[1]);
 				return true;
-			case MeshOverlay.Temperature1:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[2]);
+			case MeshOverlay.PotentialTemperature1:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, display.PotentialTemperature[2]);
 				return true;
-			case MeshOverlay.Temperature2:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperature[3]);
+			case MeshOverlay.PotentialTemperature2:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, display.PotentialTemperature[3]);
 				return true;
 			case MeshOverlay.Pressure0:
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[1]);
@@ -696,6 +697,9 @@ public class WorldView : MonoBehaviour {
 				return true;
 			case WindOverlay.Wind2:
 				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[3]);
+				return true;
+			case WindOverlay.WindCloud:
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.CloudVelocity);
 				return true;
 			case WindOverlay.PGF0:
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[1]);

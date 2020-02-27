@@ -29,6 +29,7 @@ public struct UpdateDisplayJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct InitDisplayAirLayerJob : IJobParallelFor {
+	public NativeArray<float> DisplayPotentialTemperature;
 	public NativeArray<float> DisplayPressure;
 	public NativeArray<float3> DisplayPressureGradientForce;
 	[ReadOnly] public NativeArray<float> AirLayerElevation;
@@ -39,6 +40,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
+		DisplayPotentialTemperature[i] = Atmosphere.GetPotentialTemperature(AirTemperature[i], AirLayerElevation[i] + AirLayerHeight[i] / 2);
 		DisplayPressure[i] = Atmosphere.GetPressureAtElevation(0, Gravity, AirPressure[i], AirTemperature[i], AirLayerElevation[i] + AirLayerHeight[i] / 2);
 		DisplayPressureGradientForce[i] = PressureGradientForce[i];
 	}

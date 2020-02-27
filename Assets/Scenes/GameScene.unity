@@ -1207,7 +1207,7 @@ PrefabInstance:
     - target: {fileID: 2110565371829075797, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_SizeDelta.y
-      value: 60
+      value: 70
       objectReference: {fileID: 0}
     - target: {fileID: 2110565371829075797, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
@@ -1398,7 +1398,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_MouseDragSensitivity: 200
   m_MouseZoomSensitivity: 2
-  m_MinZoom: 1.25
+  m_MinZoom: 1.5
   m_MaxZoom: 10
   Target: {fileID: 1921819013}
 --- !u!20 &282840813
@@ -2082,6 +2082,8 @@ MonoBehaviour:
     ThermalInDownTerrainJob:
       Enabled: 0
     PressureGradientForceAirJob:
+      Enabled: 0
+    PressureGradientForceCloudJob:
       Enabled: 0
     WindFrictionJob:
       Enabled: 0
@@ -3007,7 +3009,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 300, y: 1000}
+  m_SizeDelta: {x: 350, y: 1000}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &501465059
 MonoBehaviour:
@@ -8785,7 +8787,7 @@ PrefabInstance:
     - target: {fileID: 2110565371829075797, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}
       propertyPath: m_SizeDelta.y
-      value: 240
+      value: 250
       objectReference: {fileID: 0}
     - target: {fileID: 2110565371829075797, guid: 673342477803b5f47b0d4b06bf23093e,
         type: 3}

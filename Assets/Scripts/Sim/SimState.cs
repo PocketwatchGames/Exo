@@ -250,6 +250,7 @@ public struct DisplayState {
 	public NativeArray<float> SolarRadiationAbsorbedSurface;
 	public NativeArray<float> Rainfall;
 	public NativeArray<float> Evaporation;
+	public NativeArray<float>[] PotentialTemperature;
 	public NativeArray<float>[] Pressure;
 	public NativeArray<float3>[] PressureGradientForce;
 
@@ -259,10 +260,12 @@ public struct DisplayState {
 		Rainfall = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
 
+		PotentialTemperature = new NativeArray<float>[airLayers];
 		Pressure = new NativeArray<float>[airLayers];
 		PressureGradientForce = new NativeArray<float3>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
+			PotentialTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
 			Pressure[i] = new NativeArray<float>(count, Allocator.Persistent);
 			PressureGradientForce[i] = new NativeArray<float3>(count, Allocator.Persistent);
 		}
@@ -275,6 +278,7 @@ public struct DisplayState {
 		Evaporation.Dispose();
 		for (int i = 0; i < Pressure.Length; i++)
 		{
+			PotentialTemperature[i].Dispose();
 			Pressure[i].Dispose();
 			PressureGradientForce[i].Dispose();
 		}

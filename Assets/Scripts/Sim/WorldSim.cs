@@ -1714,6 +1714,7 @@ public class WorldSim {
 				{
 					initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, (new InitDisplayAirLayerJob()
 					{
+						DisplayPotentialTemperature = display.PotentialTemperature[i],
 						DisplayPressure = display.Pressure[i],
 						DisplayPressureGradientForce = display.PressureGradientForce[i],
 

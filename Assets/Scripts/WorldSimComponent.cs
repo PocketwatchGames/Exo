@@ -75,6 +75,7 @@ public class WorldSimComponent : MonoBehaviour
 			{
 				DisplayPressure = _displayState.Pressure[i],
 				DisplayPressureGradientForce = _displayState.PressureGradientForce[i],
+				DisplayPotentialTemperature = _displayState.PotentialTemperature[i],
 
 				Gravity = ActiveSimState.PlanetState.Gravity,
 				AirTemperature = ActiveSimState.AirTemperature[i],
