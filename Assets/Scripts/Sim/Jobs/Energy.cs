@@ -1,4 +1,4 @@
-﻿#define EnergyAirJobDebug
+﻿//#define EnergyAirJobDebug
 //#define DISABLE_CORIOLIS
 
 using Unity.Burst;

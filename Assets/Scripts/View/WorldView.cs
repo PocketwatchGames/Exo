@@ -786,18 +786,19 @@ public class WorldView : MonoBehaviour {
 		float cloudMass = state.CloudMass[ActiveCellIndex];
 		int upperAtmosphereLayerIndex = Sim.WorldData.AirLayers - 2;
 		string s = "";
+		s += "RAIN: " + (display.Rainfall[ActiveCellIndex]).ToString("0.000") + " kg\n";
+		s += "EVAP: " + (display.Evaporation[ActiveCellIndex]).ToString("0.000") + " kg\n";
 
 		if (cloudMass > 0)
 		{
 			float dropletSize = 1000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
-			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + " mm\n";
+			float3 vel = state.CloudVelocity[ActiveCellIndex];
+			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + " mm " + "VEL: (" + vel.x.ToString("0.0") + ", " + vel.y.ToString("0.0") + ", " + vel.z.ToString("0.00") + ")\n";
 		}
 		else
 		{
 			s += "CLOUD: 0kg\n";
 		}
-		s += "RAIN: " + (display.Rainfall[ActiveCellIndex]).ToString("0.000") + " kg\n";
-		s += "EVAP: " + (display.Evaporation[ActiveCellIndex]).ToString("0.000") + " kg\n";
 		//		s += "Condensation: " + (display.Condensation / WorldData.MassWater * 1000000).ToString("0.000") + " nm3\n";
 		s += "\n";
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)

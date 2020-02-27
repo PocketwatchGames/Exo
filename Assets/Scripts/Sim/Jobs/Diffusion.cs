@@ -1,4 +1,4 @@
-﻿#define DISABLE_VERTICAL_AIR_MOVEMENT
+﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -21,11 +21,13 @@ public struct DiffusionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> UpTemperature;
 	[ReadOnly] public NativeArray<float> UpHumidity;
 	[ReadOnly] public NativeArray<float> UpAirMass;
+	[ReadOnly] public NativeArray<float3> UpWind;
 	[ReadOnly] public NativeArray<float> UpLayerElevation;
 	[ReadOnly] public NativeArray<float> UpLayerHeight;
 	[ReadOnly] public NativeArray<float> DownTemperature;
 	[ReadOnly] public NativeArray<float> DownHumidity;
 	[ReadOnly] public NativeArray<float> DownAirMass;
+	[ReadOnly] public NativeArray<float3> DownWind;
 	[ReadOnly] public NativeArray<float> DownLayerElevation;
 	[ReadOnly] public NativeArray<float> DownLayerHeight;
 	[ReadOnly] public bool IsTop;
@@ -50,11 +52,11 @@ public struct DiffusionAirJob : IJobParallelFor {
 				float3 nWind = LastWind[n];
 
 				float neighborMass = AirMass[n] + LastVapor[n];
-				float diffusionAmount = AirMass[n] / (AirMass[n] + airMass);
+				float diffusionAmount = AirMass[n] / (AirMass[n] + airMass) * DiffusionCoefficientHoriztonal;
 				float neighborHumidity = LastVapor[n] / neighborMass;
-				newWaterVapor += (neighborHumidity - absoluteHumidity) * airMass * diffusionAmount * DiffusionCoefficientHoriztonal;
-				newWind += (nWind - LastWind[i]) * diffusionAmount * DiffusionCoefficientHoriztonal;
-				newTemperature += (LastTemperature[n] - LastTemperature[i]) * diffusionAmount * DiffusionCoefficientHoriztonal;
+				newWaterVapor += (neighborHumidity - absoluteHumidity) * diffusionAmount * airMass;
+				newWind += (nWind - LastWind[i]) * diffusionAmount;
+				newTemperature += (LastTemperature[n] - LastTemperature[i]) * diffusionAmount;
 
 			}
 		}
@@ -65,34 +67,30 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 		if (!IsTop)
 		{
-			float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-			float combinedWind = math.min(1, math.max(0, WindVertical[i]) - math.min(0, UpWindVertical[i])) * SecondsPerTick / heightDiff;
-
-			float diffusionAmount = UpAirMass[i] / (UpAirMass[i] + airMass);
+			float diffusionAmount = UpAirMass[i] / (UpAirMass[i] + airMass) * DiffusionCoefficientVertical;
 
 			float absoluteHumidityUp = UpHumidity[i] / (UpHumidity[i] + UpAirMass[i]);
-			gradientWaterVapor += (absoluteHumidityUp - absoluteHumidity) * diffusionAmount * combinedWind;
+			newWaterVapor += (absoluteHumidityUp - absoluteHumidity) * airMass * diffusionAmount;
 
+			float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float potentialTemperatureUp = UpTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
-			gradientTemperature += (potentialTemperatureUp - Temperature[i]) * diffusionAmount * combinedWind;
+			newTemperature += (potentialTemperatureUp - LastTemperature[i]) * diffusionAmount;
 
-			gradientWindVertical += (UpWindVertical[i] - WindVertical[i]) * diffusionAmount * combinedWind;
+			newWind += (UpWind[i] - LastWind[i]) * diffusionAmount;
 
 		}
 		if (!IsBottom)
 		{
-			float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-			float combinedWind = math.min(1, math.max(0, DownWindVertical[i]) - math.min(0, WindVertical[i])) * SecondsPerTick / heightDiff;
-
-			float diffusionAmount = DownAirMass[i] / (DownAirMass[i] + airMass);
+			float diffusionAmount = DownAirMass[i] / (DownAirMass[i] + airMass) * DiffusionCoefficientVertical;
 
 			float absoluteHumidityDown = DownHumidity[i] / (DownHumidity[i] + DownAirMass[i]);
-			gradientWaterVapor += (absoluteHumidityDown - absoluteHumidity) * diffusionAmount * math.min(1, combinedWind + DiffusionCoefficientVertical);
+			newWaterVapor += (absoluteHumidityDown - absoluteHumidity) * diffusionAmount;
 
+			float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
-			gradientTemperature += (potentialTemperatureDown - Temperature[i]) * diffusionAmount * math.min(1, combinedWind + DiffusionCoefficientVertical);
+			newTemperature += (potentialTemperatureDown - LastTemperature[i]) * diffusionAmount;
 
-			gradientWindVertical += (DownWindVertical[i] - WindVertical[i]) * diffusionAmount * math.min(1, combinedWind + DiffusionCoefficientVertical);
+			newWind += (DownWind[i] - LastWind[i]) * diffusionAmount;
 		}
 
 		//		float moveToNeutralBuoyancy = (UpTemperature[i] - Temperature[i]) / WorldData.TemperatureLapseRate - heightDiff;
@@ -148,7 +146,8 @@ public struct DiffusionCloudJob : IJobParallelFor {
 			}
 		}
 
-		Delta[i] = new DiffusionCloud() {
+		Delta[i] = new DiffusionCloud()
+		{
 			Mass = newMass * DiffusionCoefficient,
 			DropletMass = newDropletMass * DiffusionCoefficient,
 			Velocity = newVelocity * DiffusionCoefficient,

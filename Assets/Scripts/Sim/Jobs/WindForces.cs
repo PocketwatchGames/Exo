@@ -1,4 +1,4 @@
-﻿#define PressureGradientForceAirJobDebug
+﻿//#define PressureGradientForceAirJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -108,6 +108,56 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 
 		Buoyancy[i] = Gravity * buoyancy;
 
+	}
+}
+
+#if !PressureGradientForceAirJobDebug
+[BurstCompile]
+#endif
+public struct PressureGradientForceCloudJob : IJobParallelFor {
+	public NativeArray<float3> Force;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeArray<float3> LayerForce;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float3> UpForce;
+	[ReadOnly] public NativeArray<float> UpLayerElevation;
+	[ReadOnly] public NativeArray<float> UpLayerHeight;
+	[ReadOnly] public NativeArray<float3> DownForce;
+	[ReadOnly] public NativeArray<float> DownLayerElevation;
+	[ReadOnly] public bool IsTop;
+	[ReadOnly] public bool IsBottom;
+	public void Execute(int i)
+	{
+		float cloudElevation = CloudElevation[i];
+		float layerElevation = LayerElevation[i];
+		float layerMidHeight = layerElevation + LayerHeight[i] / 2;
+		if (cloudElevation >= layerElevation || IsBottom)
+		{
+			if (cloudElevation < layerElevation + LayerHeight[i] || IsTop)
+			{
+				if (cloudElevation < layerMidHeight)
+				{
+					if (IsBottom)
+					{
+						Force[i] = LayerForce[i];
+					}else
+					{
+						float downLayerMidElevation = (DownLayerElevation[i] + layerElevation) / 2;
+						float t = (cloudElevation - downLayerMidElevation) / (layerMidHeight - downLayerMidElevation);
+						Force[i] = LayerForce[i] * t + DownForce[i] * (1.0f - t);
+					}
+				} else if (IsTop)
+				{
+					Force[i] = LayerForce[i];
+				} else
+				{
+					float upLayerMidElevation = UpLayerElevation[i] + UpLayerHeight[i] / 2;
+					float t = (cloudElevation - layerMidHeight) / (upLayerMidElevation - layerMidHeight);
+					Force[i] = UpForce[i] * t + LayerForce[i] * (1.0f - t);
+				}
+			}
+		}
 	}
 }
 

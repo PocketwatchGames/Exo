@@ -1,5 +1,8 @@
 ﻿#define DISABLE_VERTICAL_AIR_MOVEMENT
-#define AdvectionAirJobDebug
+#define DISABLE_AIR_ADVECTION
+#define DISABLE_WATER_ADVECTION
+//#define AdvectionAirJobDebug
+//#define AdvectionCloudJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -32,7 +35,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Vapor;
 	[ReadOnly] public NativeArray<float3> Wind;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<float2> Coords;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float InverseCellDiameter;
@@ -53,19 +55,23 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public bool IsBottom;
 	public void Execute(int i)
 	{
-		float gradientTemperature = 0;
-		float gradientWaterVapor = 0;
-		float3 gradientWind = float3.zero;
 
+#if !DISABLE_AIR_ADVECTION
 		float3 velocity = Wind[i];
 		float airMass = AirMass[i];
 		float vapor = Vapor[i];
 		float temperature = Temperature[i];
 		float absoluteHumidity = vapor / (vapor + airMass);
-
-#if !DISABLE_AIR_ADVECTION
-		float2 coord = Coords[i];
 		float3 pos = Position[i];
+
+		float leavingCell = -math.length(velocity - math.cross(velocity, pos)) * InverseCellDiameter * SecondsPerTick;
+
+		// TODO: deal with high speeds here
+		leavingCell = math.max(leavingCell, -1);
+
+		float newTemperature = leavingCell * Temperature[i];
+		float newWaterVapor = leavingCell * Vapor[i];
+		float3 newWind = leavingCell * Wind[i];
 
 		for (int j = 0; j < 6; j++)
 		{
@@ -73,27 +79,27 @@ public struct AdvectionAirJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				float3 nPos = Position[n];
-				float3 diff = math.normalize(pos - nPos);
-				float3 nVelocity = Wind[n];
+				var nVel = Wind[n];
+				float speed = math.length(nVel);
+				if (speed > 0)
+				{
+					// TODO: deal with high speeds here
+					if (speed * InverseCellDiameter * SecondsPerTick > 1)
+					{
+						nVel *= InverseCellDiameter * SecondsPerTick / speed;
+					}
 
-				float cosAngleBetweenCells = 0.5f;
+					// TODO: this needs to account for cells with 5 neighbors
+					const float cosAngleBetweenCells = 0.5f;
+					float velDotDir = math.max(0, (math.dot(nVel / speed, math.normalize(pos - Position[n])) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
+					velDotDir *= speed * InverseCellDiameter * SecondsPerTick;
 
-				// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-				float velDotDir = math.clamp((math.max(0, (math.dot(nVelocity, diff)- cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells)) + (math.max(0, math.dot(velocity, -diff))) / (1.0f - cosAngleBetweenCells)) * InverseCellDiameter * SecondsPerTick, 0, 0.5f);
-
-				float neighborMass = AirMass[n] + Vapor[n];
-				float diffusionAmount = AirMass[n] / (AirMass[n] + airMass);
-				float neighborHumidity = Vapor[n] / neighborMass;
-				gradientWaterVapor += (neighborHumidity - absoluteHumidity) * airMass * diffusionAmount * velDotDir;
-				gradientWind += (nVelocity - velocity) * diffusionAmount * velDotDir;
-				gradientTemperature += (Temperature[n] - Temperature[i]) * diffusionAmount * velDotDir;
-
+//					newWind += nVel * velDotDir;
+//					newWaterVapor += Vapor[n] * velDotDir;
+//					newTemperature += Temperature[n] * velDotDir;
+				}
 			}
 		}
-
-
-#endif
 
 
 #if !DISABLE_VERTICAL_AIR_MOVEMENT
@@ -136,16 +142,19 @@ public struct AdvectionAirJob : IJobParallelFor {
 #endif
 		Delta[i] = new DiffusionAir()
 		{
-			Temperature = gradientTemperature,
-			WaterVapor = gradientWaterVapor,
-			Velocity = gradientWind,
+			Temperature = newTemperature,
+			WaterVapor = newWaterVapor,
+			Velocity = newWind,
 		};
+#endif
+
+
 
 	}
 }
 
 
-#if !AdvectionCloudJob
+#if !AdvectionCloudJobDebug
 [BurstCompile]
 #endif
 public struct AdvectionCloudJob : IJobParallelFor {
@@ -159,14 +168,21 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public float InverseCellDiameter;
 	public void Execute(int i)
 	{
+
 #if !DISABLE_CLOUD_ADVECTION
-		float gradientMass = 0;
-		float gradientDropletMass = 0;
-		float3 gradientVelocity = float3.zero;
 		float3 velocity = Velocity[i];
-		float3 position = Position[i];
+		float3 pos = Position[i];
 		float mass = Mass[i];
 		float dropletMass = DropletMass[i];
+
+		float leavingCell = -math.length(velocity - math.cross(velocity, pos)) * InverseCellDiameter * SecondsPerTick;
+
+		// TODO: deal with high speeds here
+		leavingCell = math.max(leavingCell, -1);
+
+		float newMass = leavingCell * mass;
+		float newDropletMass = leavingCell * dropletMass;
+		float3 newVelocity = leavingCell * velocity;
 
 		for (int j = 0; j < 6; j++)
 		{
@@ -174,28 +190,33 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				float nMass = Mass[n];
-				float totalMass = nMass + mass;
-				if (totalMass > 0)
+				var nVel = Velocity[n];
+				float speed = math.length(nVel);
+				if (speed > 0)
 				{
+					// TODO: deal with high speeds here
+					if (speed * InverseCellDiameter * SecondsPerTick > 1)
+					{
+						nVel *= InverseCellDiameter * SecondsPerTick / speed;
+					}
 
-					float3 diff = position - Position[n];
-					// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-					float velDotDir = math.clamp((math.max(0, math.dot(Velocity[n], diff)) + math.max(0, math.dot(velocity, -diff))) * InverseCellDiameter * SecondsPerTick, 0, 1.0f);
-					float diffusionAmount = nMass / (nMass + mass);
+					// TODO: this needs to account for cells with 5 neighbors
+					const float cosAngleBetweenCells = 0.5f;
+					float velDotDir = math.max(0, (math.dot(nVel / speed, math.normalize(pos - Position[n])) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
+					velDotDir *= speed * InverseCellDiameter * SecondsPerTick;
 
-					gradientMass += (Mass[n] - mass) * diffusionAmount * velDotDir;
-					gradientDropletMass += (DropletMass[n] - dropletMass) * diffusionAmount * velDotDir;
-					gradientVelocity += (Velocity[n] - velocity) * diffusionAmount * velDotDir;
+					newMass += Mass[n] * velDotDir;
+					newDropletMass += DropletMass[n] * velDotDir;
+					newVelocity += Velocity[n] * velDotDir;
 				}
 			}
 		}
 
 		Delta[i] = new DiffusionCloud()
 		{
-			Mass = gradientMass,
-			DropletMass = gradientDropletMass,
-			Velocity = gradientVelocity
+			Mass = newMass,
+			DropletMass = newDropletMass,
+			Velocity = newVelocity
 		};
 
 #endif
@@ -218,45 +239,42 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public float InverseCoordDiff;
 	public void Execute(int i)
 	{
-		float gradientSalinity = 0;
-		float gradientTemperature = 0;
-		float3 gradientVelocity = float3.zero;
-		float3 position = Position[i];
+		float3 velocity = Current[i];
 		float waterMass = Mass[i];
-		if (waterMass > 0)
-		{
-			float salt = Salt[i];
-			float mass = Mass[i];
-			float temperature = Temperature[i];
-			float3 velocity = Current[i];
-			float salinity = salt / (salt + mass);
-			for (int j = 0; j < 6; j++)
-			{
-				int n = Neighbors[i * 6 + j];
-				if (n >= 0)
-				{
-					float nMass = Mass[n];
-					if (nMass > 0)
-					{
-						float3 diff = position - Position[n];
-						// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-						float velDotDir = math.clamp((math.max(0, math.dot(Current[n], diff)) + math.max(0, math.dot(velocity, -diff))) * InverseCellDiameter * SecondsPerTick, 0, 0.5f);
-						float diffusionAmount = nMass / (nMass + mass);
-						float neighborSalinity = Salt[n] / (nMass + Salt[n]);
+		float salt = Salt[i];
+		float mass = Mass[i];
+		float temperature = Temperature[i];
 
-						gradientSalinity += (neighborSalinity - salinity) * mass * diffusionAmount * velDotDir;
-						gradientTemperature += (Temperature[n] - temperature) * diffusionAmount * velDotDir;
-						gradientVelocity += (Current[n] - velocity) * diffusionAmount * velDotDir;
-					}
+		float leavingCell = -math.length(velocity) * InverseCellDiameter * SecondsPerTick;
+		float newSaltMass = leavingCell * salt;
+		float newTemperature = leavingCell * temperature;
+		float3 newVelocity = leavingCell * velocity;
+		float3 pos = Position[i];
+
+		for (int j = 0; j < 6; j++)
+		{
+			int n = Neighbors[i * 6 + j];
+			if (n >= 0)
+			{
+				float nMass = Mass[n];
+				if (nMass > 0)
+				{
+					// TODO: this needs to account for cells with 5 neighbors
+					const float cosAngleBetweenCells = 0.5f;
+					float velDotDir = math.max(0, (math.dot(Current[n], math.normalize(pos - Position[n])) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells)) * InverseCellDiameter * SecondsPerTick;
+
+					newSaltMass += Salt[n] * velDotDir;
+					newTemperature += Temperature[n] * velDotDir;
+					newVelocity += Current[n] * velDotDir;
 				}
 			}
 		}
 
 		Delta[i] = new DiffusionWater()
 		{
-			Temperature = gradientTemperature,
-			SaltMass = gradientSalinity,
-			Velocity = gradientVelocity
+			Temperature = newTemperature,
+			SaltMass = newSaltMass,
+			Velocity = newVelocity
 		};
 
 
