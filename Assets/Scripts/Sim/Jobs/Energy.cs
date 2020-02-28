@@ -107,28 +107,36 @@ public struct EnergyWaterJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
 	public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
+	[ReadOnly] public NativeArray<float> LastWaterMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float3> LastVelocity;
-	[ReadOnly] public NativeArray<float3> WaterDensityForce;
-	[ReadOnly] public NativeArray<float> LastMass;
+	[ReadOnly] public NativeArray<float3> Force;
+	[ReadOnly] public NativeArray<float> FrozenMass;
+	[ReadOnly] public NativeArray<float> EvaporatedMass;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+	[ReadOnly] public NativeArray<float> StateFluxEnergy;
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		float conductionDelta = ConductionEnergyTerrain[i];
-		float specificHeat = WorldData.SpecificHeatWater * LastMass[i] + WorldData.SpecificHeatSalt * LastSaltMass[i];
+		float specificHeat = WorldData.SpecificHeatWater * LastWaterMass[i] + WorldData.SpecificHeatSalt * LastSaltMass[i];
 		float energySources = 0;
 		if (specificHeat > 0)
 		{
-			energySources = (SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta) / specificHeat;
+			energySources = (SolarRadiationIn[i] + ThermalRadiationDelta[i] + ConductionEnergyTerrain[i] + StateFluxEnergy[i]) / specificHeat;
 		}
-		Temperature[i] = LastTemperature[i] + energySources;
+		Mass[i] = LastWaterMass[i] - FrozenMass[i] - EvaporatedMass[i];
 		SaltMass[i] = LastSaltMass[i];
-		Mass[i] = LastMass[i];
-
-		Velocity[i] = LastVelocity[i] + WaterDensityForce[i] * SecondsPerTick;
+		if (Mass[i] > 0)
+		{
+			Temperature[i] = LastTemperature[i] + energySources;
+			Velocity[i] = LastVelocity[i] + Force[i] * SecondsPerTick;
+		} else
+		{
+			Temperature[i] = 0;
+			Velocity[i] = 0;
+		}
 	}
 }
 
@@ -136,18 +144,12 @@ public struct EnergyWaterJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct EnergyWaterJobSurface : IJobParallelFor {
-	public NativeArray<float> Temperature;
-	public NativeArray<float> SaltMass;
-	public NativeArray<float3> Velocity;
-	public NativeArray<float> WaterMass;
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
+	public NativeArray<float> StateFluxEnergy;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
-	[ReadOnly] public NativeArray<float3> LastVelocity;
-	[ReadOnly] public NativeArray<float3> WaterSurfaceForce;
-	[ReadOnly] public NativeArray<float3> WaterDensityForce;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaTop;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaBottom;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
@@ -157,30 +159,19 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> RelativeHumidity;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
-	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
-	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float EvaporationRate;
 	[ReadOnly] public float EvapTemperatureMin;
 	[ReadOnly] public float EvapTemperatureMax;
 	[ReadOnly] public float WaterHeatingDepth;
-	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float CoriolisTerm;
-	[ReadOnly] public float WaterSurfaceFrictionDepth;
-	[ReadOnly] public float WaterDensityPerDegree;
-	[ReadOnly] public float WaterDensityPerSalinity;
 	public void Execute(int i)
 	{
-		float lastTemperature = LastTemperature[i];
-		float lastMassWater = LastMass[i];
-		float lastMassSalt = LastSaltMass[i];
+		float temperature = LastTemperature[i];
+		float waterMass = LastMass[i];
+		float saltMass = LastSaltMass[i];
 		float energyTop = -ConductionEnergyAir[i] - ConductionEnergyIce[i] + ThermalRadiationDeltaTop[i] + SolarRadiationIn[i];
 		float energyBottom = ConductionEnergyTerrain[i] + ThermalRadiationDeltaBottom[i];
 
-		float temperature = lastTemperature;
-		float saltMass = LastSaltMass[i];
-		float3 velocity = LastVelocity[i];
-		float waterMass = lastMassWater;
-
+		float stateFluxEnergy = 0;
 		float evapMass = 0;
 		float frozenTopMass = 0;
 		float frozenBottomMass = 0;
@@ -196,6 +187,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 				{
 					float evapEnergy = evapMass * WorldData.LatentHeatWaterVapor;
 					energyTop -= evapEnergy;
+					stateFluxEnergy -= evapEnergy;
 				}
 				waterMass -= evapMass;
 			}
@@ -211,7 +203,9 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 				{
 					float energyToRelease = (WorldData.FreezingTemperature - newTempTop) * specificHeatSaltWater * heatingMass;
 					frozenTopMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
-					energyTop += frozenTopMass * WorldData.LatentHeatWaterLiquid;
+					float latentEnergy = frozenTopMass * WorldData.LatentHeatWaterLiquid;
+					energyTop += latentEnergy;
+					stateFluxEnergy += latentEnergy;
 					waterMass -= frozenTopMass;
 				}
 			}
@@ -227,7 +221,9 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 				{
 					float energyToRelease = (WorldData.FreezingTemperature - newTempBottom) * specificHeatSaltWater * heatingMass;
 					frozenBottomMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
-					energyBottom += frozenBottomMass * WorldData.LatentHeatWaterLiquid;
+					float latentEnergy = frozenBottomMass * WorldData.LatentHeatWaterLiquid;
+					energyBottom += latentEnergy;
+					stateFluxEnergy += latentEnergy;
 					waterMass -= frozenBottomMass;
 				}
 			}
@@ -238,28 +234,7 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 		EvaporatedWaterMass[i] = evapMass;
 		FrozenMass[i] = frozenTopMass + frozenBottomMass;
 
-		SaltMass[i] = saltMass;
-		WaterMass[i] = waterMass;
-		if (waterMass == 0)
-		{
-			Velocity[i] = 0;
-			Temperature[i] = 0;
-		}
-		else
-		{
-			float specificHeat = WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass;
-			float energySources = (energyTop + energyBottom) / specificHeat;
-			Temperature[i] = temperature + energySources;
-
-			var velocityUp = velocity * Position[i];
-			var velocityRight = math.cross(Position[i], velocity);
-			float depth = Atmosphere.GetWaterVolume(waterMass, saltMass, temperature, WaterDensityPerSalinity, WaterDensityPerDegree);
-
-			// this averages out to about a 90 degree turn if it has the full depth of the ekman spiral (200 meters)
-			// http://oceanmotion.org/html/background/ocean-in-motion.htm
-			var coriolisForce = (velocityRight * CoriolisMultiplier[i] * CoriolisTerm) * math.min(depth, WaterSurfaceFrictionDepth)/ WaterSurfaceFrictionDepth;
-			Velocity[i] = velocity + (WaterDensityForce[i] + WaterSurfaceForce[i] + coriolisForce) * SecondsPerTick;
-		}
+		StateFluxEnergy[i] = stateFluxEnergy;
 	}
 }
 

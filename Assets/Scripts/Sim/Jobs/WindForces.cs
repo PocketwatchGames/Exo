@@ -166,14 +166,28 @@ public struct WaterFrictionForceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Current;
 	[ReadOnly] public NativeArray<float3> WindUp;
 	[ReadOnly] public NativeArray<float3> WindDown;
-	[ReadOnly] public NativeArray<float3> Positions;
+	[ReadOnly] public NativeArray<float3> Position;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float FrictionCoefficientUp;
 	[ReadOnly] public float FrictionCoefficientDown;
+	[ReadOnly] public float WaterSurfaceFrictionDepth;
 	public void Execute(int i)
 	{
-		var horizontalWindUp = math.cross(math.cross(Positions[i], WindUp[i]), Positions[i]);
-		var horizontalWindDown = math.cross(math.cross(Positions[i], WindDown[i]), Positions[i]);
-		Force[i] = (horizontalWindUp - Current[i]) * FrictionCoefficientUp + (horizontalWindDown - Current[i]) * FrictionCoefficientDown;
+		var horizontalWindUp = math.cross(math.cross(Position[i], WindUp[i]), Position[i]);
+		var horizontalWindDown = math.cross(math.cross(Position[i], WindDown[i]), Position[i]);
+		var force = (horizontalWindUp - Current[i]) * FrictionCoefficientUp + (horizontalWindDown - Current[i]) * FrictionCoefficientDown;
+
+		var velocityUp = Current[i] * Position[i];
+		var velocityRight = math.cross(Position[i], Current[i]);
+
+		// this averages out to about a 90 degree turn if it has the full depth of the ekman spiral (200 meters)
+		// http://oceanmotion.org/html/background/ocean-in-motion.htm
+		var coriolisForce = (velocityRight * CoriolisMultiplier[i] * CoriolisTerm) * math.min(LayerHeight[i], WaterSurfaceFrictionDepth) / WaterSurfaceFrictionDepth;
+		force += coriolisForce;
+
+		Force[i] = force;
 	}
 }
 
