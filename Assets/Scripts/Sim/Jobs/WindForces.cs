@@ -200,30 +200,31 @@ public struct WaterDensityGradientForceJob : IJobParallelFor {
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
-		float3 pressureGradient = 0;
-		var pos = Positions[i];
 		var density = WaterDensity[i];
-		float midDepth = LayerDepth[i] - LayerHeight[i] / 2;
-		float pressure = WaterPressure[i];
-		for (int j=0;j<6;j++)
+		if (density > 0)
 		{
-			var n = Neighbors[i * 6 + j];
-			if (n >= 0 && WaterDensity[n] > 0)
+			float3 pressureGradient = 0;
+			var pos = Positions[i];
+			float midDepth = LayerDepth[i] - LayerHeight[i] / 2;
+			float pressure = WaterPressure[i];
+			for (int j = 0; j < 6; j++)
 			{
-				// TODO: this should only be using horizontal component, which we should cache
-				float3 dir = pos - Positions[n];
-				dir -= dir * pos;
-				dir = math.normalize(dir);
+				var n = Neighbors[i * 6 + j];
+				if (n >= 0 && WaterDensity[n] > 0)
+				{
+					// TODO: this should only be using horizontal component, which we should cache
+					float3 dir = pos - Positions[n];
+					dir -= dir * pos;
+					dir = math.normalize(dir);
 
 
-				float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
-				pressureGradient += dir * (neighborDepthAtPressure - midDepth);
+					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
+					pressureGradient += dir * (neighborDepthAtPressure - midDepth);
+				}
 			}
-		}
 
-		Force[i] = pressureGradient * InverseCellDiameter * Gravity / density;
-		//if (density > 0)
-		//{
+			Force[i] = pressureGradient * InverseCellDiameter * Gravity / density;
+
 		//	if (DownWaterDensity[i] > 0)
 		//	{
 		//		Force[i] += pos * Gravity * (DownWaterDensity[i] / density - 1)/* / (LayerHeight[i] + DownLayerHeight[i]) * 0.5f*/;
@@ -232,7 +233,7 @@ public struct WaterDensityGradientForceJob : IJobParallelFor {
 		//	{
 		//		Force[i] += pos * Gravity * (1 - UpWaterDensity[i] / density)/* / (LayerHeight[i] + UpLayerHeight[i]) * 0.5f*/;
 		//	}
-		//}
+		}
 	}
 }
 

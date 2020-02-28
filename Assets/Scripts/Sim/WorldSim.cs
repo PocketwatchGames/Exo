@@ -77,7 +77,6 @@ public class WorldSim {
 	public JobHelper UpdateDependentWaterLayerJob;
 	public JobHelper UpdateDependentAirLayerJob;
 	public JobHelper UpdateDependentJob;
-	public JobHelper UpdateWaterSaltMassJob;
 
 	private int _cellCount;
 	private int _batchCount = 100;
@@ -185,7 +184,6 @@ public class WorldSim {
 		UpdateDependentWaterLayerJob = new JobHelper(_cellCount);
 		UpdateDependentAirLayerJob = new JobHelper(_cellCount);
 		UpdateDependentJob = new JobHelper(_cellCount);
-		UpdateWaterSaltMassJob = new JobHelper(_cellCount);
 
 #if SolarRadiationInJobDebug
 		SolarRadiationInJob.Async = false;
@@ -1748,12 +1746,14 @@ public class WorldSim {
 				for (int i = 1; i < _airLayers - 1; i++) {
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperature[i], 0, 1000, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 1000, degenVarNames);
+					degen |= CheckDegen(_cellCount, degenIndices, "Wind" + i, nextState.Wind[i], degenVarNames);
 				}
 				for (int i=1;i<_waterLayers - 1;i++)
 				{
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterMass" + i, nextState.WaterMass[i], degenVarNames);
-					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterSaltMass" + i, nextState.SaltMass[i], degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "SaltMass" + i, nextState.SaltMass[i], degenVarNames);
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], degenVarNames);
+					degen |= CheckDegen(_cellCount, degenIndices, "Current" + i, nextState.WaterVelocity[i], degenVarNames);
 				}
 				if (degen)
 				{
@@ -1913,13 +1913,25 @@ public class WorldSim {
 		}
 		return false;
 	}
+	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeArray<float3> values, List<string> degenVarNames)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			if (!math.isfinite(values[i].x) || !math.isfinite(values[i].y) || !math.isfinite(values[i].z))
+			{
+				degenVarNames.Add(name);
+				degenIndices.Add(i);
+				return true;
+			}
+		}
+		return false;
+	}
 
 	private static bool CheckDegenPosValues(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, List<string> degenVarNames)
 	{
 		for (int i = 0; i < count; i++)
 		{
-			float v = values[i];
-			if (!math.isfinite(v) || v < 0)
+			if (!math.isfinite(values[i]) || values[i] < 0)
 			{
 				degenVarNames.Add(name);
 				degenIndices.Add(i);
@@ -1933,8 +1945,7 @@ public class WorldSim {
 	{
 		for (int i = 0; i < count; i++)
 		{
-			float v = values[i];
-			if (!math.isfinite(v) || v < min || v > max)
+			if (!math.isfinite(values[i]) || values[i] < min || values[i] > max)
 			{
 				degenVarNames.Add(name);
 				degenIndices.Add(i);
@@ -1966,7 +1977,7 @@ public class WorldSim {
 		for (int j = 1; j < _waterLayers - 1; j++)
 		{
 			s.AppendLine("WaterMass" + j + ": " + state.WaterMass[j][i]);
-			s.AppendLine("WaterSaltMass" + j + ": " + state.SaltMass[j][i]);
+			s.AppendLine("SaltMass" + j + ": " + state.SaltMass[j][i]);
 			s.AppendLine("WaterTemperature" + j + ": " + state.WaterTemperature[j][i]);
 			s.AppendLine("WaterVelocity" + j + ": " + state.WaterVelocity[j][i]);
 		}
