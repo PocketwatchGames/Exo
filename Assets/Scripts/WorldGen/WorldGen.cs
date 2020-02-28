@@ -54,7 +54,7 @@ public static class WorldGen {
 		[ReadOnly] public float MaxElevation;
 		[ReadOnly] public float MaxTemperature;
 		[ReadOnly] public float MinTemperature;
-		[ReadOnly] public float FullVegetationCoverage;
+		[ReadOnly] public float FullCoverageVegetation;
 		[ReadOnly] public float MinTemperatureCanopy;
 		[ReadOnly] public float MaxTemperatureCanopy;
 
@@ -101,7 +101,7 @@ public static class WorldGen {
 			if (elevation > 0)
 			{
 				vegetation =
-					FullVegetationCoverage
+					FullCoverageVegetation
 					* soilFertility
 					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
 					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureCanopy) / (MaxTemperatureCanopy - MinTemperatureCanopy)));
@@ -305,9 +305,9 @@ public static class WorldGen {
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
 			Coordinate = staticState.Coordinate,
-			FullVegetationCoverage =worldData.FullVegetationCoverage,
-			MinTemperatureCanopy = worldData.MinTemperatureCanopy,
-			MaxTemperatureCanopy = worldData.MaxTemperatureCanopy,
+			FullCoverageVegetation =worldData.FullCoverageVegetation,
+			MinTemperatureCanopy = worldData.MinTemperatureVegetation,
+			MaxTemperatureCanopy = worldData.MaxTemperatureVegetation,
 			MinElevation = worldGenData.MinElevation,
 			MaxElevation = worldGenData.MaxElevation,
 			MaxRoughness =worldGenData.MaxRoughness,
@@ -328,7 +328,7 @@ public static class WorldGen {
 			WaterTemperatureBottom = WaterTemperatureBottom,
 			WaterTemperatureSurface = WaterTemperatureTop,
 
-			FullWaterCoverage = worldData.FullWaterCoverage,
+			FullWaterCoverage = worldData.FullCoverageWater,
 			inversePI = inversePI,
 			rainDropMinSize = worldData.rainDropMinSize,
 			TropopauseElevation = worldGenData.TropopauseElevation,

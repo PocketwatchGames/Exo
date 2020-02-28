@@ -1,28 +1,12 @@
 {
 	"AirLayers": 5,
 	"WaterLayers": 5,
-	
 	"SecondsPerTick": 3600,
-	"FullIceCoverage": 3.0,
-	"FullWaterCoverage": 50.0,
-	"FullVegetationCoverage": 2000,
 
-	"MaxSoilPorousness": 0.1,
-	"GroundWaterReplenishmentSpeed": 0.01,
-	"GroundWaterFlowSpeed": 0.5,
-
-
-	"AirDiffusionCoefficientHorizontal": 0.01,
-	"AirDiffusionCoefficientVertical": 0.01,
-	"WindWaterFriction": 0.2,
-	"WindIceFriction": 0.1,
-	"WindTerrainFrictionMax": 0.5,
-	"WindTerrainFrictionMin": 0.25,
-	"WindVegetationFriction": 0.5,
-	"MaxTerrainRoughnessForWindFriction": 1000,
-	"CloudDiffusionCoefficient": 0.01,
-	"WaterDiffusionCoefficientHorizontal": 0.01,
-	"WaterDiffusionCoefficientVertical": 0.01,
+	"FullCoverageIce": 3.0,
+	"FullCoverageWater": 50.0,
+	"FullCoverageCloud": 0.5,
+	"FullCoverageVegetation": 2000,
 
 	"SolarAbsorptivityAir": 0.000002,
 	"SolarAbsorptivityWaterVapor": 0.0001,
@@ -30,49 +14,61 @@
 	"SolarReflectivityAir": 0.000002,
 	"SolarReflectivityWaterVapor": 0,
 	"SolarReflectivityCloud": 1.0,
-	"ThermalReflectivityCloud": 0.90,
-	"maxGroundWaterTemperature": 283,
-	"SoilHeatDepth": 2,
 	"AlbedoReductionSoilQuality": 0.15,
-
-	"AirWaterConductionPositive": 0.5,
-
-	"AbsorptivityCarbonDioxide": 0.0001,
-	"AbsorptivityAir": 0.0001,
-	"AbsorptivityWaterLiquid": 0.0001,
-	"AbsorptivityWaterVapor": 0.0001,
-
-	"CloudMassFullAbsorption": 0.5,
-	"EnergyLostThroughAtmosphereWindow": 0.1007,
 	"minCloudFreezingTemperature": 243,
 	"maxCloudFreezingTemperature": 303,
 	"maxCloudSlopeAlbedo": 0.1,
 	"rainDropSizeAlbedoMin": 0.5,
 	"rainDropSizeAlbedoMax": 1.0,
 
-	"DewPointTemperatureRange": 100.0,
-	"DewPointZero": 213.0,
-	"WaterVaporMassToAirMassAtDewPoint": 0.04,
+	"EnergyLostThroughAtmosphereWindow": 0.1007,
+	"ThermalReflectivityCloud": 0.90,
+	"ThermalAbsorptivityCarbonDioxide": 0.0001,
+	"ThermalAbsorptivityAir": 0.0001,
+	"ThermalAbsorptivityWaterLiquid": 0.0001,
+	"ThermalAbsorptivityWaterVapor": 0.0001,
+
+	"SoilHeatDepth": 2,
+	"WaterHeatingDepth": 0.1,
 	"EvapMinTemperature": 253,
 	"EvapMaxTemperature": 413,
 	"EvaporationRate": 5,
+
+	"IceHeatingDepth": 0.1,
+
+	"DewPointTemperatureRange": 100.0,
+	"DewPointZero": 213.0,
+	"WaterVaporMassToAirMassAtDewPoint": 0.04,
 	"rainDropDragCoefficient": 0.5,
 	"rainDropMaxSize": 0.004,
 	"rainDropMinSize": 0.000002,
 	"CloudDissapationRateWind": 0.1,
 	"CloudDissapationRateDryAir": 0.1,
-	"DewPointElevationPerDegree": 67.73,
-	"DewPointTemperaturePerRelativeHumidity": 20,
-	"IceHeatingDepth": 0.1,
-	"WaterHeatingDepth": 0.1,
-	"WaterSurfaceFrictionDepth": 200,
+
+	"AirDiffusionCoefficientHorizontal": 0.01,
+	"AirDiffusionCoefficientVertical": 0.01,
+	"CloudDiffusionCoefficient": 0.01,
+	"WaterDiffusionCoefficientHorizontal": 0.01,
+	"WaterDiffusionCoefficientVertical": 0.01,
+
+	"WindWaterFriction": 0.2,
+	"WindIceFriction": 0.1,
+	"WindTerrainFrictionMax": 0.5,
+	"WindTerrainFrictionMin": 0.25,
+	"WindVegetationFriction": 0.5,
+	"MaxTerrainRoughnessForWindFriction": 1000,
 
 	"WindToWaterCurrentFrictionCoefficient": 0.00001,
+	"WaterSurfaceFrictionDepth": 200,
 	"WaterDensityPerSalinity": 800,
 	"WaterDensityPerDegree": -0.2,
 	"WaterDensityCurrentSpeed": 0.5,
 
-	"MinTemperatureCanopy": 223.15,
-	"MaxTemperatureCanopy": 323.15
+	"MinTemperatureVegetation": 223.15,
+	"MaxTemperatureVegetation": 323.15,
+	"MaxSoilPorousness": 0.1,
+	"GroundWaterReplenishmentSpeed": 0.01,
+	"GroundWaterFlowSpeed": 0.5,
+	"maxGroundWaterTemperature": 283
 
 }

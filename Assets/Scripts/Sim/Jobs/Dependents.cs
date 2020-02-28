@@ -33,13 +33,13 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 		float waterDepth = WaterDepthTotal[i];
 		WaterDepth[i] = waterDepth;
 		SurfaceElevation[i] = Terrain[i].Elevation + waterDepth + iceMass / WorldData.MassIce;
-		VegetationCoverage[i] = math.saturate(Terrain[i].Vegetation * worldData.inverseFullCanopyCoverage);
+		VegetationCoverage[i] = math.saturate(Terrain[i].Vegetation * worldData.inverseFullCoverageVegetation);
 
-		IceCoverage[i] = math.saturate(iceMass * worldData.inverseFullIceCoverage);
+		IceCoverage[i] = math.saturate(iceMass * worldData.inverseFullCoverageIce);
 		IceEnergy[i] = WorldData.SpecificHeatIce * iceMass * IceTemperature[i];
 
 		float cloudMass = CloudMass[i];
-		CloudCoverage[i] = math.saturate(cloudMass * worldData.inverseCloudMassFullAbsorption);
+		CloudCoverage[i] = math.saturate(cloudMass * worldData.inverseFullCoverageCloud);
 
 		SurfaceAirTemperature[i] = LowerAirTemperature[i] - WorldData.TemperatureLapseRate * lowerAirHeight[i] / 2;
 	}

@@ -10,31 +10,12 @@ public struct WorldData {
 	public float SecondsPerTick;
 	public int AirLayers;
 	public int WaterLayers;
-	public float FullIceCoverage;
-	public float FullWaterCoverage;
-	public float FullVegetationCoverage;
+	public float FullCoverageIce;
+	public float FullCoverageWater;
+	public float FullCoverageVegetation;
+	public float FullCoverageCloud; // how much heat gain/loss is caused by cloud cover (cumulus cloud is 0.3g/cubic meter, and about 3 kilometers high)
 
-	[Header("Fresh Water")]
-	public float MaxSoilPorousness;
-	public float GroundWaterReplenishmentSpeed;
-	public float GroundWaterFlowSpeed;
-
-	[Header("Pressure and Wind")]
-	public float AirDiffusionCoefficientHorizontal;
-	public float AirDiffusionCoefficientVertical;
-	public float WaterDiffusionCoefficientHorizontal;
-	public float WaterDiffusionCoefficientVertical;
-	public float WindWaterFriction;
-	public float WindIceFriction;
-	public float WindTerrainFrictionMin;
-	public float WindTerrainFrictionMax;
-	public float WindVegetationFriction;
-	public float CloudDiffusionCoefficient;
-	public float MaxTerrainRoughnessForWindFriction;
-	public float WaterSurfaceFrictionDepth;
-	public float WindToWaterCurrentFrictionCoefficient;
-
-	[Header("Atmospheric Energy Cycle")]
+	[Header("Solar Energy")]
 	// atmospheric heat balance https://energyeducation.ca/encyclopedia/Earth%27s_heat_balance
 	// https://en.wikipedia.org/wiki/Earth%27s_energy_budget
 	// https://en.wikipedia.org/wiki/Electromagnetic_absorption_by_water
@@ -45,61 +26,88 @@ public struct WorldData {
 	public float SolarReflectivityAir; // 7% is reflected due to atmospheric scattering 
 	public float SolarReflectivityWater; // 7% is reflected due to atmospheric scattering 
 	public float SolarReflectivityCloud;
-
-	//public float EvaporativeHeatLoss = 0.6f; // global average = 78 watts
-	// Net Back Radiation: The ocean transmits electromagnetic radiation into the atmosphere in proportion to the fourth power of the sea surface temperature(black-body radiation)
-	// https://eesc.columbia.edu/courses/ees/climate/lectures/o_atm.html
-	public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
-
-	public float maxGroundWaterTemperature;
-	public float SoilHeatDepth;
 	public float AlbedoReductionSoilQuality;
-
-	// TODO: tune these to match the science
-	public float ThermalReflectivityCloud;
-	public float CloudMassFullAbsorption; // how much heat gain/loss is caused by cloud cover (cumulus cloud is 0.3g/cubic meter, and about 3 kilometers high)
-	public float EnergyLostThroughAtmosphereWindow; // AKA Atmospheric window global average = 40 watts = 6.7% of all surface and atmospheric radiation
 	public float minCloudFreezingTemperature;
 	public float maxCloudFreezingTemperature;
 	public float maxCloudSlopeAlbedo;
 	public float rainDropSizeAlbedoMin;
 	public float rainDropSizeAlbedoMax;
 
+	[Header("Thermal Energy")]
+	//public float EvaporativeHeatLoss = 0.6f; // global average = 78 watts
+	// Net Back Radiation: The ocean transmits electromagnetic radiation into the atmosphere in proportion to the fourth power of the sea surface temperature(black-body radiation)
+	// https://eesc.columbia.edu/courses/ees/climate/lectures/o_atm.html
+
+
+	// TODO: tune these to match the science
+	public float EnergyLostThroughAtmosphereWindow; // AKA Atmospheric window global average = 40 watts = 6.7% of all surface and atmospheric radiation
+	public float ThermalReflectivityCloud;
+
 	// https://en.wikipedia.org/wiki/Electromagnetic_absorption_by_water
 	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.
 	// carbon dioxide accounts for just 26% of the greenhouse effect.
-	public float AbsorptivityCarbonDioxide;
-	public float AbsorptivityAir;
-	public float AbsorptivityWaterLiquid;
-	public float AbsorptivityWaterVapor;
+	public float ThermalAbsorptivityCarbonDioxide;
+	public float ThermalAbsorptivityAir;
+	public float ThermalAbsorptivityWaterLiquid;
+	public float ThermalAbsorptivityWaterVapor;
 
-	[Header("Evap, Humidity and Clouds")]
-	public float DewPointTemperatureRange;
-	public float DewPointZero;
-	public float WaterVaporMassToAirMassAtDewPoint;
+	// TODO: should we parameterize the micro-conduction that allows for water to heat the air faster than it can cool it?
+	//public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
+
+	[Header("Evaporation")]
+	public float SoilHeatDepth;
+	public float WaterHeatingDepth;
 	public float EvapMinTemperature; // -30 celsius
 	public float EvapMaxTemperature; // 70 celsius
 	public float EvaporationRate; // TODO: evaporation on earth maxes out around 2.5M per year 
+
+	[Header("Ice")]
+	public float IceHeatingDepth;
+
+	[Header("Rain and Clouds")]
 	public float rainDropDragCoefficient;
 	public float rainDropMaxSize;
 	public float rainDropMinSize;
 	public float CloudDissapationRateWind;
 	public float CloudDissapationRateDryAir;
-	public float DewPointElevationPerDegree;
-	public float DewPointTemperaturePerRelativeHumidity;
-	public float IceHeatingDepth;
-	public float WaterHeatingDepth;
+	public float DewPointTemperatureRange;
+	public float DewPointZero;
+	public float WaterVaporMassToAirMassAtDewPoint;
 
-	[Header("Water")]
+	[Header("Diffusion")]
+	public float CloudDiffusionCoefficient;
+	public float AirDiffusionCoefficientHorizontal;
+	public float AirDiffusionCoefficientVertical;
+	public float WaterDiffusionCoefficientHorizontal;
+	public float WaterDiffusionCoefficientVertical;
+
+	[Header("Wind")]
+	public float WindWaterFriction;
+	public float WindIceFriction;
+	public float WindTerrainFrictionMin;
+	public float WindTerrainFrictionMax;
+	public float WindVegetationFriction;
+	public float MaxTerrainRoughnessForWindFriction;
+	public float WaterSurfaceFrictionDepth;
+
+	[Header("Water Current")]
+	public float WindToWaterCurrentFrictionCoefficient;
 	public float WaterDensityPerSalinity;
 	public float WaterDensityPerDegree;
 	public float WaterDensityCurrentSpeed;
 
-	[Header("Ecology")]
-	public float MinTemperatureCanopy;
-	public float MaxTemperatureCanopy;
+	[Header("Ground Water")]
+	public float MaxSoilPorousness;
+	public float GroundWaterReplenishmentSpeed;
+	public float GroundWaterFlowSpeed;
+	public float maxGroundWaterTemperature;
 
-	[Header("Physical Constants")]
+
+	[Header("Vegetation")]
+	public float MinTemperatureVegetation;
+	public float MaxTemperatureVegetation;
+
+	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;
 	public const float AdiabaticLapseRate = 0.0098f;
 	public const float StaticPressure = 101325;
@@ -158,20 +166,23 @@ public struct WorldData {
 	public const float DryAirAdiabaticLapseRate = AdiabaticLapseRate / SpecificHeatAtmosphere;
 	public const float inverseSpecificHeatIce = 1.0f / SpecificHeatIce;
 	public const float InverseDensityAir = 1.0f / DensityAir;
+	#endregion
 
+	#region Nonserialized
 	[NonSerialized]	public float EvapTemperatureRange;
 	[NonSerialized] public float TicksPerSecond;
 	[NonSerialized] public float TicksPerYear;
-	[NonSerialized] public float inverseFullCanopyCoverage;
-	[NonSerialized] public float inverseFullWaterCoverage;
-	[NonSerialized] public float inverseFullIceCoverage;
-	[NonSerialized] public float inverseCloudMassFullAbsorption;
+	[NonSerialized] public float inverseFullCoverageVegetation;
+	[NonSerialized] public float inverseFullCoverageWater;
+	[NonSerialized] public float inverseFullCoverageIce;
+	[NonSerialized] public float inverseFullCoverageCloud;
 	[NonSerialized] public float wattsToKJPerTick;
 	[NonSerialized] public float declinationOfSun;
 	[NonSerialized] public float sunHitsAtmosphereBelowHorizonAmount;
 	[NonSerialized] public float inverseSunAtmosphereAmount;
 	[NonSerialized] public float inverseDewPointTemperatureRange;
 	[NonSerialized] public float inverseEvapTemperatureRange;
+	#endregion
 
 	public void Init()
 	{
@@ -180,10 +191,10 @@ public struct WorldData {
 		TicksPerSecond = 1.0f / SecondsPerTick;
 		TicksPerYear = 60 * 60 * 24 * 365 / SecondsPerTick;
 
-		inverseFullCanopyCoverage = 1.0f / FullVegetationCoverage;
-		inverseFullWaterCoverage = 1.0f / FullWaterCoverage;
-		inverseFullIceCoverage = 1.0f / (MassIce * FullIceCoverage);
-		inverseCloudMassFullAbsorption = 1.0f / CloudMassFullAbsorption;
+		inverseFullCoverageVegetation = 1.0f / FullCoverageVegetation;
+		inverseFullCoverageWater = 1.0f / FullCoverageWater;
+		inverseFullCoverageIce = 1.0f / (MassIce * FullCoverageIce);
+		inverseFullCoverageCloud = 1.0f / FullCoverageCloud;
 		wattsToKJPerTick = SecondsPerTick * 1000;
 		sunHitsAtmosphereBelowHorizonAmount = 0.055f;
 		inverseSunAtmosphereAmount = 1.0f / (1.0f + sunHitsAtmosphereBelowHorizonAmount);
