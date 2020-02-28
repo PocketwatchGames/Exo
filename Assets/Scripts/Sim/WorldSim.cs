@@ -61,7 +61,7 @@ public class WorldSim {
 	public JobHelper EnergyCloudJob;
 	public JobHelper EnergyIceJob;
 	public JobHelper EnergyWaterJob;
-	public JobHelper EnergyWaterSurfaceJob;
+	public JobHelper WaterFluxJob;
 	public JobHelper EnergyAirJob;
 	public JobHelper StateChangeJob;
 	public JobHelper StateChangeAirLayerJob;
@@ -105,8 +105,7 @@ public class WorldSim {
 	private NativeArray<float3>[] pressureGradientForce;
 	private NativeArray<float3> pressureGradientForceCloud;
 	private NativeArray<float> windFriction;
-	private NativeArray<float3>[] waterFrictionForce;
-	private NativeArray<float3>[] waterDensityForce;
+	private NativeArray<float3>[] waterForce;
 	private NativeArray<float> conductionSurfaceAirIce;
 	private NativeArray<float> conductionSurfaceAirWater;
 	private NativeArray<float> conductionSurfaceAirTerrain;
@@ -174,7 +173,7 @@ public class WorldSim {
 		EnergyCloudJob = new JobHelper(_cellCount);
 		EnergyIceJob = new JobHelper(_cellCount);
 		EnergyWaterJob = new JobHelper(_cellCount);
-		EnergyWaterSurfaceJob = new JobHelper(_cellCount);
+		WaterFluxJob = new JobHelper(_cellCount);
 		EnergyAirJob = new JobHelper(_cellCount);
 		StateChangeJob = new JobHelper(_cellCount);
 		StateChangeAirLayerJob = new JobHelper(_cellCount);
@@ -400,8 +399,7 @@ public class WorldSim {
 		waterStateFluxEnergy = new NativeArray<float>[_waterLayers];
 		evaporationMass = new NativeArray<float>[_waterLayers];
 		frozenMass = new NativeArray<float>[_waterLayers];
-		waterFrictionForce = new NativeArray<float3>[_waterLayers];
-		waterDensityForce = new NativeArray<float3>[_waterLayers];
+		waterForce = new NativeArray<float3>[_waterLayers];
 		for (int i = 0; i < _waterLayers; i++)
 		{
 			diffusionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
@@ -410,8 +408,7 @@ public class WorldSim {
 			waterStateFluxEnergy[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			evaporationMass[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			frozenMass[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
-			waterFrictionForce[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
-			waterDensityForce[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
+			waterForce[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		}
 		pressureGradientForceCloud = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -453,8 +450,7 @@ public class WorldSim {
 			waterStateFluxEnergy[i].Dispose();
 			evaporationMass[i].Dispose();
 			frozenMass[i].Dispose();
-			waterFrictionForce[i].Dispose();
-			waterDensityForce[i].Dispose();
+			waterForce[i].Dispose();
 		}
 		pressureGradientForceCloud.Dispose();
 		windFriction.Dispose();
@@ -973,28 +969,12 @@ public class WorldSim {
 				}, JobHandle.CombineDependencies(pgfCloudJobHandle, JobHandle.CombineDependencies(pgfJobHandles[j], pgfJobHandles[j - 1], pgfJobHandles[j + 1]))));
 			}
 
-			var waterFrictionJobHandle = WaterFrictionJob.Run(new WaterFrictionForceJob()
-			{
-				Force = waterFrictionForce[_surfaceWaterLayer],
-				
-				Position = staticState.SphericalPosition,
-				Current = lastState.WaterVelocity[_surfaceWaterLayer],
-				WindUp = lastState.Wind[1],
-				WindDown = lastState.WaterVelocity[_surfaceWaterLayer - 1],
-				LayerHeight = dependent.WaterLayerHeight[_surfaceWaterLayer],
-				CoriolisMultiplier = staticState.CoriolisMultiplier,
-				FrictionCoefficientUp = worldData.WindToWaterCurrentFrictionCoefficient,
-				FrictionCoefficientDown = 0, // TODO: do we want to add a frictional force between layers of water?
-				CoriolisTerm = coriolisTerm,
-				WaterSurfaceFrictionDepth = worldData.WaterSurfaceFrictionDepth,
-			}, lastJobHandle);
-
 			JobHandle[] waterDensityForceJobHandles = new JobHandle[_airLayers];
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
 				waterDensityForceJobHandles[j] = WaterDensityGradientForceJob.Run(new WaterDensityGradientForceJob()
 				{
-					Force = waterDensityForce[j],
+					Force = waterForce[j],
 
 					Positions = staticState.SphericalPosition,
 					Neighbors = staticState.Neighbors,
@@ -1016,6 +996,23 @@ public class WorldSim {
 				}, lastJobHandle);
 
 			}
+
+			var waterFrictionJobHandle = WaterFrictionJob.Run(new WaterFrictionForceJob()
+			{
+				Force = waterForce[_surfaceWaterLayer],
+
+				Position = staticState.SphericalPosition,
+				Current = lastState.WaterVelocity[_surfaceWaterLayer],
+				WindUp = lastState.Wind[1],
+				WindDown = lastState.WaterVelocity[_surfaceWaterLayer - 1],
+				LayerHeight = dependent.WaterLayerHeight[_surfaceWaterLayer],
+				CoriolisMultiplier = staticState.CoriolisMultiplier,
+				FrictionCoefficientUp = worldData.WindToWaterCurrentFrictionCoefficient,
+				FrictionCoefficientDown = 0, // TODO: do we want to add a frictional force between layers of water?
+				CoriolisTerm = coriolisTerm,
+				WaterSurfaceFrictionDepth = worldData.WaterSurfaceFrictionDepth,
+			}, waterDensityForceJobHandles[_surfaceWaterLayer]);
+
 
 			#endregion
 
@@ -1120,7 +1117,48 @@ public class WorldSim {
 
 			#endregion
 
+			#region State Change
 
+			// surface water
+			JobHandle waterFluxJobHandle;
+			int surfaceWaterLayerIndex = _waterLayer0 + _surfaceWaterLayer;
+
+			var waterFluxDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			{
+				solarInJobHandles[surfaceWaterLayerIndex],
+				thermalOutJobHandles[surfaceWaterLayerIndex],
+				thermalInDownJobHandles[surfaceWaterLayerIndex],
+				thermalInUpJobHandles[surfaceWaterLayerIndex],
+				conductionAirWaterJobHandle,
+				conductionIceWaterJobHandle,
+				conductionWaterTerrainJobHandle,
+				waterDensityForceJobHandles[_surfaceWaterLayer],
+				waterFrictionJobHandle,
+			};
+			waterFluxJobHandle = WaterFluxJob.Run(new WaterFluxJob()
+			{
+				EvaporatedWaterMass = evaporationMass[_surfaceWaterLayer],
+				FrozenMass = frozenMass[_surfaceWaterLayer],
+				StateFluxEnergy = waterStateFluxEnergy[_surfaceWaterLayer],
+
+				LastMass = lastState.WaterMass[_surfaceWaterLayer],
+				LastSaltMass = lastState.SaltMass[_surfaceWaterLayer],
+				LastTemperature = lastState.WaterTemperature[_surfaceWaterLayer],
+				SolarRadiationIn = solarRadiationIn[surfaceWaterLayerIndex],
+				ThermalRadiationDeltaTop = thermalRadiationDelta[surfaceWaterLayerIndex],
+				ThermalRadiationDeltaBottom = thermalRadiationDeltaSurfaceWater,
+				ConductionEnergyAir = conductionSurfaceAirWater,
+				ConductionEnergyIce = conductionIceWater,
+				ConductionEnergyTerrain = conductionWaterTerrain[_surfaceWaterLayer],
+				RelativeHumidity = dependent.AirHumidityRelative[1],
+				IceCoverage = dependent.IceCoverage,
+				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
+				EvaporationRate = worldData.EvaporationRate,
+				EvapTemperatureMax = worldData.EvapMaxTemperature,
+				EvapTemperatureMin = worldData.EvapMinTemperature,
+				WaterHeatingDepth = worldData.WaterHeatingDepth,
+			}, JobHandle.CombineDependencies(waterFluxDependencies));
+			#endregion
 
 			#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
 
@@ -1232,52 +1270,6 @@ public class WorldSim {
 				}, JobHandle.CombineDependencies(airDependencies)));
 			}
 
-
-			// surface water
-			JobHandle surfaceWaterEnergyHandle;
-			{
-				int layerIndex = _waterLayer0 + _surfaceWaterLayer;
-
-				var waterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-				{
-					solarInJobHandles[layerIndex],
-					thermalOutJobHandles[layerIndex],
-					thermalInDownJobHandles[layerIndex],
-					thermalInUpJobHandles[layerIndex],
-					conductionAirWaterJobHandle,
-					conductionIceWaterJobHandle,
-					conductionWaterTerrainJobHandle,
-					waterDensityForceJobHandles[_surfaceWaterLayer],
-					waterFrictionJobHandle,
-				};
-				energyJobHandleDependencies.Add(waterDependencies);
-				surfaceWaterEnergyHandle = EnergyWaterSurfaceJob.Run(new EnergyWaterJobSurface()
-				{
-					EvaporatedWaterMass = evaporationMass[_surfaceWaterLayer],
-					FrozenMass = frozenMass[_surfaceWaterLayer],
-					StateFluxEnergy = waterStateFluxEnergy[_surfaceWaterLayer],
-
-					LastMass = lastState.WaterMass[_surfaceWaterLayer],
-					LastSaltMass = lastState.SaltMass[_surfaceWaterLayer],
-					LastTemperature = lastState.WaterTemperature[_surfaceWaterLayer],
-					SolarRadiationIn = solarRadiationIn[layerIndex],
-					ThermalRadiationDeltaTop = thermalRadiationDelta[layerIndex],
-					ThermalRadiationDeltaBottom = thermalRadiationDeltaSurfaceWater,
-					ConductionEnergyAir = conductionSurfaceAirWater,
-					ConductionEnergyIce = conductionIceWater,
-					ConductionEnergyTerrain = conductionWaterTerrain[_surfaceWaterLayer],
-					RelativeHumidity = dependent.AirHumidityRelative[1],
-					IceCoverage = dependent.IceCoverage,
-					WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
-					EvaporationRate = worldData.EvaporationRate,
-					EvapTemperatureMax = worldData.EvapMaxTemperature,
-					EvapTemperatureMin = worldData.EvapMinTemperature,
-					WaterHeatingDepth = worldData.WaterHeatingDepth,
-				}, JobHandle.CombineDependencies(waterDependencies));
-				energyJobHandles.Add(surfaceWaterEnergyHandle);
-			}
-
-
 			JobHandle surfaceWaterJobHandle = default(JobHandle);
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
@@ -1289,14 +1281,12 @@ public class WorldSim {
 					thermalOutJobHandles[layerIndex],
 					thermalInDownJobHandles[layerIndex],
 					thermalInUpJobHandles[layerIndex],
-					conductionAirWaterJobHandle,
-					conductionIceWaterJobHandle,
 					conductionWaterTerrainJobHandle,
-					waterDensityForceJobHandles[j],
+					waterDensityForceJobHandles[j]
 				};
 				if (j == _surfaceWaterLayer)
 				{
-					waterDependencies.Add(surfaceWaterEnergyHandle);
+					waterDependencies.Add(waterFluxJobHandle);
 				}
 				energyJobHandleDependencies.Add(waterDependencies);
 				var energyWaterJobHandle = EnergyWaterJob.Run(new EnergyWaterJob()
@@ -1315,7 +1305,7 @@ public class WorldSim {
 					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
 					ConductionEnergyTerrain = conductionWaterTerrain[j],
 					StateFluxEnergy = waterStateFluxEnergy[j],
-					Force = waterDensityForce[j],
+					Force = waterForce[j],
 					SecondsPerTick = worldData.SecondsPerTick,
 				}, JobHandle.CombineDependencies(waterDependencies));
 				energyJobHandles.Add(energyWaterJobHandle);
@@ -1890,6 +1880,7 @@ public class WorldSim {
 			airMassTotal.Dispose();
 			waterMassTotal.Dispose();
 			waterDepthTotal.Dispose();
+			waterFluxDependencies.Dispose();
 			foreach (var d in energyJobHandleDependencies)
 			{
 				d.Dispose();

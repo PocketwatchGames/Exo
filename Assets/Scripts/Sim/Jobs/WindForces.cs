@@ -187,7 +187,7 @@ public struct WaterFrictionForceJob : IJobParallelFor {
 		var coriolisForce = (velocityRight * CoriolisMultiplier[i] * CoriolisTerm) * math.min(LayerHeight[i], WaterSurfaceFrictionDepth) / WaterSurfaceFrictionDepth;
 		force += coriolisForce;
 
-		Force[i] = force;
+		Force[i] += force;
 	}
 }
 

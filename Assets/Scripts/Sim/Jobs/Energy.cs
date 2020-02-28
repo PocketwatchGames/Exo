@@ -143,7 +143,7 @@ public struct EnergyWaterJob : IJobParallelFor {
 #if !EnergyWaterSurfaceJobDebug
 [BurstCompile]
 #endif
-public struct EnergyWaterJobSurface : IJobParallelFor {
+public struct WaterFluxJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
 	public NativeArray<float> StateFluxEnergy;
