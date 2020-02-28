@@ -331,9 +331,9 @@ public static class WorldGen {
 			FullWaterCoverage = worldData.FullWaterCoverage,
 			inversePI = inversePI,
 			rainDropMinSize = worldData.rainDropMinSize,
-			TropopauseElevation = worldData.TropopauseElevation,
+			TropopauseElevation = worldGenData.TropopauseElevation,
 			WaterTemperatureDepthFalloff = worldGenData.WaterTemperatureDepthFalloff,
-			BoundaryZoneElevation = worldData.BoundaryZoneElevation,
+			BoundaryZoneElevation = worldGenData.BoundaryZoneElevation,
 		});
 
 		var worldGenWaterLayerJobHandle = worldGenJobHandle;
@@ -384,10 +384,10 @@ public static class WorldGen {
 			int layerCeilingCount = 0;
 			if (i == 1)
 			{
-				setLayerHeight = worldData.BoundaryZoneElevation;
+				setLayerHeight = worldGenData.BoundaryZoneElevation;
 			} else
 			{
-				layerCeiling = worldData.TropopauseElevation;
+				layerCeiling = worldGenData.TropopauseElevation;
 				layerCeilingCount = worldData.AirLayers - 1 - i;
 			}
 

@@ -12,15 +12,6 @@
 	"GroundWaterFlowSpeed": 0.5,
 
 
-	"TropopauseElevation": 11000,
-	"BoundaryZoneElevation": 1000,
-	"stratosphereElevation": 50000,
-	"MaxTropopauseElevation": 17000,
-	"MinTropopauseElevation": 9000,
-	"TropopauseElevationSeason": 1000,
-
-
-
 	"AirDiffusionCoefficientHorizontal": 0.01,
 	"AirDiffusionCoefficientVertical": 0.01,
 	"WindWaterFriction": 0.2,
@@ -62,12 +53,9 @@
 	"DewPointTemperatureRange": 100.0,
 	"DewPointZero": 213.0,
 	"WaterVaporMassToAirMassAtDewPoint": 0.04,
-	"RainfallRate": 0.01,
 	"EvapMinTemperature": 253,
 	"EvapMaxTemperature": 413,
 	"EvaporationRate": 5,
-	"RainDropFormationSpeedTemperature": 1,
-	"RainDropCoalescenceWind": 0.1,
 	"rainDropDragCoefficient": 0.5,
 	"rainDropMaxSize": 0.004,
 	"rainDropMinSize": 0.000002,

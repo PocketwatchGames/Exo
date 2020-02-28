@@ -19,15 +19,6 @@ public struct WorldData {
 	public float GroundWaterReplenishmentSpeed;
 	public float GroundWaterFlowSpeed;
 
-	[Header("Atmosphere")]
-	public float TropopauseElevation;
-	public float BoundaryZoneElevation;
-	public float stratosphereElevation;
-	public float MaxTropopauseElevation;
-	public float MinTropopauseElevation;
-	public float TropopauseElevationSeason;
-
-
 	[Header("Pressure and Wind")]
 	public float AirDiffusionCoefficientHorizontal;
 	public float AirDiffusionCoefficientVertical;
@@ -86,12 +77,9 @@ public struct WorldData {
 	public float DewPointTemperatureRange;
 	public float DewPointZero;
 	public float WaterVaporMassToAirMassAtDewPoint;
-	public float RainfallRate;
 	public float EvapMinTemperature; // -30 celsius
 	public float EvapMaxTemperature; // 70 celsius
 	public float EvaporationRate; // TODO: evaporation on earth maxes out around 2.5M per year 
-	public float RainDropFormationSpeedTemperature;
-	public float RainDropCoalescenceWind;
 	public float rainDropDragCoefficient;
 	public float rainDropMaxSize;
 	public float rainDropMinSize;
@@ -178,7 +166,6 @@ public struct WorldData {
 	[NonSerialized] public float inverseFullWaterCoverage;
 	[NonSerialized] public float inverseFullIceCoverage;
 	[NonSerialized] public float inverseCloudMassFullAbsorption;
-	[NonSerialized] public float inverseBoundaryZoneElevation;
 	[NonSerialized] public float wattsToKJPerTick;
 	[NonSerialized] public float declinationOfSun;
 	[NonSerialized] public float sunHitsAtmosphereBelowHorizonAmount;
@@ -197,7 +184,6 @@ public struct WorldData {
 		inverseFullWaterCoverage = 1.0f / FullWaterCoverage;
 		inverseFullIceCoverage = 1.0f / (MassIce * FullIceCoverage);
 		inverseCloudMassFullAbsorption = 1.0f / CloudMassFullAbsorption;
-		inverseBoundaryZoneElevation = 1.0f / BoundaryZoneElevation;
 		wattsToKJPerTick = SecondsPerTick * 1000;
 		sunHitsAtmosphereBelowHorizonAmount = 0.055f;
 		inverseSunAtmosphereAmount = 1.0f / (1.0f + sunHitsAtmosphereBelowHorizonAmount);

@@ -1352,7 +1352,6 @@ public class WorldSim {
 				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
 				RainDropMaxSize = worldData.rainDropMaxSize,
 				RainDropMinSize = worldData.rainDropMinSize,
-				RainfallRate = worldData.RainfallRate,
 				SecondsPerTick = worldData.SecondsPerTick,
 				CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,

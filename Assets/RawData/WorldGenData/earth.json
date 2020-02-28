@@ -23,6 +23,9 @@
 	"Gravity": 9.80665,
 	"SurfaceWaterDepth": 200,
 	"ThermoclineDepth": 800,
-	"WaterTemperatureDepthFalloff": 500
+	"WaterTemperatureDepthFalloff": 500,
+	"TropopauseElevation": 11000,
+	"BoundaryZoneElevation": 1000,
+	"stratosphereElevation": 50000
 
 }

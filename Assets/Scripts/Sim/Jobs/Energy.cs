@@ -298,7 +298,6 @@ public struct EnergyCloudJob : IJobParallelFor {
 	[ReadOnly] public float RainDropMinSize;
 	[ReadOnly] public float RainDropMaxSize;
 	[ReadOnly] public float RainDropDragCoefficient;
-	[ReadOnly] public float RainfallRate;
 	[ReadOnly] public float InverseCellDiameter;
 	[ReadOnly] public float TicksPerSecond;
 	[ReadOnly] public float CloudDissapationRateDryAir;
