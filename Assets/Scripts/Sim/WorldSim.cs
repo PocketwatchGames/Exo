@@ -467,7 +467,7 @@ public class WorldSim {
 		JobHandle lastJobHandle = default(JobHandle);
 		for (int tick = 0; tick < ticksToAdvance; tick++)
 		{
-#region Init Time step
+			#region Init Time step
 
 			bool updateDisplay = tick == ticksToAdvance - 1;
 
@@ -493,7 +493,6 @@ public class WorldSim {
 			var rainfallWaterMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var airMassTotal = new NativeArray<float>(staticState.StratosphereMass, Allocator.TempJob);
-			var waterMassTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var waterDepthTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			for (int i = 0; i < _layerCount; i++)
 			{
@@ -506,9 +505,10 @@ public class WorldSim {
 				condensationGroundMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 				condensationCloudMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			}
-#endregion
+			#endregion
 
-#region Update Planetary Globals
+			#region Update Planetary Globals
+
 			nextState.PlanetState = lastState.PlanetState;
 			nextState.PlanetState.Ticks++;
 
@@ -520,9 +520,9 @@ public class WorldSim {
 			nextState.PlanetState.Rotation = new float3(lastState.PlanetState.Rotation.x, Mathf.Repeat(lastState.PlanetState.Rotation.y + lastState.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);
 
 			float coriolisTerm = 2 * lastState.PlanetState.SpinSpeed;
-#endregion
+			#endregion
 
-#region Init Solar Radiation Per Cell
+			#region Init Solar Radiation Per Cell
 			var solarInJobHandle = SolarRadiationInJob.Run(new SolarRadiationJob()
 			{
 				SolarRadiation = solarRadiation,
@@ -541,12 +541,12 @@ public class WorldSim {
 
 				LastTerrain = lastState.Terrain,
 			}, lastJobHandle);
-#endregion
+			#endregion
 
 			// Calculate emissivity per cell
 			// TODO: combine cloud emissivity with cloud conduction
 			// TODO: we can probably combine this step with the thermal radiation step
-#region Emissivity Per Cell
+			#region Emissivity Per Cell
 
 			JobHandle[] emissivityJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers-1; j++)
@@ -576,10 +576,10 @@ public class WorldSim {
 				Terrain = lastState.Terrain,
 				VegetationCoverage = dependent.VegetationCoverage
 			});
-#endregion
+			#endregion
 
 			// Follow the solar radiation down from the top of the atmosphere to ther terrain, and absorb some as it passes through each layer
-#region Solar Radiation Absorbed
+			#region Solar Radiation Absorbed
 			// process each vertical layer in order
 
 			// atmosphere
@@ -644,10 +644,10 @@ public class WorldSim {
 				worldData = worldData,
 				LastTerrain = lastState.Terrain,
 			}, solarInJobHandle);
-#endregion
+			#endregion
 
 			// Calculate how much thermal radition is being emitted out of each layer
-#region Thermal Radiation
+			#region Thermal Radiation
 			JobHandle[] thermalOutJobHandles = new JobHandle[_layerCount];
 
 			// ICE
@@ -722,11 +722,11 @@ public class WorldSim {
 					SecondsPerTick = worldData.SecondsPerTick
 				}, emissivityJobHandles[layer]);
 			}
-#endregion
+			#endregion
 
 
 			// Thermal radiation travels upwards, partially reflecting downwards (clouds), partially absorbed, and partially lost to space
-#region Thermal Radiation Absorbed Up
+			#region Thermal Radiation Absorbed Up
 			// Start at bottom water layer and go up, then go back down
 			JobHandle[] thermalInUpJobHandles = new JobHandle[_layerCount];
 			JobHandle[] thermalInDownJobHandles = new JobHandle[_layerCount];
@@ -801,11 +801,11 @@ public class WorldSim {
 			{
 				thermalInUpJobHandlesCombined = JobHandle.CombineDependencies(thermalInUpJobHandlesCombined, thermalInUpJobHandles[j]);
 			}
-#endregion
+			#endregion
 
 			// Thermal radiation is absorbed travelling downwards, collecting and then eventually hitting the earth (back radiation)
 			// TODO: we need to include the top layer of atmosphere here, since we calculate cloud absorption as part of the air layer step
-#region Thermal Radiation Absorbed Down
+			#region Thermal Radiation Absorbed Down
 
 			// transmit down from top of atmosphere			
 			for (int j = _layerCount - 2; j >= 0; j--)
@@ -886,13 +886,13 @@ public class WorldSim {
 					}, thermalInDependenciesHandle);
 				}
 			}
-#endregion
+			#endregion
 
 			// Buoyancy, Updrafts, and mixing occur across air layers and water layers
 			// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
 			// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
 			// Air, Water, Cloud
-#region Pressure Gradient Force
+			#region Pressure Gradient Force
 
 			JobHandle[] pgfJobHandles = new JobHandle[_airLayers];
 			for (int j = 1; j < _airLayers - 1; j++)
@@ -1003,12 +1003,12 @@ public class WorldSim {
 
 			}
 
-#endregion
+			#endregion
 
 
 			// Conduction is calculated for each Surface that might touch another surface
 			// Air to Cloud, Air to Ice, Air to Water, Air to Terrain, Ice to Water, Ice to Terrain, Water to Terrain
-#region Conduction
+			#region Conduction
 			// air to ice
 			var conductionAirIceJobHandle = ConductionAirIceJob.Run(new ConductionAirIceJob()
 			{
@@ -1104,11 +1104,11 @@ public class WorldSim {
 				}, conductionWaterTerrainJobHandle));
 			}
 
-#endregion
+			#endregion
 
 
 
-#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
+			#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
 
 			var energyJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
 			var energyJobHandleDependencies = new List<NativeList<JobHandle>>();
@@ -1373,10 +1373,10 @@ public class WorldSim {
 			energyJobHandles.Add(updateTerrainJobHandle);
 			var energyJobHandle = JobHandle.CombineDependencies(energyJobHandles);
 
-#endregion
+			#endregion
 
 
-#region State Changes - Evaporation, Condensation, Melting, Rainfall
+			#region State Changes - Evaporation, Condensation, Melting, Rainfall
 
 			var stateChangeJobHandle = StateChangeJob.Run(new StateChangeJob()
 			{
@@ -1419,11 +1419,11 @@ public class WorldSim {
 
 				}, stateChangeJobHandle);
 			}
-#endregion
+			#endregion
 
 			// Diffuse from last time step
 			// Air, Water, Cloud
-#region Diffusion
+			#region Diffusion
 
 			JobHandle[] diffusionJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers - 1; j++)
@@ -1495,9 +1495,9 @@ public class WorldSim {
 				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
 			}, stateChangeJobHandle);
 
-#endregion
+			#endregion
 
-#region Apply Diffusion
+			#region Apply Diffusion
 
 			JobHandle diffusionJobHandle = default(JobHandle);
 			diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, ApplyAdvectionCloudJob.Run(new ApplyAdvectionCloudJob()
@@ -1531,7 +1531,7 @@ public class WorldSim {
 				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
 			}
 
-#endregion
+			#endregion
 
 
 
@@ -1539,7 +1539,7 @@ public class WorldSim {
 			// Wind and currents move temperature and trace elements horizontally
 			// Air, Water, Cloud
 			// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-#region Advection
+			#region Advection
 
 			JobHandle[] advectionJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers - 1; j++)
@@ -1602,9 +1602,9 @@ public class WorldSim {
 			}, diffusionJobHandle);
 
 
-#endregion
+			#endregion
 
-#region Apply Advection
+			#region Apply Advection
 
 			JobHandle advectionJobHandle = default(JobHandle);
 			advectionJobHandle = JobHandle.CombineDependencies(advectionJobHandle, ApplyAdvectionCloudJob.Run(new ApplyAdvectionCloudJob()
@@ -1638,11 +1638,17 @@ public class WorldSim {
 				}, JobHandle.CombineDependencies( advectionJobHandles[i+_airLayer0], advectionJobHandles[i + _airLayer0 - 1], advectionJobHandles[i + _airLayer0 + 1])));
 			}
 
-#endregion
+			#endregion
 
-#region Update dependent variables
+			lastJobHandle = advectionJobHandle;
+			lastJobHandle.Complete();
+
+			#region Update dependent variables
+
+			var waterMassTotal = new NativeArray<float>(nextState.IceMass, Allocator.TempJob);
+
 			NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
-			var updateDependentWaterLayerJobHandle = default(JobHandle);
+			var updateDependentWaterLayerJobHandle = lastJobHandle;
 			for (int j = _waterLayers - 2; j > 0; j--)
 			{
 				updateDependentWaterLayerJobHandle = UpdateDependentWaterLayerJob.Run(new UpdateDependentWaterLayerJob()
@@ -1666,10 +1672,10 @@ public class WorldSim {
 					WaterDensityPerDegree = worldData.WaterDensityPerDegree,
 					WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
 					Gravity = nextState.PlanetState.Gravity,
-				}, JobHandle.CombineDependencies(updateDependentWaterLayerJobHandle, advectionJobHandle));
+				}, updateDependentWaterLayerJobHandle);
 				updateDependenciesJobHandles.Add(updateDependentWaterLayerJobHandle);
 			}
-			JobHandle updateDependentAirLayerJobHandle = advectionJobHandle;
+			JobHandle updateDependentAirLayerJobHandle = lastJobHandle;
 			for (int j = _airLayers - 2; j > 0; j--)
 			{
 				updateDependentAirLayerJobHandle = UpdateDependentAirLayerJob.Run(new UpdateDependentAirLayerJob()
@@ -1723,15 +1729,15 @@ public class WorldSim {
 				worldData = worldData,
 				LowerAirTemperature = lastState.AirTemperature[1],
 				lowerAirHeight = dependent.LayerHeight[1],
-			}, JobHandle.CombineDependencies(updateDependentAirLayerJobHandle, updateDependentWaterLayerJobHandle, advectionJobHandle));
+			}, JobHandle.CombineDependencies(updateDependentAirLayerJobHandle, updateDependentWaterLayerJobHandle, lastJobHandle));
 			updateDependenciesJobHandles.Add(updateDependenciesJobHandle);
 			lastJobHandle = JobHandle.CombineDependencies(updateDependenciesJobHandles);
 
-#endregion
+			#endregion
 
 			lastJobHandle.Complete();
 
-#region Debug
+			#region Debug
 			if (checkForDegeneracy)
 			{
 				bool degen = false;
@@ -1771,9 +1777,9 @@ public class WorldSim {
 				PrintState("State", logStateIndex, staticState, nextState, new List<string>());
 				PrintDependentState("Dependent Vars", logStateIndex, dependent);
 			}
-#endregion
+			#endregion
 
-#region Update Display
+			#region Update Display
 			if (tick == ticksToAdvance-1)
 			{
 				var curState = states[curStateIndex];
@@ -1856,9 +1862,9 @@ public class WorldSim {
 
 			}
 
-#endregion
+			#endregion
 
-#region Dispose Temporary Arrays
+			#region Dispose Temporary Arrays
 			updateDependenciesJobHandles.Dispose();
 			energyJobHandles.Dispose();
 			atmosphericWindowUp.Dispose();
@@ -1890,7 +1896,7 @@ public class WorldSim {
 				condensationGroundMass[i].Dispose();
 				condensationCloudMass[i].Dispose();
 			}
-#endregion
+			#endregion
 
 
 		}
