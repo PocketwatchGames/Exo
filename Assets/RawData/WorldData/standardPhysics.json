@@ -23,7 +23,6 @@
 
 	"AirDiffusionCoefficientHorizontal": 0.01,
 	"AirDiffusionCoefficientVertical": 0.01,
-	"MaxBuoyancy": 0.1,
 	"WindWaterFriction": 0.2,
 	"WindIceFriction": 0.1,
 	"WindTerrainFrictionMax": 0.5,
@@ -78,16 +77,12 @@
 	"DewPointTemperaturePerRelativeHumidity": 20,
 	"IceHeatingDepth": 0.1,
 	"WaterHeatingDepth": 0.1,
+	"WaterSurfaceFrictionDepth": 200,
 
-	"ThermoclineDepth": 500,
-	"WindToOceanCurrentFactor": 0.25,
-	"OceanCurrentSpeed": 0.2,
-	"OceanUpwellingSpeed": 0.001,
-	"SalinityVerticalMixingSpeed": 0.00000001,
+	"WindToWaterCurrentFrictionCoefficient": 0.00001,
 	"WaterDensityPerSalinity": 800,
 	"WaterDensityPerDegree": -0.2,
 	"WaterDensityCurrentSpeed": 0.5,
-	"WaterTemperatureDepthFalloff": 500,
 
 	"MinTemperatureCanopy": 223.15,
 	"MaxTemperatureCanopy": 323.15

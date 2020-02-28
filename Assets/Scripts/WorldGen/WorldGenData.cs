@@ -31,5 +31,8 @@ public class WorldGenData {
 	public float MaxSalinity;
 	public float MinSalinity;
 	public int NumPlates;
+	public float SurfaceWaterDepth;
+	public float ThermoclineDepth;
+	public float WaterTemperatureDepthFalloff;
 
 }

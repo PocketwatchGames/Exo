@@ -1,4 +1,5 @@
 ﻿//#define EnergyAirJobDebug
+//#define EnergyWaterSurfaceJobDebug
 //#define DISABLE_CORIOLIS
 
 using Unity.Burst;
@@ -31,7 +32,6 @@ public struct EnergyAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> WindFriction;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
-	[ReadOnly] public NativeArray<float> Buoyancy;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float WindFrictionMultiplier;
 	[ReadOnly] public float CoriolisTerm;
@@ -39,7 +39,6 @@ public struct EnergyAirJob : IJobParallelFor {
 	[ReadOnly] public float DewPointZero;
 	[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
 	[ReadOnly] public float InverseDewPointTemperatureRange;
-	[ReadOnly] public float MaxBuoyancy;
 	public void Execute(int i)
 	{
 		float airMass = AirMass[i];
@@ -107,6 +106,7 @@ public struct EnergyWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float3> LastVelocity;
+	[ReadOnly] public NativeArray<float3> WaterDensityForce;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
@@ -125,14 +125,11 @@ public struct EnergyWaterJob : IJobParallelFor {
 		SaltMass[i] = LastSaltMass[i];
 		Mass[i] = LastMass[i];
 
-		float3 pressureGradientForce = float3.zero;
-		float3 coriolisForce = float3.zero;
-
-		Velocity[i] = LastVelocity[i] + (pressureGradientForce + coriolisForce) * SecondsPerTick;
+		Velocity[i] = LastVelocity[i] + WaterDensityForce[i] * SecondsPerTick;
 	}
 }
 
-#if !EnergyWaterJobSurfaceDebug
+#if !EnergyWaterSurfaceJobDebug
 [BurstCompile]
 #endif
 public struct EnergyWaterJobSurface : IJobParallelFor {
@@ -146,7 +143,8 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float3> LastVelocity;
-	[ReadOnly] public NativeArray<float3> LastSurfaceWind;
+	[ReadOnly] public NativeArray<float3> WaterSurfaceForce;
+	[ReadOnly] public NativeArray<float3> WaterDensityForce;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaTop;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaBottom;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
@@ -156,11 +154,17 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> RelativeHumidity;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float EvaporationRate;
 	[ReadOnly] public float EvapTemperatureMin;
 	[ReadOnly] public float EvapTemperatureMax;
 	[ReadOnly] public float WaterHeatingDepth;
 	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float CoriolisTerm;
+	[ReadOnly] public float WaterSurfaceFrictionDepth;
+	[ReadOnly] public float WaterDensityPerDegree;
+	[ReadOnly] public float WaterDensityPerSalinity;
 	public void Execute(int i)
 	{
 		float lastTemperature = LastTemperature[i];
@@ -244,10 +248,14 @@ public struct EnergyWaterJobSurface : IJobParallelFor {
 			float energySources = (energyTop + energyBottom) / specificHeat;
 			Temperature[i] = temperature + energySources;
 
-			float3 pressureGradientForce = float3.zero;
-			float3 coriolisForce = float3.zero;
+			var velocityUp = velocity * Position[i];
+			var velocityRight = math.cross(Position[i], velocity);
+			float depth = Atmosphere.GetWaterVolume(waterMass, saltMass, temperature, WaterDensityPerSalinity, WaterDensityPerDegree);
 
-			Velocity[i] = velocity + (pressureGradientForce + coriolisForce) * SecondsPerTick;
+			// this averages out to about a 90 degree turn if it has the full depth of the ekman spiral (200 meters)
+			// http://oceanmotion.org/html/background/ocean-in-motion.htm
+			var coriolisForce = (velocityRight * CoriolisMultiplier[i] * CoriolisTerm) * math.min(depth, WaterSurfaceFrictionDepth)/ WaterSurfaceFrictionDepth;
+			Velocity[i] = velocity + (WaterDensityForce[i] + WaterSurfaceForce[i] + coriolisForce) * SecondsPerTick;
 		}
 	}
 }
@@ -310,8 +318,8 @@ public struct EnergyCloudJob : IJobParallelFor {
 
 		float3 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + PressureGradientForce[i] * SecondsPerTick;
 
-		var velocityUp = math.dot(Position[i], velocity) * Position[i];
-		var velocityRight = math.cross(Position[i], velocity - velocityUp);
+		var velocityUp =  velocity * Position[i];
+		var velocityRight = math.cross(Position[i], velocity);
 		velocity += velocityRight * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
 
 		float precipitationMass = 0;

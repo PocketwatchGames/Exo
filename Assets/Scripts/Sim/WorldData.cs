@@ -33,7 +33,6 @@ public struct WorldData {
 	public float AirDiffusionCoefficientVertical;
 	public float WaterDiffusionCoefficientHorizontal;
 	public float WaterDiffusionCoefficientVertical;
-	public float MaxBuoyancy;
 	public float WindWaterFriction;
 	public float WindIceFriction;
 	public float WindTerrainFrictionMin;
@@ -41,6 +40,8 @@ public struct WorldData {
 	public float WindVegetationFriction;
 	public float CloudDiffusionCoefficient;
 	public float MaxTerrainRoughnessForWindFriction;
+	public float WaterSurfaceFrictionDepth;
+	public float WindToWaterCurrentFrictionCoefficient;
 
 	[Header("Atmospheric Energy Cycle")]
 	// atmospheric heat balance https://energyeducation.ca/encyclopedia/Earth%27s_heat_balance
@@ -101,15 +102,10 @@ public struct WorldData {
 	public float IceHeatingDepth;
 	public float WaterHeatingDepth;
 
-	[Header("Ocean")]
-	public float ThermoclineDepth;
-	public float WindToOceanCurrentFactor;
-	public float OceanCurrentSpeed;
-	public float OceanUpwellingSpeed;
+	[Header("Water")]
 	public float WaterDensityPerSalinity;
 	public float WaterDensityPerDegree;
 	public float WaterDensityCurrentSpeed;
-	public float WaterTemperatureDepthFalloff;
 
 	[Header("Ecology")]
 	public float MinTemperatureCanopy;

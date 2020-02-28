@@ -1979,7 +1979,6 @@ MonoBehaviour:
     AirDiffusionCoefficientVertical: 0
     WaterDiffusionCoefficientHorizontal: 0
     WaterDiffusionCoefficientVertical: 0
-    MaxBuoyancy: 0
     WindWaterFriction: 0
     WindIceFriction: 0.1
     WindTerrainFrictionMin: 0
@@ -1987,6 +1986,8 @@ MonoBehaviour:
     WindVegetationFriction: 0
     CloudDiffusionCoefficient: 0
     MaxTerrainRoughnessForWindFriction: 0
+    WaterSurfaceFrictionDepth: 0
+    WindToWaterCurrentFrictionCoefficient: 0
     SolarAbsorptivityAir: 0
     SolarAbsorptivityWaterVapor: 0
     SolarAbsorptivityCloud: 0
@@ -2027,14 +2028,9 @@ MonoBehaviour:
     DewPointTemperaturePerRelativeHumidity: 20
     IceHeatingDepth: 0
     WaterHeatingDepth: 0
-    ThermoclineDepth: 0
-    WindToOceanCurrentFactor: 0.1
-    OceanCurrentSpeed: 0.00001
-    OceanUpwellingSpeed: 0.0001
     WaterDensityPerSalinity: 0
     WaterDensityPerDegree: 0
     WaterDensityCurrentSpeed: 0
-    WaterTemperatureDepthFalloff: 0
     MinTemperatureCanopy: 223.15
     MaxTemperatureCanopy: 323.15
   TimeScale: 0
@@ -2086,6 +2082,10 @@ MonoBehaviour:
     PressureGradientForceCloudJob:
       Enabled: 0
     WindFrictionJob:
+      Enabled: 0
+    WaterFrictionJob:
+      Enabled: 0
+    WaterDensityJob:
       Enabled: 0
     ConductionAirIceJob:
       Enabled: 0

@@ -40,8 +40,9 @@ public class WorldView : MonoBehaviour {
 
 	public enum WindOverlay {
 		None,
-		DeepWaterCurrent,
-		ShallowWaterCurrent,
+		Current0,
+		Current1,
+		Current2,
 		Wind0,
 		Wind1,
 		Wind2,
@@ -719,11 +720,14 @@ public class WorldView : MonoBehaviour {
 			case WindOverlay.PGF2:
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[3]);
 				return true;
-			case WindOverlay.ShallowWaterCurrent:
-				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, false, simState.WaterVelocity[Sim.WorldData.WaterLayers-2]);
+			case WindOverlay.Current0:
+				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers-2]);
 				return true;
-			case WindOverlay.DeepWaterCurrent:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
+			case WindOverlay.Current1:
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 3]);
+				return true;
+			case WindOverlay.Current2:
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 4]);
 				return true;
 		}
 		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
@@ -806,7 +810,7 @@ public class WorldView : MonoBehaviour {
 		{
 			float dropletSize = 1000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
 			float3 vel = state.CloudVelocity[ActiveCellIndex];
-			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + " mm " + "VEL: (" + vel.x.ToString("0.0") + ", " + vel.y.ToString("0.0") + ", " + vel.z.ToString("0.00") + ")\n";
+			s += "CLOUD: " + (state.CloudMass[ActiveCellIndex]).ToString("0.000") + " kg ELE: " + (dependent.CloudElevation[ActiveCellIndex]).ToString("0") + "m R: " + dropletSize.ToString("0.000") + " mm " + "VEL: " + VecToString(vel) + "\n";
 		}
 		else
 		{
@@ -818,7 +822,7 @@ public class WorldView : MonoBehaviour {
 		{
 			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.Wind[i][ActiveCellIndex]);
 			s += "LAYER " + i + " | TEMP: " + GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1) + " RH: " + (dependent.AirHumidityRelative[i][ActiveCellIndex] * 100).ToString("0.0") + "%" + "\n";
-			s += "ELE: " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P: " + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: (" + wind.x.ToString("0.0") + ", " + wind.y.ToString("0.0") + ", " + wind.z.ToString("0.00") + ")\n";
+			s += "ELE: " + dependent.LayerElevation[i][ActiveCellIndex].ToString("0") + "m P: " + display.Pressure[i][ActiveCellIndex].ToString("0") + " Pa WIND: " + VecToString(wind) + "\n";
 			s += "MASS: " + dependent.AirMass[i][ActiveCellIndex].ToString("0") + "kg " + " VAPOR: " + state.AirVapor[i][ActiveCellIndex].ToString("0") + " kg\n";
 			s += "\n";
 		}
@@ -858,13 +862,17 @@ public class WorldView : MonoBehaviour {
 			if (state.WaterMass[i][ActiveCellIndex] > 0)
 			{
 				s += "LAYER " + layerIndex + " | TEMP: " + GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0) + " SALT: " + (100*dependent.WaterSalinity[i][ActiveCellIndex]).ToString("0.000") + "%\n";
-				s += "MASS: " + (state.WaterSaltMass[i][ActiveCellIndex]).ToString("0.0") + " kg VEL: " + ": " + (state.WaterVelocity[i][ActiveCellIndex]) + " m/s\n";
+				s += "MASS: " + (state.WaterSaltMass[i][ActiveCellIndex]).ToString("0.0") + " kg VEL: " + ": " + VecToString(state.WaterVelocity[i][ActiveCellIndex]) + "\n";
 				s += "\n";
 			}
 		}
 		return s;
 	}
 
+	private static string VecToString(float3 v)
+	{
+		return "(" + v.x.ToString("0.00") + ", " + v.y.ToString("0.00") + ", " + v.z.ToString("0.00") + ")";
+	}
 
 	#endregion
 }

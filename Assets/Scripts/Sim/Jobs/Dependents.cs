@@ -164,13 +164,15 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 #endif
 public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 	public NativeArray<float> Salinity;
+	public NativeArray<float> Density;
 	public NativeArray<float> WaterCoverage;
 	public NativeArray<float> PotentialEnergy;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
 	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public WorldData worldData;
+	[ReadOnly] public float WaterDensityPerDegree;
+	[ReadOnly] public float WaterDensityPerSalinity;
 	public void Execute(int i)
 	{
 		if (WaterMass[i] > 0)
@@ -178,6 +180,7 @@ public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 			float waterDepth = WaterMass[i] / WorldData.MassWater + SaltMass[i] / WorldData.MassSalt;
 			WaterCoverage[i] = math.min(1, waterDepth / math.max(1, Terrain[i].Roughness));
 			Salinity[i] = SaltMass[i] / (WaterMass[i] + SaltMass[i]);
+			Density[i] = Atmosphere.GetWaterDensity(WaterMass[i], SaltMass[i], Temperature[i], WaterDensityPerSalinity, WaterDensityPerDegree);
 			PotentialEnergy[i] = (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt) * Temperature[i];
 		}
 		else
@@ -185,6 +188,7 @@ public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 			WaterCoverage[i] = 0;
 			Salinity[i] = 0;
 			PotentialEnergy[i] = 0;
+			Density[i] = 0;
 		}
 	}
 }

@@ -122,6 +122,7 @@ public struct DependentState {
 	public NativeArray<float>[] AirHumidityRelative;
 	public NativeArray<float>[] WaterCoverage;
 	public NativeArray<float>[] WaterSalinity;
+	public NativeArray<float>[] WaterDensity;
 	public NativeArray<float>[] WaterPotentialEnergy;
 	public NativeArray<float>[] AirPotentialEnergy;
 	public NativeArray<float>[] LayerHeight;
@@ -160,6 +161,7 @@ public struct DependentState {
 		LayerElevation = new NativeArray<float>[airLayers];
 		AirPotentialEnergy = new NativeArray<float>[airLayers];
 		WaterSalinity = new NativeArray<float>[waterLayers];
+		WaterDensity = new NativeArray<float>[waterLayers];
 		WaterCoverage = new NativeArray<float>[waterLayers];
 		WaterPotentialEnergy = new NativeArray<float>[waterLayers];
 		for (int i = 0; i < airLayers; i++)
@@ -176,6 +178,7 @@ public struct DependentState {
 		{
 			WaterCoverage[i] = new NativeArray<float>(count, Allocator.Persistent);
 			WaterSalinity[i] = new NativeArray<float>(count, Allocator.Persistent);
+			WaterDensity[i] = new NativeArray<float>(count, Allocator.Persistent);
 			WaterPotentialEnergy[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 	}
@@ -211,6 +214,7 @@ public struct DependentState {
 		for (int i = 0; i < WaterSalinity.Length; i++)
 		{
 			WaterCoverage[i].Dispose();
+			WaterDensity[i].Dispose();
 			WaterSalinity[i].Dispose();
 			WaterPotentialEnergy[i].Dispose();
 		}

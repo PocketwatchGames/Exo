@@ -331,7 +331,7 @@ public static class WorldGen {
 			inversePI = inversePI,
 			rainDropMinSize = worldData.rainDropMinSize,
 			TropopauseElevation = worldData.TropopauseElevation,
-			WaterTemperatureDepthFalloff = worldData.WaterTemperatureDepthFalloff,
+			WaterTemperatureDepthFalloff = worldGenData.WaterTemperatureDepthFalloff,
 			BoundaryZoneElevation = worldData.BoundaryZoneElevation,
 		});
 
@@ -342,12 +342,12 @@ public static class WorldGen {
 			float layerCount;
 			if (i== worldData.WaterLayers - 2)
 			{
-				layerDepthMax = worldData.ThermoclineDepth;
+				layerDepthMax = worldGenData.SurfaceWaterDepth;
 				layerCount = 1;
 			}
 			else if (i == worldData.WaterLayers - 3)
 			{
-				layerDepthMax = worldData.ThermoclineDepth * 2;
+				layerDepthMax = worldGenData.ThermoclineDepth;
 				layerCount = 1;
 			}
 			else
@@ -430,12 +430,14 @@ public static class WorldGen {
 				Salinity = dependent.WaterSalinity[j],
 				WaterCoverage = dependent.WaterCoverage[j],
 				PotentialEnergy = dependent.WaterPotentialEnergy[j],
+				Density = dependent.WaterDensity[j],
 				
 				SaltMass = state.WaterSaltMass[j],
 				WaterMass = state.WaterMass[j],
 				Temperature = state.WaterTemperature[j],
 				Terrain = state.Terrain,
-				worldData = worldData
+				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
+				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity
 			}, worldGenWaterLayerJobHandle);
 			updateDependenciesJobHandles.Add(updateDependentWaterLayerJobHandle);
 		}

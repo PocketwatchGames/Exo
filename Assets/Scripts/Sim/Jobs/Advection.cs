@@ -1,4 +1,4 @@
-﻿#define DISABLE_VERTICAL_AIR_MOVEMENT
+﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
 #define DISABLE_AIR_ADVECTION
 #define DISABLE_WATER_ADVECTION
 //#define AdvectionAirJobDebug
@@ -56,7 +56,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 
-#if !DISABLE_AIR_ADVECTION
 		float3 velocity = Wind[i];
 		float airMass = AirMass[i];
 		float vapor = Vapor[i];
@@ -94,9 +93,9 @@ public struct AdvectionAirJob : IJobParallelFor {
 					float velDotDir = math.max(0, (math.dot(nVel / speed, math.normalize(pos - Position[n])) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
 					velDotDir *= speed * InverseCellDiameter * SecondsPerTick;
 
-//					newWind += nVel * velDotDir;
-//					newWaterVapor += Vapor[n] * velDotDir;
-//					newTemperature += Temperature[n] * velDotDir;
+					newWind += nVel * velDotDir;
+					newWaterVapor += Vapor[n] * velDotDir;
+					newTemperature += Temperature[n] * velDotDir;
 				}
 			}
 		}
@@ -106,40 +105,15 @@ public struct AdvectionAirJob : IJobParallelFor {
 
 		if (!IsTop)
 		{
-			float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-			float combinedWind = math.min(1, math.max(0, WindVertical[i]) - math.min(0, UpWindVertical[i])) * SecondsPerTick / heightDiff;
-
-			float diffusionAmount = UpAirMass[i] / (UpAirMass[i] + airMass);
-
-			float absoluteHumidityUp = UpHumidity[i] / (UpHumidity[i] + UpAirMass[i]);
-			gradientWaterVapor += (absoluteHumidityUp - absoluteHumidity) * diffusionAmount * combinedWind;
-
-			float potentialTemperatureUp = UpTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
-			gradientTemperature += (potentialTemperatureUp - Temperature[i]) * diffusionAmount * combinedWind;
-
-			gradientWindVertical += (UpWindVertical[i] - WindVertical[i]) * diffusionAmount * combinedWind;
-
 		}
 		if (!IsBottom)
 		{
-			float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-			float combinedWind = math.min(1, math.max(0, DownWindVertical[i]) - math.min(0, WindVertical[i])) * SecondsPerTick / heightDiff;
-
-			float diffusionAmount = DownAirMass[i] / (DownAirMass[i] + airMass);
-
-			float absoluteHumidityDown = DownHumidity[i] / (DownHumidity[i] + DownAirMass[i]);
-			gradientWaterVapor += (absoluteHumidityDown - absoluteHumidity) * diffusionAmount * math.min(1, combinedWind + DiffusionCoefficientVertical);
-
-			float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
-			gradientTemperature += (potentialTemperatureDown - Temperature[i]) * diffusionAmount * math.min(1, combinedWind + DiffusionCoefficientVertical);
-
-			gradientWindVertical += (DownWindVertical[i] - WindVertical[i]) * diffusionAmount * math.min(1, combinedWind + DiffusionCoefficientVertical);
 		}
 
-		//		float moveToNeutralBuoyancy = (UpTemperature[i] - Temperature[i]) / WorldData.TemperatureLapseRate - heightDiff;
-		//		float vertMovement = math.min(MaxVerticalMovement, math.clamp(moveToNeutralBuoyancy + DiffusionCoefficient, 0, 1));
 
 #endif
+
+#if !DISABLE_AIR_ADVECTION
 		Delta[i] = new DiffusionAir()
 		{
 			Temperature = newTemperature,
@@ -169,7 +143,6 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 
-#if !DISABLE_CLOUD_ADVECTION
 		float3 velocity = Velocity[i];
 		float3 pos = Position[i];
 		float mass = Mass[i];
@@ -212,13 +185,13 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			}
 		}
 
+#if !DISABLE_CLOUD_ADVECTION
 		Delta[i] = new DiffusionCloud()
 		{
 			Mass = newMass,
 			DropletMass = newDropletMass,
 			Velocity = newVelocity
 		};
-
 #endif
 	}
 }
@@ -270,13 +243,15 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			}
 		}
 
+
+#if !DISABLE_WATER_ADVECTION
 		Delta[i] = new DiffusionWater()
 		{
 			Temperature = newTemperature,
 			SaltMass = newSaltMass,
 			Velocity = newVelocity
 		};
-
+#endif
 
 	}
 }

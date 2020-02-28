@@ -65,6 +65,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 #if !DISABLE_VERTICAL_AIR_MOVEMENT
 
+		// NOTE: we don't diffuse velocity vertically
 		if (!IsTop)
 		{
 			float diffusionAmount = UpAirMass[i] / (UpAirMass[i] + airMass) * DiffusionCoefficientVertical;
@@ -75,9 +76,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 			float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float potentialTemperatureUp = UpTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
 			newTemperature += (potentialTemperatureUp - LastTemperature[i]) * diffusionAmount;
-
-			newWind += (UpWind[i] - LastWind[i]) * diffusionAmount;
-
 		}
 		if (!IsBottom)
 		{
@@ -89,8 +87,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 			float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
 			newTemperature += (potentialTemperatureDown - LastTemperature[i]) * diffusionAmount;
-
-			newWind += (DownWind[i] - LastWind[i]) * diffusionAmount;
 		}
 
 		//		float moveToNeutralBuoyancy = (UpTemperature[i] - Temperature[i]) / WorldData.TemperatureLapseRate - heightDiff;
@@ -205,6 +201,7 @@ public struct DiffusionWaterJob : IJobParallelFor {
 				}
 			}
 
+			// NOTE: we don't diffuse velocity vertically
 			float upMass = UpMass[i];
 			if (upMass > 0)
 			{
@@ -215,7 +212,6 @@ public struct DiffusionWaterJob : IJobParallelFor {
 				float neighborSalinity = UpSalt[i] / (upMass + LastSalt[i]);
 				newSaltMass += (neighborSalinity - salinity) * mass * diffusionAmount;
 				newTemperature += (UpTemperature[i] - LastTemperature[i]) * diffusionAmount;
-				newVelocity += (UpCurrent[i] - LastCurrent[i]) * diffusionAmount;
 			}
 			float downMass = DownMass[i];
 			if (downMass > 0)
@@ -225,7 +221,6 @@ public struct DiffusionWaterJob : IJobParallelFor {
 
 				newSaltMass += (neighborSalinity - salinity) * mass * diffusionAmount;
 				newTemperature += (DownTemperature[i] - LastTemperature[i]) * diffusionAmount;
-				newVelocity += (DownCurrent[i] - LastCurrent[i]) * diffusionAmount;
 			}
 
 		}

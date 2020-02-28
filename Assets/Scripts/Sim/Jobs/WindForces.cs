@@ -1,4 +1,5 @@
 ﻿//#define PressureGradientForceAirJobDebug
+//#define WaterFrictionJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -40,7 +41,6 @@ public struct WindFrictionJob : IJobParallelFor {
 #endif
 public struct PressureGradientForceAirJob : IJobParallelFor {
 	public NativeArray<float3> Delta;
-	public NativeArray<float> Buoyancy;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> Temperature;
@@ -60,7 +60,6 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DownLayerElevation;
 	[ReadOnly] public NativeArray<float> DownLayerHeight;
 	[ReadOnly] public float InverseCellDiameter;
-	[ReadOnly] public float InverseCoordDiff;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
@@ -70,6 +69,7 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 		float3 position = Positions[i];
 		float elevation = LayerElevation[i] + LayerHeight[i] / 2;
 		float pressure = Pressure[i];
+		float3 force = 0;
 
 		for (int j = 0; j < 6; j++)
 		{
@@ -85,7 +85,7 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 			}
 		}
 		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Temperature[i], AirMass[i], VaporMass[i]);
-		Delta[i] = gradientPressure * Gravity * InverseCellDiameter * inverseDensity;
+		force = gradientPressure * Gravity * InverseCellDiameter * inverseDensity;
 
 
 		float buoyancy = 0;
@@ -101,13 +101,8 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 			float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
 			buoyancy -= potentialTemperatureDown / Temperature[i] - 1;
 		}
-		//		float moveToNeutralBuoyancy = (UpTemperature[i] - Temperature[i]) / WorldData.TemperatureLapseRate - heightDiff;
-		//		float vertMovement = math.min(MaxVerticalMovement, math.clamp(moveToNeutralBuoyancy + DiffusionCoefficient, 0, 1));
 
-		//Debug.Log("I: " + i + " G: " + gradientWaterVapor + " HA: " + Humidity[i] + " HB: " + UpHumidity[i] + " AA: " + atmosphereMass + " AB: " + atmosphereMassUp);
-
-		Buoyancy[i] = Gravity * buoyancy;
-
+		Delta[i] = force + buoyancy * Gravity * Positions[i];
 	}
 }
 
@@ -158,6 +153,57 @@ public struct PressureGradientForceCloudJob : IJobParallelFor {
 				}
 			}
 		}
+	}
+}
+
+#if !WaterFrictionJobDebug
+[BurstCompile]
+#endif
+public struct WaterFrictionForceJob : IJobParallelFor {
+	public NativeArray<float3> Force;
+	[ReadOnly] public NativeArray<float3> Current;
+	[ReadOnly] public NativeArray<float3> WindUp;
+	[ReadOnly] public NativeArray<float3> WindDown;
+	[ReadOnly] public NativeArray<float3> Positions;
+	[ReadOnly] public float FrictionCoefficientUp;
+	[ReadOnly] public float FrictionCoefficientDown;
+	public void Execute(int i)
+	{
+		var horizontalWindUp = math.cross(math.cross(Positions[i], WindUp[i]), Positions[i]);
+		var horizontalWindDown = math.cross(math.cross(Positions[i], WindDown[i]), Positions[i]);
+		Force[i] = (horizontalWindUp - Current[i]) * FrictionCoefficientUp + (horizontalWindDown - Current[i]) * FrictionCoefficientDown;
+	}
+}
+
+#if !WaterDensityGradientForceJobDebug
+[BurstCompile]
+#endif
+public struct WaterDensityGradientForceJob : IJobParallelFor {
+	public NativeArray<float3> Force;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> Positions;
+	[ReadOnly] public NativeArray<float> WaterDensity;
+	[ReadOnly] public NativeArray<float> UpWaterDensity;
+	[ReadOnly] public NativeArray<float> DownWaterDensity;
+	[ReadOnly] public float InverseCellDiameter;
+	[ReadOnly] public float Gravity;
+	public void Execute(int i)
+	{
+		float3 densityGradient = 0;
+		var pos = Positions[i];
+		var density = WaterDensity[i];
+		for (int j=0;j<6;j++)
+		{
+			var n = Neighbors[i * 6 + j];
+			if (n >= 0)
+			{
+				densityGradient += (WaterDensity[n] - density) * math.normalize(pos - Positions[n]);
+			}
+		}
+
+		float3 buoyancy = pos * (DownWaterDensity[i] - UpWaterDensity[i]) * Gravity;
+
+		Force[i] = densityGradient * InverseCellDiameter * Gravity;
 	}
 }
 

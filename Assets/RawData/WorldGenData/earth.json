@@ -20,5 +20,9 @@
 	"CarbonDioxide": 0.001,
 	"SolarRadiation": 1.367,
 	"GeothermalHeat": 0.06,
-	"Gravity": 9.80665
+	"Gravity": 9.80665,
+	"SurfaceWaterDepth": 200,
+	"ThermoclineDepth": 800,
+	"WaterTemperatureDepthFalloff": 500
+
 }
