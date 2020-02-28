@@ -63,6 +63,9 @@ public struct EnergyAirJob : IJobParallelFor {
 		var windRight = math.cross(Position[i], lastWind);
 		wind += windRight * math.clamp(CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick, -1, 1);
 #endif
+
+		// TODO: deal with byouancy here, but rather than storing a vertical velocity, let's just move to neutral buoyancy every time step
+
 		//float lastWindVertical = WindVertical[i];
 		//WindVertical[i] = lastWindVertical;
 		//// TODO: this can overshoot

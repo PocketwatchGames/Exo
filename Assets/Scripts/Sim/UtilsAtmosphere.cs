@@ -82,6 +82,12 @@ public static class Atmosphere {
 		return WorldData.DensityWater;
 	}
 
+	[BurstCompile]
+	static public float GetDepthAtPressure(float pressure, float referencePressure, float referenceDepth, float referenceDensity, float gravity)
+	{
+		return referenceDepth + (pressure - referencePressure) / (gravity * referenceDensity);
+	}
+
 
 
 	[BurstCompile]

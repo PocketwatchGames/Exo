@@ -1,5 +1,6 @@
 ﻿//#define PressureGradientForceAirJobDebug
 //#define WaterFrictionJobDebug
+#define WaterDensityGradientForceJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -78,6 +79,7 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 			if (n >= 0)
 			{
 				float3 diff = math.normalize(position - Positions[n]);
+				// TODO: this should only be using horizontal component, which we should cache
 
 				float neighborMidElevation = LayerElevation[n] + LayerHeight[n] / 2;
 				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, Temperature[n], Pressure[n], neighborMidElevation, Gravity);
@@ -183,27 +185,54 @@ public struct WaterDensityGradientForceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float> WaterDensity;
+	[ReadOnly] public NativeArray<float> WaterPressure;
+	[ReadOnly] public NativeArray<float> LayerDepth;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> UpLayerDepth;
+	[ReadOnly] public NativeArray<float> UpLayerHeight;
 	[ReadOnly] public NativeArray<float> UpWaterDensity;
+	[ReadOnly] public NativeArray<float> UpWaterPressure;
+	[ReadOnly] public NativeArray<float> DownLayerDepth;
+	[ReadOnly] public NativeArray<float> DownLayerHeight;
 	[ReadOnly] public NativeArray<float> DownWaterDensity;
+	[ReadOnly] public NativeArray<float> DownWaterPressure;
 	[ReadOnly] public float InverseCellDiameter;
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
-		float3 densityGradient = 0;
+		float3 pressureGradient = 0;
 		var pos = Positions[i];
 		var density = WaterDensity[i];
+		float midDepth = LayerDepth[i] - LayerHeight[i] / 2;
+		float pressure = WaterPressure[i];
 		for (int j=0;j<6;j++)
 		{
 			var n = Neighbors[i * 6 + j];
-			if (n >= 0)
+			if (n >= 0 && WaterDensity[n] > 0)
 			{
-				densityGradient += (WaterDensity[n] - density) * math.normalize(pos - Positions[n]);
+				// TODO: this should only be using horizontal component, which we should cache
+				float3 dir = pos - Positions[n];
+				dir -= dir * pos;
+				dir = math.normalize(dir);
+
+
+				float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
+				pressureGradient += dir * (neighborDepthAtPressure - midDepth);
 			}
 		}
 
-		float3 buoyancy = pos * (DownWaterDensity[i] - UpWaterDensity[i]) * Gravity;
-
-		Force[i] = densityGradient * InverseCellDiameter * Gravity;
+		Force[i] = pressureGradient * InverseCellDiameter * Gravity / density;
+		//if (density > 0)
+		//{
+		//	if (DownWaterDensity[i] > 0)
+		//	{
+		//		Force[i] += pos * Gravity * (DownWaterDensity[i] / density - 1)/* / (LayerHeight[i] + DownLayerHeight[i]) * 0.5f*/;
+		//	}
+		//	if (UpWaterDensity[i] > 0)
+		//	{
+		//		Force[i] += pos * Gravity * (1 - UpWaterDensity[i] / density)/* / (LayerHeight[i] + UpLayerHeight[i]) * 0.5f*/;
+		//	}
+		//}
 	}
 }
 

@@ -202,6 +202,7 @@ public struct DiffusionWaterJob : IJobParallelFor {
 			}
 
 			// NOTE: we don't diffuse velocity vertically
+			// NOTE: we are ignoring adibatic processes in the water -- at 10km, the total lapse is less than 1.5 degrees celsius
 			float upMass = UpMass[i];
 			if (upMass > 0)
 			{

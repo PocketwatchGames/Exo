@@ -9,6 +9,7 @@
 //#define PressureGradientForceAirJobDebug
 //#define AdvectionCloudJobDebug
 //#define WaterFrictionJobDebug
+#define WaterDensityGradientForceJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -47,9 +48,9 @@ public class WorldSim {
 	public JobHelper ThermalInDownTerrainJob;
 	public JobHelper PressureGradientForceAirJob;
 	public JobHelper PressureGradientForceCloudJob;
+	public JobHelper WaterDensityGradientForceJob;
 	public JobHelper WindFrictionJob;
 	public JobHelper WaterFrictionJob;
-	public JobHelper WaterDensityJob;
 	public JobHelper ConductionAirIceJob;
 	public JobHelper ConductionAirWaterJob;
 	public JobHelper ConductionAirTerrainJob;
@@ -158,9 +159,9 @@ public class WorldSim {
 		ThermalInDownTerrainJob = new JobHelper(_cellCount);
 		PressureGradientForceAirJob = new JobHelper(_cellCount);
 		PressureGradientForceCloudJob = new JobHelper(_cellCount);
+		WaterDensityGradientForceJob = new JobHelper(_cellCount);
 		WindFrictionJob = new JobHelper(_cellCount);
 		WaterFrictionJob = new JobHelper(_cellCount);
-		WaterDensityJob = new JobHelper(_cellCount);
 		ConductionAirIceJob = new JobHelper(_cellCount);
 		ConductionAirWaterJob = new JobHelper(_cellCount);
 		ConductionAirTerrainJob = new JobHelper(_cellCount);
@@ -370,9 +371,6 @@ public class WorldSim {
 		UpdateDependentJob.Async = false;
 #endif
 
-#if UpdateWaterSaltMassJobDebug
-		UpdateWaterSaltMassJob.Async = false;
-#endif
 		#endregion
 
 		solarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -497,6 +495,8 @@ public class WorldSim {
 			var rainfallWaterMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var airMassTotal = new NativeArray<float>(staticState.StratosphereMass, Allocator.TempJob);
+			var waterMassTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var waterDepthTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			for (int i = 0; i < _layerCount; i++)
 			{
 				solarReflected[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
@@ -569,7 +569,7 @@ public class WorldSim {
 				{
 					Emissivity = emissivity[layerIndex],
 					WaterMass = lastState.WaterMass[j],
-					WaterSaltMass = lastState.WaterSaltMass[j]
+					SaltMass = lastState.SaltMass[j]
 				});
 			}
 			emissivityJobHandles[_terrainLayer] = EmissivityTerrainJob.Run(new EmissivityTerrainJob()
@@ -980,15 +980,24 @@ public class WorldSim {
 			JobHandle[] waterDensityForceJobHandles = new JobHandle[_airLayers];
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
-				waterDensityForceJobHandles[j] = WaterDensityJob.Run(new WaterDensityGradientForceJob()
+				waterDensityForceJobHandles[j] = WaterDensityGradientForceJob.Run(new WaterDensityGradientForceJob()
 				{
 					Force = waterDensityForce[j],
 
 					Positions = staticState.SphericalPosition,
 					Neighbors = staticState.Neighbors,
 					WaterDensity = dependent.WaterDensity[j],
+					WaterPressure = dependent.WaterPressure[j],
+					LayerDepth = dependent.WaterLayerDepth[j],
+					LayerHeight = dependent.WaterLayerHeight[j],
 					UpWaterDensity = dependent.WaterDensity[j+1],
-					DownWaterDensity = dependent.WaterDensity[j-1],
+					UpWaterPressure = dependent.WaterPressure[j+1],
+					UpLayerDepth = dependent.WaterLayerDepth[j + 1],
+					UpLayerHeight = dependent.WaterLayerHeight[j + 1],
+					DownWaterDensity = dependent.WaterDensity[j - 1],
+					DownWaterPressure = dependent.WaterPressure[j - 1],
+					DownLayerDepth = dependent.WaterLayerDepth[j - 1],
+					DownLayerHeight = dependent.WaterLayerHeight[j - 1],
 					Gravity = lastState.PlanetState.Gravity,
 					InverseCellDiameter = staticState.InverseCellDiameter,
 
@@ -1230,11 +1239,11 @@ public class WorldSim {
 				energyJobHandles.Add(EnergyWaterJob.Run(new EnergyWaterJob()
 				{
 					Temperature = nextState.WaterTemperature[j],
-					SaltMass = nextState.WaterSaltMass[j],
+					SaltMass = nextState.SaltMass[j],
 					Velocity = nextState.WaterVelocity[j],
 					Mass = nextState.WaterMass[j],
 					LastTemperature = lastState.WaterTemperature[j],
-					LastSaltMass = lastState.WaterSaltMass[j],
+					LastSaltMass = lastState.SaltMass[j],
 					LastVelocity = lastState.WaterVelocity[j],
 					LastMass = lastState.WaterMass[j],
 					SolarRadiationIn = solarRadiationIn[layerIndex],
@@ -1267,14 +1276,14 @@ public class WorldSim {
 				surfaceWaterEnergyHandle = EnergyWaterSurfaceJob.Run(new EnergyWaterJobSurface()
 				{
 					Temperature = nextState.WaterTemperature[waterLayer],
-					SaltMass = nextState.WaterSaltMass[waterLayer],
+					SaltMass = nextState.SaltMass[waterLayer],
 					Velocity = nextState.WaterVelocity[waterLayer],
 					WaterMass = nextState.WaterMass[waterLayer],
 					EvaporatedWaterMass = evaporationMass,
 					FrozenMass = frozenMass,
 
 					LastMass = lastState.WaterMass[waterLayer],
-					LastSaltMass = lastState.WaterSaltMass[waterLayer],
+					LastSaltMass = lastState.SaltMass[waterLayer],
 					LastVelocity = lastState.WaterVelocity[waterLayer],
 					LastTemperature = lastState.WaterTemperature[waterLayer],
 					WaterDensityForce = waterDensityForce[waterLayer],
@@ -1330,7 +1339,7 @@ public class WorldSim {
 				IceTemperature = nextState.IceTemperature,
 				SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				SurfaceAirTemperature = lastState.AirTemperature[1],
-				SurfaceSaltMass = lastState.WaterSaltMass[_surfaceWaterLayer],
+				SurfaceSaltMass = lastState.SaltMass[_surfaceWaterLayer],
 				LastCloudMass = lastState.CloudMass,
 				LastVelocity = lastState.CloudVelocity,
 				LastDropletMass = lastState.CloudDropletMass,
@@ -1382,7 +1391,7 @@ public class WorldSim {
 				SurfaceAirVapor = nextState.AirVapor[1],
 
 				SurfaceAirMass = dependent.AirMass[1],
-				SurfaceSaltMass = lastState.WaterSaltMass[_surfaceWaterLayer],
+				SurfaceSaltMass = lastState.SaltMass[_surfaceWaterLayer],
 				WaterEvaporatedMass = evaporationMass,
 				WaterFrozenMass = frozenMass,
 				IceMeltedMass = iceMeltedMass,
@@ -1403,7 +1412,7 @@ public class WorldSim {
 					SurfaceWaterMass = nextState.WaterMass[_surfaceWaterLayer],
 					SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 
-					SurfaceSaltMass = nextState.WaterSaltMass[_surfaceWaterLayer],
+					SurfaceSaltMass = nextState.SaltMass[_surfaceWaterLayer],
 					CloudCondensationMass = condensationCloudMass[j],
 					GroundCondensationMass = condensationGroundMass[j],
 					AirMass = dependent.AirMass[j],
@@ -1461,15 +1470,15 @@ public class WorldSim {
 					Delta = diffusionWater[j],
 
 					LastTemperature = nextState.WaterTemperature[j],
-					LastSalt = nextState.WaterSaltMass[j],
+					LastSalt = nextState.SaltMass[j],
 					LastCurrent = nextState.WaterVelocity[j],
 					LastMass = nextState.WaterMass[j],
 					UpTemperature = nextState.WaterTemperature[j + 1],
-					UpSalt = nextState.WaterSaltMass[j + 1],
+					UpSalt = nextState.SaltMass[j + 1],
 					UpCurrent = nextState.WaterVelocity[j + 1],
 					UpMass = nextState.WaterMass[j + 1],
 					DownTemperature = nextState.WaterTemperature[j - 1],
-					DownSalt = nextState.WaterSaltMass[j - 1],
+					DownSalt = nextState.SaltMass[j - 1],
 					DownCurrent = nextState.WaterVelocity[j - 1],
 					DownMass = nextState.WaterMass[j - 1],
 					Neighbors = staticState.Neighbors,
@@ -1507,7 +1516,7 @@ public class WorldSim {
 				diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, ApplyAdvectionWaterJob.Run(new ApplyAdvectionWaterJob()
 				{
 					Advection = diffusionWater[i],
-					SaltMass = nextState.WaterSaltMass[i],
+					SaltMass = nextState.SaltMass[i],
 					Temperature = nextState.WaterTemperature[i],
 					Velocity = nextState.WaterVelocity[i],
 					Mass = nextState.WaterMass[i]
@@ -1574,7 +1583,7 @@ public class WorldSim {
 					Delta = advectionWater[j],
 					Temperature = nextState.WaterTemperature[j],
 					Mass = nextState.WaterMass[j],
-					Salt = nextState.WaterSaltMass[j],
+					Salt = nextState.SaltMass[j],
 					Current = nextState.WaterVelocity[j],
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
@@ -1614,7 +1623,7 @@ public class WorldSim {
 				advectionJobHandle = JobHandle.CombineDependencies(advectionJobHandle, ApplyAdvectionWaterJob.Run(new ApplyAdvectionWaterJob()
 				{
 					Advection = advectionWater[i],
-					SaltMass = nextState.WaterSaltMass[i],
+					SaltMass = nextState.SaltMass[i],
 					Temperature = nextState.WaterTemperature[i],
 					Velocity = nextState.WaterVelocity[i],
 					Mass = nextState.WaterMass[i]
@@ -1636,22 +1645,32 @@ public class WorldSim {
 
 #region Update dependent variables
 			NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
-			for (int j = 1; j < _waterLayers - 1; j++)
+			var updateDependentWaterLayerJobHandle = default(JobHandle);
+			for (int j = _waterLayers - 2; j > 0; j--)
 			{
-				updateDependenciesJobHandles.Add(UpdateDependentWaterLayerJob.Run(new UpdateDependentWaterLayerJob()
+				updateDependentWaterLayerJobHandle = UpdateDependentWaterLayerJob.Run(new UpdateDependentWaterLayerJob()
 				{
 					Salinity = dependent.WaterSalinity[j],
 					WaterCoverage = dependent.WaterCoverage[j],
 					PotentialEnergy = dependent.WaterPotentialEnergy[j],
 					Density = dependent.WaterDensity[j],
+					Pressure = dependent.WaterPressure[j],
+					WaterDepthTotal = waterDepthTotal,
+					WaterMassTotal = waterMassTotal,
+					LayerDepth = dependent.WaterLayerDepth[j],
+					LayerHeight = dependent.WaterLayerHeight[j],
 
+					UpLayerDepth = dependent.WaterLayerDepth[j + 1],
+					UpLayerHeight = dependent.WaterLayerHeight[j + 1],
 					Temperature = nextState.WaterTemperature[j],
-					SaltMass = nextState.WaterSaltMass[j],
+					SaltMass = nextState.SaltMass[j],
 					WaterMass = nextState.WaterMass[j],
 					Terrain = nextState.Terrain,
 					WaterDensityPerDegree = worldData.WaterDensityPerDegree,
-					WaterDensityPerSalinity = worldData.WaterDensityPerSalinity
-				}, advectionJobHandle));
+					WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
+					Gravity = nextState.PlanetState.Gravity,
+				}, JobHandle.CombineDependencies(updateDependentWaterLayerJobHandle, advectionJobHandle));
+				updateDependenciesJobHandles.Add(updateDependentWaterLayerJobHandle);
 			}
 			JobHandle updateDependentAirLayerJobHandle = advectionJobHandle;
 			for (int j = _airLayers - 2; j > 0; j--)
@@ -1689,18 +1708,6 @@ public class WorldSim {
 			}
 
 
-			JobHandle summationHandle = advectionJobHandle;
-			var waterSaltMass = new NativeArray<WaterSaltMass>(_cellCount, Allocator.TempJob);
-			for (int j = 1; j < _waterLayers - 1; j++)
-			{
-				summationHandle = UpdateWaterSaltMassJob.Run(new UpdateWaterSaltMassJob()
-				{
-					WaterSaltMass = waterSaltMass,
-					WaterLayerMass = nextState.WaterMass[j],
-					SaltLayerMass = nextState.WaterSaltMass[j]
-				}, summationHandle);
-			}
-
 			var updateDependenciesJobHandle = UpdateDependentJob.Run(new UpdateDependentStateJob()
 			{
 				CloudCoverage = dependent.CloudCoverage,
@@ -1708,18 +1715,18 @@ public class WorldSim {
 				IceEnergy = dependent.IceEnergy,
 				SurfaceElevation = dependent.SurfaceElevation,
 				VegetationCoverage = dependent.VegetationCoverage,
-				WaterDepth = dependent.WaterDepth,
 				SurfaceAirTemperature = dependent.SurfaceAirTemperature,
+				WaterDepth = dependent.WaterDepth,
 
+				WaterDepthTotal = waterDepthTotal,
 				CloudMass = nextState.CloudMass,
 				IceMass = nextState.IceMass,
 				IceTemperature = nextState.IceTemperature,
 				Terrain = nextState.Terrain,
-				WaterSaltMass = waterSaltMass,
 				worldData = worldData,
 				LowerAirTemperature = lastState.AirTemperature[1],
 				lowerAirHeight = dependent.LayerHeight[1],
-			}, JobHandle.CombineDependencies(updateDependentAirLayerJobHandle, summationHandle));
+			}, JobHandle.CombineDependencies(updateDependentAirLayerJobHandle, updateDependentWaterLayerJobHandle, advectionJobHandle));
 			updateDependenciesJobHandles.Add(updateDependenciesJobHandle);
 			lastJobHandle = JobHandle.CombineDependencies(updateDependenciesJobHandles);
 
@@ -1745,7 +1752,7 @@ public class WorldSim {
 				for (int i=1;i<_waterLayers - 1;i++)
 				{
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterMass" + i, nextState.WaterMass[i], degenVarNames);
-					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterSaltMass" + i, nextState.WaterSaltMass[i], degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterSaltMass" + i, nextState.SaltMass[i], degenVarNames);
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], degenVarNames);
 				}
 				if (degen)
@@ -1854,7 +1861,6 @@ public class WorldSim {
 
 #region Dispose Temporary Arrays
 			updateDependenciesJobHandles.Dispose();
-			waterSaltMass.Dispose();
 			energyJobHandles.Dispose();
 			atmosphericWindowUp.Dispose();
 			atmosphericWindowDown.Dispose();
@@ -1864,6 +1870,8 @@ public class WorldSim {
 			cloudEvaporationMass.Dispose();
 			iceMeltedMass.Dispose();
 			airMassTotal.Dispose();
+			waterMassTotal.Dispose();
+			waterDepthTotal.Dispose();
 			foreach (var d in energyJobHandleDependencies)
 			{
 				d.Dispose();
@@ -1958,7 +1966,7 @@ public class WorldSim {
 		for (int j = 1; j < _waterLayers - 1; j++)
 		{
 			s.AppendLine("WaterMass" + j + ": " + state.WaterMass[j][i]);
-			s.AppendLine("WaterSaltMass" + j + ": " + state.WaterSaltMass[j][i]);
+			s.AppendLine("WaterSaltMass" + j + ": " + state.SaltMass[j][i]);
 			s.AppendLine("WaterTemperature" + j + ": " + state.WaterTemperature[j][i]);
 			s.AppendLine("WaterVelocity" + j + ": " + state.WaterVelocity[j][i]);
 		}

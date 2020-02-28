@@ -285,8 +285,9 @@ public static class WorldGen {
 		worldGenJobHelper.Async = false;
 #endif
 
-		var waterSaltMass = new NativeArray<WaterSaltMass>(staticState.Count, Allocator.TempJob);
 		var airMassTotal = new NativeArray<float>(staticState.StratosphereMass, Allocator.TempJob);
+		var waterMassTotal = new NativeArray<float>(staticState.Count, Allocator.TempJob);
+		var waterDepthTotal = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var potentialTemperature = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var WaterTemperatureBottom = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var WaterTemperatureTop = new NativeArray<float>(staticState.Count, Allocator.TempJob);
@@ -358,7 +359,7 @@ public static class WorldGen {
 		worldGenWaterLayerJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
 			{
 				WaterTemperature = state.WaterTemperature[i],
-				SaltMass = state.WaterSaltMass[i],
+				SaltMass = state.SaltMass[i],
 				WaterMass = state.WaterMass[i],
 
 				ElevationTop= WaterLayerElevation,
@@ -411,19 +412,8 @@ public static class WorldGen {
 			}, worldGenAirLayerJobHandle);
 		}
 
-		JobHandle summationHandle = worldGenWaterLayerJobHandle;
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
-		{
-			summationHandle = worldGenJobHelper.Run(new UpdateWaterSaltMassJob()
-			{
-				WaterSaltMass = waterSaltMass,
-				WaterLayerMass = state.WaterMass[j],
-				SaltLayerMass = state.WaterSaltMass[j]
-			}, summationHandle);
-		}
-
 		NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
 			var updateDependentWaterLayerJobHandle = worldGenJobHelper.Run( new UpdateDependentWaterLayerJob()
 			{
@@ -431,11 +421,19 @@ public static class WorldGen {
 				WaterCoverage = dependent.WaterCoverage[j],
 				PotentialEnergy = dependent.WaterPotentialEnergy[j],
 				Density = dependent.WaterDensity[j],
-				
-				SaltMass = state.WaterSaltMass[j],
+				Pressure = dependent.WaterPressure[j],
+				LayerDepth = dependent.WaterLayerDepth[j],
+				LayerHeight = dependent.WaterLayerHeight[j],
+				WaterDepthTotal = waterDepthTotal,
+				WaterMassTotal = waterMassTotal,
+								
+				SaltMass = state.SaltMass[j],
 				WaterMass = state.WaterMass[j],
 				Temperature = state.WaterTemperature[j],
 				Terrain = state.Terrain,
+				UpLayerDepth = dependent.WaterLayerDepth[j+1],
+				UpLayerHeight = dependent.WaterLayerHeight[j+1],
+				Gravity = state.PlanetState.Gravity,
 				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
 				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity
 			}, worldGenWaterLayerJobHandle);
@@ -488,11 +486,11 @@ public static class WorldGen {
 			IceCoverage = dependent.IceCoverage,
 			SurfaceElevation = dependent.SurfaceElevation,
 			VegetationCoverage = dependent.VegetationCoverage,
-			WaterDepth = dependent.WaterDepth,
 			SurfaceAirTemperature = dependent.SurfaceAirTemperature,
 			IceEnergy = dependent.IceEnergy,
+			WaterDepth = dependent.WaterDepth,
 
-			WaterSaltMass = waterSaltMass,
+			WaterDepthTotal = waterDepthTotal,
 			CloudMass = state.CloudMass,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
@@ -500,13 +498,14 @@ public static class WorldGen {
 			worldData = worldData,
 			LowerAirTemperature = state.AirTemperature[1],
 			lowerAirHeight = dependent.LayerHeight[1]
-		}, JobHandle.CombineDependencies(summationHandle, lowerAirHandle));
+		}, lowerAirHandle);
 		updateDependenciesJobHandles.Add(updateDependentStateJobHandle);
 
 		JobHandle.CompleteAll(updateDependenciesJobHandles);
 		updateDependenciesJobHandles.Dispose();
-		waterSaltMass.Dispose();
 		airMassTotal.Dispose();
+		waterMassTotal.Dispose();
+		waterDepthTotal.Dispose();
 		potentialTemperature.Dispose();
 		WaterTemperatureBottom.Dispose();
 		WaterTemperatureTop.Dispose();

@@ -22,11 +22,11 @@ public struct EmissivityAirJob : IJobParallelFor {
 #endif
 public struct EmissivityWaterJob : IJobParallelFor {
 	public NativeArray<float> Emissivity;
-	[ReadOnly] public NativeArray<float> WaterSaltMass;
+	[ReadOnly] public NativeArray<float> SaltMass;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	public void Execute(int i)
 	{
-		Emissivity[i] = math.saturate((WorldData.EmissivityWater * WaterMass[i] + WorldData.EmissivitySalt * WaterSaltMass[i]) / (WaterMass[i] + WaterSaltMass[i]));
+		Emissivity[i] = math.saturate((WorldData.EmissivityWater * WaterMass[i] + WorldData.EmissivitySalt * SaltMass[i]) / (WaterMass[i] + SaltMass[i]));
 	}
 }
 
