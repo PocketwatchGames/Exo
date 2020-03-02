@@ -57,6 +57,135 @@ public static class Utils {
 		return x;
 	}
 
+
+	public static bool RayTriangleIntersect(
+		float3 orig, float3 dir,
+		float3 v0, float3 v1, float3 v2,
+		float t, float u, float v)
+	{
+		const float kEpsilon = 0.00000001f;
+
+		// compute plane's normal
+		float3 v0v1 = v1 - v0;
+		float3 v0v2 = v2 - v0;
+		// no need to normalize
+		float3 N = math.cross(v0v1, v0v2); // N 
+		float denom = math.dot(N, N);
+
+		// Step 1: finding P
+
+		// check if ray and plane are parallel ?
+		float NdotRayDirection = math.dot(N, dir);
+		if (math.abs(NdotRayDirection) < kEpsilon) // almost 0 
+			return false; // they are parallel so they don't intersect ! 
+
+		// compute d parameter using equation 2
+		float d = math.dot(N, v0);
+
+		// compute t (equation 3)
+		t = (math.dot(N, orig) + d) / NdotRayDirection;
+		// check if the triangle is in behind the ray
+		if (t < 0) return false; // the triangle is behind 
+
+		// compute the intersection point using equation 1
+		float3 P = orig + t * dir;
+
+		// Step 2: inside-outside test
+		float3 C; // vector perpendicular to triangle's plane 
+
+		// edge 0
+		float3 edge0 = v1 - v0;
+		float3 vp0 = P - v0;
+		C = math.cross(edge0, vp0);
+		if (math.dot(N, C) < 0) return false; // P is on the right side 
+
+		// edge 1
+		float3 edge1 = v2 - v1;
+		float3 vp1 = P - v1;
+		C = math.cross(edge1, vp1);
+		if ((u = math.dot(N, C)) < 0) return false; // P is on the right side 
+
+		// edge 2
+		float3 edge2 = v0 - v2;
+		float3 vp2 = P - v2;
+		C = math.cross(edge2, vp2);
+		if ((v = math.dot(N, C)) < 0) return false; // P is on the right side; 
+
+		u /= denom;
+		v /= denom;
+
+		return true; // this ray hits the triangle 
+	}
+
+	public static bool GetBarycentricIntersection(
+		float3 dir,	float3 v0, float3 v1, float3 v2,
+		out float u, out float v, out float w)
+	{
+		const float kEpsilon = 0.00000001f;
+
+		// compute plane's normal
+		float3 v0v1 = v1 - v0;
+		float3 v0v2 = v2 - v0;
+		// no need to normalize
+		float3 N = math.cross(v0v1, v0v2); // N 
+		float denom = math.dot(N, N);
+
+		// Step 1: finding P
+
+		// check if ray and plane are parallel ?
+		float NdotRayDirection = math.dot(N, dir);
+		if (math.abs(NdotRayDirection) < kEpsilon) // almost 0 
+		{
+			u = v = w = 0;
+			return false; // they are parallel so they don't intersect ! 
+		}
+		// compute d parameter using equation 2
+		float d = math.dot(N, v0);
+
+		// compute t (equation 3)
+		float t = d / NdotRayDirection;
+
+		// compute the intersection point using equation 1
+		float3 P = t * dir;
+
+		// Step 2: inside-outside test
+		float3 C; // vector perpendicular to triangle's plane 
+
+		// edge 0
+		float3 edge0 = v1 - v0;
+		float3 vp0 = P - v0;
+		C = math.cross(edge0, vp0);
+		if (math.dot(N, C) < 0)
+		{
+			u = v = w = 0;
+			return false; // P is on the right side 
+		}
+
+		// edge 1
+		float3 edge1 = v2 - v1;
+		float3 vp1 = P - v1;
+		C = math.cross(edge1, vp1);
+		if ((u = math.dot(N, C)) < 0)
+		{
+			u = v = w = 0;
+			return false; // P is on the right side 
+		}
+		// edge 2
+		float3 edge2 = v0 - v2;
+		float3 vp2 = P - v2;
+		C = math.cross(edge2, vp2);
+		if ((v = math.dot(N, C)) < 0)
+		{
+			u = v = w = 0;
+			return false; // P is on the right side; 
+		}
+
+		u /= denom;
+		v /= denom;
+		w = 1 - u - v;
+
+		return true; // this ray hits the triangle 
+	} 
 }
 
 public struct Optional<T> {

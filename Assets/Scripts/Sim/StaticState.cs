@@ -13,8 +13,6 @@ public struct StaticState {
 	public float CellSurfaceArea;
 	public float CellDiameter;
 	public float InverseCellDiameter;
-	public float CoordDiameter;
-	public float InverseCoordDiameter;
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
@@ -33,13 +31,13 @@ public struct StaticState {
 		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
-		CellDiameter = 2 * math.sqrt(CellSurfaceArea / (4 * math.PI));
+		CellDiameter = 2 * math.sqrt(CellSurfaceArea / math.PI);
 		InverseCellDiameter = 1.0f / CellDiameter;
 
-		var neighborList = new List<int>[Count];
+		var neighborList = new List<Tuple<int, float3>>[Count];
 		for (int i = 0; i < Count; i++)
 		{
-			neighborList[i] = new List<int>();
+			neighborList[i] = new List<Tuple<int, float3>>();
 			StratosphereMass[i] = stratosphereMass;
 		}
 
@@ -55,16 +53,29 @@ public struct StaticState {
 			var p = icosphere.Polygons[i];
 			for (int j = 0; j < 3; j++)
 			{
-				neighborList[p.m_Vertices[j]].Add(p.m_Vertices[(j + 1) % 3]);
+				int vertIndex = p.m_Vertices[(j + 1) % 3];
+				neighborList[p.m_Vertices[j]].Add(new Tuple<int, float3>(vertIndex, SphericalPosition[vertIndex]));
 			}
 		}
 		for (int i = 0; i < Count; i++)
 		{
+			var pos = SphericalPosition[i];
+			var forward = neighborList[i][0].Item2 - pos;
+			float forwardLength = math.length(forward);
+
+			neighborList[i].Sort(delegate (Tuple<int, float3> a, Tuple<int, float3> b)
+			{
+				float3 diffA = a.Item2 - pos;
+				float3 diffB = a.Item1 - pos;
+				float angleA = math.acos(math.dot(diffA, forward) / (math.length(diffA) * forwardLength));
+				float angleB = math.acos(math.dot(diffB, forward) / (math.length(diffB) * forwardLength));
+				return (int)math.sign(angleB - angleA);
+			});
 			for (int j = 0; j < 6; j++)
 			{
 				if (j < neighborList[i].Count)
 				{
-					Neighbors[i * 6 + j] = neighborList[i][j];
+					Neighbors[i * 6 + j] = neighborList[i][j].Item1;
 				}
 				else
 				{
@@ -72,8 +83,6 @@ public struct StaticState {
 				}
 			}
 		}
-		CoordDiameter = math.length(Coordinate[0] - Coordinate[Neighbors[0]]);
-		InverseCoordDiameter = 1.0f / CoordDiameter;
 
 		SortedDictionary<float, SortedDictionary<float, int>> vertsByCoord = new SortedDictionary<float, SortedDictionary<float, int>>();
 		for (int i = 0; i < Coordinate.Length; i++)

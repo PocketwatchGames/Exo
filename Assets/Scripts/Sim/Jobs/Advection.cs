@@ -1,9 +1,10 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
 #define DISABLE_AIR_ADVECTION
 #define DISABLE_WATER_ADVECTION
-#define DISABLE_CLOUD_ADVECTION
+//#define DISABLE_CLOUD_ADVECTION
 //#define AdvectionAirJobDebug
 //#define AdvectionCloudJobDebug
+#define GetVectorDestCoordsJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -134,6 +135,69 @@ public struct AdvectionAirJob : IJobParallelFor {
 	}
 }
 
+public struct BarycentricValue {
+	public int indexA;
+	public int indexB;
+	public int indexC;
+	public float valueA;
+	public float valueB;
+	public float valueC;
+}
+#if !GetVectorDestCoordsJobDebug
+[BurstCompile]
+#endif
+public struct GetVectorDestCoordsJob : IJobParallelFor {
+	public NativeArray<BarycentricValue> Destination;
+	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> Position;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float PlanetRadius;
+	public void Execute(int i)
+	{
+
+		float3 velocity = Velocity[i];
+		float3 pos = Position[i] * PlanetRadius;
+		float3 velVertical = velocity * pos;
+		float3 velHorizontal = velocity - velVertical;
+		float3 move = velHorizontal * SecondsPerTick;
+
+		float3 moveHorizontal = math.cross(math.cross(pos, move), pos);
+		float3 movePos = pos + moveHorizontal;
+
+		for (int j = 0; j < 6; j++)
+		{
+			int indexB = Neighbors[i * 6 + j];
+			if (indexB >= 0)
+			{
+				int indexC = Neighbors[i * 6 + (j + 1) % 6];
+				if (indexC < 0)
+				{
+					indexC = Neighbors[i * 6];
+				}
+
+				float a;
+				float b;
+				float c;
+				if (Utils.GetBarycentricIntersection(movePos, pos, Position[indexB] * PlanetRadius, Position[indexC] * PlanetRadius, out a, out b, out c))
+				{
+					Destination[i] = new BarycentricValue
+					{
+						indexA = i,
+						indexB = indexB,
+						indexC = indexC,
+						valueA = a,
+						valueB = b,
+						valueC = c
+					};
+					return;
+				}
+			}
+		}
+	}
+}
+
+
 
 #if !AdvectionCloudJobDebug
 [BurstCompile]
@@ -144,28 +208,16 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DropletMass;
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<float3> Position;
-	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float InverseCellDiameter;
+	[ReadOnly] public NativeArray<BarycentricValue> Destination;
 	public void Execute(int i)
 	{
-
 		float3 velocity = Velocity[i];
-		float3 pos = Position[i];
 		float mass = Mass[i];
 		float dropletMass = DropletMass[i];
 
-		float3 velVertical = velocity * pos;
-		float3 velHorizontal = velocity - velVertical;
-
-		float leavingCell = -math.length(velHorizontal) * InverseCellDiameter * SecondsPerTick;
-
-		// TODO: deal with high speeds here
-		leavingCell = math.max(leavingCell, -1);
-
-		float newMass = leavingCell * mass;
-		float newDropletMass = leavingCell * dropletMass;
-		float3 newVelocity = leavingCell * velocity;
+		float newMass = 0;
+		float newDropletMass = 0;
+		float3 newVelocity = 0;
 
 		for (int j = 0; j < 6; j++)
 		{
@@ -173,30 +225,28 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				var nVel = Velocity[n];
-				float3 nVelHorizontal = nVel - nVel * Position[n];
-				float speed = math.length(nVelHorizontal);
-				if (speed > 0)
+				if (Destination[i].indexA == i)
 				{
-					// TODO: deal with high speeds here
-					if (speed * InverseCellDiameter * SecondsPerTick > 1)
-					{
-						nVelHorizontal *= InverseCellDiameter * SecondsPerTick / speed;
-					}
-
-					// TODO: this needs to account for cells with 5 neighbors
-					const float cosAngleBetweenCells = 0.5f;
-					float3 dir = pos - Position[n];
-					float3 dirHorizontal = math.normalize(dir - dir * pos);
-
-					// TODO: this dot product does not add up to 1!!!
-					float velDotDir = math.max(0, (math.dot(nVelHorizontal / speed, dirHorizontal) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
-					velDotDir *= speed * InverseCellDiameter * SecondsPerTick;
-
-					newMass += Mass[n] * velDotDir;
-					newDropletMass += DropletMass[n] * velDotDir;
-					newVelocity += Velocity[n] * velDotDir;
+					float v = Destination[i].valueA;
+					newMass += mass * v;
+					newDropletMass += dropletMass * v;
+					newVelocity += velocity * v;
 				}
+
+				float incoming = 0;
+				if (Destination[n].indexA == i)
+				{
+					incoming = Destination[i].valueA;
+				} else if (Destination[n].indexB == i)
+				{
+					incoming = Destination[i].valueB;
+				} else if (Destination[n].indexC == i)
+				{
+					incoming = Destination[i].valueC;
+				}
+				newMass += Mass[n] * incoming;
+				newDropletMass += DropletMass[n] * incoming;
+				newVelocity += Velocity[n] * incoming;
 			}
 		}
 
