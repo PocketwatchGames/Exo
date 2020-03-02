@@ -111,6 +111,12 @@ public static class Atmosphere {
 		return (waterMass + saltMass) / GetWaterDensity(waterMass, saltMass, temperature, waterDensityPerSalinity, waterDensityPerDegree);
 	}
 
+	[BurstCompile]
+	static public float GetFreezingPoint(float salinity, float freezePointReductionPerSalinity)
+	{
+		return WorldData.FreezingTemperature - salinity * freezePointReductionPerSalinity;
+	}
+
 
 
 

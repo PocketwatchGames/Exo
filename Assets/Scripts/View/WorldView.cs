@@ -834,7 +834,7 @@ public class WorldView : MonoBehaviour {
 			s.AppendFormat("LAYER {0} | TEMP: {1} RH: {2:P1}\n",
 				i, 
 				GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1),
-				(dependent.AirHumidityRelative[i][ActiveCellIndex] * 100));
+				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
 			s.AppendFormat("ELE: {0:N0} m P: {0:N0} Pa WIND: ({0:N1}, {1:N1}, {2:N1})\n",
 				dependent.LayerElevation[i][ActiveCellIndex],
 				display.Pressure[i][ActiveCellIndex],
@@ -886,7 +886,7 @@ public class WorldView : MonoBehaviour {
 				s.AppendFormat("LAYER {0} | TEMP: {1} SALT: {2:P3}\n",
 					layerIndex,
 					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0),
-					100*dependent.WaterSalinity[i][ActiveCellIndex]);
+					dependent.WaterSalinity[i][ActiveCellIndex]);
 				s.AppendFormat("MASS: {0:N1} kg VEL: ({1:N3}, {2:N3}, {3:N3}) P: {4}\n",
 					state.SaltMass[i][ActiveCellIndex],
 					current.x, current.y, current.z,

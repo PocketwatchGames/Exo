@@ -63,6 +63,7 @@ public struct WorldData {
 
 	[Header("Ice")]
 	public float IceHeatingDepth;
+	public float FreezePointReductionPerSalinity;
 
 	[Header("Rain and Clouds")]
 	public float rainDropDragCoefficient;

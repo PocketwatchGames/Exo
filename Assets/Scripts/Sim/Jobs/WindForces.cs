@@ -1,6 +1,6 @@
 ﻿//#define PressureGradientForceAirJobDebug
 //#define WaterFrictionJobDebug
-#define WaterDensityGradientForceJobDebug
+//#define WaterDensityGradientForceJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;

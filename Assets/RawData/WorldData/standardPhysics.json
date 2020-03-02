@@ -35,6 +35,7 @@
 	"EvaporationRate": 5,
 
 	"IceHeatingDepth": 0.1,
+	"FreezePointReductionPerSalinity": 56.0,
 
 	"DewPointTemperatureRange": 100.0,
 	"DewPointZero": 213.0,

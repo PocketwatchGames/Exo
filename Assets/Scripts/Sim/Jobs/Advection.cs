@@ -1,6 +1,7 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
 #define DISABLE_AIR_ADVECTION
 #define DISABLE_WATER_ADVECTION
+#define DISABLE_CLOUD_ADVECTION
 //#define AdvectionAirJobDebug
 //#define AdvectionCloudJobDebug
 
@@ -63,7 +64,10 @@ public struct AdvectionAirJob : IJobParallelFor {
 		float absoluteHumidity = vapor / (vapor + airMass);
 		float3 pos = Position[i];
 
-		float leavingCell = -math.length(velocity - math.cross(velocity, pos)) * InverseCellDiameter * SecondsPerTick;
+		float3 velVertical = velocity * pos;
+		float3 velHorizontal = velocity - velVertical;
+
+		float leavingCell = -math.length(velHorizontal) * InverseCellDiameter * SecondsPerTick;
 
 		// TODO: deal with high speeds here
 		leavingCell = math.max(leavingCell, -1);
@@ -79,21 +83,24 @@ public struct AdvectionAirJob : IJobParallelFor {
 			if (n >= 0)
 			{
 				var nVel = Wind[n];
-				float speed = math.length(nVel);
+				float3 nVelHorizontal = nVel - nVel * Position[n];
+				float speed = math.length(nVelHorizontal);
 				if (speed > 0)
 				{
 					// TODO: deal with high speeds here
 					if (speed * InverseCellDiameter * SecondsPerTick > 1)
 					{
-						nVel *= InverseCellDiameter * SecondsPerTick / speed;
+						nVelHorizontal *= InverseCellDiameter * SecondsPerTick / speed;
 					}
 
 					// TODO: this needs to account for cells with 5 neighbors
 					const float cosAngleBetweenCells = 0.5f;
-					float velDotDir = math.max(0, (math.dot(nVel / speed, math.normalize(pos - Position[n])) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
+					float3 dir = pos - Position[n];
+					float3 dirHorizontal = math.normalize(dir - dir * pos);
+					float velDotDir = math.max(0, (math.dot(nVelHorizontal / speed, dirHorizontal) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
 					velDotDir *= speed * InverseCellDiameter * SecondsPerTick;
 
-					newWind += nVel * velDotDir;
+					newWind += nVelHorizontal * velDotDir;
 					newWaterVapor += Vapor[n] * velDotDir;
 					newTemperature += Temperature[n] * velDotDir;
 				}
@@ -148,7 +155,10 @@ public struct AdvectionCloudJob : IJobParallelFor {
 		float mass = Mass[i];
 		float dropletMass = DropletMass[i];
 
-		float leavingCell = -math.length(velocity - math.cross(velocity, pos)) * InverseCellDiameter * SecondsPerTick;
+		float3 velVertical = velocity * pos;
+		float3 velHorizontal = velocity - velVertical;
+
+		float leavingCell = -math.length(velHorizontal) * InverseCellDiameter * SecondsPerTick;
 
 		// TODO: deal with high speeds here
 		leavingCell = math.max(leavingCell, -1);
@@ -164,18 +174,23 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			if (n >= 0)
 			{
 				var nVel = Velocity[n];
-				float speed = math.length(nVel);
+				float3 nVelHorizontal = nVel - nVel * Position[n];
+				float speed = math.length(nVelHorizontal);
 				if (speed > 0)
 				{
 					// TODO: deal with high speeds here
 					if (speed * InverseCellDiameter * SecondsPerTick > 1)
 					{
-						nVel *= InverseCellDiameter * SecondsPerTick / speed;
+						nVelHorizontal *= InverseCellDiameter * SecondsPerTick / speed;
 					}
 
 					// TODO: this needs to account for cells with 5 neighbors
 					const float cosAngleBetweenCells = 0.5f;
-					float velDotDir = math.max(0, (math.dot(nVel / speed, math.normalize(pos - Position[n])) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
+					float3 dir = pos - Position[n];
+					float3 dirHorizontal = math.normalize(dir - dir * pos);
+
+					// TODO: this dot product does not add up to 1!!!
+					float velDotDir = math.max(0, (math.dot(nVelHorizontal / speed, dirHorizontal) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells));
 					velDotDir *= speed * InverseCellDiameter * SecondsPerTick;
 
 					newMass += Mass[n] * velDotDir;
@@ -234,7 +249,9 @@ public struct AdvectionWaterJob : IJobParallelFor {
 				{
 					// TODO: this needs to account for cells with 5 neighbors
 					const float cosAngleBetweenCells = 0.5f;
-					float velDotDir = math.max(0, (math.dot(Current[n], math.normalize(pos - Position[n])) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells)) * InverseCellDiameter * SecondsPerTick;
+					float3 dir = pos - Position[n];
+					float3 dirHorizontal = math.normalize(dir - dir * pos);
+					float velDotDir = math.max(0, (math.dot(Current[n], dirHorizontal) - cosAngleBetweenCells) / (1.0f - cosAngleBetweenCells)) * InverseCellDiameter * SecondsPerTick;
 
 					newSaltMass += Salt[n] * velDotDir;
 					newTemperature += Temperature[n] * velDotDir;

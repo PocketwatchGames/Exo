@@ -412,10 +412,15 @@ public static class WorldGen {
 			}, worldGenAirLayerJobHandle);
 		}
 
+
+		///////////////////////////////////
+		// Update dependent variables
+
 		NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
+		JobHandle updateDependentWaterLayerJobHandle = default(JobHandle);
 		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
-			var updateDependentWaterLayerJobHandle = worldGenJobHelper.Run( new UpdateDependentWaterLayerJob()
+			updateDependentWaterLayerJobHandle = worldGenJobHelper.Run( new UpdateDependentWaterLayerJob()
 			{
 				Salinity = dependent.WaterSalinity[j],
 				WaterCoverage = dependent.WaterCoverage[j],
@@ -439,6 +444,28 @@ public static class WorldGen {
 			}, worldGenWaterLayerJobHandle);
 			updateDependenciesJobHandles.Add(updateDependentWaterLayerJobHandle);
 		}
+
+		var updateDependentStateJobHandle = worldGenJobHelper.Run(new UpdateDependentStateJob()
+		{
+			CloudCoverage = dependent.CloudCoverage,
+			IceCoverage = dependent.IceCoverage,
+			SurfaceElevation = dependent.SurfaceElevation,
+			VegetationCoverage = dependent.VegetationCoverage,
+			SurfaceAirTemperature = dependent.SurfaceAirTemperature,
+			IceEnergy = dependent.IceEnergy,
+			WaterDepth = dependent.WaterDepth,
+
+
+			WaterDepthTotal = waterDepthTotal,
+			CloudMass = state.CloudMass,
+			IceMass = state.IceMass,
+			IceTemperature = state.IceTemperature,
+			Terrain = state.Terrain,
+			worldData = worldData,
+		}, updateDependentWaterLayerJobHandle);
+		updateDependenciesJobHandles.Add(updateDependentStateJobHandle);
+
+
 		JobHandle lowerAirHandle = default(JobHandle);
 		JobHandle updateDependentAirLayerJobHandle = worldGenAirLayerJobHandle;
 		// Top to bottom so we can add up air mass for pressure calculation
@@ -464,6 +491,7 @@ public static class WorldGen {
 
 				CloudDropletMass = state.CloudDropletMass,
 				CloudMass = state.CloudMass,
+				SurfaceElevation = dependent.SurfaceElevation,
 				AirTemperature = state.AirTemperature[j],
 				VaporMass = state.AirVapor[j],
 				IceMass = state.IceMass,
@@ -480,26 +508,14 @@ public static class WorldGen {
 			}
 		}
 
-		var updateDependentStateJobHandle = worldGenJobHelper.Run(new UpdateDependentStateJob()
+		var updateSurfaceDependentStateJobHandle = worldGenJobHelper.Run(new UpdateSurfaceDependentStateJob()
 		{
-			CloudCoverage = dependent.CloudCoverage,
-			IceCoverage = dependent.IceCoverage,
-			SurfaceElevation = dependent.SurfaceElevation,
-			VegetationCoverage = dependent.VegetationCoverage,
 			SurfaceAirTemperature = dependent.SurfaceAirTemperature,
-			IceEnergy = dependent.IceEnergy,
-			WaterDepth = dependent.WaterDepth,
 
-			WaterDepthTotal = waterDepthTotal,
-			CloudMass = state.CloudMass,
-			IceMass = state.IceMass,
-			IceTemperature = state.IceTemperature,
-			Terrain = state.Terrain,
-			worldData = worldData,
 			LowerAirTemperature = state.AirTemperature[1],
 			lowerAirHeight = dependent.LayerHeight[1]
 		}, lowerAirHandle);
-		updateDependenciesJobHandles.Add(updateDependentStateJobHandle);
+		updateDependenciesJobHandles.Add(updateSurfaceDependentStateJobHandle);
 
 		JobHandle.CompleteAll(updateDependenciesJobHandles);
 		updateDependenciesJobHandles.Dispose();

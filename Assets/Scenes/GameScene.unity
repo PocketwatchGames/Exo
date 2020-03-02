@@ -1963,18 +1963,43 @@ MonoBehaviour:
     SecondsPerTick: 0
     AirLayers: 0
     WaterLayers: 0
-    FullIceCoverage: 3
-    FullWaterCoverage: 50
-    FullVegetationCoverage: 0
-    MaxSoilPorousness: 0.1
-    GroundWaterReplenishmentSpeed: 10
-    GroundWaterFlowSpeed: 0.5
-    TropopauseElevation: 10000
-    BoundaryZoneElevation: 1000
-    stratosphereElevation: 50000
-    MaxTropopauseElevation: 17000
-    MinTropopauseElevation: 9000
-    TropopauseElevationSeason: 1000
+    FullCoverageIce: 0
+    FullCoverageWater: 0
+    FullCoverageVegetation: 0
+    FullCoverageCloud: 0
+    SolarAbsorptivityAir: 0
+    SolarAbsorptivityWaterVapor: 0
+    SolarAbsorptivityCloud: 0
+    SolarReflectivityAir: 0
+    SolarReflectivityWater: 0
+    SolarReflectivityCloud: 0
+    AlbedoReductionSoilQuality: 0.15
+    minCloudFreezingTemperature: 0
+    maxCloudFreezingTemperature: 0
+    maxCloudSlopeAlbedo: 0
+    rainDropSizeAlbedoMin: 0
+    rainDropSizeAlbedoMax: 0
+    EnergyLostThroughAtmosphereWindow: 0.1007
+    ThermalReflectivityCloud: 0
+    ThermalAbsorptivityCarbonDioxide: 0
+    ThermalAbsorptivityAir: 0
+    ThermalAbsorptivityWaterLiquid: 0
+    ThermalAbsorptivityWaterVapor: 0
+    SoilHeatDepth: 2
+    WaterHeatingDepth: 0
+    EvapMinTemperature: 243
+    EvapMaxTemperature: 343
+    EvaporationRate: 0.002
+    IceHeatingDepth: 0
+    rainDropDragCoefficient: 0.5
+    rainDropMaxSize: 0.004
+    rainDropMinSize: 0.00001
+    CloudDissapationRateWind: 0.1
+    CloudDissapationRateDryAir: 0.1
+    DewPointTemperatureRange: 100
+    DewPointZero: 213
+    WaterVaporMassToAirMassAtDewPoint: 0.2
+    CloudDiffusionCoefficient: 0
     AirDiffusionCoefficientHorizontal: 0
     AirDiffusionCoefficientVertical: 0
     WaterDiffusionCoefficientHorizontal: 0
@@ -1984,55 +2009,18 @@ MonoBehaviour:
     WindTerrainFrictionMin: 0
     WindTerrainFrictionMax: 0
     WindVegetationFriction: 0
-    CloudDiffusionCoefficient: 0
     MaxTerrainRoughnessForWindFriction: 0
     WaterSurfaceFrictionDepth: 0
     WindToWaterCurrentFrictionCoefficient: 0
-    SolarAbsorptivityAir: 0
-    SolarAbsorptivityWaterVapor: 0
-    SolarAbsorptivityCloud: 0
-    SolarReflectivityAir: 0
-    SolarReflectivityWater: 0
-    SolarReflectivityCloud: 0
-    AirWaterConductionPositive: 0
-    maxGroundWaterTemperature: 283
-    SoilHeatDepth: 2
-    AlbedoReductionSoilQuality: 0.15
-    ThermalReflectivityCloud: 0
-    CloudMassFullAbsorption: 0.5
-    EnergyLostThroughAtmosphereWindow: 0.1007
-    minCloudFreezingTemperature: 0
-    maxCloudFreezingTemperature: 0
-    maxCloudSlopeAlbedo: 0
-    rainDropSizeAlbedoMin: 0
-    rainDropSizeAlbedoMax: 0
-    AbsorptivityCarbonDioxide: 0
-    AbsorptivityAir: 0
-    AbsorptivityWaterLiquid: 0
-    AbsorptivityWaterVapor: 0
-    DewPointTemperatureRange: 100
-    DewPointZero: 213
-    WaterVaporMassToAirMassAtDewPoint: 0.2
-    RainfallRate: 0.01
-    EvapMinTemperature: 243
-    EvapMaxTemperature: 343
-    EvaporationRate: 0.002
-    RainDropFormationSpeedTemperature: 10
-    RainDropCoalescenceWind: 0.00001
-    rainDropDragCoefficient: 0.5
-    rainDropMaxSize: 0.004
-    rainDropMinSize: 0.00001
-    CloudDissapationRateWind: 0.1
-    CloudDissapationRateDryAir: 0.1
-    DewPointElevationPerDegree: 67.73
-    DewPointTemperaturePerRelativeHumidity: 20
-    IceHeatingDepth: 0
-    WaterHeatingDepth: 0
     WaterDensityPerSalinity: 0
     WaterDensityPerDegree: 0
     WaterDensityCurrentSpeed: 0
-    MinTemperatureCanopy: 223.15
-    MaxTemperatureCanopy: 323.15
+    MaxSoilPorousness: 0.1
+    GroundWaterReplenishmentSpeed: 10
+    GroundWaterFlowSpeed: 0.5
+    maxGroundWaterTemperature: 283
+    MinTemperatureVegetation: 0
+    MaxTemperatureVegetation: 0
   TimeScale: 0
   _worldSim:
     SolarRadiationInJob:
@@ -2101,13 +2089,15 @@ MonoBehaviour:
       Enabled: 0
     EnergyTerrainJob:
       Enabled: 0
-    EnergyCloudJob:
+    FluxCloudJob:
+      Enabled: 0
+    FluxAirJob:
+      Enabled: 0
+    FluxWaterJob:
       Enabled: 0
     EnergyIceJob:
       Enabled: 0
     EnergyWaterJob:
-      Enabled: 0
-    EnergyWaterSurfaceJob:
       Enabled: 0
     EnergyAirJob:
       Enabled: 0

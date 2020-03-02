@@ -134,6 +134,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		var icosphere = Icosphere[i];
 		var elevation = Terrain[i].Elevation;
 		float roughness = Terrain[i].Roughness;
+		float surfaceElevation = elevation + math.max(roughness, waterDepth);
 
 		if (MeshOverlayActive)
 		{
@@ -153,8 +154,8 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		cloudNormal = icosphere;
 		terrainPosition = icosphere * ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
 		waterPosition = icosphere * ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius * math.saturate(waterDepth / roughness);
-		surfacePosition = icosphere * ((elevation + math.max(roughness, waterDepth)) * TerrainScale + PlanetRadius) / PlanetRadius;
-		cloudPosition = icosphere * ((CloudElevation[i] + 100) * TerrainScale + PlanetRadius) / PlanetRadius;
+		surfacePosition = icosphere * (surfaceElevation * TerrainScale + PlanetRadius) / PlanetRadius;
+		cloudPosition = icosphere * ((math.max(CloudElevation[i], surfaceElevation) + 100) * TerrainScale + PlanetRadius) / PlanetRadius;
 
 		if (WindOverlayActive)
 		{

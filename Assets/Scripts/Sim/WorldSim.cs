@@ -9,7 +9,11 @@
 //#define PressureGradientForceAirJobDebug
 //#define AdvectionCloudJobDebug
 //#define WaterFrictionJobDebug
-#define WaterDensityGradientForceJobDebug
+//#define WaterDensityGradientForceJobDebug
+//#define StateChangeJobDebug
+//#define EnergyIceJobDebug
+//#define StateChangeAirLayerJobDebug
+#define FluxCloudJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -58,10 +62,12 @@ public class WorldSim {
 	public JobHelper ConductionIceTerrainJob;
 	public JobHelper ConductionWaterTerrainJob;
 	public JobHelper EnergyTerrainJob;
-	public JobHelper EnergyCloudJob;
+	public JobHelper FluxCloudJob;
+	public JobHelper FluxAirJob;
+	public JobHelper FluxWaterJob;
+	public JobHelper FluxIceJob;
 	public JobHelper EnergyIceJob;
 	public JobHelper EnergyWaterJob;
-	public JobHelper WaterFluxJob;
 	public JobHelper EnergyAirJob;
 	public JobHelper StateChangeJob;
 	public JobHelper StateChangeAirLayerJob;
@@ -115,9 +121,12 @@ public class WorldSim {
 	private NativeArray<float> conductionIceWater;
 	private NativeArray<float> conductionIceTerrain;
 	private NativeArray<float>[] conductionWaterTerrain;
-	private NativeArray<float>[] waterStateFluxEnergy;
+	private NativeArray<float>[] fluxEnergyWater;
+	private NativeArray<float>[] fluxEnergyAir;
 	private NativeArray<float>[] evaporationMass;
 	private NativeArray<float>[] frozenMass;
+	private NativeArray<float>[] frozenTemperature;
+	private NativeArray<float> fluxEnergyIce;
 
 	private NativeArray<float> displaySolarRadiation;
 
@@ -170,10 +179,12 @@ public class WorldSim {
 		ConductionIceTerrainJob = new JobHelper(_cellCount);
 		ConductionWaterTerrainJob = new JobHelper(_cellCount);
 		EnergyTerrainJob = new JobHelper(_cellCount);
-		EnergyCloudJob = new JobHelper(_cellCount);
+		FluxCloudJob = new JobHelper(_cellCount);
+		FluxWaterJob = new JobHelper(_cellCount);
+		FluxAirJob = new JobHelper(_cellCount);
+		FluxIceJob = new JobHelper(_cellCount);
 		EnergyIceJob = new JobHelper(_cellCount);
 		EnergyWaterJob = new JobHelper(_cellCount);
-		WaterFluxJob = new JobHelper(_cellCount);
 		EnergyAirJob = new JobHelper(_cellCount);
 		StateChangeJob = new JobHelper(_cellCount);
 		StateChangeAirLayerJob = new JobHelper(_cellCount);
@@ -370,6 +381,20 @@ public class WorldSim {
 #if UpdateDependentJobDebug
 		UpdateDependentJob.Async = false;
 #endif
+#if FluxAirJobDebug
+		FluxAirJob.Async = false;
+#endif
+#if FluxCloudJobDebug
+		FluxCloudJob.Async = false;
+#endif
+#if FluxIceJobDebug
+		FluxIceJob.Async = false;
+#endif
+#if FluxWaterJobDebug
+		FluxWaterJob.Async = false;
+#endif
+
+
 
 		#endregion
 
@@ -387,8 +412,10 @@ public class WorldSim {
 		diffusionAir = new NativeArray<DiffusionAir>[_airLayers];
 		advectionAir = new NativeArray<DiffusionAir>[_airLayers];
 		pressureGradientForce = new NativeArray<float3>[_airLayers];
+		fluxEnergyAir = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
 		{
+			fluxEnergyAir[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			advectionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			pressureGradientForce[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
@@ -396,20 +423,23 @@ public class WorldSim {
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		conductionWaterTerrain = new NativeArray<float>[_waterLayers];
-		waterStateFluxEnergy = new NativeArray<float>[_waterLayers];
+		fluxEnergyWater = new NativeArray<float>[_waterLayers];
 		evaporationMass = new NativeArray<float>[_waterLayers];
 		frozenMass = new NativeArray<float>[_waterLayers];
+		frozenTemperature = new NativeArray<float>[_waterLayers];
 		waterForce = new NativeArray<float3>[_waterLayers];
 		for (int i = 0; i < _waterLayers; i++)
 		{
 			diffusionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			advectionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			conductionWaterTerrain[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
-			waterStateFluxEnergy[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
+			fluxEnergyWater[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			evaporationMass[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			frozenMass[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
+			frozenTemperature[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			waterForce[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		}
+		fluxEnergyIce = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		pressureGradientForceCloud = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		diffusionCloud = new NativeArray<DiffusionCloud>(_cellCount, Allocator.Persistent);
@@ -438,6 +468,7 @@ public class WorldSim {
 		}
 		for (int i = 0; i < _airLayers; i++)
 		{
+			fluxEnergyAir[i].Dispose();
 			diffusionAir[i].Dispose();
 			advectionAir[i].Dispose();
 			pressureGradientForce[i].Dispose();
@@ -447,12 +478,14 @@ public class WorldSim {
 			diffusionWater[i].Dispose();
 			advectionWater[i].Dispose();
 			conductionWaterTerrain[i].Dispose();
-			waterStateFluxEnergy[i].Dispose();
+			fluxEnergyWater[i].Dispose();
 			evaporationMass[i].Dispose();
 			frozenMass[i].Dispose();
+			frozenTemperature[i].Dispose();
 			waterForce[i].Dispose();
 		}
 		pressureGradientForceCloud.Dispose();
+		fluxEnergyIce.Dispose();
 		windFriction.Dispose();
 		diffusionCloud.Dispose();
 		advectionCloud.Dispose();
@@ -483,6 +516,8 @@ public class WorldSim {
 			curStateIndex = (curStateIndex + 1) % stateCount;
 			ref var nextState = ref states[curStateIndex];
 
+			var jobHandleDependencies = new List<NativeList<JobHandle>>();
+
 			var thermalRadiationDeltaIceBottom = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var thermalRadiationDeltaIceTop = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var thermalRadiationDeltaSurfaceWater = new NativeArray<float>(_cellCount, Allocator.TempJob);
@@ -496,7 +531,9 @@ public class WorldSim {
 			var solarReflected = new NativeArray<float>[_layerCount];
 			var conductionWaterTerrainTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var cloudEvaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var rainfallWaterMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var dropletDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var precipitationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var precipitationTemperature = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var airMassTotal = new NativeArray<float>(staticState.StratosphereMass, Allocator.TempJob);
 			var waterDepthTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
@@ -1117,13 +1154,15 @@ public class WorldSim {
 
 			#endregion
 
-			#region State Change
+			#region State Change (Flux)
+
+			var energyJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
 
 			// surface water
-			JobHandle waterFluxJobHandle;
+			JobHandle[] fluxJobs = new JobHandle[_layerCount];
 			int surfaceWaterLayerIndex = _waterLayer0 + _surfaceWaterLayer;
 
-			var waterFluxDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			var fluxWaterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
 			{
 				solarInJobHandles[surfaceWaterLayerIndex],
 				thermalOutJobHandles[surfaceWaterLayerIndex],
@@ -1135,11 +1174,12 @@ public class WorldSim {
 				waterDensityForceJobHandles[_surfaceWaterLayer],
 				waterFrictionJobHandle,
 			};
-			waterFluxJobHandle = WaterFluxJob.Run(new WaterFluxJob()
+			fluxJobs[_waterLayer0+_surfaceWaterLayer] = FluxWaterJob.Run(new FluxWaterJob()
 			{
 				EvaporatedWaterMass = evaporationMass[_surfaceWaterLayer],
 				FrozenMass = frozenMass[_surfaceWaterLayer],
-				StateFluxEnergy = waterStateFluxEnergy[_surfaceWaterLayer],
+				FrozenTemperature = frozenTemperature[_surfaceWaterLayer],
+				Energy = fluxEnergyWater[_surfaceWaterLayer],
 
 				LastMass = lastState.WaterMass[_surfaceWaterLayer],
 				LastSaltMass = lastState.SaltMass[_surfaceWaterLayer],
@@ -1153,194 +1193,31 @@ public class WorldSim {
 				RelativeHumidity = dependent.AirHumidityRelative[1],
 				IceCoverage = dependent.IceCoverage,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
+				Salinity = dependent.WaterSalinity[_surfaceWaterLayer],
 				EvaporationRate = worldData.EvaporationRate,
 				EvapTemperatureMax = worldData.EvapMaxTemperature,
 				EvapTemperatureMin = worldData.EvapMinTemperature,
 				WaterHeatingDepth = worldData.WaterHeatingDepth,
-			}, JobHandle.CombineDependencies(waterFluxDependencies));
-			#endregion
+				FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
+			}, JobHandle.CombineDependencies(fluxWaterDependencies));
 
-			#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
-
-			var energyJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
-			var energyJobHandleDependencies = new List<NativeList<JobHandle>>();
-			var terrainEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-			{
-				solarInJobHandles[_terrainLayer],
-				thermalOutJobHandles[_terrainLayer],
-				thermalInDownJobHandles[_terrainLayer],
-				thermalInUpJobHandles[_terrainLayer],
-				conductionAirTerrainJobHandle,
-				conductionIceTerrainJobHandle,
-				conductionWaterTerrainJobHandle,
-			};
-			energyJobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
-			energyJobHandles.Add(EnergyTerrainJob.Run(new EnergyTerrainJob()
-			{
-				Temperature = nextState.TerrainTemperature,
-				LastTemperature = lastState.TerrainTemperature,
-				Terrain = lastState.Terrain,
-				SolarRadiationIn = solarRadiationIn[_terrainLayer],
-				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
-				ConductionEnergyAir = conductionSurfaceAirTerrain,
-				ConductionEnergyIce = conductionIceTerrain,
-				ConductionEnergyWater = conductionWaterTerrainTotal,
-				VegetationCoverage = dependent.VegetationCoverage,
-				GeothermalEnergy = nextState.PlanetState.GeothermalHeat * worldData.SecondsPerTick,
-				HeatingDepth = worldData.SoilHeatDepth
-			}, JobHandle.CombineDependencies(terrainEnergyJobHandleDependencies)));
-
-			var iceEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-			{
-				solarInJobHandles[_iceLayer],
-				thermalOutJobHandles[_iceLayer],
-				thermalInDownJobHandles[_iceLayer],
-				thermalInUpJobHandles[_iceLayer],
-				conductionAirIceJobHandle,
-				conductionIceWaterJobHandle,
-				conductionIceTerrainJobHandle,
-			};
-			energyJobHandleDependencies.Add(iceEnergyJobHandleDependencies);
-			var energyIceHandle = EnergyIceJob.Run(new EnergyIceJob()
-			{
-				Temperature = nextState.IceTemperature,
-				Mass = nextState.IceMass,
-				MeltedMass = iceMeltedMass,
-				LastMass = lastState.IceMass,
-				SolarRadiationIn = solarRadiationIn[_iceLayer],
-				ThermalRadiationDeltaBottom = thermalRadiationDeltaIceBottom,
-				ThermalRadiationDeltaTop = thermalRadiationDeltaIceTop,
-				ConductionEnergyAir = conductionSurfaceAirIce,
-				ConductionEnergyTerrain = conductionIceTerrain,
-				ConductionEnergyWater = conductionIceWater,
-				LastTemperature = lastState.IceTemperature,
-				IceHeatingDepth = worldData.IceHeatingDepth,
-			}, JobHandle.CombineDependencies(iceEnergyJobHandleDependencies));
-			energyJobHandles.Add(energyIceHandle);
-
-			for (int j = 1; j < _airLayers - 1; j++)
-			{
-				int layerIndex = _airLayer0 + j;
-
-				var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-				{
-					solarInJobHandles[layerIndex],
-					thermalOutJobHandles[layerIndex],
-					thermalInDownJobHandles[layerIndex],
-					thermalInUpJobHandles[layerIndex],
-					pgfJobHandles[j],
-					windFrictionJobHandle,
-				};
-				if (j == 1)
-				{
-					airDependencies.Add(conductionAirWaterJobHandle);
-					airDependencies.Add(conductionAirIceJobHandle);
-					airDependencies.Add(conductionAirTerrainJobHandle);
-				}
-				energyJobHandleDependencies.Add(airDependencies);
-				energyJobHandles.Add(EnergyAirJob.Run(new EnergyAirJob()
-				{
-					Temperature = nextState.AirTemperature[j],
-					Vapor = nextState.AirVapor[j],
-					Wind = nextState.Wind[j],
-					CondensationCloudMass = condensationCloudMass[j],
-					CondensationGroundMass = condensationGroundMass[j],
-					LastTemperature = lastState.AirTemperature[j],
-					LastVapor = lastState.AirVapor[j],
-					LastWind = lastState.Wind[j],
-					AirMass = dependent.AirMass[j],
-					ConductionEnergyWater = j == 1 ? conductionSurfaceAirWater : conductionUpperAirWater,
-					ConductionEnergyIce = j == 1 ? conductionSurfaceAirIce : conductionUpperAirIce,
-					ConductionEnergyTerrain = j == 1 ? conductionSurfaceAirTerrain : conductionUpperAirTerrain,
-					SolarRadiationIn = solarRadiationIn[layerIndex],
-					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
-					CloudElevation = dependent.CloudElevation,
-					LayerElevation = dependent.LayerElevation[j],
-					LayerHeight = dependent.LayerHeight[j],
-					PressureGradientForce = pressureGradientForce[j],
-					Position = staticState.SphericalPosition,
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
-					SecondsPerTick = worldData.SecondsPerTick,
-					DewPointZero = worldData.DewPointZero,
-					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
-					WindFriction = windFriction,
-					WindFrictionMultiplier = j==1 ? 1 : 0,
-				}, JobHandle.CombineDependencies(airDependencies)));
-			}
-
-			JobHandle surfaceWaterJobHandle = default(JobHandle);
-			for (int j = 1; j < _waterLayers - 1; j++)
-			{
-				int layerIndex = _waterLayer0 + j;
-
-				var waterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-				{
-					solarInJobHandles[layerIndex],
-					thermalOutJobHandles[layerIndex],
-					thermalInDownJobHandles[layerIndex],
-					thermalInUpJobHandles[layerIndex],
-					conductionWaterTerrainJobHandle,
-					waterDensityForceJobHandles[j]
-				};
-				if (j == _surfaceWaterLayer)
-				{
-					waterDependencies.Add(waterFluxJobHandle);
-				}
-				energyJobHandleDependencies.Add(waterDependencies);
-				var energyWaterJobHandle = EnergyWaterJob.Run(new EnergyWaterJob()
-				{
-					Temperature = nextState.WaterTemperature[j],
-					SaltMass = nextState.SaltMass[j],
-					Velocity = nextState.WaterVelocity[j],
-					Mass = nextState.WaterMass[j],
-					LastTemperature = lastState.WaterTemperature[j],
-					LastSaltMass = lastState.SaltMass[j],
-					LastVelocity = lastState.WaterVelocity[j],
-					LastWaterMass = lastState.WaterMass[j],
-					EvaporatedMass = evaporationMass[j],
-					FrozenMass = frozenMass[j],
-					SolarRadiationIn = solarRadiationIn[layerIndex],
-					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
-					ConductionEnergyTerrain = conductionWaterTerrain[j],
-					StateFluxEnergy = waterStateFluxEnergy[j],
-					Force = waterForce[j],
-					SecondsPerTick = worldData.SecondsPerTick,
-				}, JobHandle.CombineDependencies(waterDependencies));
-				energyJobHandles.Add(energyWaterJobHandle);
-				if (j == _surfaceWaterLayer)
-				{
-					surfaceWaterJobHandle = energyWaterJobHandle;
-				}
-			}
 
 			// CLOUD
 			var cloudEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
 			{
 				pgfCloudJobHandle,
 				windFrictionJobHandle,
-				energyIceHandle,
-				surfaceWaterJobHandle,
 			};
-			for (int j = _airLayer0 + 1; j < _airLayer0 + _airLayers - 1; j++)
-			{
-				cloudEnergyJobHandleDependencies.Add(solarInJobHandles[j]);
-				cloudEnergyJobHandleDependencies.Add(thermalInUpJobHandles[j]);
-				cloudEnergyJobHandleDependencies.Add(thermalInDownJobHandles[j]);
-			}
-			energyJobHandleDependencies.Add(cloudEnergyJobHandleDependencies);
-			energyJobHandles.Add(EnergyCloudJob.Run(new EnergyCloudJob()
+			jobHandleDependencies.Add(cloudEnergyJobHandleDependencies);
+			var fluxCloudJobHandle = FluxCloudJob.Run(new FluxCloudJob()
 			{
 				CloudMass = nextState.CloudMass,
 				DropletMass = nextState.CloudDropletMass,
 				Velocity = nextState.CloudVelocity,
-				CloudEvaporationMass = cloudEvaporationMass,
-				RainfallWaterMass = rainfallWaterMass,
-				IceMass = nextState.IceMass,
-				SurfaceWaterMass = nextState.WaterMass[_surfaceWaterLayer],
-				IceTemperature = nextState.IceTemperature,
-				SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
+				EvaporationMass = cloudEvaporationMass,
+				PrecipitationMass = precipitationMass,
+				PrecipitationTemperature = precipitationTemperature,
+
 				SurfaceAirTemperature = lastState.AirTemperature[1],
 				SurfaceSaltMass = lastState.SaltMass[_surfaceWaterLayer],
 				LastCloudMass = lastState.CloudMass,
@@ -1371,39 +1248,93 @@ public class WorldSim {
 				EvaporationRate = worldData.EvaporationRate,
 				EvapTemperatureMax = worldData.EvapMaxTemperature,
 				EvapTemperatureMin = worldData.EvapMinTemperature,
-			}, JobHandle.CombineDependencies(cloudEnergyJobHandleDependencies)));
-
-
-
-			energyJobHandles.Add(updateTerrainJobHandle);
-			var energyJobHandle = JobHandle.CombineDependencies(energyJobHandles);
-
-			#endregion
-
-
-			#region State Changes - Evaporation, Condensation, Melting, Rainfall
-
-			var stateChangeJobHandle = StateChangeJob.Run(new StateChangeJob()
-			{
-				IceTemperature = nextState.IceTemperature,
-				IceMass = nextState.IceMass,
-				SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
-				SurfaceWaterMass = nextState.WaterMass[_surfaceWaterLayer],
-				SurfaceAirTemperature = nextState.AirTemperature[1],
-				SurfaceAirVapor = nextState.AirVapor[1],
-
-				SurfaceAirMass = dependent.AirMass[1],
-				SurfaceSaltMass = lastState.SaltMass[_surfaceWaterLayer],
-				WaterEvaporatedMass = evaporationMass[_surfaceWaterLayer],
-				WaterFrozenMass = frozenMass[_surfaceWaterLayer],
-				IceMeltedMass = iceMeltedMass,
-				RainfallTemperature = dependent.DewPoint,
-				RainfallWaterMass = rainfallWaterMass,
-			}, energyJobHandle);
+			}, JobHandle.CombineDependencies(cloudEnergyJobHandleDependencies));
+			energyJobHandles.Add(fluxCloudJobHandle);
 
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layerIndex = _airLayer0 + j;
+				var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+				{
+					solarInJobHandles[layerIndex],
+					thermalOutJobHandles[layerIndex],
+					thermalInDownJobHandles[layerIndex],
+					thermalInUpJobHandles[layerIndex],
+				};
+				if (j == 1)
+				{
+					airDependencies.Add(conductionAirWaterJobHandle);
+					airDependencies.Add(conductionAirIceJobHandle);
+					airDependencies.Add(conductionAirTerrainJobHandle);
+				}
+				jobHandleDependencies.Add(airDependencies);
+				fluxJobs[j + _airLayer0] = FluxAirJob.Run(new FluxAirJob()
+				{
+					FluxEnergy = fluxEnergyAir[j],
+					CondensationCloudMass = condensationCloudMass[j],
+					CondensationGroundMass = condensationGroundMass[j],
+					LastTemperature = lastState.AirTemperature[j],
+					LastVapor = lastState.AirVapor[j],
+					AirMass = dependent.AirMass[j],
+					ConductionEnergyWater = j == 1 ? conductionSurfaceAirWater : conductionUpperAirWater,
+					ConductionEnergyIce = j == 1 ? conductionSurfaceAirIce : conductionUpperAirIce,
+					ConductionEnergyTerrain = j == 1 ? conductionSurfaceAirTerrain : conductionUpperAirTerrain,
+					SolarRadiationIn = solarRadiationIn[layerIndex],
+					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
+					CloudElevation = dependent.CloudElevation,
+					LayerElevation = dependent.LayerElevation[j],
+					LayerHeight = dependent.LayerHeight[j],
+					DewPointZero = worldData.DewPointZero,
+					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
+					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
+				}, JobHandle.CombineDependencies(airDependencies));
+			}
+
+			var fluxIceJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			{
+				solarInJobHandles[_iceLayer],
+				thermalOutJobHandles[_iceLayer],
+				thermalInDownJobHandles[_iceLayer],
+				thermalInUpJobHandles[_iceLayer],
+				conductionAirIceJobHandle,
+				conductionIceWaterJobHandle,
+				conductionIceTerrainJobHandle,
+				fluxCloudJobHandle,
+			};
+			jobHandleDependencies.Add(fluxIceJobHandleDependencies);
+			fluxJobs[_iceLayer] = FluxIceJob.Run(new FluxIceJob()
+			{
+				Energy = fluxEnergyIce,
+				MeltedMass = iceMeltedMass,
+				LastMass = lastState.IceMass,
+				SolarRadiationIn = solarRadiationIn[_iceLayer],
+				ThermalRadiationDeltaBottom = thermalRadiationDeltaIceBottom,
+				ThermalRadiationDeltaTop = thermalRadiationDeltaIceTop,
+				ConductionEnergyAir = conductionSurfaceAirIce,
+				ConductionEnergyTerrain = conductionIceTerrain,
+				ConductionEnergyWater = conductionIceWater,
+				LastTemperature = lastState.IceTemperature,
+				IceHeatingDepth = worldData.IceHeatingDepth,
+			}, JobHandle.CombineDependencies(fluxIceJobHandleDependencies));
+
+			#endregion
+
+			#region State Changes - Evaporation, Condensation, Melting, Rainfall
+
+			JobHandle stateChangeJobHandle = default(JobHandle);
+			for (int j = 1; j < _airLayers - 1; j++)
+			{
+				int layerIndex = _airLayer0 + j;
+
+				var fluxAirJobsHandle = new NativeList<JobHandle>(Allocator.TempJob)
+				{
+					fluxCloudJobHandle,
+					fluxJobs[_waterLayer0 + _surfaceWaterLayer],
+					fluxJobs[layerIndex],
+					stateChangeJobHandle
+				};
+				jobHandleDependencies.Add(fluxAirJobsHandle);
+
 				stateChangeJobHandle = StateChangeAirLayerJob.Run(new StateChangeAirLayerJob()
 				{
 					AirTemperature = nextState.AirTemperature[j],
@@ -1418,13 +1349,163 @@ public class WorldSim {
 					CloudCondensationMass = condensationCloudMass[j],
 					GroundCondensationMass = condensationGroundMass[j],
 					AirMass = dependent.AirMass[j],
+					LastAirTemperature = lastState.AirTemperature[j],
+					LastVaporMass = lastState.AirVapor[j],
 					LayerIndex = layerIndex,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 
-				}, stateChangeJobHandle);
+				}, JobHandle.CombineDependencies(fluxAirJobsHandle));
 			}
+
+			var fluxJobsHandle = new NativeList<JobHandle>(Allocator.TempJob)
+			{
+				fluxCloudJobHandle,
+				fluxJobs[_iceLayer],
+				fluxJobs[_waterLayer0 + _surfaceWaterLayer],
+				fluxJobs[_airLayer0 + 1],
+				stateChangeJobHandle
+			};
+			jobHandleDependencies.Add(fluxJobsHandle);
+			stateChangeJobHandle = StateChangeJob.Run(new StateChangeJob()
+			{
+				IceTemperature = nextState.IceTemperature,
+				IceMass = nextState.IceMass,
+				SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
+				SurfaceWaterMass = nextState.WaterMass[_surfaceWaterLayer],
+				SurfaceAirTemperature = nextState.AirTemperature[1],
+				SurfaceAirVapor = nextState.AirVapor[1],
+
+				LastIceMass = lastState.IceMass,
+				LastIceTemperature = lastState.IceTemperature,
+				SurfaceAirMass = dependent.AirMass[1],
+				SurfaceSaltMass = lastState.SaltMass[_surfaceWaterLayer],
+				WaterEvaporatedMass = evaporationMass[_surfaceWaterLayer],
+				WaterFrozenMass = frozenMass[_surfaceWaterLayer],
+				WaterFrozenTemperature = frozenTemperature[_surfaceWaterLayer],
+				IceMeltedMass = iceMeltedMass,
+				PrecipitationTemperature = precipitationTemperature,
+				PrecipitationMass = precipitationMass,
+			}, JobHandle.CombineDependencies(fluxJobsHandle));
+
+
 			#endregion
+
+
+			#region COMBINE ADVECTION, DIFFUSION, SOLAR, THERMAL DELTA, and State changes within each layer
+
+			var terrainEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			{
+				solarInJobHandles[_terrainLayer],
+				thermalOutJobHandles[_terrainLayer],
+				thermalInDownJobHandles[_terrainLayer],
+				thermalInUpJobHandles[_terrainLayer],
+				conductionAirTerrainJobHandle,
+				conductionIceTerrainJobHandle,
+				conductionWaterTerrainJobHandle,
+			};
+			jobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
+			energyJobHandles.Add(EnergyTerrainJob.Run(new EnergyTerrainJob()
+			{
+				Temperature = nextState.TerrainTemperature,
+				LastTemperature = lastState.TerrainTemperature,
+				Terrain = lastState.Terrain,
+				SolarRadiationIn = solarRadiationIn[_terrainLayer],
+				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
+				ConductionEnergyAir = conductionSurfaceAirTerrain,
+				ConductionEnergyIce = conductionIceTerrain,
+				ConductionEnergyWater = conductionWaterTerrainTotal,
+				VegetationCoverage = dependent.VegetationCoverage,
+				GeothermalEnergy = nextState.PlanetState.GeothermalHeat * worldData.SecondsPerTick,
+				HeatingDepth = worldData.SoilHeatDepth
+			}, JobHandle.CombineDependencies(terrainEnergyJobHandleDependencies)));
+
+			var energyIceHandle = EnergyIceJob.Run(new EnergyIceJob()
+			{
+				Temperature = nextState.IceTemperature,
+				Mass = nextState.IceMass,
+				FluxEnergyIce = fluxEnergyIce,
+				IceHeatingDepth = worldData.IceHeatingDepth,
+			}, stateChangeJobHandle);
+			energyJobHandles.Add(energyIceHandle);
+
+			for (int j = 1; j < _airLayers - 1; j++)
+			{
+				int layerIndex = _airLayer0 + j;
+
+				var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+				{
+					pgfJobHandles[j],
+					windFrictionJobHandle,
+					stateChangeJobHandle,
+				};
+				jobHandleDependencies.Add(airDependencies);
+				energyJobHandles.Add(EnergyAirJob.Run(new EnergyAirJob()
+				{
+					Temperature = nextState.AirTemperature[j],
+					Vapor = nextState.AirVapor[j],
+					Wind = nextState.Wind[j],
+					LastWind = lastState.Wind[j],
+					AirMass = dependent.AirMass[j],
+					Energy = fluxEnergyAir[j],
+					PressureGradientForce = pressureGradientForce[j],
+					Position = staticState.SphericalPosition,
+					CoriolisMultiplier = staticState.CoriolisMultiplier,
+					CoriolisTerm = coriolisTerm,
+					SecondsPerTick = worldData.SecondsPerTick,
+					WindFriction = windFriction,
+					WindFrictionMultiplier = j==1 ? 1 : 0,
+				}, JobHandle.CombineDependencies(airDependencies)));
+			}
+
+			JobHandle surfaceWaterJobHandle = default(JobHandle);
+			for (int j = 1; j < _waterLayers - 1; j++)
+			{
+				int layerIndex = _waterLayer0 + j;
+
+				var waterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+				{
+					solarInJobHandles[layerIndex],
+					thermalOutJobHandles[layerIndex],
+					thermalInDownJobHandles[layerIndex],
+					thermalInUpJobHandles[layerIndex],
+					conductionWaterTerrainJobHandle,
+					waterDensityForceJobHandles[j]
+				};
+				if (j == _surfaceWaterLayer)
+				{
+					waterDependencies.Add(stateChangeJobHandle);
+				}
+				jobHandleDependencies.Add(waterDependencies);
+				var energyWaterJobHandle = EnergyWaterJob.Run(new EnergyWaterJob()
+				{
+					Temperature = nextState.WaterTemperature[j],
+					SaltMass = nextState.SaltMass[j],
+					Velocity = nextState.WaterVelocity[j],
+					Mass = nextState.WaterMass[j],
+					LastTemperature = lastState.WaterTemperature[j],
+					LastSaltMass = lastState.SaltMass[j],
+					LastVelocity = lastState.WaterVelocity[j],
+					LastWaterMass = lastState.WaterMass[j],
+					EvaporatedMass = evaporationMass[j],
+					FrozenMass = frozenMass[j],
+					Energy = fluxEnergyWater[j],
+					Force = waterForce[j],
+					SecondsPerTick = worldData.SecondsPerTick,
+				}, JobHandle.CombineDependencies(waterDependencies));
+				energyJobHandles.Add(energyWaterJobHandle);
+				if (j == _surfaceWaterLayer)
+				{
+					surfaceWaterJobHandle = energyWaterJobHandle;
+				}
+			}
+
+
+			energyJobHandles.Add(updateTerrainJobHandle);
+			var energyJobHandle = JobHandle.CombineDependencies(energyJobHandles);
+
+			#endregion
+
 
 			// Diffuse from last time step
 			// Air, Water, Cloud
@@ -1462,7 +1543,7 @@ public class WorldSim {
 					IsBottom = j == 1,
 					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
-				}, stateChangeJobHandle);
+				}, energyJobHandle);
 			}
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
@@ -1486,7 +1567,7 @@ public class WorldSim {
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficientHoriztonal = worldData.WaterDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
-				}, stateChangeJobHandle);
+				}, energyJobHandle);
 			}
 
 			var diffusionCloudHandle = DiffusionCloudJob.Run(new DiffusionCloudJob()
@@ -1498,7 +1579,7 @@ public class WorldSim {
 				LastVelocity = nextState.CloudVelocity,
 				Neighbors = staticState.Neighbors,
 				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
-			}, stateChangeJobHandle);
+			}, energyJobHandle);
 
 			#endregion
 
@@ -1611,8 +1692,8 @@ public class WorldSim {
 
 			#region Apply Advection
 
-			JobHandle advectionJobHandle = default(JobHandle);
-			advectionJobHandle = JobHandle.CombineDependencies(advectionJobHandle, ApplyAdvectionCloudJob.Run(new ApplyAdvectionCloudJob()
+			NativeList<JobHandle> applyAdvectionJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
+			applyAdvectionJobHandles.Add(ApplyAdvectionCloudJob.Run(new ApplyAdvectionCloudJob()
 			{
 				Advection = advectionCloud,
 				CloudMass = nextState.CloudMass,
@@ -1622,7 +1703,7 @@ public class WorldSim {
 
 			for (int i = 1; i < _waterLayers - 1; i++)
 			{
-				advectionJobHandle = JobHandle.CombineDependencies(advectionJobHandle, ApplyAdvectionWaterJob.Run(new ApplyAdvectionWaterJob()
+				applyAdvectionJobHandles.Add(ApplyAdvectionWaterJob.Run(new ApplyAdvectionWaterJob()
 				{
 					Advection = advectionWater[i],
 					SaltMass = nextState.SaltMass[i],
@@ -1634,7 +1715,7 @@ public class WorldSim {
 
 			for (int i = 1; i < _airLayers - 1; i++)
 			{
-				advectionJobHandle = JobHandle.CombineDependencies(advectionJobHandle, ApplyAdvectionAirJob.Run(new ApplyAdvectionAirJob()
+				applyAdvectionJobHandles.Add(ApplyAdvectionAirJob.Run(new ApplyAdvectionAirJob()
 				{
 					Advection = advectionAir[i],
 					Vapor = nextState.AirVapor[i],
@@ -1642,10 +1723,10 @@ public class WorldSim {
 					Wind = nextState.Wind[i],
 				}, JobHandle.CombineDependencies( advectionJobHandles[i+_airLayer0], advectionJobHandles[i + _airLayer0 - 1], advectionJobHandles[i + _airLayer0 + 1])));
 			}
+			lastJobHandle = JobHandle.CombineDependencies(applyAdvectionJobHandles);
 
 			#endregion
 
-			lastJobHandle = advectionJobHandle;
 			lastJobHandle.Complete();
 
 			#region Update dependent variables
@@ -1680,7 +1761,28 @@ public class WorldSim {
 				}, updateDependentWaterLayerJobHandle);
 				updateDependenciesJobHandles.Add(updateDependentWaterLayerJobHandle);
 			}
-			JobHandle updateDependentAirLayerJobHandle = lastJobHandle;
+
+			var updateDependenciesJobHandle = UpdateDependentJob.Run(new UpdateDependentStateJob()
+			{
+				CloudCoverage = dependent.CloudCoverage,
+				IceCoverage = dependent.IceCoverage,
+				IceEnergy = dependent.IceEnergy,
+				SurfaceElevation = dependent.SurfaceElevation,
+				VegetationCoverage = dependent.VegetationCoverage,
+				SurfaceAirTemperature = dependent.SurfaceAirTemperature,
+				WaterDepth = dependent.WaterDepth,
+
+				WaterDepthTotal = waterDepthTotal,
+				CloudMass = nextState.CloudMass,
+				IceMass = nextState.IceMass,
+				IceTemperature = nextState.IceTemperature,
+				Terrain = nextState.Terrain,
+				worldData = worldData,
+			}, JobHandle.CombineDependencies(updateDependentWaterLayerJobHandle, lastJobHandle));
+			updateDependenciesJobHandles.Add(updateDependenciesJobHandle);
+
+
+			JobHandle updateDependentAirLayerJobHandle = updateDependenciesJobHandle;
 			for (int j = _airLayers - 2; j > 0; j--)
 			{
 				updateDependentAirLayerJobHandle = UpdateDependentAirLayerJob.Run(new UpdateDependentAirLayerJob()
@@ -1705,6 +1807,7 @@ public class WorldSim {
 					VaporMass = nextState.AirVapor[j],
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
+					SurfaceElevation = dependent.SurfaceElevation,
 					IceMass = nextState.IceMass,
 					Gravity = nextState.PlanetState.Gravity,
 					DewPointZero = worldData.DewPointZero,
@@ -1715,27 +1818,15 @@ public class WorldSim {
 				updateDependenciesJobHandles.Add(updateDependentAirLayerJobHandle);
 			}
 
-
-			var updateDependenciesJobHandle = UpdateDependentJob.Run(new UpdateDependentStateJob()
+			var updateSurfaceDependenciesJobHandle = UpdateDependentJob.Run(new UpdateSurfaceDependentStateJob()
 			{
-				CloudCoverage = dependent.CloudCoverage,
-				IceCoverage = dependent.IceCoverage,
-				IceEnergy = dependent.IceEnergy,
-				SurfaceElevation = dependent.SurfaceElevation,
-				VegetationCoverage = dependent.VegetationCoverage,
 				SurfaceAirTemperature = dependent.SurfaceAirTemperature,
-				WaterDepth = dependent.WaterDepth,
 
-				WaterDepthTotal = waterDepthTotal,
-				CloudMass = nextState.CloudMass,
-				IceMass = nextState.IceMass,
-				IceTemperature = nextState.IceTemperature,
-				Terrain = nextState.Terrain,
-				worldData = worldData,
-				LowerAirTemperature = lastState.AirTemperature[1],
-				lowerAirHeight = dependent.LayerHeight[1],
-			}, JobHandle.CombineDependencies(updateDependentAirLayerJobHandle, updateDependentWaterLayerJobHandle, lastJobHandle));
-			updateDependenciesJobHandles.Add(updateDependenciesJobHandle);
+				LowerAirTemperature = nextState.AirTemperature[1],
+				lowerAirHeight = dependent.LayerHeight[1]
+			}, updateDependentAirLayerJobHandle);
+			updateDependenciesJobHandles.Add(updateSurfaceDependenciesJobHandle);
+
 			lastJobHandle = JobHandle.CombineDependencies(updateDependenciesJobHandles);
 
 			#endregion
@@ -1820,7 +1911,7 @@ public class WorldSim {
 					SolarRadiationInIce = solarRadiationIn[_iceLayer],
 					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _waterLayers - 2],
 					Evaporation = evaporationMass[_surfaceWaterLayer],
-					RainfallWater = rainfallWaterMass,
+					RainfallWater = precipitationMass,
 				};
 				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
 				var displayHandles = JobHandle.CombineDependencies(initDisplayHandle, updateDisplayJobHandle);
@@ -1874,14 +1965,17 @@ public class WorldSim {
 			energyJobHandles.Dispose();
 			atmosphericWindowUp.Dispose();
 			atmosphericWindowDown.Dispose();
-			rainfallWaterMass.Dispose();
+			dropletDelta.Dispose();
+			precipitationMass.Dispose();
+			precipitationTemperature.Dispose();
 			cloudEvaporationMass.Dispose();
 			iceMeltedMass.Dispose();
 			airMassTotal.Dispose();
 			waterMassTotal.Dispose();
 			waterDepthTotal.Dispose();
-			waterFluxDependencies.Dispose();
-			foreach (var d in energyJobHandleDependencies)
+			fluxWaterDependencies.Dispose();
+			applyAdvectionJobHandles.Dispose();
+			foreach (var d in jobHandleDependencies)
 			{
 				d.Dispose();
 			}
