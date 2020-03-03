@@ -156,7 +156,9 @@ public struct FluxCloudJob : IJobParallelFor {
 
 		var velocityRight = math.cross(Position[i], lastVelocity);
 		float3 coriolisForce = velocityRight * CoriolisMultiplier[i] * CoriolisTerm;
-		float3 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + (PressureGradientForce[i] + coriolisForce) * SecondsPerTick;
+
+		// I already multiplied PressureGradientForce by SecondsPerTick during the calculation of the force
+		float3 velocity = lastVelocity + PressureGradientForce[i] + coriolisForce * SecondsPerTick;
 
 	//	var velocityUp = math.dot(velocity, Position[i]) * Position[i];
 

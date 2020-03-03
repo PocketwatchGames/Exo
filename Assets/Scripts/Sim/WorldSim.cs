@@ -1035,11 +1035,12 @@ public class WorldSim {
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
 					Velocity = lastState.CloudVelocity,
-					LayerFrictionMultiplier = j == 1 ? 1 : 0,
-					UpFrictionMultiplier = (j + 1) == 1 ? 1 : 0,
-					DownFrictionMultiplier = (j - 1) == 1 ? 1 : 0,
+					LayerFrictionMultiplier = (j == 1) ? 1 : 0,
+					UpFrictionMultiplier = ((j + 1) == 1) ? 1 : 0,
+					DownFrictionMultiplier = ((j - 1) == 1) ? 1 : 0,
 					IsTop = j == _airLayers - 2,
-					IsBottom = j == 1
+					IsBottom = j == 1,
+					SecondsPerTick = worldData.SecondsPerTick
 				}, JobHandle.CombineDependencies(pgfCloudJobHandle, windFrictionJobHandle, JobHandle.CombineDependencies(pgfJobHandles[j], pgfJobHandles[j - 1], pgfJobHandles[j + 1]))));
 			}
 

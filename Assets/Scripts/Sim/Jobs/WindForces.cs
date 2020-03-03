@@ -130,12 +130,13 @@ public struct PressureGradientForceCloudJob : IJobParallelFor {
 	[ReadOnly] public float DownFrictionMultiplier;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		float cloudElevation = CloudElevation[i];
 		float layerElevation = LayerElevation[i];
 		float layerMidHeight = layerElevation + LayerHeight[i] / 2;
-		var layerForce = LayerForce[i] - Velocity[i] * (LayerFriction[i] * LayerFrictionMultiplier);
+		var layerForce = LayerForce[i] * SecondsPerTick - Velocity[i] * (LayerFriction[i] * LayerFrictionMultiplier);
 		if (cloudElevation >= layerElevation || IsBottom)
 		{
 			if (cloudElevation < layerElevation + LayerHeight[i] || IsTop)
@@ -147,7 +148,7 @@ public struct PressureGradientForceCloudJob : IJobParallelFor {
 						Force[i] = layerForce;
 					}else
 					{
-						var downForce = DownForce[i] - Velocity[i] * (LayerFriction[i] * DownFrictionMultiplier);
+						var downForce = DownForce[i] * SecondsPerTick - Velocity[i] * (LayerFriction[i] * DownFrictionMultiplier);
 						float downLayerMidElevation = (DownLayerElevation[i] + layerElevation) / 2;
 						float t = (cloudElevation - downLayerMidElevation) / (layerMidHeight - downLayerMidElevation);
 						Force[i] = layerForce * t + downForce * (1.0f - t);
@@ -157,7 +158,7 @@ public struct PressureGradientForceCloudJob : IJobParallelFor {
 					Force[i] = layerForce;
 				} else
 				{
-					var upForce = UpForce[i] - Velocity[i] * (LayerFriction[i] * UpFrictionMultiplier);
+					var upForce = UpForce[i] * SecondsPerTick - Velocity[i] * (LayerFriction[i] * UpFrictionMultiplier);
 					float upLayerMidElevation = UpLayerElevation[i] + UpLayerHeight[i] / 2;
 					float t = (cloudElevation - layerMidHeight) / (upLayerMidElevation - layerMidHeight);
 					Force[i] = upForce * t + layerForce * (1.0f - t);
