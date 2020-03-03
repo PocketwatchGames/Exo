@@ -15,6 +15,7 @@
 //#define StateChangeAirLayerJobDebug
 //#define FluxCloudJobDebug
 //#define GetVectorDestCoordsJobDebug
+//#define DiffusionCloudJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -306,6 +307,18 @@ public class WorldSim {
 
 #if WaterDensityGradientForceJobDebug
 		WaterDensityGradientForceJob.Async = false;
+#endif
+
+#if DiffusionAirJobDebug
+		DiffusionAirJob.Async = false;
+#endif
+
+#if DiffusionWaterJobDebug
+		DiffusionWaterJob.Async = false;
+#endif
+
+#if DiffusionCloudJobDebug
+		DiffusionCloudJob.Async = false;
 #endif
 
 #if AdvectionAirJobDebug
@@ -971,7 +984,7 @@ public class WorldSim {
 					LayerHeight = dependent.LayerHeight[j],
 					Neighbors = staticState.Neighbors,
 					Positions = staticState.SphericalPosition,
-					InverseCellDiameter = staticState.InverseCellDiameter,
+					PlanetRadius = staticState.PlanetRadius,
 					Gravity = lastState.PlanetState.Gravity,
 					UpTemperature = lastState.AirTemperature[j + 1],
 					UpHumidity = lastState.AirVapor[j + 1],
@@ -1013,6 +1026,7 @@ public class WorldSim {
 
 					CloudElevation = dependent.CloudElevation,
 					LayerForce = pressureGradientForce[j],
+					LayerFriction = windFriction,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					DownForce = pressureGradientForce[j-1],
@@ -1020,9 +1034,13 @@ public class WorldSim {
 					UpForce = pressureGradientForce[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
+					Velocity = lastState.CloudVelocity,
+					LayerFrictionMultiplier = j == 1 ? 1 : 0,
+					UpFrictionMultiplier = (j + 1) == 1 ? 1 : 0,
+					DownFrictionMultiplier = (j - 1) == 1 ? 1 : 0,
 					IsTop = j == _airLayers - 2,
 					IsBottom = j == 1
-				}, JobHandle.CombineDependencies(pgfCloudJobHandle, JobHandle.CombineDependencies(pgfJobHandles[j], pgfJobHandles[j - 1], pgfJobHandles[j + 1]))));
+				}, JobHandle.CombineDependencies(pgfCloudJobHandle, windFrictionJobHandle, JobHandle.CombineDependencies(pgfJobHandles[j], pgfJobHandles[j - 1], pgfJobHandles[j + 1]))));
 			}
 
 			JobHandle[] waterDensityForceJobHandles = new JobHandle[_airLayers];
@@ -1664,7 +1682,7 @@ public class WorldSim {
 					Delta = advectionAir[j],
 					Temperature = nextState.AirTemperature[j],
 					Vapor = nextState.AirVapor[j],
-					Wind = nextState.Wind[j],
+					Velocity = nextState.Wind[j],
 					Neighbors = staticState.Neighbors,
 					Destination = destinationAir[j],
 					LayerElevation = dependent.LayerElevation[j],

@@ -118,74 +118,21 @@ public static class Utils {
 	}
 
 	public static bool GetBarycentricIntersection(
-		float3 dir,	float3 v0, float3 v1, float3 v2,
+		float3 p,	float3 a, float3 b, float3 c,
 		out float u, out float v, out float w)
 	{
-		const float kEpsilon = 0.00000001f;
-
-		// compute plane's normal
-		float3 v0v1 = v1 - v0;
-		float3 v0v2 = v2 - v0;
-		// no need to normalize
-		float3 N = math.cross(v0v1, v0v2); // N 
-		float denom = math.dot(N, N);
-
-		// Step 1: finding P
-
-		// check if ray and plane are parallel ?
-		float NdotRayDirection = math.dot(N, dir);
-		if (math.abs(NdotRayDirection) < kEpsilon) // almost 0 
-		{
-			u = v = w = 0;
-			return false; // they are parallel so they don't intersect ! 
-		}
-		// compute d parameter using equation 2
-		float d = math.dot(N, v0);
-
-		// compute t (equation 3)
-		float t = d / NdotRayDirection;
-
-		// compute the intersection point using equation 1
-		float3 P = t * dir;
-
-		// Step 2: inside-outside test
-		float3 C; // vector perpendicular to triangle's plane 
-
-		// edge 0
-		float3 edge0 = v1 - v0;
-		float3 vp0 = P - v0;
-		C = math.cross(edge0, vp0);
-		if (math.dot(N, C) < 0)
-		{
-			u = v = w = 0;
-			return false; // P is on the right side 
-		}
-
-		// edge 1
-		float3 edge1 = v2 - v1;
-		float3 vp1 = P - v1;
-		C = math.cross(edge1, vp1);
-		if ((u = math.dot(N, C)) < 0)
-		{
-			u = v = w = 0;
-			return false; // P is on the right side 
-		}
-		// edge 2
-		float3 edge2 = v0 - v2;
-		float3 vp2 = P - v2;
-		C = math.cross(edge2, vp2);
-		if ((v = math.dot(N, C)) < 0)
-		{
-			u = v = w = 0;
-			return false; // P is on the right side; 
-		}
-
-		u /= denom;
-		v /= denom;
-		w = 1 - u - v;
-
-		return true; // this ray hits the triangle 
-	} 
+		float3 v0 = b - a, v1 = c - a, v2 = p - a;
+		float d00 = math.dot(v0, v0);
+		float d01 = math.dot(v0, v1);
+		float d11 = math.dot(v1, v1);
+		float d20 = math.dot(v2, v0);
+		float d21 = math.dot(v2, v1);
+		float inverseDenom = 1.0f / (d00 * d11 - d01 * d01);
+		v = (d11 * d20 - d01 * d21) * inverseDenom;
+		w = (d00 * d21 - d01 * d20) * inverseDenom;
+		u = 1.0f - v - w;
+		return v >= 0 && v <= 1 && w >= 0 && w <= 1;
+	}
 }
 
 public struct Optional<T> {

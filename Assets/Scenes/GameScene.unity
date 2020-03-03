@@ -1991,6 +1991,7 @@ MonoBehaviour:
     EvapMaxTemperature: 343
     EvaporationRate: 0.002
     IceHeatingDepth: 0
+    FreezePointReductionPerSalinity: 0
     rainDropDragCoefficient: 0.5
     rainDropMaxSize: 0.004
     rainDropMinSize: 0.00001
@@ -2095,6 +2096,8 @@ MonoBehaviour:
       Enabled: 0
     FluxWaterJob:
       Enabled: 0
+    FluxIceJob:
+      Enabled: 0
     EnergyIceJob:
       Enabled: 0
     EnergyWaterJob:
@@ -2128,6 +2131,8 @@ MonoBehaviour:
     UpdateDependentAirLayerJob:
       Enabled: 0
     UpdateDependentJob:
+      Enabled: 0
+    GetVectorDestCoordsJob:
       Enabled: 0
 --- !u!4 &365555217
 Transform:

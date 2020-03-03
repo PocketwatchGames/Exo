@@ -1,5 +1,5 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
-//#define DISABLE_AIR_ADVECTION
+#define DISABLE_AIR_ADVECTION
 #define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
 //#define AdvectionAirJobDebug
@@ -27,102 +27,6 @@ public struct DiffusionWater {
 	public float3 Velocity;
 }
 
-
-#if !AdvectionAirJobDebug
-[BurstCompile]
-#endif
-public struct AdvectionAirJob : IJobParallelFor {
-	public NativeArray<DiffusionAir> Delta;
-	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float> Vapor;
-	[ReadOnly] public NativeArray<float3> Wind;
-	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<BarycentricValue> Destination;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> UpTemperature;
-	[ReadOnly] public NativeArray<float> UpHumidity;
-	[ReadOnly] public NativeArray<float> UpAirMass;
-	[ReadOnly] public NativeArray<float> UpLayerElevation;
-	[ReadOnly] public NativeArray<float> UpLayerHeight;
-	[ReadOnly] public NativeArray<float> DownTemperature;
-	[ReadOnly] public NativeArray<float> DownHumidity;
-	[ReadOnly] public NativeArray<float> DownAirMass;
-	[ReadOnly] public NativeArray<float> DownLayerElevation;
-	[ReadOnly] public NativeArray<float> DownLayerHeight;
-	[ReadOnly] public bool IsTop;
-	[ReadOnly] public bool IsBottom;
-	public void Execute(int i)
-	{
-
-		float3 velocity = Wind[i];
-		float vapor = Vapor[i];
-		float temperature = Temperature[i];
-
-		float newTemperature = 0;
-		float newWaterVapor = 0;
-		float3 newWind = 0;
-
-		for (int j = 0; j < 6; j++)
-		{
-			int neighborIndex = i * 6 + j;
-			int n = Neighbors[neighborIndex];
-			if (n >= 0)
-			{
-				if (Destination[i].indexA == i)
-				{
-					float v = Destination[i].valueA;
-					newTemperature += temperature * v;
-					newWaterVapor += vapor * v;
-					newWind += velocity * v;
-				}
-
-				float incoming = 0;
-				if (Destination[n].indexA == i)
-				{
-					incoming = Destination[i].valueA;
-				}
-				else if (Destination[n].indexB == i)
-				{
-					incoming = Destination[i].valueB;
-				}
-				else if (Destination[n].indexC == i)
-				{
-					incoming = Destination[i].valueC;
-				}
-				newTemperature += temperature * incoming;
-				newWaterVapor += vapor * incoming;
-				newWind += velocity * incoming;
-			}
-		}
-
-
-#if !DISABLE_VERTICAL_AIR_MOVEMENT
-
-		if (!IsTop)
-		{
-		}
-		if (!IsBottom)
-		{
-		}
-
-
-#endif
-
-#if !DISABLE_AIR_ADVECTION
-		Delta[i] = new DiffusionAir()
-		{
-			Temperature = newTemperature,
-			WaterVapor = newWaterVapor,
-			Velocity = newWind,
-		};
-#endif
-
-
-
-	}
-}
-
 public struct BarycentricValue {
 	public int indexA;
 	public int indexB;
@@ -131,6 +35,8 @@ public struct BarycentricValue {
 	public float valueB;
 	public float valueC;
 }
+
+
 #if !GetVectorDestCoordsJobDebug
 [BurstCompile]
 #endif
@@ -146,11 +52,10 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 
 		float3 velocity = Velocity[i];
 		float3 pos = Position[i] * PlanetRadius;
-		float3 velVertical = velocity * pos;
+		float3 velVertical = math.dot(velocity, Position[i]) * Position[i];
 		float3 velHorizontal = velocity - velVertical;
-		float3 move = velHorizontal * SecondsPerTick;
 
-		float3 moveHorizontal = math.cross(math.cross(pos, move), pos);
+		float3 moveHorizontal = velHorizontal * SecondsPerTick;
 		float3 movePos = pos + moveHorizontal;
 
 		for (int j = 0; j < 6; j++)
@@ -187,6 +92,108 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 
 
 
+#if !AdvectionAirJobDebug
+[BurstCompile]
+#endif
+public struct AdvectionAirJob : IJobParallelFor {
+	public NativeArray<DiffusionAir> Delta;
+	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> Vapor;
+	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<BarycentricValue> Destination;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> UpTemperature;
+	[ReadOnly] public NativeArray<float> UpHumidity;
+	[ReadOnly] public NativeArray<float> UpAirMass;
+	[ReadOnly] public NativeArray<float> UpLayerElevation;
+	[ReadOnly] public NativeArray<float> UpLayerHeight;
+	[ReadOnly] public NativeArray<float> DownTemperature;
+	[ReadOnly] public NativeArray<float> DownHumidity;
+	[ReadOnly] public NativeArray<float> DownAirMass;
+	[ReadOnly] public NativeArray<float> DownLayerElevation;
+	[ReadOnly] public NativeArray<float> DownLayerHeight;
+	[ReadOnly] public bool IsTop;
+	[ReadOnly] public bool IsBottom;
+	public void Execute(int i)
+	{
+		float newTemperature;
+		float newWaterVapor;
+		float3 newVelocity;
+
+#if DISABLE_AIR_ADVECTION
+		newTemperature = Temperature[i];
+		newWaterVapor = Vapor[i];
+		newVelocity = Velocity[i];
+#else
+
+		newTemperature = 0;
+		newWaterVapor = 0;
+		newVelocity = 0;
+		
+		if (Destination[i].indexA == i)
+		{
+			float v = Destination[i].valueA;
+			newTemperature += Temperature[i] * v;
+			newWaterVapor += Vapor[i] * v;
+			newVelocity += Velocity[i] * v;
+		}
+
+
+		for (int j = 0; j < 6; j++)
+		{
+			int n = Neighbors[i * 6 + j];
+			if (n >= 0)
+			{
+
+				float incoming = 0;
+				if (Destination[n].indexA == i)
+				{
+					incoming = Destination[n].valueA;
+				}
+				else if (Destination[n].indexB == i)
+				{
+					incoming = Destination[n].valueB;
+				}
+				else if (Destination[n].indexC == i)
+				{
+					incoming = Destination[n].valueC;
+				}
+				newTemperature += Temperature[n] * incoming;
+				newWaterVapor += Vapor[n] * incoming;
+				newVelocity += Velocity[n] * incoming;
+			}
+		}
+
+
+#if !DISABLE_VERTICAL_AIR_MOVEMENT
+
+		if (!IsTop)
+		{
+		}
+		if (!IsBottom)
+		{
+		}
+
+
+#endif
+
+#endif
+
+		Delta[i] = new DiffusionAir()
+		{
+			Temperature = newTemperature,
+			WaterVapor = newWaterVapor,
+			Velocity = newVelocity,
+		};
+
+
+
+	}
+}
+
+
 #if !AdvectionCloudJobDebug
 [BurstCompile]
 #endif
@@ -199,38 +206,43 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<BarycentricValue> Destination;
 	public void Execute(int i)
 	{
-		float3 velocity = Velocity[i];
-		float mass = Mass[i];
-		float dropletMass = DropletMass[i];
+		float newMass;
+		float newDropletMass;
+		float3 newVelocity;
 
-		float newMass = 0;
-		float newDropletMass = 0;
-		float3 newVelocity = 0;
+#if DISABLE_CLOUD_ADVECTION
+		newMass = Mass[i];
+		newDropletMass = DropletMass[i];
+		newVelocity = Velocity[i];
+
+#else
+		newMass = 0;
+		newDropletMass = 0;
+		newVelocity = 0;
+
+		if (Destination[i].indexA == i)
+		{
+			float v = Destination[i].valueA;
+			newMass += Mass[i] * v;
+			newDropletMass += DropletMass[i] * v;
+			newVelocity += Velocity[i] * v;
+		}
 
 		for (int j = 0; j < 6; j++)
 		{
-			int neighborIndex = i * 6 + j;
-			int n = Neighbors[neighborIndex];
+			int n = Neighbors[i * 6 + j];
 			if (n >= 0)
 			{
-				if (Destination[i].indexA == i)
-				{
-					float v = Destination[i].valueA;
-					newMass += mass * v;
-					newDropletMass += dropletMass * v;
-					newVelocity += velocity * v;
-				}
-
 				float incoming = 0;
 				if (Destination[n].indexA == i)
 				{
-					incoming = Destination[i].valueA;
+					incoming = Destination[n].valueA;
 				} else if (Destination[n].indexB == i)
 				{
-					incoming = Destination[i].valueB;
+					incoming = Destination[n].valueB;
 				} else if (Destination[n].indexC == i)
 				{
-					incoming = Destination[i].valueC;
+					incoming = Destination[n].valueC;
 				}
 				newMass += Mass[n] * incoming;
 				newDropletMass += DropletMass[n] * incoming;
@@ -238,14 +250,13 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			}
 		}
 
-#if !DISABLE_CLOUD_ADVECTION
+#endif
 		Delta[i] = new DiffusionCloud()
 		{
 			Mass = newMass,
 			DropletMass = newDropletMass,
 			Velocity = newVelocity
 		};
-#endif
 	}
 }
 
@@ -263,58 +274,65 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float waterMass = Mass[i];
-		float salt = Salt[i];
-		float mass = Mass[i];
-		float temperature = Temperature[i];
+		float newMass;
+		float newSaltMass;
+		float newTemperature;
+		float3 newVelocity;
 
+#if DISABLE_WATER_ADVECTION
+		newMass = waterMass;
+		newSaltMass = Salt[i];
+		newTemperature = Temperature[i];
+		newVelocity = Velocity[i];
+#else
 		float newMass = 0;
 		float newSaltMass = 0;
 		float newTemperature = 0;
 		float3 newVelocity = 0;
+
+		if (Destination[i].indexA == i)
+		{
+			float v = Destination[i].valueA;
+			newTemperature += Temperature[i] * v;
+			newMass += Mass[i] * v;
+			newSaltMass += Salt[i] * v;
+			newVelocity += Velocity[i] * v;
+		}
 
 		for (int j = 0; j < 6; j++)
 		{
 			int n = Neighbors[i * 6 + j];
 			if (n >= 0)
 			{
-				if (Destination[i].indexA == i)
-				{
-					float v = Destination[i].valueA;
-					newTemperature += Temperature[i] * v;
-					newMass += Mass[i] * v;
-					newSaltMass += Salt[i] * v;
-					newVelocity += Velocity[i] * v;
-				}
 
 				float incoming = 0;
 				if (Destination[n].indexA == i)
 				{
-					incoming = Destination[i].valueA;
+					incoming = Destination[n].valueA;
 				}
 				else if (Destination[n].indexB == i)
 				{
-					incoming = Destination[i].valueB;
+					incoming = Destination[n].valueB;
 				}
 				else if (Destination[n].indexC == i)
 				{
-					incoming = Destination[i].valueC;
+					incoming = Destination[n].valueC;
 				}
-				newTemperature += Temperature[i] * incoming;
-				newMass += Mass[i] * incoming;
-				newSaltMass += Salt[i] * incoming;
-				newVelocity += Velocity[i] * incoming;
+				newTemperature += Temperature[n] * incoming;
+				newMass += Mass[n] * incoming;
+				newSaltMass += Salt[n] * incoming;
+				newVelocity += Velocity[n] * incoming;
 			}
 		}
+#endif
 
 
-#if !DISABLE_WATER_ADVECTION
 		Delta[i] = new DiffusionWater()
 		{
 			Temperature = newTemperature,
 			SaltMass = newSaltMass,
 			Velocity = newVelocity
 		};
-#endif
 
 	}
 }
@@ -330,9 +348,9 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<DiffusionAir> Advection;
 	public void Execute(int i)
 	{
-		Temperature[i] += Advection[i].Temperature;
-		Vapor[i] += Advection[i].WaterVapor;
-		Wind[i] += Advection[i].Velocity;
+		Temperature[i] = Advection[i].Temperature;
+		Vapor[i] = Advection[i].WaterVapor;
+		Wind[i] = Advection[i].Velocity;
 	}
 }
 
@@ -348,9 +366,9 @@ public struct ApplyAdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<DiffusionWater> Advection;
 	public void Execute(int i)
 	{
-		SaltMass[i] += Advection[i].SaltMass;
-		Temperature[i] += Advection[i].Temperature;
-		Velocity[i] += Advection[i].Velocity;
+		SaltMass[i] = Advection[i].SaltMass;
+		Temperature[i] = Advection[i].Temperature;
+		Velocity[i] = Advection[i].Velocity;
 	}
 }
 
@@ -365,9 +383,9 @@ public struct ApplyAdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<DiffusionCloud> Advection;
 	public void Execute(int i)
 	{
-		CloudMass[i] += Advection[i].Mass;
-		DropletMass[i] += Advection[i].DropletMass;
-		Velocity[i] += Advection[i].Velocity;
+		CloudMass[i] = Advection[i].Mass;
+		DropletMass[i] = Advection[i].DropletMass;
+		Velocity[i] = Advection[i].Velocity;
 	}
 }
 

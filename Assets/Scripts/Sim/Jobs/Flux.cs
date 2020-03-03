@@ -1,4 +1,4 @@
-﻿//#define DISABLE_RAINFALL
+﻿#define DISABLE_RAINFALL
 //#define FluxCloudJobDebug
 
 using Unity.Burst;
@@ -154,11 +154,11 @@ public struct FluxCloudJob : IJobParallelFor {
 		float cloudEvaporationMass = 0;
 		float dewPoint = DewPoint[i];
 
-		float3 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + PressureGradientForce[i] * SecondsPerTick;
+		var velocityRight = math.cross(Position[i], lastVelocity);
+		float3 coriolisForce = velocityRight * CoriolisMultiplier[i] * CoriolisTerm;
+		float3 velocity = lastVelocity * (1.0f - WindFriction[i] * WindFrictionMultiplier) + (PressureGradientForce[i] + coriolisForce) * SecondsPerTick;
 
-		var velocityUp = velocity * Position[i];
-		var velocityRight = math.cross(Position[i], velocity);
-		velocity += velocityRight * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
+	//	var velocityUp = math.dot(velocity, Position[i]) * Position[i];
 
 		float precipitationMass = 0;
 #if !DISABLE_RAINFALL

@@ -1,10 +1,13 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
+//#define DISABLE_AIR_DIFFUSION
+//#define DISABLE_CLOUD_DIFFUSION
+//#define DiffusionCloudJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
-
+using UnityEngine;
 
 #if !DiffusionAirJobDebug
 [BurstCompile]
@@ -37,12 +40,13 @@ public struct DiffusionAirJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float airMass = AirMass[i];
-		float absoluteHumidity = LastVapor[i] / (LastVapor[i] + airMass);
+		float absoluteHumidity = LastVapor[i] / airMass;
 
-		float newTemperature = 0;
-		float newWaterVapor = 0;
-		float3 newWind = 0;
+		float newTemperature = LastTemperature[i];
+		float newHumidity = absoluteHumidity;
+		float3 newWind = LastWind[i];
 
+#if !DISABLE_AIR_DIFFUSION
 		for (int j = 0; j < 6; j++)
 		{
 			int neighborIndex = i * 6 + j;
@@ -51,10 +55,10 @@ public struct DiffusionAirJob : IJobParallelFor {
 			{
 				float3 nWind = LastWind[n];
 
-				float neighborMass = AirMass[n] + LastVapor[n];
-				float diffusionAmount = AirMass[n] / (AirMass[n] + airMass) * DiffusionCoefficientHoriztonal;
+				float neighborMass = AirMass[n];
+				float diffusionAmount = neighborMass / (neighborMass + airMass) * DiffusionCoefficientHoriztonal;
 				float neighborHumidity = LastVapor[n] / neighborMass;
-				newWaterVapor += (neighborHumidity - absoluteHumidity) * diffusionAmount * airMass;
+				newHumidity += (neighborHumidity - absoluteHumidity) * diffusionAmount;
 				newWind += (nWind - LastWind[i]) * diffusionAmount;
 				newTemperature += (LastTemperature[n] - LastTemperature[i]) * diffusionAmount;
 
@@ -70,8 +74,8 @@ public struct DiffusionAirJob : IJobParallelFor {
 		{
 			float diffusionAmount = UpAirMass[i] / (UpAirMass[i] + airMass) * DiffusionCoefficientVertical;
 
-			float absoluteHumidityUp = UpHumidity[i] / (UpHumidity[i] + UpAirMass[i]);
-			newWaterVapor += (absoluteHumidityUp - absoluteHumidity) * airMass * diffusionAmount;
+			float absoluteHumidityUp = UpHumidity[i] / UpAirMass[i];
+			newHumidity += (absoluteHumidityUp - absoluteHumidity) * diffusionAmount;
 
 			float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float potentialTemperatureUp = UpTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
@@ -81,8 +85,8 @@ public struct DiffusionAirJob : IJobParallelFor {
 		{
 			float diffusionAmount = DownAirMass[i] / (DownAirMass[i] + airMass) * DiffusionCoefficientVertical;
 
-			float absoluteHumidityDown = DownHumidity[i] / (DownHumidity[i] + DownAirMass[i]);
-			newWaterVapor += (absoluteHumidityDown - absoluteHumidity) * diffusionAmount;
+			float absoluteHumidityDown = DownHumidity[i] / DownAirMass[i];
+			newHumidity += (absoluteHumidityDown - absoluteHumidity) * diffusionAmount;
 
 			float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
 			float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
@@ -93,11 +97,12 @@ public struct DiffusionAirJob : IJobParallelFor {
 		//		float vertMovement = math.min(MaxVerticalMovement, math.clamp(moveToNeutralBuoyancy + DiffusionCoefficient, 0, 1));
 
 #endif
+#endif
 
 		Delta[i] = new DiffusionAir()
 		{
 			Temperature = newTemperature,
-			WaterVapor = newWaterVapor,
+			WaterVapor = newHumidity * airMass,
 			Velocity = newWind,
 		};
 
@@ -105,7 +110,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 }
 
 
-#if !DiffusionCloudJob
+#if !DiffusionCloudJobDebug
 [BurstCompile]
 #endif
 public struct DiffusionCloudJob : IJobParallelFor {
@@ -117,13 +122,14 @@ public struct DiffusionCloudJob : IJobParallelFor {
 	[ReadOnly] public float DiffusionCoefficient;
 	public void Execute(int i)
 	{
-#if !DISABLE_CLOUD_ADVECTION
-		float newMass = 0;
-		float newDropletMass = 0;
-		float3 newVelocity = float3.zero;
 		float3 velocity = LastVelocity[i];
 		float mass = LastMass[i];
 
+		float newMass = 0;
+		float newDropletMass = 0;
+		float3 newVelocity = float3.zero;
+
+#if !DISABLE_CLOUD_DIFFUSION
 		for (int j = 0; j < 6; j++)
 		{
 			int neighborIndex = i * 6 + j;
@@ -141,14 +147,15 @@ public struct DiffusionCloudJob : IJobParallelFor {
 				}
 			}
 		}
+#endif
 
 		Delta[i] = new DiffusionCloud()
 		{
-			Mass = newMass * DiffusionCoefficient,
-			DropletMass = newDropletMass * DiffusionCoefficient,
-			Velocity = newVelocity * DiffusionCoefficient,
+			Mass = newMass * DiffusionCoefficient + mass,
+			DropletMass = newDropletMass * DiffusionCoefficient + LastDropletMass[i],
+			Velocity = newVelocity * DiffusionCoefficient + velocity,
 		};
-#endif
+
 	}
 }
 
@@ -174,9 +181,9 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public float DiffusionCoefficientVertical;
 	public void Execute(int i)
 	{
-		float newSaltMass = 0;
-		float newTemperature = 0;
-		float3 newVelocity = float3.zero;
+		float newSaltMass = LastSalt[i];
+		float newTemperature = LastTemperature[i];
+		float3 newVelocity = LastCurrent[i];
 		float waterMass = LastMass[i];
 		float mass = LastMass[i];
 
