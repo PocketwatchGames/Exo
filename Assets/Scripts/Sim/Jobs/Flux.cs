@@ -1,4 +1,4 @@
-﻿#define DISABLE_RAINFALL
+﻿//#define DISABLE_RAINFALL
 //#define FluxCloudJobDebug
 
 using Unity.Burst;

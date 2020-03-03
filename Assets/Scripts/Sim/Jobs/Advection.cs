@@ -1,15 +1,16 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
-#define DISABLE_AIR_ADVECTION
+//#define DISABLE_AIR_ADVECTION
 #define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
-//#define AdvectionAirJobDebug
-//#define AdvectionCloudJobDebug
+#define AdvectionAirJobDebug
+#define AdvectionCloudJobDebug
 //#define GetVectorDestCoordsJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
+using UnityEngine;
 
 public struct DiffusionAir {
 	public float Temperature;
@@ -131,10 +132,14 @@ public struct AdvectionAirJob : IJobParallelFor {
 		newTemperature = 0;
 		newWaterVapor = 0;
 		newVelocity = 0;
-		
+
+		// TODO: remove this when we have incompressibility
+		float totalValue = 0;
+
 		if (Destination[i].indexA == i)
 		{
 			float v = Destination[i].valueA;
+			totalValue += v;
 			newTemperature += Temperature[i] * v;
 			newWaterVapor += Vapor[i] * v;
 			newVelocity += Velocity[i] * v;
@@ -160,6 +165,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				{
 					incoming = Destination[n].valueC;
 				}
+				totalValue += incoming;
 				newTemperature += Temperature[n] * incoming;
 				newWaterVapor += Vapor[n] * incoming;
 				newVelocity += Velocity[n] * incoming;
@@ -176,8 +182,21 @@ public struct AdvectionAirJob : IJobParallelFor {
 		{
 		}
 
-
 #endif
+		if (totalValue > 0)
+		{
+			newTemperature /= totalValue;
+			newVelocity /= totalValue;
+		}
+		else
+		{
+			// TODO: remove once we have incompressibility
+			newTemperature = Temperature[i];
+			newVelocity = Velocity[i];
+		}
+		//newTemperature = Temperature[i];
+		//newVelocity = Velocity[i];
+		//newWaterVapor = Vapor[i];
 
 #endif
 
@@ -226,8 +245,13 @@ public struct AdvectionCloudJob : IJobParallelFor {
 			newMass += Mass[i] * v;
 			newDropletMass += DropletMass[i] * v;
 			newVelocity += Velocity[i] * v;
+
 		}
 
+		if (newMass < 0)
+		{
+			Debug.Break();
+		}
 		for (int j = 0; j < 6; j++)
 		{
 			int n = Neighbors[i * 6 + j];
@@ -237,10 +261,12 @@ public struct AdvectionCloudJob : IJobParallelFor {
 				if (Destination[n].indexA == i)
 				{
 					incoming = Destination[n].valueA;
-				} else if (Destination[n].indexB == i)
+				}
+				else if (Destination[n].indexB == i)
 				{
 					incoming = Destination[n].valueB;
-				} else if (Destination[n].indexC == i)
+				}
+				else if (Destination[n].indexC == i)
 				{
 					incoming = Destination[n].valueC;
 				}

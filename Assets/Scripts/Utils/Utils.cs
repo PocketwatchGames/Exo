@@ -131,7 +131,7 @@ public static class Utils {
 		v = (d11 * d20 - d01 * d21) * inverseDenom;
 		w = (d00 * d21 - d01 * d20) * inverseDenom;
 		u = 1.0f - v - w;
-		return v >= 0 && v <= 1 && w >= 0 && w <= 1;
+		return v >= 0 && v <= 1 && w >= 0 && w <= 1 && u >= 0 && u <= 1;
 	}
 }
 

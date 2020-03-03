@@ -132,7 +132,11 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetDewPoint(float relativeHumidity, float temperature)
 	{
-		return math.log(relativeHumidity) + (18.678f * (temperature - WorldData.FreezingTemperature)) / (temperature - 16.01f) + WorldData.FreezingTemperature;
+		if (relativeHumidity == 0)
+		{
+			return temperature;
+		}
+		return math.log(math.min(1, relativeHumidity)) + (18.678f * (temperature - WorldData.FreezingTemperature)) / (temperature - 16.01f) + WorldData.FreezingTemperature;
 	}
 
 	[BurstCompile]

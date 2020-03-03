@@ -5,9 +5,9 @@
 //#define EnergyAirJobDebug
 //#define EnergyWaterSurfaceJobDebug
 //#define DiffusionAirJobDebug
-//#define AdvectionAirJobDebug
+#define AdvectionAirJobDebug
 //#define PressureGradientForceAirJobDebug
-//#define AdvectionCloudJobDebug
+#define AdvectionCloudJobDebug
 //#define WaterFrictionJobDebug
 //#define WaterDensityGradientForceJobDebug
 //#define StateChangeJobDebug
@@ -1897,8 +1897,10 @@ public class WorldSim {
 				SortedSet<int> degenIndices = new SortedSet<int>();
 				List<string> degenVarNames = new List<string>();
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 1000, degenVarNames);
-				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
+				degen |= CheckDegen(_cellCount, degenIndices, "CloudVelocity", nextState.CloudVelocity, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "CloudElevation", dependent.CloudElevation, -100000, 100000, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 300, degenVarNames);
 				for (int i = 1; i < _airLayers - 1; i++) {
@@ -2118,48 +2120,50 @@ public class WorldSim {
 	public void PrintState(string title, int i, StaticState staticState, SimState state, List<string> degenVarNames)
 	{
 		StringBuilder s = new StringBuilder();
-		s.Append(title + " Index: " + i + " Time: " + state.PlanetState.Ticks);
+		s.AppendFormat("{0} Index: {1} Time: {2}", title, i, state.PlanetState.Ticks);
 		foreach (var n in degenVarNames)
 		{
-			s.Append(" | " + n);
+			s.AppendFormat(" | {0}", n);
 		}
 		s.AppendLine("");
-		s.AppendLine("X: " + staticState.Coordinate[i].x + " Y: " + staticState.Coordinate[i].y);
-		s.AppendLine("Elevation" + ": " + state.Terrain[i].Elevation);
-		s.AppendLine("Roughness" + ": " + state.Terrain[i].Roughness);
-		s.AppendLine("SoilFertility" + ": " + state.Terrain[i].SoilFertility);
-		s.AppendLine("Vegetation" + ": " + state.Terrain[i].Vegetation);
-		s.AppendLine("TerrainTemperature" + ": " + state.TerrainTemperature[i]);
-		s.AppendLine("CloudMass" + ": " + state.CloudMass[i]);
-		s.AppendLine("CloudDropletMass" + ": " + state.CloudDropletMass[i]);
-		s.AppendLine("IceMass" + ": " + state.IceMass[i]);
-		s.AppendLine("IceTemperature" + ": " + state.IceTemperature[i]);
+		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
+		s.AppendFormat("Elevation: {0}\n", state.Terrain[i].Elevation);
+		s.AppendFormat("Roughness: {0}\n", state.Terrain[i].Roughness);
+		s.AppendFormat("SoilFertility: {0}\n", state.Terrain[i].SoilFertility);
+		s.AppendFormat("Vegetation: {0}\n", state.Terrain[i].Vegetation);
+		s.AppendFormat("TerrainTemperature: {0}\n", state.TerrainTemperature[i]);
+		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
+		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);
+		s.AppendFormat("CloudVelocity: {0}\n", state.CloudVelocity[i]);
+		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
+		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
 		for (int j = 1; j < _waterLayers - 1; j++)
 		{
-			s.AppendLine("WaterMass" + j + ": " + state.WaterMass[j][i]);
-			s.AppendLine("SaltMass" + j + ": " + state.SaltMass[j][i]);
-			s.AppendLine("WaterTemperature" + j + ": " + state.WaterTemperature[j][i]);
-			s.AppendLine("WaterVelocity" + j + ": " + state.WaterVelocity[j][i]);
+			s.AppendFormat("WaterMass{0}: {1}\n", j, state.WaterMass[j][i]);
+			s.AppendFormat("SaltMass{0}: {1}\n", j, state.SaltMass[j][i]);
+			s.AppendFormat("WaterTemperature{0}: {1}\n", j, state.WaterTemperature[j][i]);
+			s.AppendFormat("WaterVelocity{0}: {1}\n", j, state.WaterVelocity[j][i]);
 		}
 		for (int j = 1; j < _airLayers - 1; j++)
 		{
-			s.AppendLine("AirTemperature" + j + ": " + state.AirTemperature[j][i]);
-			s.AppendLine("AirVapor" + j + ": " + state.AirVapor[j][i]);
-			s.AppendLine("Wind" + j + ": " + state.Wind[j][i]);
+			s.AppendFormat("AirTemperature{0}: {1}\n", j, state.AirTemperature[j][i]);
+			s.AppendFormat("AirVapor{0}: {1}\n", j, state.AirVapor[j][i]);
+			s.AppendFormat("Wind{0}: {1}\n", j, state.Wind[j][i]);
 		}
 		Debug.Log(s);
 	}
 	public void PrintDependentState(string title, int i, DependentState dependent)
 	{
 		StringBuilder s = new StringBuilder();
-		s.AppendLine(title + " Index: " + i);
-		s.AppendLine("Surface Elevation" + ": " + dependent.SurfaceElevation[i]);
-		s.AppendLine("Water Depth" + ": " + dependent.WaterDepth[i]);
-		s.AppendLine("Ice Coverage" + ": " + dependent.IceCoverage[i]);
-		s.AppendLine("Cloud Coverage" + ": " + dependent.CloudCoverage[i]);
+		s.AppendFormat("{0} Index: {1}", title, i);
+		s.AppendFormat("Surface Elevation: {0}\n", dependent.SurfaceElevation[i]);
+		s.AppendFormat("Water Depth: {0}\n", dependent.WaterDepth[i]);
+		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
+		s.AppendFormat("Cloud Coverage: {0}\n", dependent.CloudCoverage[i]);
+		s.AppendFormat("Cloud Elevation: {0}\n", dependent.CloudElevation[i]);
 		for (int j = 1; j < _waterLayers - 1; j++)
 		{
-			s.AppendLine("Water Coverage" + ": " + dependent.WaterCoverage[j][i]);
+			s.AppendFormat("Water Coverage: {0}\n", dependent.WaterCoverage[j][i]);
 		}
 		for (int j = 1; j < _airLayers - 1; j++)
 		{

@@ -69,6 +69,7 @@ public class WorldView : MonoBehaviour {
 		Ground
 	}
 
+	public int ActiveCell;
 	public bool ActiveCellLocked { get; private set; }
 	public int ActiveCellIndex { get; private set; }
 	public TemperatureUnits ActiveTemperatureUnits = TemperatureUnits.Celsius;
@@ -287,6 +288,12 @@ public class WorldView : MonoBehaviour {
 		}
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
+
+		if (ActiveCell != -1)
+		{
+			SetActiveCell(ActiveCell, true);
+			ActiveCell = -1;
+		}
 	}
 	public void StartLerp(float lerpTime)
 	{
