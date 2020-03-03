@@ -13,8 +13,8 @@
 //#define StateChangeJobDebug
 //#define EnergyIceJobDebug
 //#define StateChangeAirLayerJobDebug
-#define FluxCloudJobDebug
-#define GetVectorDestCoordsJobDebug
+//#define FluxCloudJobDebug
+//#define GetVectorDestCoordsJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -110,6 +110,8 @@ public class WorldSim {
 	private NativeArray<DiffusionCloud> diffusionCloud;
 	private NativeArray<DiffusionCloud> advectionCloud;
 	private NativeArray<BarycentricValue> destinationCloud;
+	private NativeArray<BarycentricValue>[] destinationAir;
+	private NativeArray<BarycentricValue>[] destinationWater;
 	private NativeArray<float>[] latentHeat;
 	private NativeArray<float3>[] pressureGradientForce;
 	private NativeArray<float3> pressureGradientForceCloud;
@@ -420,6 +422,7 @@ public class WorldSim {
 		}
 		diffusionAir = new NativeArray<DiffusionAir>[_airLayers];
 		advectionAir = new NativeArray<DiffusionAir>[_airLayers];
+		destinationAir = new NativeArray<BarycentricValue>[_airLayers];
 		pressureGradientForce = new NativeArray<float3>[_airLayers];
 		fluxEnergyAir = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
@@ -427,10 +430,12 @@ public class WorldSim {
 			fluxEnergyAir[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			advectionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
+			destinationAir[i] = new NativeArray<BarycentricValue>(_cellCount, Allocator.Persistent);
 			pressureGradientForce[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		}
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
+		destinationWater = new NativeArray<BarycentricValue>[_waterLayers];
 		conductionWaterTerrain = new NativeArray<float>[_waterLayers];
 		fluxEnergyWater = new NativeArray<float>[_waterLayers];
 		evaporationMass = new NativeArray<float>[_waterLayers];
@@ -441,6 +446,7 @@ public class WorldSim {
 		{
 			diffusionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			advectionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
+			destinationWater[i] = new NativeArray<BarycentricValue>(_cellCount, Allocator.Persistent);
 			conductionWaterTerrain[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			fluxEnergyWater[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			evaporationMass[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -481,12 +487,14 @@ public class WorldSim {
 			fluxEnergyAir[i].Dispose();
 			diffusionAir[i].Dispose();
 			advectionAir[i].Dispose();
+			destinationAir[i].Dispose();
 			pressureGradientForce[i].Dispose();
 		}
 		for (int i = 0; i < _waterLayers; i++)
 		{
 			diffusionWater[i].Dispose();
 			advectionWater[i].Dispose();
+			destinationWater[i].Dispose();
 			conductionWaterTerrain[i].Dispose();
 			fluxEnergyWater[i].Dispose();
 			evaporationMass[i].Dispose();
@@ -1642,6 +1650,15 @@ public class WorldSim {
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layer = _airLayer0 + j;
+				var airDestJob = GetVectorDestCoordsJob.Run(new GetVectorDestCoordsJob()
+				{
+					Destination = destinationAir[j],
+					Neighbors = staticState.Neighbors,
+					Position = staticState.SphericalPosition,
+					Velocity = nextState.Wind[j],
+					PlanetRadius = staticState.PlanetRadius,
+					SecondsPerTick = worldData.SecondsPerTick
+				}, diffusionJobHandle);
 				advectionJobHandles[layer] = AdvectionAirJob.Run(new AdvectionAirJob()
 				{
 					Delta = advectionAir[j],
@@ -1649,12 +1666,9 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[j],
 					Wind = nextState.Wind[j],
 					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					InverseCellDiameter = staticState.InverseCellDiameter,
-					SecondsPerTick = worldData.SecondsPerTick,
+					Destination = destinationAir[j],
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
-					AirMass = dependent.AirMass[j],
 					UpTemperature = nextState.AirTemperature[j + 1],
 					UpHumidity = nextState.AirVapor[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
@@ -1667,23 +1681,30 @@ public class WorldSim {
 					DownLayerHeight = dependent.LayerHeight[j - 1],
 					IsTop = j == _airLayers - 2,
 					IsBottom = j == 1,
-				}, diffusionJobHandle);
+				}, airDestJob);
 			}
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
 				int layer = _waterLayer0 + j;
+				var waterDestJob = GetVectorDestCoordsJob.Run(new GetVectorDestCoordsJob()
+				{
+					Destination = destinationWater[j],
+					Neighbors = staticState.Neighbors,
+					Position = staticState.SphericalPosition,
+					Velocity = nextState.WaterVelocity[j],
+					PlanetRadius = staticState.PlanetRadius,
+					SecondsPerTick = worldData.SecondsPerTick
+				}, diffusionJobHandle);
 				advectionJobHandles[layer] = AdvectionWaterJob.Run(new AdvectionWaterJob()
 				{
 					Delta = advectionWater[j],
+					Destination = destinationWater[j],
+					Velocity = nextState.WaterVelocity[j],
 					Temperature = nextState.WaterTemperature[j],
 					Mass = nextState.WaterMass[j],
 					Salt = nextState.SaltMass[j],
-					Current = nextState.WaterVelocity[j],
 					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					InverseCellDiameter = staticState.InverseCellDiameter,
-					SecondsPerTick = worldData.SecondsPerTick,
-				}, diffusionJobHandle);
+				}, waterDestJob);
 			}
 
 			var cloudDestJob = GetVectorDestCoordsJob.Run(new GetVectorDestCoordsJob()

@@ -815,11 +815,11 @@ public class WorldView : MonoBehaviour {
 		if (cloudMass > 0)
 		{
 			float dropletSize = 1000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
-			float3 vel = state.CloudVelocity[ActiveCellIndex];
-			s.AppendFormat("CLOUD: {0:N3} kg ELE: {0:N0} m R: {0:N3} mm VEL: ({0:N1}, {1:N1}, {2:N1})\n", 
+			float3 vel = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex],state.CloudVelocity[ActiveCellIndex]);
+			s.AppendFormat("CLOUD: {0:N3} kg ELE: {1:N0} m R: {2:N3} mm VEL: ({3:N1}, {4:N1}, {5:N1})\n", 
 				state.CloudMass[ActiveCellIndex],
 				dependent.CloudElevation[ActiveCellIndex],
-				dependent.CloudElevation[ActiveCellIndex],
+				state.CloudDropletMass[ActiveCellIndex],
 				vel.x, vel.y, vel.z);
 		}
 		else
@@ -835,11 +835,11 @@ public class WorldView : MonoBehaviour {
 				i, 
 				GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1),
 				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
-			s.AppendFormat("ELE: {0:N0} m P: {0:N0} Pa WIND: ({0:N1}, {1:N1}, {2:N1})\n",
+			s.AppendFormat("ELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N1})\n",
 				dependent.LayerElevation[i][ActiveCellIndex],
 				display.Pressure[i][ActiveCellIndex],
 				wind.x, wind.y, wind.z);
-			s.AppendFormat("MASS: {0:N0} kg VAPOR: {0:N0} kg\n", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex]);
+			s.AppendFormat("MASS: {0:N0} kg VAPOR: {1:N0} kg\n", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex]);
 			s.AppendLine();
 		}
 		return s.ToString();
