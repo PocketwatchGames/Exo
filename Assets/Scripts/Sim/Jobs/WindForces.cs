@@ -187,15 +187,17 @@ public struct WaterFrictionForceJob : IJobParallelFor {
 	{
 		var horizontalWindUp = math.cross(math.cross(Position[i], WindUp[i]), Position[i]);
 		var horizontalWindDown = math.cross(math.cross(Position[i], WindDown[i]), Position[i]);
-		var force = (horizontalWindUp - Current[i]) * FrictionCoefficientUp + (horizontalWindDown - Current[i]) * FrictionCoefficientDown;
 
-		var velocityUp = Current[i] * Position[i];
-		var velocityRight = math.cross(Position[i], Current[i]);
+		// TODO: the ekman depth is calculable!
+		// https://en.wikipedia.org/wiki/Ekman_transport
 
+		// Surface current is generally at about 45 degrees
 		// this averages out to about a 90 degree turn if it has the full depth of the ekman spiral (200 meters)
 		// http://oceanmotion.org/html/background/ocean-in-motion.htm
-		var coriolisForce = (velocityRight * CoriolisMultiplier[i] * CoriolisTerm) * math.min(LayerHeight[i], WaterSurfaceFrictionDepth) / WaterSurfaceFrictionDepth;
-		force += coriolisForce;
+
+		var ekmanCurrent = math.cross(Position[i], horizontalWindUp) * CoriolisMultiplier[i] + horizontalWindUp * (1.0f - CoriolisMultiplier[i]);
+
+		var force = (ekmanCurrent - Current[i]) * FrictionCoefficientUp + (horizontalWindDown - Current[i]) * FrictionCoefficientDown;
 
 		Force[i] += force;
 	}

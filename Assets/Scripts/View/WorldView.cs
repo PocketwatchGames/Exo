@@ -709,16 +709,16 @@ public class WorldView : MonoBehaviour {
 		switch (activeOverlay)
 		{
 			case WindOverlay.Wind0:
-				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.Wind[1]);
+				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, dependentState.DeflectedAirVelocity[1]);
 				return true;
 			case WindOverlay.Wind1:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[2]);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.DeflectedAirVelocity[2]);
 				return true;
 			case WindOverlay.Wind2:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.Wind[3]);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.DeflectedAirVelocity[3]);
 				return true;
 			case WindOverlay.WindCloud:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.CloudVelocity);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.DeflectedCloudVelocity);
 				return true;
 			case WindOverlay.PGF0:
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[1]);
@@ -730,16 +730,16 @@ public class WorldView : MonoBehaviour {
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[3]);
 				return true;
 			case WindOverlay.Current0:
-				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers-2]);
+				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, dependentState.DeflectedWaterVelocity[Sim.WorldData.WaterLayers-2]);
 				return true;
 			case WindOverlay.Current1:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 3]);
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, dependentState.DeflectedWaterVelocity[Sim.WorldData.WaterLayers - 3]);
 				return true;
 			case WindOverlay.Current2:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 4]);
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, dependentState.DeflectedWaterVelocity[Sim.WorldData.WaterLayers - 4]);
 				return true;
 		}
-		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
+		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, dependentState.DeflectedWaterVelocity[1]);
 		return false;
 	}
 

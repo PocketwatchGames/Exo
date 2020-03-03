@@ -123,19 +123,14 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> RelativeHumidityCloud;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> WindFriction;
-	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
 	[ReadOnly] public NativeArray<float> SurfaceAirTemperature;
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
 	[ReadOnly] public NativeArray<float3> Position;
-	[ReadOnly] public float WindFrictionMultiplier;
-	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public float RainDropMinSize;
 	[ReadOnly] public float RainDropMaxSize;
 	[ReadOnly] public float RainDropDragCoefficient;
-	[ReadOnly] public float InverseCellDiameter;
-	[ReadOnly] public float TicksPerSecond;
 	[ReadOnly] public float CloudDissapationRateDryAir;
 	[ReadOnly] public float CloudDissapationRateWind;
 	[ReadOnly] public float SecondsPerTick;
@@ -154,11 +149,8 @@ public struct FluxCloudJob : IJobParallelFor {
 		float cloudEvaporationMass = 0;
 		float dewPoint = DewPoint[i];
 
-		var velocityRight = math.cross(Position[i], lastVelocity);
-		float3 coriolisForce = velocityRight * CoriolisMultiplier[i] * CoriolisTerm;
-
 		// I already multiplied PressureGradientForce by SecondsPerTick during the calculation of the force
-		float3 velocity = lastVelocity + PressureGradientForce[i] + coriolisForce * SecondsPerTick;
+		float3 velocity = lastVelocity + PressureGradientForce[i];
 
 	//	var velocityUp = math.dot(velocity, Position[i]) * Position[i];
 

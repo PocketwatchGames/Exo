@@ -20,11 +20,8 @@ public struct EnergyAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> LastWind;
 	[ReadOnly] public NativeArray<float> Energy;
 	[ReadOnly] public NativeArray<float> WindFriction;
-	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
-	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float WindFrictionMultiplier;
-	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
@@ -34,12 +31,6 @@ public struct EnergyAirJob : IJobParallelFor {
 		float3 wind = lastWind;
 		wind *= (1.0f - WindFriction[i] * WindFrictionMultiplier);
 		wind += PressureGradientForce[i] * SecondsPerTick;
-
-#if !DISABLE_CORIOLIS
-//		var windUp = math.dot(Position[i], lastWind) * Position[i];
-		var windRight = math.cross(Position[i], lastWind);
-		wind += windRight * math.clamp(CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick, -1, 1);
-#endif
 
 		// TODO: deal with buoyancy here, but rather than storing a vertical velocity, let's just move to neutral buoyancy every time step
 

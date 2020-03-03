@@ -433,11 +433,11 @@ public class WorldSim {
 			emissivity[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			solarRadiationIn[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
+		fluxEnergyAir = new NativeArray<float>[_airLayers];
 		diffusionAir = new NativeArray<DiffusionAir>[_airLayers];
 		advectionAir = new NativeArray<DiffusionAir>[_airLayers];
 		destinationAir = new NativeArray<BarycentricValue>[_airLayers];
 		pressureGradientForce = new NativeArray<float3>[_airLayers];
-		fluxEnergyAir = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
 		{
 			fluxEnergyAir[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -1275,13 +1275,8 @@ public class WorldSim {
 				SecondsPerTick = worldData.SecondsPerTick,
 				CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
-				InverseCellDiameter = staticState.InverseCellDiameter,
 				SurfaceElevation = dependent.SurfaceElevation,
-				TicksPerSecond = worldData.TicksPerSecond,
 				WindFriction = windFriction,
-				WindFrictionMultiplier = 0,
-				CoriolisMultiplier = staticState.CoriolisMultiplier,
-				CoriolisTerm = coriolisTerm,
 				PressureGradientForce = pressureGradientForceCloud,
 				EvaporationRate = worldData.EvaporationRate,
 				EvapTemperatureMax = worldData.EvapMaxTemperature,
@@ -1487,9 +1482,6 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					Energy = fluxEnergyAir[j],
 					PressureGradientForce = pressureGradientForce[j],
-					Position = staticState.SphericalPosition,
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
 					SecondsPerTick = worldData.SecondsPerTick,
 					WindFriction = windFriction,
 					WindFrictionMultiplier = j==1 ? 1 : 0,
@@ -1665,6 +1657,7 @@ public class WorldSim {
 			// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
 			#region Advection
 
+
 			JobHandle[] advectionJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
@@ -1672,9 +1665,12 @@ public class WorldSim {
 				var airDestJob = GetVectorDestCoordsJob.Run(new GetVectorDestCoordsJob()
 				{
 					Destination = destinationAir[j],
+					DeflectedVelocity = dependent.DeflectedAirVelocity[j],
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
 					Velocity = nextState.Wind[j],
+					CoriolisMultiplier =staticState.CoriolisMultiplier,
+					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick
 				}, diffusionJobHandle);
@@ -1708,9 +1704,12 @@ public class WorldSim {
 				var waterDestJob = GetVectorDestCoordsJob.Run(new GetVectorDestCoordsJob()
 				{
 					Destination = destinationWater[j],
+					DeflectedVelocity = dependent.DeflectedWaterVelocity[j],
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
 					Velocity = nextState.WaterVelocity[j],
+					CoriolisMultiplier = staticState.CoriolisMultiplier,
+					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick
 				}, diffusionJobHandle);
@@ -1729,9 +1728,12 @@ public class WorldSim {
 			var cloudDestJob = GetVectorDestCoordsJob.Run(new GetVectorDestCoordsJob()
 			{
 				Destination = destinationCloud,
+				DeflectedVelocity = dependent.DeflectedCloudVelocity,
 				Neighbors = staticState.Neighbors,
 				Position = staticState.SphericalPosition,
 				Velocity = nextState.CloudVelocity,
+				CoriolisMultiplier = staticState.CoriolisMultiplier,
+				CoriolisTerm = coriolisTerm,
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick
 			}, diffusionJobHandle);

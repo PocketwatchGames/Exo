@@ -43,21 +43,27 @@ public struct BarycentricValue {
 #endif
 public struct GetVectorDestCoordsJob : IJobParallelFor {
 	public NativeArray<BarycentricValue> Destination;
+	public NativeArray<float3> DeflectedVelocity;
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public float CoriolisTerm;
 	public void Execute(int i)
 	{
-
+		float3 position = Position[i];
 		float3 velocity = Velocity[i];
-		float3 pos = Position[i] * PlanetRadius;
-		float3 velVertical = math.dot(velocity, Position[i]) * Position[i];
-		float3 velHorizontal = velocity - velVertical;
+		float3 pos = position * PlanetRadius;
+
+		float3 deflectedVelocity = velocity + math.cross(position, velocity) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
+		float3 velVertical = math.dot(deflectedVelocity, position) * position;
+		float3 velHorizontal = deflectedVelocity - velVertical;
 
 		float3 moveHorizontal = velHorizontal * SecondsPerTick;
 		float3 movePos = pos + moveHorizontal;
+		DeflectedVelocity[i] = deflectedVelocity;
 
 		for (int j = 0; j < 6; j++)
 		{
