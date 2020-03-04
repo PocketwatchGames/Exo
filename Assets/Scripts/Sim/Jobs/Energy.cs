@@ -13,7 +13,7 @@ using Unity.Mathematics;
 [BurstCompile]
 #endif
 public struct EnergyAirJob : IJobParallelFor {
-	public NativeArray<float> Temperature;
+	public NativeArray<float> AirTemperaturePotential;
 	public NativeArray<float> Vapor;
 	public NativeArray<float3> Wind;
 	[ReadOnly] public NativeArray<float> AirMass;
@@ -42,7 +42,7 @@ public struct EnergyAirJob : IJobParallelFor {
 
 		float airMass = AirMass[i];
 		float specificHeat = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * Vapor[i];
-		Temperature[i] += Energy[i] / specificHeat;
+		AirTemperaturePotential[i] += Energy[i] / specificHeat;
 		Wind[i] = wind;
 	}
 }

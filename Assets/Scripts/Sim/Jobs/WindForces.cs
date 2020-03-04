@@ -44,18 +44,18 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 	public NativeArray<float3> Delta;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> TemperaturePotential;
 	[ReadOnly] public NativeArray<float> Pressure;
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> Positions;
-	[ReadOnly] public NativeArray<float> UpTemperature;
+	[ReadOnly] public NativeArray<float> UpTemperaturePotential;
 	[ReadOnly] public NativeArray<float> UpHumidity;
 	[ReadOnly] public NativeArray<float> UpAirMass;
 	[ReadOnly] public NativeArray<float> UpLayerElevation;
 	[ReadOnly] public NativeArray<float> UpLayerHeight;
-	[ReadOnly] public NativeArray<float> DownTemperature;
+	[ReadOnly] public NativeArray<float> DownTemperaturePotential;
 	[ReadOnly] public NativeArray<float> DownHumidity;
 	[ReadOnly] public NativeArray<float> DownAirMass;
 	[ReadOnly] public NativeArray<float> DownLayerElevation;
@@ -81,13 +81,12 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 				float3 diff = (position - Positions[n]) * PlanetRadius;
 				// TODO: this should only be using horizontal component, which we should cache
 
-				float neighborMidElevation = LayerElevation[n] + LayerHeight[n] / 2;
-				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, Temperature[n], Pressure[n], neighborMidElevation, Gravity);
+				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, TemperaturePotential[n], Pressure[n], LayerElevation[n] + LayerHeight[n] / 2, Gravity);
 				gradientPressure += diff / math.lengthsq(diff) * (neighborElevationAtPressure - elevation);
 				neighborCount++;
 			}
 		}
-		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Temperature[i], AirMass[i], VaporMass[i]);
+		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], elevation), AirMass[i], VaporMass[i]);
 		force = gradientPressure * Gravity * inverseDensity / neighborCount;
 
 
@@ -95,13 +94,11 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 		//if (!IsTop)
 		//{
 		//	float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-		//	float potentialTemperatureUp = UpTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
 		//	buoyancy += Temperature[i] / potentialTemperatureUp - 1;
 		//}
 		//if (!IsBottom)
 		//{
 		//	float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-		//	float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
 		//	buoyancy -= potentialTemperatureDown / Temperature[i] - 1;
 		//}
 

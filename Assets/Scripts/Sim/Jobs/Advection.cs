@@ -200,9 +200,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 			newTemperature = Temperature[i];
 			newVelocity = Velocity[i];
 		}
-		//newTemperature = Temperature[i];
-		//newVelocity = Velocity[i];
-		//newWaterVapor = Vapor[i];
 
 #endif
 
@@ -254,10 +251,6 @@ public struct AdvectionCloudJob : IJobParallelFor {
 
 		}
 
-		if (newMass < 0)
-		{
-			Debug.Break();
-		}
 		for (int j = 0; j < 6; j++)
 		{
 			int n = Neighbors[i * 6 + j];

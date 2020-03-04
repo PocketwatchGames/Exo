@@ -646,16 +646,16 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[1]);
 				return true;
 			case MeshOverlay.TemperatureSurface:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperature);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperatureAbsolute);
 				return true;
 			case MeshOverlay.PotentialTemperature0:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, display.PotentialTemperature[1]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperaturePotential[1]);
 				return true;
 			case MeshOverlay.PotentialTemperature1:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, display.PotentialTemperature[2]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperaturePotential[2]);
 				return true;
 			case MeshOverlay.PotentialTemperature2:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, display.PotentialTemperature[3]);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperaturePotential[3]);
 				return true;
 			case MeshOverlay.Pressure0:
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[1]);
@@ -818,6 +818,7 @@ public class WorldView : MonoBehaviour {
 		int upperAtmosphereLayerIndex = Sim.WorldData.AirLayers - 2;
 		s.AppendFormat("RAIN: {0:N3} kg\n", display.Rainfall[ActiveCellIndex]);
 		s.AppendFormat("EVAP: {0:N3} kg\n", display.Evaporation[ActiveCellIndex]);
+		s.AppendFormat("SURFACE TEMP: {0:N3}\n", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
 
 		if (cloudMass > 0)
 		{
@@ -840,7 +841,7 @@ public class WorldView : MonoBehaviour {
 			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.Wind[i][ActiveCellIndex]);
 			s.AppendFormat("LAYER {0} | TEMP: {1} RH: {2:P1}\n",
 				i, 
-				GetTemperatureString(state.AirTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 1),
+				GetTemperatureString(state.AirTemperaturePotential[i][ActiveCellIndex], ActiveTemperatureUnits, 1),
 				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
 			s.AppendFormat("ELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N1})\n",
 				dependent.LayerElevation[i][ActiveCellIndex],

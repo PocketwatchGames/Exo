@@ -10,8 +10,8 @@ using Unity.Mathematics;
 [BurstCompile]
 #endif
 public struct StateChangeJob : IJobParallelFor {
-	public NativeArray<float> SurfaceAirTemperature;
-	public NativeArray<float> SurfaceAirVapor;
+	public NativeArray<float> LowerAirTemperaturePotential;
+	public NativeArray<float> LowerAirVapor;
 	public NativeArray<float> SurfaceWaterMass;
 	public NativeArray<float> SurfaceWaterTemperature;
 	public NativeArray<float> IceMass;
@@ -26,14 +26,15 @@ public struct StateChangeJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> PrecipitationTemperature;
 	[ReadOnly] public NativeArray<float> SurfaceAirMass;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
+	[ReadOnly] public NativeArray<float> LowerAirLayerElevation;
+	[ReadOnly] public NativeArray<float> LowerAirLayerHeight;
 	public void Execute(int i)
 	{
-		float vaporMass = SurfaceAirVapor[i];
+		float vaporMass = LowerAirVapor[i];
 		float airMass = SurfaceAirMass[i];
 		float evaporatedMass = WaterEvaporatedMass[i];
 		float waterMass = SurfaceWaterMass[i];
 		float waterTemperature = SurfaceWaterTemperature[i];
-		float airTemperature = SurfaceAirTemperature[i];
 		float iceMeltedMass = IceMeltedMass[i];
 		float waterFrozenMass = WaterFrozenMass[i];
 		float saltMass = SurfaceSaltMass[i];
@@ -52,12 +53,13 @@ public struct StateChangeJob : IJobParallelFor {
 
 		float newWaterMass = waterMass + iceMeltedMass + rainfallMass - evaporatedMass - waterFrozenMass;
 		float newVaporMass = vaporMass + evaporatedMass;
-		float newAirTemperature = airTemperature;
 		float newIceMass = LastIceMass[i] + waterFrozenMass + snowMass - iceMeltedMass;
+		float elevation = LowerAirLayerElevation[i] + LowerAirLayerHeight[i] / 2;
+		float newAirTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(LowerAirTemperaturePotential[i], elevation);
 
 		float specificHeatAir = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWater * vaporMass;
-		newAirTemperature = (
-			newAirTemperature * (airMass + vaporMass) 
+		newAirTemperatureAbsolute = (
+			newAirTemperatureAbsolute * (airMass + vaporMass) 
 			+ evaporatedMass * waterTemperature)
 			/ (airMass + vaporMass + evaporatedMass);
 
@@ -90,9 +92,9 @@ public struct StateChangeJob : IJobParallelFor {
 		}
 
 		SurfaceWaterTemperature[i] = newWaterTemperature;
-		SurfaceAirTemperature[i] = newAirTemperature;
+		LowerAirTemperaturePotential[i] = Atmosphere.GetPotentialTemperature(newAirTemperatureAbsolute, elevation);
 		SurfaceWaterMass[i] = newWaterMass;
-		SurfaceAirVapor[i] = newVaporMass;
+		LowerAirVapor[i] = newVaporMass;
 		IceTemperature[i] = newIceTemperature;
 		IceMass[i] = newIceMass;
 
@@ -108,16 +110,15 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 	public NativeArray<float> CloudDropletMass;
 	public NativeArray<float> SurfaceWaterMass;
 	public NativeArray<float> SurfaceWaterTemperature;
-	public NativeArray<float> AirTemperature;
+	public NativeArray<float> AirTemperaturePotential;
 	public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> LastAirTemperature;
+	[ReadOnly] public NativeArray<float> LastAirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> LastVaporMass;
 	[ReadOnly] public NativeArray<float> GroundCondensationMass;
 	[ReadOnly] public NativeArray<float> CloudCondensationMass;
 	[ReadOnly] public NativeArray<float> CloudEvaporationMass;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> AirMass;
 	// TODO: implement
 	//[ReadOnly] public NativeArray<float> AirTemperatureTop;
@@ -135,7 +136,6 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 		float groundCondensationMass = GroundCondensationMass[i];
 		float cloudCondensationMass = CloudCondensationMass[i];
 		float cloudEvaporationMass = CloudEvaporationMass[i];
-		float airTemperature = LastAirTemperature[i];
 
 
 		float newCloudMass = math.max(0, cloudMass + cloudCondensationMass - cloudEvaporationMass);
@@ -153,7 +153,7 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 		CloudMass[i] = newCloudMass;
 		CloudDropletMass[i] = newDropletSize;
 		VaporMass[i] = LastVaporMass[i] - cloudCondensationMass - groundCondensationMass + cloudEvaporationMass;
-		AirTemperature[i] = LastAirTemperature[i];
+		AirTemperaturePotential[i] = LastAirTemperaturePotential[i];
 
 		float newWaterMass = SurfaceWaterMass[i] + groundCondensationMass;
 		if (newWaterMass == 0)
@@ -163,7 +163,8 @@ public struct StateChangeAirLayerJob : IJobParallelFor {
 		}
 		else
 		{
-			SurfaceWaterTemperature[i] = ((SurfaceWaterMass[i] + SurfaceSaltMass[i]) * SurfaceWaterTemperature[i] + groundCondensationMass * AirTemperature[i]) / (newWaterMass + SurfaceSaltMass[i]);
+			float surfaceAirTemperature = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceElevation[i]);
+			SurfaceWaterTemperature[i] = ((SurfaceWaterMass[i] + SurfaceSaltMass[i]) * SurfaceWaterTemperature[i] + groundCondensationMass * surfaceAirTemperature) / (newWaterMass + SurfaceSaltMass[i]);
 			SurfaceWaterMass[i] = newWaterMass;
 		}
 	}

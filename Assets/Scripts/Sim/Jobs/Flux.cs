@@ -233,7 +233,7 @@ public struct FluxAirJob : IJobParallelFor {
 	public NativeArray<float> CondensationCloudMass;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> LastVapor;
-	[ReadOnly] public NativeArray<float> LastTemperature;
+	[ReadOnly] public NativeArray<float> LastTemperaturePotential;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
@@ -258,7 +258,8 @@ public struct FluxAirJob : IJobParallelFor {
 			+ ConductionEnergyWater[i];
 
 #if !DISABLE_CONDENSATION
-		var relativeHumidity = Atmosphere.GetRelativeHumidity(AirMass[i], LastVapor[i], LastTemperature[i], DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
+		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(LastTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
+		var relativeHumidity = Atmosphere.GetRelativeHumidity(AirMass[i], LastVapor[i], temperatureAbsolute, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
 		if (relativeHumidity > 1.0f)
 		{
 			float aboveCloud = math.saturate((LayerElevation[i] - CloudElevation[i]) / LayerHeight[i]);

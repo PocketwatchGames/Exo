@@ -19,7 +19,7 @@ public struct SimState {
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> CloudDropletMass;
 	public NativeArray<float3> CloudVelocity;
-	public NativeArray<float>[] AirTemperature;
+	public NativeArray<float>[] AirTemperaturePotential;
 	public NativeArray<float>[] AirVapor;
 	public NativeArray<float3>[] Wind;
 	public NativeArray<float>[] WaterTemperature;
@@ -36,12 +36,12 @@ public struct SimState {
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudDropletMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudVelocity = new NativeArray<float3>(count, Allocator.Persistent);
-		AirTemperature = new NativeArray<float>[airLayers];
+		AirTemperaturePotential = new NativeArray<float>[airLayers];
 		AirVapor = new NativeArray<float>[airLayers];
 		Wind = new NativeArray<float3>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
-			AirTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
+			AirTemperaturePotential[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVapor[i] = new NativeArray<float>(count, Allocator.Persistent);
 			Wind[i] = new NativeArray<float3>(count, Allocator.Persistent);
 		}
@@ -68,9 +68,9 @@ public struct SimState {
 		CloudMass.Dispose();
 		CloudDropletMass.Dispose();
 		CloudVelocity.Dispose();
-		for (int i = 0; i < AirTemperature.Length; i++)
+		for (int i = 0; i < AirTemperaturePotential.Length; i++)
 		{
-			AirTemperature[i].Dispose();
+			AirTemperaturePotential[i].Dispose();
 			AirVapor[i].Dispose();
 			Wind[i].Dispose();
 		}
@@ -113,7 +113,7 @@ public struct DependentState {
 	public NativeArray<float> CloudCoverage;
 	public NativeArray<float> VegetationCoverage;
 	public NativeArray<float> IceCoverage;
-	public NativeArray<float> SurfaceAirTemperature;
+	public NativeArray<float> SurfaceAirTemperatureAbsolute;
 	public NativeArray<float> IceEnergy;
 	public NativeArray<float> WindVerticalCloud;
 	public NativeArray<float>[] AirMass;
@@ -148,7 +148,7 @@ public struct DependentState {
 		CloudCoverage = new NativeArray<float>(count, Allocator.Persistent);
 		VegetationCoverage = new NativeArray<float>(count, Allocator.Persistent);
 		IceCoverage = new NativeArray<float>(count, Allocator.Persistent);
-		SurfaceAirTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAirTemperatureAbsolute = new NativeArray<float>(count, Allocator.Persistent);
 		IceEnergy = new NativeArray<float>(count, Allocator.Persistent);
 		DewPoint = new NativeArray<float>(count, Allocator.Persistent);
 		WindVerticalCloud = new NativeArray<float>(count, Allocator.Persistent);
@@ -207,7 +207,7 @@ public struct DependentState {
 		CloudCoverage.Dispose();
 		VegetationCoverage.Dispose();
 		IceCoverage.Dispose();
-		SurfaceAirTemperature.Dispose();
+		SurfaceAirTemperatureAbsolute.Dispose();
 		IceEnergy.Dispose();
 		DewPoint.Dispose();
 		WindVerticalCloud.Dispose();
@@ -277,7 +277,6 @@ public struct DisplayState {
 	public NativeArray<float> SolarRadiationAbsorbedSurface;
 	public NativeArray<float> Rainfall;
 	public NativeArray<float> Evaporation;
-	public NativeArray<float>[] PotentialTemperature;
 	public NativeArray<float>[] Pressure;
 	public NativeArray<float3>[] PressureGradientForce;
 
@@ -287,12 +286,10 @@ public struct DisplayState {
 		Rainfall = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
 
-		PotentialTemperature = new NativeArray<float>[airLayers];
 		Pressure = new NativeArray<float>[airLayers];
 		PressureGradientForce = new NativeArray<float3>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
-			PotentialTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
 			Pressure[i] = new NativeArray<float>(count, Allocator.Persistent);
 			PressureGradientForce[i] = new NativeArray<float3>(count, Allocator.Persistent);
 		}
@@ -305,7 +302,6 @@ public struct DisplayState {
 		Evaporation.Dispose();
 		for (int i = 0; i < Pressure.Length; i++)
 		{
-			PotentialTemperature[i].Dispose();
 			Pressure[i].Dispose();
 			PressureGradientForce[i].Dispose();
 		}

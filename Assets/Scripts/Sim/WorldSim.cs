@@ -762,7 +762,7 @@ public class WorldSim {
 			for (int j = 1; j < _airLayers-1; j++)
 			{
 				int layer = _airLayer0 + j;
-				thermalOutJobHandles[layer] = ThermalOutAirJob.Run(new ThermalEnergyRadiatedJob()
+				thermalOutJobHandles[layer] = ThermalOutAirJob.Run(new ThermalEnergyRadiatedAirJob()
 				{
 					ThermalRadiationDelta = thermalRadiationDelta[layer],
 					ThermalRadiationTransmittedUp = thermalRadiationTransmittedUp[layer],
@@ -773,7 +773,9 @@ public class WorldSim {
 					PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 					Energy = dependent.AirPotentialEnergy[j],
 					Emissivity = emissivity[layer],
-					Temperature = lastState.AirTemperature[j],
+					TemperaturePotential = lastState.AirTemperaturePotential[j],
+					LayerElevation = dependent.LayerElevation[j],
+					LayerHeight = dependent.LayerHeight[j],
 					SecondsPerTick = worldData.SecondsPerTick
 				}, emissivityJobHandles[layer]);
 			}
@@ -793,7 +795,7 @@ public class WorldSim {
 					PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 					Emissivity = emissivity[layer],
 					Energy = dependent.WaterPotentialEnergy[j],
-					Temperature = lastState.WaterTemperature[j],
+					TemperatureAbsolute = lastState.WaterTemperature[j],
 					SecondsPerTick = worldData.SecondsPerTick
 				}, emissivityJobHandles[layer]);
 			}
@@ -978,7 +980,7 @@ public class WorldSim {
 
 					Pressure = dependent.AirPressure[j],
 					AirMass = dependent.AirMass[j],
-					Temperature = lastState.AirTemperature[j],
+					TemperaturePotential = lastState.AirTemperaturePotential[j],
 					VaporMass = lastState.AirVapor[j],
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
@@ -986,12 +988,12 @@ public class WorldSim {
 					Positions = staticState.SphericalPosition,
 					PlanetRadius = staticState.PlanetRadius,
 					Gravity = lastState.PlanetState.Gravity,
-					UpTemperature = lastState.AirTemperature[j + 1],
+					UpTemperaturePotential = lastState.AirTemperaturePotential[j + 1],
 					UpHumidity = lastState.AirVapor[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
-					DownTemperature = lastState.AirTemperature[j - 1],
+					DownTemperaturePotential = lastState.AirTemperaturePotential[j - 1],
 					DownHumidity = lastState.AirVapor[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
 					DownLayerElevation = dependent.LayerElevation[j - 1],
@@ -1099,7 +1101,7 @@ public class WorldSim {
 			var conductionAirIceJobHandle = ConductionAirIceJob.Run(new ConductionAirIceJob()
 			{
 				EnergyDelta = conductionSurfaceAirIce,
-				TemperatureA = dependent.SurfaceAirTemperature,
+				TemperatureA = dependent.SurfaceAirTemperatureAbsolute,
 				TemperatureB = lastState.IceTemperature,
 				EnergyB = dependent.IceEnergy,
 				ConductionCoefficient = WorldData.ConductivityAirIce,
@@ -1111,7 +1113,7 @@ public class WorldSim {
 			var conductionAirWaterJobHandle = ConductionAirWaterJob.Run(new ConductionAirWaterJob()
 			{
 				EnergyDelta = conductionSurfaceAirWater,
-				TemperatureA = dependent.SurfaceAirTemperature,
+				TemperatureA = dependent.SurfaceAirTemperatureAbsolute,
 				TemperatureB = lastState.WaterTemperature[_surfaceWaterLayer],
 				EnergyA = dependent.IceEnergy,
 				EnergyB = dependent.WaterPotentialEnergy[_surfaceWaterLayer],
@@ -1125,7 +1127,7 @@ public class WorldSim {
 			var conductionAirTerrainJobHandle = ConductionAirTerrainJob.Run(new ConductionAirTerrainJob()
 			{
 				EnergyDelta = conductionSurfaceAirTerrain,
-				TemperatureA = dependent.SurfaceAirTemperature,
+				TemperatureA = dependent.SurfaceAirTemperatureAbsolute,
 				TemperatureB = lastState.TerrainTemperature,
 				ConductionCoefficient = WorldData.ConductivityAirTerrain,
 				CoverageIce = dependent.IceCoverage,
@@ -1256,7 +1258,7 @@ public class WorldSim {
 				PrecipitationMass = precipitationMass,
 				PrecipitationTemperature = precipitationTemperature,
 
-				SurfaceAirTemperature = lastState.AirTemperature[1],
+				SurfaceAirTemperature = dependent.SurfaceAirTemperatureAbsolute,
 				SurfaceSaltMass = lastState.SaltMass[_surfaceWaterLayer],
 				LastCloudMass = lastState.CloudMass,
 				LastVelocity = lastState.CloudVelocity,
@@ -1306,7 +1308,7 @@ public class WorldSim {
 					FluxEnergy = fluxEnergyAir[j],
 					CondensationCloudMass = condensationCloudMass[j],
 					CondensationGroundMass = condensationGroundMass[j],
-					LastTemperature = lastState.AirTemperature[j],
+					LastTemperaturePotential = lastState.AirTemperaturePotential[j],
 					LastVapor = lastState.AirVapor[j],
 					AirMass = dependent.AirMass[j],
 					ConductionEnergyWater = j == 1 ? conductionSurfaceAirWater : conductionUpperAirWater,
@@ -1370,7 +1372,7 @@ public class WorldSim {
 
 				stateChangeJobHandle = StateChangeAirLayerJob.Run(new StateChangeAirLayerJob()
 				{
-					AirTemperature = nextState.AirTemperature[j],
+					AirTemperaturePotential = nextState.AirTemperaturePotential[j],
 					VaporMass = nextState.AirVapor[j],
 					CloudDropletMass = nextState.CloudDropletMass,
 					CloudEvaporationMass = cloudEvaporationMass,
@@ -1382,11 +1384,10 @@ public class WorldSim {
 					CloudCondensationMass = condensationCloudMass[j],
 					GroundCondensationMass = condensationGroundMass[j],
 					AirMass = dependent.AirMass[j],
-					LastAirTemperature = lastState.AirTemperature[j],
+					LastAirTemperaturePotential = lastState.AirTemperaturePotential[j],
 					LastVaporMass = lastState.AirVapor[j],
 					LayerIndex = layerIndex,
-					LayerElevation = dependent.LayerElevation[j],
-					LayerHeight = dependent.LayerHeight[j],
+					SurfaceElevation = dependent.SurfaceElevation
 
 				}, JobHandle.CombineDependencies(fluxAirJobsHandle));
 			}
@@ -1406,8 +1407,8 @@ public class WorldSim {
 				IceMass = nextState.IceMass,
 				SurfaceWaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				SurfaceWaterMass = nextState.WaterMass[_surfaceWaterLayer],
-				SurfaceAirTemperature = nextState.AirTemperature[1],
-				SurfaceAirVapor = nextState.AirVapor[1],
+				LowerAirTemperaturePotential = nextState.AirTemperaturePotential[1],
+				LowerAirVapor = nextState.AirVapor[1],
 
 				LastIceMass = lastState.IceMass,
 				LastIceTemperature = lastState.IceTemperature,
@@ -1416,6 +1417,8 @@ public class WorldSim {
 				WaterEvaporatedMass = evaporationMass[_surfaceWaterLayer],
 				WaterFrozenMass = frozenMass[_surfaceWaterLayer],
 				WaterFrozenTemperature = frozenTemperature[_surfaceWaterLayer],
+				LowerAirLayerElevation = dependent.LayerElevation[1],
+				LowerAirLayerHeight = dependent.LayerHeight[1],
 				IceMeltedMass = iceMeltedMass,
 				PrecipitationTemperature = precipitationTemperature,
 				PrecipitationMass = precipitationMass,
@@ -1475,7 +1478,7 @@ public class WorldSim {
 				jobHandleDependencies.Add(airDependencies);
 				energyJobHandles.Add(EnergyAirJob.Run(new EnergyAirJob()
 				{
-					Temperature = nextState.AirTemperature[j],
+					AirTemperaturePotential = nextState.AirTemperaturePotential[j],
 					Vapor = nextState.AirVapor[j],
 					Wind = nextState.Wind[j],
 					LastWind = lastState.Wind[j],
@@ -1550,20 +1553,20 @@ public class WorldSim {
 				{
 					Delta = diffusionAir[j],
 
-					LastTemperature = nextState.AirTemperature[j],
+					LastTemperature = nextState.AirTemperaturePotential[j],
 					LastVapor = nextState.AirVapor[j],
 					LastWind = nextState.Wind[j],
 					Neighbors = staticState.Neighbors,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					AirMass = dependent.AirMass[j],
-					UpTemperature = nextState.AirTemperature[j + 1],
+					UpTemperature = nextState.AirTemperaturePotential[j + 1],
 					UpHumidity = nextState.AirVapor[j + 1],
 					UpWind = nextState.Wind[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
-					DownTemperature = nextState.AirTemperature[j - 1],
+					DownTemperature = nextState.AirTemperaturePotential[j - 1],
 					DownHumidity = nextState.AirVapor[j - 1],
 					DownWind = nextState.Wind[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
@@ -1642,7 +1645,7 @@ public class WorldSim {
 				{
 					Advection = diffusionAir[i],
 					Vapor = nextState.AirVapor[i],
-					Temperature = nextState.AirTemperature[i],
+					Temperature = nextState.AirTemperaturePotential[i],
 					Wind = nextState.Wind[i],
 				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
 			}
@@ -1677,19 +1680,19 @@ public class WorldSim {
 				advectionJobHandles[layer] = AdvectionAirJob.Run(new AdvectionAirJob()
 				{
 					Delta = advectionAir[j],
-					Temperature = nextState.AirTemperature[j],
+					Temperature = nextState.AirTemperaturePotential[j],
 					Vapor = nextState.AirVapor[j],
 					Velocity = nextState.Wind[j],
 					Neighbors = staticState.Neighbors,
 					Destination = destinationAir[j],
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
-					UpTemperature = nextState.AirTemperature[j + 1],
+					UpTemperature = nextState.AirTemperaturePotential[j + 1],
 					UpHumidity = nextState.AirVapor[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
-					DownTemperature = nextState.AirTemperature[j - 1],
+					DownTemperature = nextState.AirTemperaturePotential[j - 1],
 					DownHumidity = nextState.AirVapor[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
 					DownLayerElevation = dependent.LayerElevation[j - 1],
@@ -1779,7 +1782,7 @@ public class WorldSim {
 				{
 					Advection = advectionAir[i],
 					Vapor = nextState.AirVapor[i],
-					Temperature = nextState.AirTemperature[i],
+					Temperature = nextState.AirTemperaturePotential[i],
 					Wind = nextState.Wind[i],
 				}, JobHandle.CombineDependencies( advectionJobHandles[i+_airLayer0], advectionJobHandles[i + _airLayer0 - 1], advectionJobHandles[i + _airLayer0 + 1])));
 			}
@@ -1829,7 +1832,7 @@ public class WorldSim {
 				IceEnergy = dependent.IceEnergy,
 				SurfaceElevation = dependent.SurfaceElevation,
 				VegetationCoverage = dependent.VegetationCoverage,
-				SurfaceAirTemperature = dependent.SurfaceAirTemperature,
+				SurfaceAirTemperature = dependent.SurfaceAirTemperatureAbsolute,
 				WaterDepth = dependent.WaterDepth,
 
 				WaterDepthTotal = waterDepthTotal,
@@ -1861,7 +1864,7 @@ public class WorldSim {
 					DewPoint = dependent.DewPoint,
 					AirMassTotal = airMassTotal,
 
-					AirTemperature = lastState.AirTemperature[j],
+					AirTemperaturePotential = lastState.AirTemperaturePotential[j],
 					CloudDropletMass = nextState.CloudDropletMass,
 					CloudMass = nextState.CloudMass,
 					VaporMass = nextState.AirVapor[j],
@@ -1880,10 +1883,10 @@ public class WorldSim {
 
 			var updateSurfaceDependenciesJobHandle = UpdateDependentJob.Run(new UpdateSurfaceDependentStateJob()
 			{
-				SurfaceAirTemperature = dependent.SurfaceAirTemperature,
+				SurfaceAirTemperatureAbsolute = dependent.SurfaceAirTemperatureAbsolute,
 
-				LowerAirTemperature = nextState.AirTemperature[1],
-				lowerAirHeight = dependent.LayerHeight[1]
+				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
+				SurfaceElevation = dependent.LayerElevation[1]
 			}, updateDependentAirLayerJobHandle);
 			updateDependenciesJobHandles.Add(updateSurfaceDependenciesJobHandle);
 
@@ -1907,7 +1910,7 @@ public class WorldSim {
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 300, degenVarNames);
 				for (int i = 1; i < _airLayers - 1; i++) {
-					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperature[i], 0, 1000, degenVarNames);
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 1000, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 1000, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "Wind" + i, nextState.Wind[i], degenVarNames);
 				}
@@ -1950,15 +1953,14 @@ public class WorldSim {
 				{
 					initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, (new InitDisplayAirLayerJob()
 					{
-						DisplayPotentialTemperature = display.PotentialTemperature[i],
 						DisplayPressure = display.Pressure[i],
 						DisplayPressureGradientForce = display.PressureGradientForce[i],
 
 						Gravity = curState.PlanetState.Gravity,
-						AirTemperature = curState.AirTemperature[i],
-						AirLayerElevation = dependent.LayerElevation[i],
-						AirLayerHeight = dependent.LayerHeight[i],
+						AirTemperaturePotential = curState.AirTemperaturePotential[i],
 						AirPressure = dependent.AirPressure[i],
+						LayerElevation = dependent.LayerElevation[i],
+						LayerHeight = dependent.LayerHeight[i],
 						PressureGradientForce = pressureGradientForce[i],
 					}).Schedule(_cellCount, _batchCount));
 				}
@@ -1986,7 +1988,7 @@ public class WorldSim {
 					display.GlobalCloudMass += curState.CloudMass[i];
 					display.GlobalIceMass += curState.IceMass[i];
 					display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers-2][i];
-					display.GlobalTemperature += curState.AirTemperature[1][i];
+					display.GlobalTemperature += dependent.SurfaceAirTemperatureAbsolute[i];
 					display.GlobalWaterVapor += curState.AirVapor[1][i];
 					display.GlobalOceanVolume += dependent.WaterDepth[i];
 					display.GlobalSeaLevel += dependent.SurfaceElevation[i];
@@ -2149,7 +2151,7 @@ public class WorldSim {
 		}
 		for (int j = 1; j < _airLayers - 1; j++)
 		{
-			s.AppendFormat("AirTemperature{0}: {1}\n", j, state.AirTemperature[j][i]);
+			s.AppendFormat("AirTemperature{0}: {1}\n", j, state.AirTemperaturePotential[j][i]);
 			s.AppendFormat("AirVapor{0}: {1}\n", j, state.AirVapor[j][i]);
 			s.AppendFormat("Wind{0}: {1}\n", j, state.Wind[j][i]);
 		}

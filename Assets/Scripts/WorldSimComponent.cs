@@ -75,13 +75,12 @@ public class WorldSimComponent : MonoBehaviour
 			{
 				DisplayPressure = _displayState.Pressure[i],
 				DisplayPressureGradientForce = _displayState.PressureGradientForce[i],
-				DisplayPotentialTemperature = _displayState.PotentialTemperature[i],
 
 				Gravity = ActiveSimState.PlanetState.Gravity,
-				AirTemperature = ActiveSimState.AirTemperature[i],
-				AirLayerElevation = DependentState.LayerElevation[i],
-				AirLayerHeight = DependentState.LayerHeight[i],
+				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],
 				AirPressure = DependentState.AirPressure[i],
+				LayerElevation = DependentState.LayerElevation[i],
+				LayerHeight = DependentState.LayerHeight[i],
 				PressureGradientForce = ActiveSimState.Wind[i], // TODO: using wind as placeholder, this is kinda broken
 			};
 			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(CellCount, 1));
