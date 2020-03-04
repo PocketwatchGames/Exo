@@ -61,8 +61,8 @@
 
 	"WindToWaterCurrentFrictionCoefficient": 0.00001,
 	"WaterSurfaceFrictionDepth": 200,
-	"WaterDensityPerSalinity": 800,
-	"WaterDensityPerDegree": -0.2,
+	"WaterDensityPerSalinity": 8888,
+	"WaterDensityPerDegree": -0.1,
 	"WaterDensityCurrentSpeed": 0.5,
 
 	"MinTemperatureVegetation": 223.15,

@@ -11,8 +11,6 @@ public struct StaticState {
 	public int Count;
 	public float PlanetRadius;
 	public float CellSurfaceArea;
-	public float CellDiameter;
-	public float InverseCellDiameter;
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
@@ -25,14 +23,12 @@ public struct StaticState {
 		PlanetRadius = radius;
 		Count = icosphere.Vertices.Length;
 		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
-		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent); ;
-		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent); ;
-		StratosphereMass = new NativeArray<float>(Count, Allocator.Persistent); ;
+		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent);
+		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent);
+		StratosphereMass = new NativeArray<float>(Count, Allocator.Persistent);
 		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
-		CellDiameter = 2 * math.sqrt(CellSurfaceArea / math.PI);
-		InverseCellDiameter = 1.0f / CellDiameter;
 
 		var neighborList = new List<Tuple<int, float3>>[Count];
 		for (int i = 0; i < Count; i++)

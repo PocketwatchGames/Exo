@@ -5,9 +5,9 @@
 //#define EnergyAirJobDebug
 //#define EnergyWaterSurfaceJobDebug
 //#define DiffusionAirJobDebug
-#define AdvectionAirJobDebug
+//#define AdvectionAirJobDebug
 //#define PressureGradientForceAirJobDebug
-#define AdvectionCloudJobDebug
+//#define AdvectionCloudJobDebug
 //#define WaterFrictionJobDebug
 //#define WaterDensityGradientForceJobDebug
 //#define StateChangeJobDebug
@@ -16,6 +16,8 @@
 //#define FluxCloudJobDebug
 //#define GetVectorDestCoordsJobDebug
 //#define DiffusionCloudJobDebug
+//#define UpdateDependentWaterLayerJobDebug
+#define FluxWaterJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -976,7 +978,7 @@ public class WorldSim {
 			{
 				pgfJobHandles[j] = PressureGradientForceAirJob.Run(new PressureGradientForceAirJob()
 				{
-					Delta = pressureGradientForce[j],
+					Force = pressureGradientForce[j],
 
 					Pressure = dependent.AirPressure[j],
 					AirMass = dependent.AirMass[j],
@@ -1068,7 +1070,7 @@ public class WorldSim {
 					DownLayerDepth = dependent.WaterLayerDepth[j - 1],
 					DownLayerHeight = dependent.WaterLayerHeight[j - 1],
 					Gravity = lastState.PlanetState.Gravity,
-					InverseCellDiameter = staticState.InverseCellDiameter,
+					PlanetRadius = staticState.PlanetRadius,
 
 				}, lastJobHandle);
 
@@ -1080,8 +1082,8 @@ public class WorldSim {
 
 				Position = staticState.SphericalPosition,
 				Current = lastState.WaterVelocity[_surfaceWaterLayer],
-				WindUp = lastState.Wind[1],
-				WindDown = lastState.WaterVelocity[_surfaceWaterLayer - 1],
+				AirVelocityUp = lastState.AirVelocity[1],
+				AirVelocityDown = lastState.WaterVelocity[_surfaceWaterLayer - 1],
 				LayerHeight = dependent.WaterLayerHeight[_surfaceWaterLayer],
 				CoriolisMultiplier = staticState.CoriolisMultiplier,
 				FrictionCoefficientUp = worldData.WindToWaterCurrentFrictionCoefficient,
@@ -1230,13 +1232,15 @@ public class WorldSim {
 				ConductionEnergyAir = conductionSurfaceAirWater,
 				ConductionEnergyIce = conductionIceWater,
 				ConductionEnergyTerrain = conductionWaterTerrain[_surfaceWaterLayer],
-				RelativeHumidity = dependent.AirHumidityRelative[1],
 				IceCoverage = dependent.IceCoverage,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				Salinity = dependent.WaterSalinity[_surfaceWaterLayer],
-				EvaporationRate = worldData.EvaporationRate,
-				EvapTemperatureMax = worldData.EvapMaxTemperature,
-				EvapTemperatureMin = worldData.EvapMinTemperature,
+				SurfaceWind = lastState.AirVelocity[1],
+				SurfaceAirMass = dependent.AirMass[1],
+				SurfaceVaporMass = lastState.AirVapor[1],
+				DewPointZero = worldData.DewPointZero,
+				InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
+				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 				WaterHeatingDepth = worldData.WaterHeatingDepth,
 				FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
 			}, JobHandle.CombineDependencies(fluxWaterDependencies));
@@ -1480,8 +1484,8 @@ public class WorldSim {
 				{
 					AirTemperaturePotential = nextState.AirTemperaturePotential[j],
 					Vapor = nextState.AirVapor[j],
-					Wind = nextState.Wind[j],
-					LastWind = lastState.Wind[j],
+					AirVelocity = nextState.AirVelocity[j],
+					LastAirVelocity = lastState.AirVelocity[j],
 					AirMass = dependent.AirMass[j],
 					Energy = fluxEnergyAir[j],
 					PressureGradientForce = pressureGradientForce[j],
@@ -1555,20 +1559,20 @@ public class WorldSim {
 
 					LastTemperature = nextState.AirTemperaturePotential[j],
 					LastVapor = nextState.AirVapor[j],
-					LastWind = nextState.Wind[j],
+					LastWind = nextState.AirVelocity[j],
 					Neighbors = staticState.Neighbors,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					AirMass = dependent.AirMass[j],
 					UpTemperature = nextState.AirTemperaturePotential[j + 1],
-					UpHumidity = nextState.AirVapor[j + 1],
-					UpWind = nextState.Wind[j + 1],
+					UpVapor = nextState.AirVapor[j + 1],
+					UpAirVelocity = nextState.AirVelocity[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
 					DownTemperature = nextState.AirTemperaturePotential[j - 1],
-					DownHumidity = nextState.AirVapor[j - 1],
-					DownWind = nextState.Wind[j - 1],
+					DownVapor = nextState.AirVapor[j - 1],
+					DownAirVelocity = nextState.AirVelocity[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
 					DownLayerElevation = dependent.LayerElevation[j - 1],
 					DownLayerHeight = dependent.LayerHeight[j - 1],
@@ -1646,7 +1650,7 @@ public class WorldSim {
 					Advection = diffusionAir[i],
 					Vapor = nextState.AirVapor[i],
 					Temperature = nextState.AirTemperaturePotential[i],
-					Wind = nextState.Wind[i],
+					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
 			}
 
@@ -1671,7 +1675,7 @@ public class WorldSim {
 					DeflectedVelocity = dependent.DeflectedAirVelocity[j],
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
-					Velocity = nextState.Wind[j],
+					Velocity = nextState.AirVelocity[j],
 					CoriolisMultiplier =staticState.CoriolisMultiplier,
 					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
@@ -1682,7 +1686,8 @@ public class WorldSim {
 					Delta = advectionAir[j],
 					Temperature = nextState.AirTemperaturePotential[j],
 					Vapor = nextState.AirVapor[j],
-					Velocity = nextState.Wind[j],
+					Velocity = nextState.AirVelocity[j],
+					DeflectedVelocity = dependent.DeflectedAirVelocity[j],
 					Neighbors = staticState.Neighbors,
 					Destination = destinationAir[j],
 					LayerElevation = dependent.LayerElevation[j],
@@ -1721,6 +1726,7 @@ public class WorldSim {
 					Delta = advectionWater[j],
 					Destination = destinationWater[j],
 					Velocity = nextState.WaterVelocity[j],
+					DeflectedVelocity = dependent.DeflectedWaterVelocity[j],
 					Temperature = nextState.WaterTemperature[j],
 					Mass = nextState.WaterMass[j],
 					Salt = nextState.SaltMass[j],
@@ -1747,6 +1753,7 @@ public class WorldSim {
 				Mass = nextState.CloudMass,
 				DropletMass = nextState.CloudDropletMass,
 				Velocity = nextState.CloudVelocity,
+				DeflectedVelocity = dependent.DeflectedCloudVelocity,
 				Neighbors = staticState.Neighbors,
 			}, cloudDestJob);
 
@@ -1783,7 +1790,7 @@ public class WorldSim {
 					Advection = advectionAir[i],
 					Vapor = nextState.AirVapor[i],
 					Temperature = nextState.AirTemperaturePotential[i],
-					Wind = nextState.Wind[i],
+					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies( advectionJobHandles[i+_airLayer0], advectionJobHandles[i + _airLayer0 - 1], advectionJobHandles[i + _airLayer0 + 1])));
 			}
 			lastJobHandle = JobHandle.CombineDependencies(applyAdvectionJobHandles);
@@ -1912,7 +1919,7 @@ public class WorldSim {
 				for (int i = 1; i < _airLayers - 1; i++) {
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 1000, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 1000, degenVarNames);
-					degen |= CheckDegen(_cellCount, degenIndices, "Wind" + i, nextState.Wind[i], degenVarNames);
+					degen |= CheckDegen(_cellCount, degenIndices, "AirVelocity" + i, nextState.AirVelocity[i], degenVarNames);
 				}
 				for (int i=1;i<_waterLayers - 1;i++)
 				{
@@ -2153,7 +2160,7 @@ public class WorldSim {
 		{
 			s.AppendFormat("AirTemperature{0}: {1}\n", j, state.AirTemperaturePotential[j][i]);
 			s.AppendFormat("AirVapor{0}: {1}\n", j, state.AirVapor[j][i]);
-			s.AppendFormat("Wind{0}: {1}\n", j, state.Wind[j][i]);
+			s.AppendFormat("AirVelocity{0}: {1}\n", j, state.AirVelocity[j][i]);
 		}
 		Debug.Log(s);
 	}

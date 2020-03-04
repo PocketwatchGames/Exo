@@ -41,7 +41,7 @@ public struct WindFrictionJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct PressureGradientForceAirJob : IJobParallelFor {
-	public NativeArray<float3> Delta;
+	public NativeArray<float3> Force;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> TemperaturePotential;
@@ -102,7 +102,7 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 		//	buoyancy -= potentialTemperatureDown / Temperature[i] - 1;
 		//}
 
-		Delta[i] = force + buoyancy * Gravity * Positions[i];
+		Force[i] = force + buoyancy * Gravity * Positions[i];
 	}
 }
 
@@ -171,8 +171,8 @@ public struct PressureGradientForceCloudJob : IJobParallelFor {
 public struct WaterFrictionForceJob : IJobParallelFor {
 	public NativeArray<float3> Force;
 	[ReadOnly] public NativeArray<float3> Current;
-	[ReadOnly] public NativeArray<float3> WindUp;
-	[ReadOnly] public NativeArray<float3> WindDown;
+	[ReadOnly] public NativeArray<float3> AirVelocityUp;
+	[ReadOnly] public NativeArray<float3> AirVelocityDown;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<float> LayerHeight;
@@ -182,8 +182,8 @@ public struct WaterFrictionForceJob : IJobParallelFor {
 	[ReadOnly] public float WaterSurfaceFrictionDepth;
 	public void Execute(int i)
 	{
-		var horizontalWindUp = math.cross(math.cross(Position[i], WindUp[i]), Position[i]);
-		var horizontalWindDown = math.cross(math.cross(Position[i], WindDown[i]), Position[i]);
+		var horizontalWindUp = math.cross(math.cross(Position[i], AirVelocityUp[i]), Position[i]);
+		var horizontalWindDown = math.cross(math.cross(Position[i], AirVelocityDown[i]), Position[i]);
 
 		// TODO: the ekman depth is calculable!
 		// https://en.wikipedia.org/wiki/Ekman_transport
@@ -219,7 +219,7 @@ public struct WaterDensityGradientForceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DownLayerHeight;
 	[ReadOnly] public NativeArray<float> DownWaterDensity;
 	[ReadOnly] public NativeArray<float> DownWaterPressure;
-	[ReadOnly] public float InverseCellDiameter;
+	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
@@ -228,25 +228,22 @@ public struct WaterDensityGradientForceJob : IJobParallelFor {
 		{
 			float3 pressureGradient = 0;
 			var pos = Positions[i];
-			float midDepth = LayerDepth[i] - LayerHeight[i] / 2;
+			float midDepth = LayerDepth[i] + LayerHeight[i] / 2;
 			float pressure = WaterPressure[i];
 			for (int j = 0; j < 6; j++)
 			{
 				var n = Neighbors[i * 6 + j];
 				if (n >= 0 && WaterDensity[n] > 0)
 				{
-					// TODO: this should only be using horizontal component, which we should cache
-					float3 dir = pos - Positions[n];
-					dir -= dir * pos;
-					dir = math.normalize(dir);
+					// TODO: we should cache this value
+					float3 diff = (pos - Positions[n]) * PlanetRadius;
 
-
-					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
-					pressureGradient += dir * (neighborDepthAtPressure - midDepth);
+					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] + LayerHeight[n] / 2, WaterDensity[n], Gravity);
+					pressureGradient += diff / math.lengthsq(diff) * (neighborDepthAtPressure - midDepth);
 				}
 			}
 
-			Force[i] = pressureGradient * InverseCellDiameter * Gravity / density;
+			Force[i] = pressureGradient * Gravity / density;
 
 		//	if (DownWaterDensity[i] > 0)
 		//	{

@@ -2,8 +2,8 @@
 //#define DISABLE_AIR_ADVECTION
 #define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
-#define AdvectionAirJobDebug
-#define AdvectionCloudJobDebug
+//#define AdvectionAirJobDebug
+//#define AdvectionCloudJobDebug
 //#define GetVectorDestCoordsJobDebug
 
 using Unity.Burst;
@@ -94,6 +94,17 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 				}
 			}
 		}
+
+		// TODO: this means the velocity is too high and has skipped over our neighbors!
+		Destination[i] = new BarycentricValue
+		{
+			indexA = -1,
+			indexB = -1,
+			indexC = -1,
+			valueA = 0,
+			valueB = 0,
+			valueC = 0
+		};
 	}
 }
 
@@ -107,6 +118,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Vapor;
 	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float3> DeflectedVelocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<BarycentricValue> Destination;
 	[ReadOnly] public NativeArray<float> LayerElevation;
@@ -174,7 +186,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				totalValue += incoming;
 				newTemperature += Temperature[n] * incoming;
 				newWaterVapor += Vapor[n] * incoming;
-				newVelocity += Velocity[n] * incoming;
+				newVelocity += DeflectedVelocity[n] * incoming;
 			}
 		}
 
@@ -224,6 +236,7 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> DropletMass;
 	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float3> DeflectedVelocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<BarycentricValue> Destination;
 	public void Execute(int i)
@@ -271,7 +284,7 @@ public struct AdvectionCloudJob : IJobParallelFor {
 				}
 				newMass += Mass[n] * incoming;
 				newDropletMass += DropletMass[n] * incoming;
-				newVelocity += Velocity[n] * incoming;
+				newVelocity += DeflectedVelocity[n] * incoming;
 			}
 		}
 
@@ -292,6 +305,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	public NativeArray<DiffusionWater> Delta;
 	[ReadOnly] public NativeArray<BarycentricValue> Destination;
 	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float3> DeflectedVelocity;
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Salt;
@@ -346,7 +360,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 				newTemperature += Temperature[n] * incoming;
 				newMass += Mass[n] * incoming;
 				newSaltMass += Salt[n] * incoming;
-				newVelocity += Velocity[n] * incoming;
+				newVelocity += DeflectedVelocity[n] * incoming;
 			}
 		}
 #endif
@@ -369,13 +383,13 @@ public struct AdvectionWaterJob : IJobParallelFor {
 public struct ApplyAdvectionAirJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	public NativeArray<float> Vapor;
-	public NativeArray<float3> Wind;
+	public NativeArray<float3> AirVelocity;
 	[ReadOnly] public NativeArray<DiffusionAir> Advection;
 	public void Execute(int i)
 	{
 		Temperature[i] = Advection[i].Temperature;
 		Vapor[i] = Advection[i].WaterVapor;
-		Wind[i] = Advection[i].Velocity;
+		AirVelocity[i] = Advection[i].Velocity;
 	}
 }
 

@@ -81,7 +81,7 @@ public class WorldSimComponent : MonoBehaviour
 				AirPressure = DependentState.AirPressure[i],
 				LayerElevation = DependentState.LayerElevation[i],
 				LayerHeight = DependentState.LayerHeight[i],
-				PressureGradientForce = ActiveSimState.Wind[i], // TODO: using wind as placeholder, this is kinda broken
+				PressureGradientForce = ActiveSimState.AirVelocity[i], // TODO: using wind as placeholder, this is kinda broken
 			};
 			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(CellCount, 1));
 		}

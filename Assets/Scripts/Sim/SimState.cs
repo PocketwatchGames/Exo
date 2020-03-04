@@ -21,7 +21,7 @@ public struct SimState {
 	public NativeArray<float3> CloudVelocity;
 	public NativeArray<float>[] AirTemperaturePotential;
 	public NativeArray<float>[] AirVapor;
-	public NativeArray<float3>[] Wind;
+	public NativeArray<float3>[] AirVelocity;
 	public NativeArray<float>[] WaterTemperature;
 	public NativeArray<float>[] WaterMass;
 	public NativeArray<float>[] SaltMass;
@@ -38,12 +38,12 @@ public struct SimState {
 		CloudVelocity = new NativeArray<float3>(count, Allocator.Persistent);
 		AirTemperaturePotential = new NativeArray<float>[airLayers];
 		AirVapor = new NativeArray<float>[airLayers];
-		Wind = new NativeArray<float3>[airLayers];
+		AirVelocity = new NativeArray<float3>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
 			AirTemperaturePotential[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVapor[i] = new NativeArray<float>(count, Allocator.Persistent);
-			Wind[i] = new NativeArray<float3>(count, Allocator.Persistent);
+			AirVelocity[i] = new NativeArray<float3>(count, Allocator.Persistent);
 		}
 
 		WaterTemperature = new NativeArray<float>[waterLayers];
@@ -72,7 +72,7 @@ public struct SimState {
 		{
 			AirTemperaturePotential[i].Dispose();
 			AirVapor[i].Dispose();
-			Wind[i].Dispose();
+			AirVelocity[i].Dispose();
 		}
 
 		for (int i = 0; i < WaterTemperature.Length; i++)

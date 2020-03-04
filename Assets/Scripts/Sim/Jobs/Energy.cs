@@ -1,6 +1,5 @@
 ﻿//#define EnergyAirJobDebug
 //#define EnergyWaterSurfaceJobDebug
-//#define DISABLE_CORIOLIS
 //#define EnergyIceJobDebug
 
 using Unity.Burst;
@@ -15,9 +14,9 @@ using Unity.Mathematics;
 public struct EnergyAirJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
 	public NativeArray<float> Vapor;
-	public NativeArray<float3> Wind;
+	public NativeArray<float3> AirVelocity;
 	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float3> LastWind;
+	[ReadOnly] public NativeArray<float3> LastAirVelocity;
 	[ReadOnly] public NativeArray<float> Energy;
 	[ReadOnly] public NativeArray<float> WindFriction;
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
@@ -26,9 +25,10 @@ public struct EnergyAirJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 
-		float3 lastWind = LastWind[i];
+		float3 lastWind = LastAirVelocity[i];
 
 		float3 wind = lastWind;
+
 		wind *= (1.0f - WindFriction[i] * WindFrictionMultiplier);
 		wind += PressureGradientForce[i] * SecondsPerTick;
 
@@ -43,7 +43,7 @@ public struct EnergyAirJob : IJobParallelFor {
 		float airMass = AirMass[i];
 		float specificHeat = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * Vapor[i];
 		AirTemperaturePotential[i] += Energy[i] / specificHeat;
-		Wind[i] = wind;
+		AirVelocity[i] = wind;
 	}
 }
 

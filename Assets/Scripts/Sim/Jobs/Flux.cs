@@ -1,5 +1,6 @@
 ﻿//#define DISABLE_RAINFALL
 //#define FluxCloudJobDebug
+#define FluxWaterJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -23,13 +24,15 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
-	[ReadOnly] public NativeArray<float> RelativeHumidity;
+	[ReadOnly] public NativeArray<float> SurfaceAirMass;
+	[ReadOnly] public NativeArray<float> SurfaceVaporMass;
+	[ReadOnly] public NativeArray<float3> SurfaceWind;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> Salinity;
-	[ReadOnly] public float EvaporationRate;
-	[ReadOnly] public float EvapTemperatureMin;
-	[ReadOnly] public float EvapTemperatureMax;
+	[ReadOnly] public float DewPointZero;
+	[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
+	[ReadOnly] public float InverseDewPointTemperatureRange;
 	[ReadOnly] public float WaterHeatingDepth;
 	[ReadOnly] public float FreezePointReductionPerSalinity;
 	public void Execute(int i)
@@ -47,13 +50,20 @@ public struct FluxWaterJob : IJobParallelFor {
 
 		if (waterMass > 0)
 		{
+			float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass) / (waterMass + saltMass);
+			float heatingMass = math.min(waterMass, WaterHeatingDepth * WorldData.MassWater);
+			float newTempTop = temperature + energyTop / (specificHeatSaltWater * heatingMass);
 
 #if !DISABLE_EVAPORATION
 			if (energyTop > 0)
 			{
-				float evapRate = math.saturate((1.0f - RelativeHumidity[i]) * math.max(0, WaterCoverage[i] - IceCoverage[i]) * EvaporationRate * (LastTemperature[i] - EvapTemperatureMin) / (EvapTemperatureMax - EvapTemperatureMin));
-				evapMass = math.clamp(evapRate * energyTop / WorldData.LatentHeatWaterVapor, 0, waterMass);
-				if (evapRate > 0)
+				// evap formula from here:
+				// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
+				float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
+				float maxVaporAtWaterTemperature = Atmosphere.GetMaxVaporAtTemperature(SurfaceAirMass[i], newTempTop, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
+				evapMass = evaporationCoefficient * (maxVaporAtWaterTemperature - SurfaceVaporMass[i]) / SurfaceAirMass[i];
+
+				if (evapMass > 0)
 				{
 					energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
 				}
@@ -64,9 +74,6 @@ public struct FluxWaterJob : IJobParallelFor {
 #if !DISABLE_FREEZE_TOP
 			if (waterMass > 0)
 			{
-				float heatingMass = math.min(waterMass, WaterHeatingDepth * WorldData.MassWater);
-				float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass) / (waterMass + saltMass);
-				float newTempTop = temperature + energyTop / (specificHeatSaltWater * heatingMass);
 				if (newTempTop < freezingTemperature)
 				{
 					float energyToRelease = (freezingTemperature - newTempTop) * specificHeatSaltWater * heatingMass;
@@ -80,8 +87,6 @@ public struct FluxWaterJob : IJobParallelFor {
 #if !DISABLE_FREEZE_BOTTOM
 			if (waterMass > 0)
 			{
-				float heatingMass = math.min(waterMass, WaterHeatingDepth * WorldData.MassWater);
-				float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass) / (waterMass + saltMass);
 				float newTempBottom = temperature + energyBottom / (specificHeatSaltWater * heatingMass);
 				if (newTempBottom < freezingTemperature)
 				{

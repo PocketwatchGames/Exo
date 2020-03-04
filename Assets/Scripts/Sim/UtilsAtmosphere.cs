@@ -155,14 +155,19 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetRelativeHumidity(float airMass, float waterVaporMass, float temperature, float dewPointZero, float waterVaporMassToAirMassAtDewPoint, float inverseDewPointTemperatureRange)
 	{
-		float maxWaterVaporPerKilogramAir = waterVaporMassToAirMassAtDewPoint * Utils.Sqr(math.max(0, (temperature - dewPointZero) * inverseDewPointTemperatureRange));
-		float maxWaterVapor = maxWaterVaporPerKilogramAir * airMass;
+		float maxWaterVapor = GetMaxVaporAtTemperature(airMass, temperature, dewPointZero, waterVaporMassToAirMassAtDewPoint, inverseDewPointTemperatureRange);
 		if (maxWaterVapor <= 0)
 		{
 			return waterVaporMass > 0 ? 10000 : 0;
 		}
 		float relativeHumidity = waterVaporMass / maxWaterVapor;
 		return relativeHumidity;
+	}
+
+	[BurstCompile]
+	static public float GetMaxVaporAtTemperature(float airMass, float temperature, float dewPointZero, float waterVaporMassToAirMassAtDewPoint, float inverseDewPointTemperatureRange)
+	{
+		return airMass * waterVaporMassToAirMassAtDewPoint * Utils.Sqr(math.max(0, (temperature - dewPointZero) * inverseDewPointTemperatureRange));
 	}
 
 	//	[BurstCompile]

@@ -251,7 +251,7 @@ public static class WorldGen {
 			{
 			} else
 			{
-				float salinity = (1.0f - Math.Abs(coord[i].y)) * (MaxSalinity - MinSalinity) + MinSalinity;
+				float salinity = Math.Abs(coord[i].y) * (MaxSalinity - MinSalinity) + MinSalinity;
 				//float deepSalinity = deepDepth == 0 ? 0 : Math.Abs(coord.y) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
 				float waterAndSaltMass = GetWaterMass(layerDepth, WaterTemperature[i], salinity, WaterDensityPerDegree, WaterDensityPerSalinity);
 				float waterMass = waterAndSaltMass * (1.0f - salinity);

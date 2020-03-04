@@ -709,16 +709,16 @@ public class WorldView : MonoBehaviour {
 		switch (activeOverlay)
 		{
 			case WindOverlay.Wind0:
-				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, dependentState.DeflectedAirVelocity[1]);
+				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.AirVelocity[1]);
 				return true;
 			case WindOverlay.Wind1:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.DeflectedAirVelocity[2]);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.AirVelocity[2]);
 				return true;
 			case WindOverlay.Wind2:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.DeflectedAirVelocity[3]);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.AirVelocity[3]);
 				return true;
 			case WindOverlay.WindCloud:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.DeflectedCloudVelocity);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.CloudVelocity);
 				return true;
 			case WindOverlay.PGF0:
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[1]);
@@ -730,16 +730,16 @@ public class WorldView : MonoBehaviour {
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[3]);
 				return true;
 			case WindOverlay.Current0:
-				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, dependentState.DeflectedWaterVelocity[Sim.WorldData.WaterLayers-2]);
+				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers-2]);
 				return true;
 			case WindOverlay.Current1:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, dependentState.DeflectedWaterVelocity[Sim.WorldData.WaterLayers - 3]);
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 3]);
 				return true;
 			case WindOverlay.Current2:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, dependentState.DeflectedWaterVelocity[Sim.WorldData.WaterLayers - 4]);
+				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 4]);
 				return true;
 		}
-		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, dependentState.DeflectedWaterVelocity[1]);
+		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
 		return false;
 	}
 
@@ -838,7 +838,7 @@ public class WorldView : MonoBehaviour {
 
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
 		{
-			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.Wind[i][ActiveCellIndex]);
+			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.AirVelocity[i][ActiveCellIndex]);
 			s.AppendFormat("LAYER {0} | TEMP: {1} RH: {2:P1}\n",
 				i, 
 				GetTemperatureString(state.AirTemperaturePotential[i][ActiveCellIndex], ActiveTemperatureUnits, 1),
