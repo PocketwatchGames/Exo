@@ -1284,9 +1284,6 @@ public class WorldSim {
 				SurfaceElevation = dependent.SurfaceElevation,
 				WindFriction = windFriction,
 				PressureGradientForce = pressureGradientForceCloud,
-				EvaporationRate = worldData.EvaporationRate,
-				EvapTemperatureMax = worldData.EvapMaxTemperature,
-				EvapTemperatureMin = worldData.EvapMinTemperature,
 			}, JobHandle.CombineDependencies(cloudEnergyJobHandleDependencies));
 			energyJobHandles.Add(fluxCloudJobHandle);
 

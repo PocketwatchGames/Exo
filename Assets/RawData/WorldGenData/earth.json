@@ -1,7 +1,7 @@
 {
 	"Radius": 6371000,
 	"DistanceToSun": 100,
-	"MinElevation": -11000,
+	"MinElevation": -12000,
 	"MaxElevation": 10000,
 	"MaxRoughness": 1000,
 	"GroundWaterDepthMax": 1000,

@@ -30,9 +30,6 @@
 
 	"SoilHeatDepth": 2,
 	"WaterHeatingDepth": 0.1,
-	"EvapMinTemperature": 253,
-	"EvapMaxTemperature": 413,
-	"EvaporationRate": 5,
 
 	"IceHeatingDepth": 0.1,
 	"FreezePointReductionPerSalinity": 56.0,

@@ -54,12 +54,9 @@ public struct WorldData {
 	// TODO: should we parameterize the micro-conduction that allows for water to heat the air faster than it can cool it?
 	//public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
 
-	[Header("Evaporation")]
+	[Header("Evaporation")] // evaporation on earth maxes out around 2.5M per year
 	public float SoilHeatDepth;
 	public float WaterHeatingDepth;
-	public float EvapMinTemperature; // -30 celsius
-	public float EvapMaxTemperature; // 70 celsius
-	public float EvaporationRate; // TODO: evaporation on earth maxes out around 2.5M per year 
 
 	[Header("Ice")]
 	public float IceHeatingDepth;
@@ -170,7 +167,6 @@ public struct WorldData {
 	#endregion
 
 	#region Nonserialized
-	[NonSerialized]	public float EvapTemperatureRange;
 	[NonSerialized] public float TicksPerSecond;
 	[NonSerialized] public float TicksPerYear;
 	[NonSerialized] public float inverseFullCoverageVegetation;
@@ -182,12 +178,10 @@ public struct WorldData {
 	[NonSerialized] public float sunHitsAtmosphereBelowHorizonAmount;
 	[NonSerialized] public float inverseSunAtmosphereAmount;
 	[NonSerialized] public float inverseDewPointTemperatureRange;
-	[NonSerialized] public float inverseEvapTemperatureRange;
 	#endregion
 
 	public void Init()
 	{
-		EvapTemperatureRange = EvapMaxTemperature - EvapMinTemperature;
 
 		TicksPerSecond = 1.0f / SecondsPerTick;
 		TicksPerYear = 60 * 60 * 24 * 365 / SecondsPerTick;
@@ -200,7 +194,6 @@ public struct WorldData {
 		sunHitsAtmosphereBelowHorizonAmount = 0.055f;
 		inverseSunAtmosphereAmount = 1.0f / (1.0f + sunHitsAtmosphereBelowHorizonAmount);
 		inverseDewPointTemperatureRange = 1.0f / DewPointTemperatureRange;
-		inverseEvapTemperatureRange = 1.0f / EvapTemperatureRange;
 
 	}
 

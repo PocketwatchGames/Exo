@@ -139,9 +139,6 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public float CloudDissapationRateDryAir;
 	[ReadOnly] public float CloudDissapationRateWind;
 	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float EvapTemperatureMax;
-	[ReadOnly] public float EvapTemperatureMin;
-	[ReadOnly] public float EvaporationRate;
 	public void Execute(int i)
 	{
 		float surfaceElevation = SurfaceElevation[i];
