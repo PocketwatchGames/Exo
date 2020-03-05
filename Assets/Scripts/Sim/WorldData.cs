@@ -68,9 +68,6 @@ public struct WorldData {
 	public float rainDropMinSize;
 	public float CloudDissapationRateWind;
 	public float CloudDissapationRateDryAir;
-	public float DewPointTemperatureRange;
-	public float DewPointZero;
-	public float WaterVaporMassToAirMassAtDewPoint;
 
 	[Header("Diffusion")]
 	public float CloudDiffusionCoefficient;
@@ -177,7 +174,6 @@ public struct WorldData {
 	[NonSerialized] public float declinationOfSun;
 	[NonSerialized] public float sunHitsAtmosphereBelowHorizonAmount;
 	[NonSerialized] public float inverseSunAtmosphereAmount;
-	[NonSerialized] public float inverseDewPointTemperatureRange;
 	#endregion
 
 	public void Init()
@@ -193,7 +189,6 @@ public struct WorldData {
 		wattsToKJPerTick = SecondsPerTick * 1000;
 		sunHitsAtmosphereBelowHorizonAmount = 0.055f;
 		inverseSunAtmosphereAmount = 1.0f / (1.0f + sunHitsAtmosphereBelowHorizonAmount);
-		inverseDewPointTemperatureRange = 1.0f / DewPointTemperatureRange;
 
 	}
 

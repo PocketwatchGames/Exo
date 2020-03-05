@@ -17,7 +17,8 @@
 //#define GetVectorDestCoordsJobDebug
 //#define DiffusionCloudJobDebug
 //#define UpdateDependentWaterLayerJobDebug
-#define FluxWaterJobDebug
+//#define FluxWaterJobDebug
+//#define UpdateDependentAirLayerJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -1237,10 +1238,8 @@ public class WorldSim {
 				Salinity = dependent.WaterSalinity[_surfaceWaterLayer],
 				SurfaceWind = lastState.AirVelocity[1],
 				SurfaceAirMass = dependent.AirMass[1],
+				SurfaceAirPressure = dependent.AirPressure[1],
 				SurfaceVaporMass = lastState.AirVapor[1],
-				DewPointZero = worldData.DewPointZero,
-				InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 				WaterHeatingDepth = worldData.WaterHeatingDepth,
 				FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
 			}, JobHandle.CombineDependencies(fluxWaterDependencies));
@@ -1312,6 +1311,7 @@ public class WorldSim {
 					LastTemperaturePotential = lastState.AirTemperaturePotential[j],
 					LastVapor = lastState.AirVapor[j],
 					AirMass = dependent.AirMass[j],
+					AirPressure = dependent.AirPressure[j],
 					ConductionEnergyWater = j == 1 ? conductionSurfaceAirWater : conductionUpperAirWater,
 					ConductionEnergyIce = j == 1 ? conductionSurfaceAirIce : conductionUpperAirIce,
 					ConductionEnergyTerrain = j == 1 ? conductionSurfaceAirTerrain : conductionUpperAirTerrain,
@@ -1320,9 +1320,6 @@ public class WorldSim {
 					CloudElevation = dependent.CloudElevation,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
-					DewPointZero = worldData.DewPointZero,
-					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 				}, JobHandle.CombineDependencies(airDependencies));
 			}
 
@@ -1877,9 +1874,6 @@ public class WorldSim {
 					SurfaceElevation = dependent.SurfaceElevation,
 					IceMass = nextState.IceMass,
 					Gravity = nextState.PlanetState.Gravity,
-					DewPointZero = worldData.DewPointZero,
-					InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-					WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 					LayerIndex = j,
 				}, updateDependentAirLayerJobHandle);
 				updateDependenciesJobHandles.Add(updateDependentAirLayerJobHandle);
@@ -2015,13 +2009,17 @@ public class WorldSim {
 					display.EnergySurfaceConduction += conductionSurfaceAirIce[i] + conductionSurfaceAirTerrain[i] + conductionSurfaceAirWater[i];
 					display.EnergyOceanConduction += conductionSurfaceAirWater[i];
 					display.EnergyEvapotranspiration += evaporationMass[_surfaceWaterLayer][i] * WorldData.LatentHeatWaterVapor;
-					//display.EnergyThermalAbsorbedAtmosphere += ;
 					display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0 + 1][i] + thermalRadiationTransmittedDown[_airLayer0 + 1][i];
-					display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 2][i] + thermalRadiationTransmittedUp[_waterLayer0 + _waterLayers - 2][i]) * dependent.WaterCoverage[_waterLayers - 2][i];
-					display.EnergyThermalOutAtmosphere += thermalRadiationTransmittedUp[_airLayer0 + _airLayers - 2][i];
-					display.EnergyThermalSurfaceOutAtmosphericWindow += windowRadiationTransmittedUp[_iceLayer][i];
-					display.EnergyThermalSurfaceRadiation += windowRadiationTransmittedUp[_iceLayer][i] + thermalRadiationTransmittedUp[_iceLayer][i];
-			
+					display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 2][i] + thermalRadiationTransmittedUp[_waterLayer0 + _surfaceWaterLayer][i]) * dependent.WaterCoverage[_waterLayers - 2][i];
+
+					float surfaceRadiation = windowRadiationTransmittedUp[_iceLayer][i] + thermalRadiationTransmittedUp[_iceLayer][i];
+					float radiationToSpace = thermalRadiationTransmittedUp[_airLayer0 + _airLayers - 2][i];
+					float surfaceRadiationOutWindow = windowRadiationTransmittedUp[_iceLayer][i];
+					display.EnergyThermalOutAtmosphere += radiationToSpace;
+					display.EnergyThermalSurfaceOutAtmosphericWindow += surfaceRadiationOutWindow;
+					display.EnergyThermalSurfaceRadiation += surfaceRadiation;
+					display.EnergyThermalAbsorbedAtmosphere += surfaceRadiation - surfaceRadiationOutWindow - radiationToSpace;
+
 				}
 
 			}

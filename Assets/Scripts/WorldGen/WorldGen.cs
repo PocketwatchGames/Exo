@@ -30,8 +30,6 @@ public static class WorldGen {
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
 		state.PlanetState.CarbonDioxide = worldGenData.CarbonDioxide;
 
-		float inverseDewPointTemperatureRange = 1.0f / worldData.DewPointTemperatureRange;
-
 		dependent.Init(staticState.Count, worldData.AirLayers, worldData.WaterLayers);
 	}
 
@@ -191,9 +189,6 @@ public static class WorldGen {
 		[ReadOnly] public NativeArray<float> LayerHeightBelow;
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 		[ReadOnly] public NativeArray<float> RelativeHumidity;
-		[ReadOnly] public float InverseDewPointTemperatureRange;
-		[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
-		[ReadOnly] public float DewPointZero;
 		[ReadOnly] public float Gravity;
 		[ReadOnly] public float SetLayerHeight;
 		[ReadOnly] public float LayerCeiling;
@@ -212,7 +207,8 @@ public static class WorldGen {
 			float layerMidHeight = layerElevation + layerHeight / 2;
 			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * layerMidHeight;
 			float airMass = Atmosphere.GetAirMass(layerElevation, layerHeight, TemperaturePotential[i], Gravity);
-			float vaporMass = GetWaterVaporMass(airTemperatureAbsolute, RelativeHumidity[i], airMass, InverseDewPointTemperatureRange, WaterVaporMassToAirMassAtDewPoint, DewPointZero);
+			float pressure = Atmosphere.GetAbsolutePressureAtElevation(layerMidHeight, Gravity, WorldData.StaticPressure, TemperaturePotential[i]);
+			float vaporMass = GetWaterVaporMass(airTemperatureAbsolute, RelativeHumidity[i], airMass, pressure);
 			AirVapor[i] = vaporMass;
 			AirTemperaturePotential[i] = TemperaturePotential[i];
 			LayerElevation[i] = layerElevation;
@@ -405,10 +401,7 @@ public static class WorldGen {
 				LayerCeilingCount = layerCeilingCount,
 				TemperaturePotential = temperaturePotential,
 				RelativeHumidity = RelativeHumidity,
-				DewPointZero = worldData.DewPointZero,
 				Gravity = state.PlanetState.Gravity,
-				InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 			}, worldGenAirLayerJobHandle);
 		}
 
@@ -496,9 +489,6 @@ public static class WorldGen {
 				VaporMass = state.AirVapor[j],
 				IceMass = state.IceMass,
 				Gravity = state.PlanetState.Gravity,
-				DewPointZero = worldData.DewPointZero,
-				InverseDewPointTemperatureRange = worldData.inverseDewPointTemperatureRange,
-				WaterVaporMassToAirMassAtDewPoint = worldData.WaterVaporMassToAirMassAtDewPoint,
 				LayerIndex = j,
 			}, updateDependentAirLayerJobHandle);
 			updateDependenciesJobHandles.Add(updateDependentAirLayerJobHandle);
@@ -541,16 +531,9 @@ public static class WorldGen {
 #if ASYNC_WORLDGEN
 	[BurstCompile]
 #endif
-	static public float GetWaterVaporMass(float temperature, float relativeHumidity, float airMass, float inverseDewPointTemperatureRange, float WaterVaporMassToAirMassAtDewPoint, float DewPointZero)
+	static public float GetWaterVaporMass(float temperature, float relativeHumidity, float airMass, float pressure)
 	{
-		float maxWaterVaporPerKilogramAtmosphere = WaterVaporMassToAirMassAtDewPoint * Utils.Sqr(math.max(0, (temperature - DewPointZero) * inverseDewPointTemperatureRange));
-		float maxHumidity = maxWaterVaporPerKilogramAtmosphere * airMass;
-		if (maxHumidity <= 0)
-		{
-			return 0;
-		}
-		float humidity = relativeHumidity * maxHumidity;
-		return humidity;
+		return math.max(0, relativeHumidity * Atmosphere.GetMaxVaporAtTemperature(airMass, temperature, pressure));
 	}
 
 #if ASYNC_WORLDGEN

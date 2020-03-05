@@ -1994,9 +1994,6 @@ MonoBehaviour:
     rainDropMinSize: 0.00001
     CloudDissapationRateWind: 0.1
     CloudDissapationRateDryAir: 0.1
-    DewPointTemperatureRange: 100
-    DewPointZero: 213
-    WaterVaporMassToAirMassAtDewPoint: 0.2
     CloudDiffusionCoefficient: 0
     AirDiffusionCoefficientHorizontal: 0
     AirDiffusionCoefficientVertical: 0

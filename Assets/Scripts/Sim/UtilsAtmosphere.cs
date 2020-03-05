@@ -30,6 +30,13 @@ public static class Atmosphere {
 		return pressure;
 	}
 
+	[BurstCompile]
+	static public float GetAbsolutePressureAtElevation(float elevation, float gravity, float seaLevelPressure, float potentialTemperature)
+	{
+		float pressure = seaLevelPressure * math.pow(1 + WorldData.TemperatureLapseRate / potentialTemperature * elevation, -gravity * WorldData.PressureExponent * WorldData.MolarMassAir);
+		return pressure;
+	}
+
 
 	[BurstCompile]
 	static public float GetElevationAtPressure(float pressure, float temperaturePotential, float referencePressure, float referenceElevation, float gravity)
@@ -153,9 +160,9 @@ public static class Atmosphere {
 	}
 
 	[BurstCompile]
-	static public float GetRelativeHumidity(float airMass, float waterVaporMass, float temperature, float dewPointZero, float waterVaporMassToAirMassAtDewPoint, float inverseDewPointTemperatureRange)
+	static public float GetRelativeHumidity(float airMass, float waterVaporMass, float temperature, float pressure)
 	{
-		float maxWaterVapor = GetMaxVaporAtTemperature(airMass, temperature, dewPointZero, waterVaporMassToAirMassAtDewPoint, inverseDewPointTemperatureRange);
+		float maxWaterVapor = GetMaxVaporAtTemperature(airMass, temperature, pressure);
 		if (maxWaterVapor <= 0)
 		{
 			return waterVaporMass > 0 ? 10000 : 0;
@@ -165,9 +172,11 @@ public static class Atmosphere {
 	}
 
 	[BurstCompile]
-	static public float GetMaxVaporAtTemperature(float airMass, float temperature, float dewPointZero, float waterVaporMassToAirMassAtDewPoint, float inverseDewPointTemperatureRange)
+	static public float GetMaxVaporAtTemperature(float airMass, float temperature, float pressure)
 	{
-		return airMass * waterVaporMassToAirMassAtDewPoint * Utils.Sqr(math.max(0, (temperature - dewPointZero) * inverseDewPointTemperatureRange));
+		float saturationPressureOfWaterVapor = math.exp(77.345f + 0.0057f * temperature - 7235 / temperature) / math.pow(temperature, 8.2f);
+
+		return airMass * 0.62198f * saturationPressureOfWaterVapor / (pressure - saturationPressureOfWaterVapor);
 	}
 
 	//	[BurstCompile]

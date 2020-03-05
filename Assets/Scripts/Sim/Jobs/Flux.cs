@@ -1,6 +1,6 @@
 ﻿//#define DISABLE_RAINFALL
 //#define FluxCloudJobDebug
-#define FluxWaterJobDebug
+//#define FluxWaterJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -26,13 +26,11 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	[ReadOnly] public NativeArray<float> SurfaceAirMass;
 	[ReadOnly] public NativeArray<float> SurfaceVaporMass;
+	[ReadOnly] public NativeArray<float> SurfaceAirPressure;
 	[ReadOnly] public NativeArray<float3> SurfaceWind;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> Salinity;
-	[ReadOnly] public float DewPointZero;
-	[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
-	[ReadOnly] public float InverseDewPointTemperatureRange;
 	[ReadOnly] public float WaterHeatingDepth;
 	[ReadOnly] public float FreezePointReductionPerSalinity;
 	public void Execute(int i)
@@ -55,18 +53,15 @@ public struct FluxWaterJob : IJobParallelFor {
 			float newTempTop = temperature + energyTop / (specificHeatSaltWater * heatingMass);
 
 #if !DISABLE_EVAPORATION
-			if (energyTop > 0)
-			{
-				// evap formula from here:
-				// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
-				float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
-				float maxVaporAtWaterTemperature = Atmosphere.GetMaxVaporAtTemperature(SurfaceAirMass[i], newTempTop, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
-				evapMass = evaporationCoefficient * (maxVaporAtWaterTemperature - SurfaceVaporMass[i]) / SurfaceAirMass[i];
+			// evap formula from here:
+			// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
+			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
+			float maxVaporAtWaterTemperature = Atmosphere.GetMaxVaporAtTemperature(SurfaceAirMass[i], newTempTop, SurfaceAirPressure[i]);
+			evapMass = math.max(0, evaporationCoefficient * (maxVaporAtWaterTemperature - SurfaceVaporMass[i]) / SurfaceAirMass[i]);
 
-				if (evapMass > 0)
-				{
-					energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
-				}
+			if (evapMass > 0)
+			{
+				energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
 				waterMass -= evapMass;
 			}
 #endif
@@ -234,6 +229,7 @@ public struct FluxAirJob : IJobParallelFor {
 	public NativeArray<float> CondensationGroundMass;
 	public NativeArray<float> CondensationCloudMass;
 	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LastVapor;
 	[ReadOnly] public NativeArray<float> LastTemperaturePotential;
 	[ReadOnly] public NativeArray<float> CloudElevation;
@@ -244,9 +240,6 @@ public struct FluxAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
-	[ReadOnly] public float DewPointZero;
-	[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
-	[ReadOnly] public float InverseDewPointTemperatureRange;
 	public void Execute(int i)
 	{
 		float condensationGroundMass = 0;
@@ -261,7 +254,7 @@ public struct FluxAirJob : IJobParallelFor {
 
 #if !DISABLE_CONDENSATION
 		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(LastTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
-		var relativeHumidity = Atmosphere.GetRelativeHumidity(AirMass[i], LastVapor[i], temperatureAbsolute, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
+		var relativeHumidity = Atmosphere.GetRelativeHumidity(AirMass[i], LastVapor[i], temperatureAbsolute, AirPressure[i]);
 		if (relativeHumidity > 1.0f)
 		{
 			float aboveCloud = math.saturate((LayerElevation[i] - CloudElevation[i]) / LayerHeight[i]);

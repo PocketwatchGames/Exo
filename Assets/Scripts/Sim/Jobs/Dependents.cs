@@ -1,5 +1,5 @@
 ﻿//#define UpdateDependentWaterLayerJobDebug
-
+//#define UpdateDependentAirLayerJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -75,9 +75,6 @@ public struct UpdateAirPressureJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirTemperature;
 	[ReadOnly] public NativeArray<float2> PressureGradient;
 	[ReadOnly] public float Gravity;
-	[ReadOnly] public float DewPointZero;
-	[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
-	[ReadOnly] public float InverseDewPointTemperatureRange;
 	[ReadOnly] public int LayerIndex;
 
 	public void Execute(int i)
@@ -112,9 +109,6 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public float Gravity;
-	[ReadOnly] public float DewPointZero;
-	[ReadOnly] public float WaterVaporMassToAirMassAtDewPoint;
-	[ReadOnly] public float InverseDewPointTemperatureRange;
 	[ReadOnly] public int LayerIndex;
 
 	public void Execute(int i)
@@ -125,11 +119,11 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 		float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(airTemperaturePotential, layerMiddle);
 		float airMass = Atmosphere.GetAirMass(LayerElevation[i], LayerHeight[i], airTemperaturePotential, Gravity);
 
-		AbsoluteHumidity[i] = vaporMass / (vaporMass + airMass);
-		RelativeHumidity[i] = Atmosphere.GetRelativeHumidity(airMass, vaporMass, airTemperatureAbsolute, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
-		PotentialEnergy[i] = (airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * airTemperatureAbsolute;
 		AirMass[i] = airMass;
 		Pressure[i] = (AirMassTotal[i] + airMass / 2) * Gravity;
+		AbsoluteHumidity[i] = vaporMass / (vaporMass + airMass);
+		RelativeHumidity[i] = Atmosphere.GetRelativeHumidity(airMass, vaporMass, airTemperatureAbsolute, Pressure[i]);
+		PotentialEnergy[i] = (airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * airTemperatureAbsolute;
 
 		float layerElevation = LayerElevation[i];
 		float layerHeight = LayerHeight[i];
@@ -145,7 +139,7 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 			AirMassCloud[i] = airMassCloud;
 			AirVaporCloud[i] = VaporMass[i];
 			AirPressureCloud[i] = (AirMassTotal[i] + airMass * (1.0f - (cloudBaseElevation - layerElevation) / layerHeight)) * Gravity;
-			AirHumidityRelativeCloud[i] = Atmosphere.GetRelativeHumidity(airMassCloud, vaporMassCloud, airTemperatureCloud, DewPointZero, WaterVaporMassToAirMassAtDewPoint, InverseDewPointTemperatureRange);
+			AirHumidityRelativeCloud[i] = Atmosphere.GetRelativeHumidity(airMassCloud, vaporMassCloud, airTemperatureCloud, AirPressureCloud[i]);
 		}
 		DewPoint[i] = dewPoint;
 		CloudElevation[i] = cloudElevation;
