@@ -45,7 +45,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	{
 		DisplayPressure[i] = Atmosphere.GetPressureAtElevation(0, Gravity, AirPressure[i], AirTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
 		DisplayPressureGradientForce[i] = PressureGradientForce[i];
-		DisplayCondensationGround[i] = CondensationCloud[i];
-		DisplayCondensationCloud[i] = CondensationGround[i];
+		DisplayCondensationGround[i] += CondensationCloud[i];
+		DisplayCondensationCloud[i] += CondensationGround[i];
 	}
 }

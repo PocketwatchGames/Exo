@@ -163,17 +163,13 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 		{
 			beforeCloud = 1.0f - beforeCloud;
 		}
-		float afterCloud = 1.0f - beforeCloud;
 
 		float transmitting = ThermalRadiationTransmitted[i];
 
 		float incoming = ThermalRadiationIncoming[i];
-		if (beforeCloud > 0)
-		{
-			float absorbedBeforeCloud = incoming * math.max(0, 1.0f - 1.0f / math.exp10(absorptivity * beforeCloud));
-			incoming -= absorbedBeforeCloud;
-			ThermalRadiationDelta[i] += absorbedBeforeCloud;
-		}
+		float absorbedBeforeCloud = incoming * math.max(0, 1.0f - 1.0f / math.exp10(absorptivity));
+		incoming -= absorbedBeforeCloud;
+		ThermalRadiationDelta[i] += absorbedBeforeCloud;
 
 		if (cloudMass > 0 && isCloudLayer)
 		{
@@ -183,15 +179,9 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 			ThermalRadiationDelta[i] += incomingAbsorbedByCloud + transmittingAbsorbedByCloud;
 
 			incoming -= incomingAbsorbedByCloud;
-			transmittingAbsorbedByCloud -= transmittingAbsorbedByCloud;
+			transmitting -= transmittingAbsorbedByCloud;
 		}
 
-		if (afterCloud > 0)
-		{
-			float absorbedAfterCloud = incoming * math.max(0, 1.0f - 1.0f / math.exp10(absorptivity * afterCloud));
-			ThermalRadiationDelta[i] += absorbedAfterCloud;
-			incoming -= absorbedAfterCloud;
-		}
 		ThermalRadiationTransmitted[i] = transmitting + incoming;
 	}
 }

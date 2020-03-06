@@ -1982,7 +1982,6 @@ public class WorldSim {
 					display.GlobalIceMass += curState.IceMass[i];
 					display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers-2][i];
 					display.GlobalTemperature += dependent.SurfaceAirTemperatureAbsolute[i];
-					display.GlobalWaterVapor += curState.AirVapor[1][i];
 					display.GlobalOceanVolume += dependent.WaterDepthTotal[i];
 					display.GlobalSeaLevel += dependent.SurfaceElevation[i];
 					display.GlobalEvaporation += display.Evaporation[i];
@@ -1991,6 +1990,7 @@ public class WorldSim {
 					display.GlobalCondensationGround += display.CondensationGround[i];
 					for (int j = 1; j < _airLayers - 1; j++)
 					{
+						display.GlobalWaterVapor += curState.AirVapor[j][i];
 						display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
 						display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
 					}
