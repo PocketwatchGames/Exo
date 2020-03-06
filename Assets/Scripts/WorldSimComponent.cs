@@ -75,15 +75,19 @@ public class WorldSimComponent : MonoBehaviour
 			{
 				DisplayPressure = _displayState.Pressure[i],
 				DisplayPressureGradientForce = _displayState.PressureGradientForce[i],
+				DisplayCondensationCloud = _displayState.CondensationCloud,
+				DisplayCondensationGround = _displayState.CondensationGround,
 
 				Gravity = ActiveSimState.PlanetState.Gravity,
 				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],
 				AirPressure = DependentState.AirPressure[i],
 				LayerElevation = DependentState.LayerElevation[i],
 				LayerHeight = DependentState.LayerHeight[i],
-				PressureGradientForce = ActiveSimState.AirVelocity[i], // TODO: using wind as placeholder, this is kinda broken
+				PressureGradientForce = ActiveSimState.AirVelocity[i], // TODO: using wind as placeholder, this is broken
+				CondensationCloud = ActiveSimState.CloudMass, // TODO: using wind as placeholder, this is broken
+				CondensationGround = ActiveSimState.CloudDropletMass, // TODO: using wind as placeholder, this is broken
 			};
-			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(CellCount, 1));
+			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(CellCount, 1, initDisplayHandle));
 		}
 		initDisplayHandle.Complete();
 

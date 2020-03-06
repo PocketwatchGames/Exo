@@ -80,10 +80,13 @@ public static class WorldGen {
 				0.3f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 435) +
 				0.2f * GetPerlinNormalized(pos.x, pos.y, pos.z, 1f, 8740);
 
-			relativeHumidity[i] =
-				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 40) +
-				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 40);
-
+			relativeHumidity[i] = 0.5f +
+				0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 40) +
+				0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 40);
+			if (elevation > 0)
+			{
+				relativeHumidity[i] = relativeHumidity[i] * relativeHumidity[i];
+			}
 			float surfaceElevation = math.max(0, elevation);
 
 			float regionalTemperatureVariation =
@@ -104,7 +107,7 @@ public static class WorldGen {
 					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
 					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureCanopy) / (MaxTemperatureCanopy - MinTemperatureCanopy)));
 			}
-			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 1.0f);
+			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 2.0f);
 
 			LayerElevationBase[i] = surfaceElevation;
 			Terrain[i] = new CellTerrain()
@@ -409,31 +412,28 @@ public static class WorldGen {
 		///////////////////////////////////
 		// Update dependent variables
 
+		var tempArrays = new List<NativeArray<float>>();
 		NativeList<JobHandle> updateDependenciesJobHandles = new NativeList<JobHandle>(Allocator.TempJob);
-		JobHandle updateDependentWaterLayerJobHandle = default(JobHandle);
+		JobHandle updateDependentWaterLayerJobHandle = SimJobs.UpdateWaterDepths(
+			worldGenJobHelper,
+			ref state,
+			ref dependent,
+			ref worldData,
+			worldGenWaterLayerJobHandle,
+			tempArrays
+			);
 		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
 			updateDependentWaterLayerJobHandle = worldGenJobHelper.Run( new UpdateDependentWaterLayerJob()
 			{
-				Salinity = dependent.WaterSalinity[j],
 				WaterCoverage = dependent.WaterCoverage[j],
 				PotentialEnergy = dependent.WaterPotentialEnergy[j],
-				Density = dependent.WaterDensity[j],
-				Pressure = dependent.WaterPressure[j],
-				LayerDepth = dependent.WaterLayerDepth[j],
-				LayerHeight = dependent.WaterLayerHeight[j],
-				WaterDepthTotal = waterDepthTotal,
-				WaterMassTotal = waterMassTotal,
-								
+
+				LayerHeight = dependent.WaterLayerHeight[j],								
 				SaltMass = state.SaltMass[j],
 				WaterMass = state.WaterMass[j],
 				Temperature = state.WaterTemperature[j],
 				Terrain = state.Terrain,
-				UpLayerDepth = dependent.WaterLayerDepth[j+1],
-				UpLayerHeight = dependent.WaterLayerHeight[j+1],
-				Gravity = state.PlanetState.Gravity,
-				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
-				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity
 			}, worldGenWaterLayerJobHandle);
 			updateDependenciesJobHandles.Add(updateDependentWaterLayerJobHandle);
 		}
@@ -446,10 +446,8 @@ public static class WorldGen {
 			VegetationCoverage = dependent.VegetationCoverage,
 			SurfaceAirTemperature = dependent.SurfaceAirTemperatureAbsolute,
 			IceEnergy = dependent.IceEnergy,
-			WaterDepth = dependent.WaterDepth,
+			WaterDepth = dependent.WaterDepthTotal,
 
-
-			WaterDepthTotal = waterDepthTotal,
 			CloudMass = state.CloudMass,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
@@ -517,6 +515,10 @@ public static class WorldGen {
 		WaterTemperatureTop.Dispose();
 		WaterLayerElevation.Dispose();
 		RelativeHumidity.Dispose();
+		foreach (var a in tempArrays)
+		{
+			a.Dispose();
+		}
 	}
 
 #if ASYNC_WORLDGEN

@@ -2060,13 +2060,15 @@ MonoBehaviour:
       Enabled: 0
     ThermalInDownTerrainJob:
       Enabled: 0
-    PressureGradientForceAirJob:
+    AccelerationAirJob:
       Enabled: 0
-    PressureGradientForceCloudJob:
+    UpdateCloudVelocityJob:
       Enabled: 0
-    WaterDensityGradientForceJob:
+    WaterDepthJob:
       Enabled: 0
-    WindFrictionJob:
+    AccelerationWaterJob:
+      Enabled: 0
+    AirTerrainFrictionJob:
       Enabled: 0
     WaterFrictionJob:
       Enabled: 0
@@ -2098,9 +2100,19 @@ MonoBehaviour:
       Enabled: 0
     EnergyAirJob:
       Enabled: 0
-    StateChangeJob:
+    UpdateMassWaterJob:
       Enabled: 0
-    StateChangeAirLayerJob:
+    UpdateMassWaterSurfaceJob:
+      Enabled: 0
+    UpdateMassAirJob:
+      Enabled: 0
+    UpdateMassEvaporationJob:
+      Enabled: 0
+    UpdateMassCondensationJob:
+      Enabled: 0
+    UpdateMassIceJob:
+      Enabled: 0
+    UpdateMassCloudJob:
       Enabled: 0
     DiffusionAirJob:
       Enabled: 0

@@ -16,7 +16,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 	public NativeArray<DiffusionAir> Delta;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastVapor;
-	[ReadOnly] public NativeArray<float3> LastWind;
+	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> LayerElevation;
@@ -44,7 +44,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 		float newTemperature = LastTemperature[i];
 		float newHumidity = absoluteHumidity;
-		float3 newWind = LastWind[i];
+		float3 newVelocity = LastVelocity[i];
 
 #if !DISABLE_AIR_DIFFUSION
 		for (int j = 0; j < 6; j++)
@@ -53,13 +53,13 @@ public struct DiffusionAirJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				float3 nWind = LastWind[n];
+				float3 nVelocity = LastVelocity[n];
 
 				float neighborMass = AirMass[n];
 				float diffusionAmount = neighborMass / (neighborMass + airMass) * DiffusionCoefficientHoriztonal;
 				float neighborHumidity = LastVapor[n] / (LastVapor[n] + neighborMass);
 				newHumidity += (neighborHumidity - absoluteHumidity) * diffusionAmount;
-				newWind += (nWind - LastWind[i]) * diffusionAmount;
+				newVelocity += (nVelocity - LastVelocity[i]) * diffusionAmount;
 				newTemperature += (LastTemperature[n] - LastTemperature[i]) * diffusionAmount;
 
 			}
@@ -103,7 +103,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 		{
 			Temperature = newTemperature,
 			WaterVapor = newHumidity * airMass,
-			Velocity = newWind,
+			Velocity = newVelocity,
 		};
 
 	}

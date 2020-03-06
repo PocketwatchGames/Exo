@@ -13,24 +13,12 @@ using Unity.Mathematics;
 #endif
 public struct EnergyAirJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
-	public NativeArray<float> Vapor;
-	public NativeArray<float3> AirVelocity;
+	[ReadOnly] public NativeArray<float> LastTemperature;
+	[ReadOnly] public NativeArray<float> Vapor;
 	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float3> LastAirVelocity;
 	[ReadOnly] public NativeArray<float> Energy;
-	[ReadOnly] public NativeArray<float> WindFriction;
-	[ReadOnly] public NativeArray<float3> PressureGradientForce;
-	[ReadOnly] public float WindFrictionMultiplier;
-	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-
-		float3 lastWind = LastAirVelocity[i];
-
-		float3 wind = lastWind;
-
-		wind *= (1.0f - WindFriction[i] * WindFrictionMultiplier);
-		wind += PressureGradientForce[i] * SecondsPerTick;
 
 		// TODO: deal with buoyancy here, but rather than storing a vertical velocity, let's just move to neutral buoyancy every time step
 
@@ -39,11 +27,9 @@ public struct EnergyAirJob : IJobParallelFor {
 		//// TODO: this can overshoot
 		//WindVertical[i] += Buoyancy[i] /* * SecondsPerTick */;
 
-
 		float airMass = AirMass[i];
 		float specificHeat = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * Vapor[i];
-		AirTemperaturePotential[i] += Energy[i] / specificHeat;
-		AirVelocity[i] = wind;
+		AirTemperaturePotential[i] = LastTemperature[i] + Energy[i] / specificHeat;
 	}
 }
 
@@ -53,31 +39,20 @@ public struct EnergyAirJob : IJobParallelFor {
 #endif
 public struct EnergyWaterJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
-	public NativeArray<float> SaltMass;
-	public NativeArray<float3> Velocity;
-	public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
-	[ReadOnly] public NativeArray<float> LastWaterMass;
-	[ReadOnly] public NativeArray<float> LastSaltMass;
-	[ReadOnly] public NativeArray<float3> LastVelocity;
-	[ReadOnly] public NativeArray<float3> Force;
-	[ReadOnly] public NativeArray<float> FrozenMass;
-	[ReadOnly] public NativeArray<float> EvaporatedMass;
+	[ReadOnly] public NativeArray<float> SaltMass;
+	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> Energy;
-	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		Mass[i] = LastWaterMass[i] - FrozenMass[i] - EvaporatedMass[i];
-		SaltMass[i] = LastSaltMass[i];
 		if (Mass[i] > 0)
 		{
 			float specificHeat = WorldData.SpecificHeatWater * Mass[i] + WorldData.SpecificHeatSalt * SaltMass[i];
 			Temperature[i] = LastTemperature[i] + Energy[i] / specificHeat;
-			Velocity[i] = LastVelocity[i] + Force[i] * SecondsPerTick;
-		} else
+		}
+		else
 		{
 			Temperature[i] = 0;
-			Velocity[i] = 0;
 		}
 	}
 }
@@ -88,14 +63,14 @@ public struct EnergyWaterJob : IJobParallelFor {
 #endif
 public struct EnergyIceJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> FluxEnergyIce;
-	[ReadOnly] public float IceHeatingDepth;
 	public void Execute(int i)
 	{
 		if (Mass[i] > 0)
 		{
-			Temperature[i] += FluxEnergyIce[i] / (Mass[i] * WorldData.SpecificHeatIce);
+			Temperature[i] = LastTemperature[i] + FluxEnergyIce[i] / (Mass[i] * WorldData.SpecificHeatIce);
 		}
 		else
 		{
@@ -116,7 +91,6 @@ public struct EnergyTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
-	[ReadOnly] public NativeArray<float> VegetationCoverage;
 	[ReadOnly] public float GeothermalEnergy;
 	[ReadOnly] public float HeatingDepth;
 	public void Execute(int i)
@@ -126,7 +100,7 @@ public struct EnergyTerrainJob : IJobParallelFor {
 			- ConductionEnergyWater[i]
 			- ConductionEnergyIce[i];
 		float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta + GeothermalEnergy;
-		float specificHeat = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, VegetationCoverage[i]);
+		float specificHeat = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, Terrain[i].Vegetation);
 		Temperature[i] = LastTemperature[i] + energy / specificHeat;
 	}
 }

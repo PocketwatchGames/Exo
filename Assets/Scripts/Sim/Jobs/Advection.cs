@@ -108,6 +108,23 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 	}
 }
 
+#if !EnergyAirJobDebug
+[BurstCompile]
+#endif
+public struct UpdateAirVelocityJob : IJobParallelFor {
+	public NativeArray<float3> AirVelocity;
+	[ReadOnly] public NativeArray<float> WindFriction;
+	[ReadOnly] public NativeArray<float3> PressureGradientForce;
+	[ReadOnly] public float WindFrictionMultiplier;
+	[ReadOnly] public float SecondsPerTick;
+	public void Execute(int i)
+	{
+		float3 wind = AirVelocity[i];
+		wind *= (1.0f - WindFriction[i] * WindFrictionMultiplier);
+		wind += PressureGradientForce[i] * SecondsPerTick;
+		AirVelocity[i] = wind;
+	}
+}
 
 
 #if !AdvectionAirJobDebug

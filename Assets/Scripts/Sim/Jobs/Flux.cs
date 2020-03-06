@@ -15,6 +15,7 @@ public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> FrozenMass;
 	public NativeArray<float> FrozenTemperature;
 	public NativeArray<float> Energy;
+	public NativeArray<float> EnergyFluxAir;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
@@ -30,7 +31,6 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> SurfaceWind;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
-	[ReadOnly] public NativeArray<float> Salinity;
 	[ReadOnly] public float WaterHeatingDepth;
 	[ReadOnly] public float FreezePointReductionPerSalinity;
 	public void Execute(int i)
@@ -41,10 +41,11 @@ public struct FluxWaterJob : IJobParallelFor {
 		float energyTop = -ConductionEnergyAir[i] - ConductionEnergyIce[i] + ThermalRadiationDeltaTop[i] + SolarRadiationIn[i];
 		float energyBottom = ConductionEnergyTerrain[i] + ThermalRadiationDeltaBottom[i];
 
+		float latentHeatFromAir = 0;
 		float evapMass = 0;
 		float frozenTopMass = 0;
 		float frozenBottomMass = 0;
-		float freezingTemperature = Atmosphere.GetFreezingPoint(Salinity[i], FreezePointReductionPerSalinity);
+		float freezingTemperature = Atmosphere.GetFreezingPoint(Atmosphere.GetWaterSalinity(waterMass, saltMass), FreezePointReductionPerSalinity);
 
 		if (waterMass > 0)
 		{
@@ -57,13 +58,15 @@ public struct FluxWaterJob : IJobParallelFor {
 			// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
 			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
 			float maxVaporAtWaterTemperature = Atmosphere.GetMaxVaporAtTemperature(SurfaceAirMass[i], newTempTop, SurfaceAirPressure[i]);
-			evapMass = math.max(0, evaporationCoefficient * (maxVaporAtWaterTemperature - SurfaceVaporMass[i]) / SurfaceAirMass[i]);
+			evapMass = math.clamp(evaporationCoefficient * (maxVaporAtWaterTemperature - SurfaceVaporMass[i]) / SurfaceAirMass[i], 0, waterMass);
+			waterMass -= evapMass;
+			float evapLatentHeat = evapMass * WorldData.LatentHeatWaterVapor;
+			float latentHeatFromWater = math.clamp(energyTop, 0, evapLatentHeat);
+			energyTop -= latentHeatFromWater;
+			latentHeatFromAir = evapLatentHeat - latentHeatFromWater;
+//			latentHeatFromAir = math.max(0, evapLatentHeat - energyTop);
+//			energyTop -= evapLatentHeat - latentHeatFromAir;
 
-			if (evapMass > 0)
-			{
-				energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
-				waterMass -= evapMass;
-			}
 #endif
 
 #if !DISABLE_FREEZE_TOP
@@ -99,6 +102,8 @@ public struct FluxWaterJob : IJobParallelFor {
 		FrozenMass[i] = frozenTopMass + frozenBottomMass;
 		FrozenTemperature[i] = freezingTemperature;
 		Energy[i] = energyTop + energyBottom;
+		EnergyFluxAir[i] += -latentHeatFromAir;
+
 	}
 }
 
@@ -106,9 +111,7 @@ public struct FluxWaterJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct FluxCloudJob : IJobParallelFor {
-	public NativeArray<float> CloudMass;
-	public NativeArray<float> DropletMass;
-	public NativeArray<float3> Velocity;
+	public NativeArray<float> DropletDelta;
 	public NativeArray<float> PrecipitationMass;
 	public NativeArray<float> PrecipitationTemperature;
 	public NativeArray<float> EvaporationMass;
@@ -122,10 +125,8 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirPressureCloud;
 	[ReadOnly] public NativeArray<float> RelativeHumidityCloud;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
-	[ReadOnly] public NativeArray<float> WindFriction;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
 	[ReadOnly] public NativeArray<float> SurfaceAirTemperature;
-	[ReadOnly] public NativeArray<float3> PressureGradientForce;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public float RainDropMinSize;
@@ -145,9 +146,6 @@ public struct FluxCloudJob : IJobParallelFor {
 		float rainfallWaterMass = 0;
 		float cloudEvaporationMass = 0;
 		float dewPoint = DewPoint[i];
-
-		// I already multiplied PressureGradientForce by SecondsPerTick during the calculation of the force
-		float3 velocity = lastVelocity + PressureGradientForce[i];
 
 	//	var velocityUp = math.dot(velocity, Position[i]) * Position[i];
 
@@ -179,7 +177,7 @@ public struct FluxCloudJob : IJobParallelFor {
 				if (rainDropFallTime < SecondsPerTick)
 				{
 					// TODO: account for drop size variance so we don't just dump it all at once
-					rainfallWaterMass = cloudMass * (1.0f - rainDropFallTime / SecondsPerTick);
+					rainfallWaterMass = cloudMass * math.saturate(1.0f - rainDropFallTime / SecondsPerTick);
 					dropletMass *= 1.0f - rainfallWaterMass / cloudMass;
 					cloudMass -= rainfallWaterMass;
 					precipitationMass += rainfallWaterMass;
@@ -203,19 +201,14 @@ public struct FluxCloudJob : IJobParallelFor {
 		if (cloudMass <= 0)
 		{
 			dropletMass = 0;
-			velocity = 0;
 		}
 
 		if (precipitationMass > 0)
 		{
 			PrecipitationTemperature[i] = SurfaceAirTemperature[i];
-			PrecipitationMass[i] = precipitationMass;
 		}
-
-		DropletMass[i] = dropletMass;
-		CloudMass[i] = cloudMass;
-		Velocity[i] = velocity;
-
+		PrecipitationMass[i] = precipitationMass;
+		DropletDelta[i] = dropletMass - LastDropletMass[i];
 		EvaporationMass[i] = cloudEvaporationMass;
 	}
 }

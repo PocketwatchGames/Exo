@@ -114,6 +114,16 @@ public static class Atmosphere {
 		return WorldData.DensityWater + (waterDensityPerSalinity * saltMass / (waterMass + saltMass) + waterDensityPerDegree * (temperature - WorldData.FreezingTemperature));
 	}
 
+	[BurstCompile]
+	static public float GetWaterSalinity(float waterMass, float saltMass)
+	{
+		if (waterMass <= 0)
+		{
+			return 0;
+		}
+		return saltMass / (waterMass + saltMass);
+	}
+
 
 	[BurstCompile]
 	static public float GetWaterVolume(float waterMass, float saltMass, float temperature, float waterDensityPerSalinity, float waterDensityPerDegree)
@@ -174,8 +184,10 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetMaxVaporAtTemperature(float airMass, float temperature, float pressure)
 	{
+		// https://www.engineeringtoolbox.com/water-vapor-saturation-pressure-air-d_689.html
 		float saturationPressureOfWaterVapor = math.exp(77.345f + 0.0057f * temperature - 7235 / temperature) / math.pow(temperature, 8.2f);
 
+		//https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
 		return airMass * 0.62198f * saturationPressureOfWaterVapor / (pressure - saturationPressureOfWaterVapor);
 	}
 
@@ -224,10 +236,10 @@ public static class Atmosphere {
 	}
 
 	[BurstCompile]
-	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility, float canopyCoverage)
+	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility, float vegetationMass)
 	{
-		float landMass = (WorldData.MassSand - WorldData.MassSoil) * soilFertility + WorldData.MassSoil;
-		return (WorldData.SpecificHeatSoil * heatingDepth * soilFertility * landMass);
+		float landMass = (WorldData.MassSand * (1.0f - soilFertility) + WorldData.MassSoil * soilFertility) * heatingDepth;
+		return (WorldData.SpecificHeatSoil * landMass + WorldData.SpecificHeatVegetation * vegetationMass);
 	}
 
 

@@ -1,4 +1,4 @@
-﻿//#define PressureGradientForceAirJobDebug
+﻿//#define AccelerationAirJobDebug
 //#define WaterFrictionJobDebug
 //#define WaterDensityGradientForceJobDebug
 
@@ -11,8 +11,8 @@ using Unity.Mathematics;
 #if !WindFrictionJobDebug
 [BurstCompile]
 #endif
-public struct WindFrictionJob : IJobParallelFor {
-	public NativeArray<float> Friction;
+public struct AirTerrainFrictionJob : IJobParallelFor {
+	public NativeArray<float> Force;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> IceCoverage;
@@ -29,19 +29,20 @@ public struct WindFrictionJob : IJobParallelFor {
 		float exposedWater = math.max(0, WaterCoverage[i] - exposedIce);
 		float exposedVegetation = math.max(0, VegetationCoverage[i] - exposedIce - exposedWater);
 		float exposedTerrain = 1.0f - exposedWater - exposedVegetation - exposedIce;
-		Friction[i] = exposedIce * IceFriction +
+		Force[i] = exposedIce * IceFriction +
 			exposedWater * WaterFriction +
 			exposedVegetation * VegetationFriction +
 			exposedTerrain * (TerrainFrictionMin + (TerrainFrictionMax - TerrainFrictionMin) * math.saturate(Terrain[i].Roughness / MaxTerrainRoughness));
-		//Debug.Log("I: " + i + " F: " + Friction[i]);
 	}
 }
 
-#if !PressureGradientForceAirJobDebug
+#if !AccelerationAirJobDebug
 [BurstCompile]
 #endif
-public struct PressureGradientForceAirJob : IJobParallelFor {
+public struct AccelerationAirJob : IJobParallelFor {
+	public NativeArray<float3> Velocity;
 	public NativeArray<float3> Force;
+	[ReadOnly] public NativeArray<float> Friction;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> TemperaturePotential;
@@ -64,6 +65,8 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float FrictionCoefficient;
 	public void Execute(int i)
 	{
 		float3 gradientPressure = 0;
@@ -102,73 +105,16 @@ public struct PressureGradientForceAirJob : IJobParallelFor {
 		//	buoyancy -= potentialTemperatureDown / Temperature[i] - 1;
 		//}
 
-		Force[i] = force + buoyancy * Gravity * Positions[i];
+		force += buoyancy * Gravity * Positions[i];
+		Force[i] = force;
+		Velocity[i] += force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
 	}
 }
 
-#if !PressureGradientForceAirJobDebug
+#if !WaterSurfaceFrictionJobDebug
 [BurstCompile]
 #endif
-public struct PressureGradientForceCloudJob : IJobParallelFor {
-	public NativeArray<float3> Force;
-	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> LayerForce;
-	[ReadOnly] public NativeArray<float> LayerFriction;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float3> UpForce;
-	[ReadOnly] public NativeArray<float> UpLayerElevation;
-	[ReadOnly] public NativeArray<float> UpLayerHeight;
-	[ReadOnly] public NativeArray<float3> DownForce;
-	[ReadOnly] public NativeArray<float> DownLayerElevation;
-	[ReadOnly] public float LayerFrictionMultiplier;
-	[ReadOnly] public float UpFrictionMultiplier;
-	[ReadOnly] public float DownFrictionMultiplier;
-	[ReadOnly] public bool IsTop;
-	[ReadOnly] public bool IsBottom;
-	[ReadOnly] public float SecondsPerTick;
-	public void Execute(int i)
-	{
-		float cloudElevation = CloudElevation[i];
-		float layerElevation = LayerElevation[i];
-		float layerMidHeight = layerElevation + LayerHeight[i] / 2;
-		var layerForce = LayerForce[i] * SecondsPerTick - Velocity[i] * (LayerFriction[i] * LayerFrictionMultiplier);
-		if (cloudElevation >= layerElevation || IsBottom)
-		{
-			if (cloudElevation < layerElevation + LayerHeight[i] || IsTop)
-			{
-				if (cloudElevation < layerMidHeight)
-				{
-					if (IsBottom)
-					{
-						Force[i] = layerForce;
-					}else
-					{
-						var downForce = DownForce[i] * SecondsPerTick - Velocity[i] * (LayerFriction[i] * DownFrictionMultiplier);
-						float downLayerMidElevation = (DownLayerElevation[i] + layerElevation) / 2;
-						float t = (cloudElevation - downLayerMidElevation) / (layerMidHeight - downLayerMidElevation);
-						Force[i] = layerForce * t + downForce * (1.0f - t);
-					}
-				} else if (IsTop)
-				{
-					Force[i] = layerForce;
-				} else
-				{
-					var upForce = UpForce[i] * SecondsPerTick - Velocity[i] * (LayerFriction[i] * UpFrictionMultiplier);
-					float upLayerMidElevation = UpLayerElevation[i] + UpLayerHeight[i] / 2;
-					float t = (cloudElevation - layerMidHeight) / (upLayerMidElevation - layerMidHeight);
-					Force[i] = upForce * t + layerForce * (1.0f - t);
-				}
-			}
-		}
-	}
-}
-
-#if !WaterFrictionJobDebug
-[BurstCompile]
-#endif
-public struct WaterFrictionForceJob : IJobParallelFor {
+public struct WaterSurfaceFrictionJob : IJobParallelFor {
 	public NativeArray<float3> Force;
 	[ReadOnly] public NativeArray<float3> Current;
 	[ReadOnly] public NativeArray<float3> AirVelocityUp;
@@ -180,6 +126,7 @@ public struct WaterFrictionForceJob : IJobParallelFor {
 	[ReadOnly] public float FrictionCoefficientUp;
 	[ReadOnly] public float FrictionCoefficientDown;
 	[ReadOnly] public float WaterSurfaceFrictionDepth;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		var horizontalWindUp = math.cross(math.cross(Position[i], AirVelocityUp[i]), Position[i]);
@@ -196,15 +143,16 @@ public struct WaterFrictionForceJob : IJobParallelFor {
 
 		var force = (ekmanCurrent - Current[i]) * FrictionCoefficientUp + (horizontalWindDown - Current[i]) * FrictionCoefficientDown;
 
-		Force[i] += force;
+		Force[i] = force;
 	}
 }
 
 #if !WaterDensityGradientForceJobDebug
 [BurstCompile]
 #endif
-public struct WaterDensityGradientForceJob : IJobParallelFor {
-	public NativeArray<float3> Force;
+public struct AccelerationWaterJob : IJobParallelFor {
+	public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float3> Friction;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float> WaterDensity;
@@ -221,6 +169,8 @@ public struct WaterDensityGradientForceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DownWaterPressure;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float Gravity;
+	[ReadOnly] public float FrictionCoefficient;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		var density = WaterDensity[i];
@@ -243,16 +193,71 @@ public struct WaterDensityGradientForceJob : IJobParallelFor {
 				}
 			}
 
-			Force[i] = pressureGradient * Gravity / density;
+			var force = pressureGradient * Gravity / density;
 
-		//	if (DownWaterDensity[i] > 0)
-		//	{
-		//		Force[i] += pos * Gravity * (DownWaterDensity[i] / density - 1)/* / (LayerHeight[i] + DownLayerHeight[i]) * 0.5f*/;
-		//	}
-		//	if (UpWaterDensity[i] > 0)
-		//	{
-		//		Force[i] += pos * Gravity * (1 - UpWaterDensity[i] / density)/* / (LayerHeight[i] + UpLayerHeight[i]) * 0.5f*/;
-		//	}
+			//	if (DownWaterDensity[i] > 0)
+			//	{
+			//		Force[i] += pos * Gravity * (DownWaterDensity[i] / density - 1)/* / (LayerHeight[i] + DownLayerHeight[i]) * 0.5f*/;
+			//	}
+			//	if (UpWaterDensity[i] > 0)
+			//	{
+			//		Force[i] += pos * Gravity * (1 - UpWaterDensity[i] / density)/* / (LayerHeight[i] + UpLayerHeight[i]) * 0.5f*/;
+			//	}
+			Velocity[i] += force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
+		}
+
+	}
+}
+
+#if !UpdateVelocityCloudJobDebug
+[BurstCompile]
+#endif
+public struct UpdateVelocityCloudJob : IJobParallelFor {
+	public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeArray<float3> LayerVelocity;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float3> UpVelocity;
+	[ReadOnly] public NativeArray<float> UpLayerElevation;
+	[ReadOnly] public NativeArray<float> UpLayerHeight;
+	[ReadOnly] public NativeArray<float3> DownVelocity;
+	[ReadOnly] public NativeArray<float> DownLayerElevation;
+	[ReadOnly] public bool IsTop;
+	[ReadOnly] public bool IsBottom;
+	public void Execute(int i)
+	{
+		float cloudElevation = CloudElevation[i];
+		float layerElevation = LayerElevation[i];
+		float layerMidHeight = layerElevation + LayerHeight[i] / 2;
+		if (cloudElevation >= layerElevation || IsBottom)
+		{
+			if (cloudElevation < layerElevation + LayerHeight[i] || IsTop)
+			{
+				if (cloudElevation < layerMidHeight)
+				{
+					if (IsBottom)
+					{
+						Velocity[i] = LayerVelocity[i];
+					}
+					else
+					{
+						float downLayerMidElevation = (DownLayerElevation[i] + layerElevation) / 2;
+						float t = (cloudElevation - downLayerMidElevation) / (layerMidHeight - downLayerMidElevation);
+						Velocity[i] = LayerVelocity[i] * t + DownVelocity[i] * (1.0f - t);
+					}
+				}
+				else if (IsTop)
+				{
+					Velocity[i] = LayerVelocity[i];
+				}
+				else
+				{
+					float upLayerMidElevation = UpLayerElevation[i] + UpLayerHeight[i] / 2;
+					float t = (cloudElevation - layerMidHeight) / (upLayerMidElevation - layerMidHeight);
+					Velocity[i] = UpVelocity[i] * t + LayerVelocity[i] * (1.0f - t);
+				}
+			}
 		}
 	}
 }

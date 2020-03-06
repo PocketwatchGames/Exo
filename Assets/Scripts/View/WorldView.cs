@@ -355,7 +355,7 @@ public class WorldView : MonoBehaviour {
 			IceCoverage = dependent.IceCoverage,
 			VegetationCoverage = dependent.VegetationCoverage,
 			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers-2],
-			WaterDepth = dependent.WaterDepth,
+			WaterDepth = dependent.WaterDepthTotal,
 			SurfaceElevation = dependent.SurfaceElevation,
 			MeshOverlayData = meshOverlay.Values,
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
@@ -550,7 +550,7 @@ public class WorldView : MonoBehaviour {
 			case CellInfoType.Ground:
 				return GetCellInfoGround(ref Sim.ActiveSimState, ref Sim.DependentState);
 			case CellInfoType.Water:
-				return GetCellInfoWater(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState);
+				return GetCellInfoWater(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
 		}
 		return "";
 	}
@@ -676,13 +676,13 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 4]);
 				return true;
 			case MeshOverlay.Salinity0:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 2]);
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 2]);
 				return true;
 			case MeshOverlay.Salinity1:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 3]);
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 3]);
 				return true;
 			case MeshOverlay.Salinity2:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, dependentState.WaterSalinity[Sim.WorldData.WaterLayers - 4]);
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 4]);
 				return true;
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
@@ -751,14 +751,18 @@ public class WorldView : MonoBehaviour {
 		NumberFormatInfo nfi2 = new NumberFormatInfo() { NumberDecimalDigits = 2 };
 		s.AppendFormat("CO2: {0}", state.PlanetState.CarbonDioxide);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * Sim.InverseCellCount);
+		s.AppendFormat("\nTemperature: {0}", GetTemperatureString(display.GlobalTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
+		s.AppendFormat("\nOcean Surface Temp: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
+		s.AppendFormat("\nOcean Temperature: {0:N0}", GetTemperatureString(display.GlobalOceanTemperature, ActiveTemperatureUnits, 4));
+		s.AppendFormat("\nWater Vapor: {0:N0}", display.GlobalWaterVapor);
+		s.AppendFormat("\nRainfall: {0:N3}", display.GlobalRainfall * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
+		s.AppendFormat("\nCondensationCloud: {0:N3}", display.GlobalCondensationCloud * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
+		s.AppendFormat("\nCondensationGround: {0:N3}", display.GlobalCondensationGround * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
+		s.AppendFormat("\nEvaporation: {0:N3}", display.GlobalEvaporation * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
+		s.AppendFormat("\nCloud Mass: {0:N2}", display.GlobalCloudMass);
 		s.AppendFormat("\nGlobal Sea Level: {0:N2}", display.GlobalSeaLevel * Sim.InverseCellCount);
 		s.AppendFormat("\nOcean Coverage: {0:N1}%", display.GlobalOceanCoverage * 100 * Sim.InverseCellCount);
 		s.AppendFormat("\nOcean Volume: {0:N2} B", display.GlobalOceanVolume / 1000000000 * Sim.InverseCellCount);
-		s.AppendFormat("\nTemperature: {0}", GetTemperatureString(display.GlobalTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nCloud Mass: {0:N2}", display.GlobalCloudMass);
-		s.AppendFormat("\nWater Vapor: {0:N0}", display.GlobalWaterVapor);
-		s.AppendFormat("\nRainfall: {0:N2}", display.GlobalRainfall * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
-		s.AppendFormat("\nEvaporation: {0:N2}", display.GlobalEvaporation * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
 
 		return s.ToString();
 	}
@@ -867,7 +871,7 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("VEG: {0:N2}\n", terrain.Vegetation);
 		return s.ToString();
 	}
-	private string GetCellInfoWater(ref SimState state, ref DependentState dependent, ref StaticState staticState)
+	private string GetCellInfoWater(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
@@ -883,7 +887,7 @@ public class WorldView : MonoBehaviour {
 		{
 			s.AppendFormat("ICE: 0 m\n");
 		}
-		s.AppendFormat("DEPTH: {0:N3} m\n", dependent.WaterDepth[ActiveCellIndex]);
+		s.AppendFormat("DEPTH: {0:N3} m\n", dependent.WaterDepthTotal[ActiveCellIndex]);
 		s.AppendLine();
 
 		for (int i = Sim.WorldData.WaterLayers - 2; i >= 1; i--) {
@@ -894,7 +898,7 @@ public class WorldView : MonoBehaviour {
 				s.AppendFormat("LAYER {0} | TEMP: {1} SALT: {2:P3}\n",
 					layerIndex,
 					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0),
-					dependent.WaterSalinity[i][ActiveCellIndex]);
+					display.Salinity[i][ActiveCellIndex]);
 				s.AppendFormat("MASS: {0:N1} kg VEL: ({1:N3}, {2:N3}, {3:N3}) P: {4}\n",
 					state.SaltMass[i][ActiveCellIndex],
 					current.x, current.y, current.z,
