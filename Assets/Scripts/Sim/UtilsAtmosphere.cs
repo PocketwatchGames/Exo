@@ -182,10 +182,10 @@ public static class Atmosphere {
 	}
 
 	[BurstCompile]
-	static public float GetMaxVaporAtTemperature(float airMass, float temperature, float pressure)
+	static public float GetMaxVaporAtTemperature(float airMass, float temperatureAbsolute, float pressure)
 	{
 		// https://www.engineeringtoolbox.com/water-vapor-saturation-pressure-air-d_689.html
-		float saturationPressureOfWaterVapor = math.exp(77.345f + 0.0057f * temperature - 7235 / temperature) / math.pow(temperature, 8.2f);
+		float saturationPressureOfWaterVapor = math.exp(77.345f + 0.0057f * temperatureAbsolute - 7235 / temperatureAbsolute) / math.pow(temperatureAbsolute, 8.2f);
 
 		//https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
 		return airMass * 0.62198f * saturationPressureOfWaterVapor / (pressure - saturationPressureOfWaterVapor);

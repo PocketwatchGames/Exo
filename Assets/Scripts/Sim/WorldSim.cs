@@ -1147,9 +1147,12 @@ public class WorldSim {
 				IceCoverage = dependent.IceCoverage,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				SurfaceWind = lastState.AirVelocity[1],
-				SurfaceAirMass = dependent.AirMass[1],
-				SurfaceAirPressure = dependent.AirPressure[1],
-				SurfaceVaporMass = lastState.AirVapor[1],
+				AirMass = dependent.AirMass[1],
+				AirPressure = dependent.AirPressure[1],
+				AirTemperaturePotential = lastState.AirTemperaturePotential[1],
+				AirVapor = lastState.AirVapor[1],
+				LayerElevation = dependent.LayerElevation[1],
+				LayerHeight = dependent.LayerHeight[1],
 				WaterHeatingDepth = worldData.WaterHeatingDepth,
 				FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
 			}, JobHandle.CombineDependencies(fluxWaterDependencies));
@@ -1355,18 +1358,18 @@ public class WorldSim {
 				updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateAirMassJobHandle);
 				updateMassAirJobHandles[j] = updateMassJobHandle;
 			}
-			var updateMassCondensationHandle = UpdateMassEvaporationJob.Run(new UpdateMassEvaporationJob()
+			var updateMassEvaporationHandle = UpdateMassEvaporationJob.Run(new UpdateMassEvaporationJob()
 			{
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				VaporMass = nextState.AirVapor[1],
 
 				AirMass = dependent.AirMass[1],
 				Evaporation = evaporationMass,
-				EvaporationTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
+				EvaporationTemperature = lastState.WaterTemperature[_surfaceWaterLayer],
 				LayerElevation = dependent.LayerElevation[1],
 				LayerHeight = dependent.LayerHeight[1]
 			}, JobHandle.CombineDependencies(updateMassAirJobHandles[1], energyJobHandle));
-			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateMassCondensationHandle);
+			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateMassEvaporationHandle);
 
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
@@ -1379,8 +1382,9 @@ public class WorldSim {
 					AirTemperaturePotential = nextState.AirTemperaturePotential[j],
 					GroundCondensation = condensationGroundMass[j],
 					SurfaceSaltMass = lastState.SaltMass[j],
-					SurfaceElevation = dependent.SurfaceElevation,
-				}, JobHandle.CombineDependencies(updateMassWaterSurfaceJobHandle, updateMassCondensationHandle, updateMassAirJobHandles[j])));
+					LayerElevation = dependent.LayerElevation[j],
+					LayerHeight = dependent.LayerHeight[j],
+				}, JobHandle.CombineDependencies(updateMassWaterSurfaceJobHandle, updateMassEvaporationHandle, updateMassAirJobHandles[j])));
 			}
 
 
@@ -1886,7 +1890,7 @@ public class WorldSim {
 				bool degen = false;
 				SortedSet<int> degenIndices = new SortedSet<int>();
 				List<string> degenVarNames = new List<string>();
-				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 1000, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 400, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
 				degen |= CheckDegen(_cellCount, degenIndices, "CloudVelocity", nextState.CloudVelocity, degenVarNames);
@@ -1894,7 +1898,7 @@ public class WorldSim {
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 300, degenVarNames);
 				for (int i = 1; i < _airLayers - 1; i++) {
-					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 1000, degenVarNames);
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 400, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 1000, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "AirVelocity" + i, nextState.AirVelocity[i], degenVarNames);
 				}
@@ -1902,7 +1906,7 @@ public class WorldSim {
 				{
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterMass" + i, nextState.WaterMass[i], degenVarNames);
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "SaltMass" + i, nextState.SaltMass[i], degenVarNames);
-					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], degenVarNames);
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], 0, 400, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "Current" + i, nextState.WaterVelocity[i], degenVarNames);
 				}
 				if (degen)
