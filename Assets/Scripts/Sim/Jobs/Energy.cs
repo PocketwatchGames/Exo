@@ -13,23 +13,30 @@ using Unity.Mathematics;
 #endif
 public struct EnergyAirJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> LastTemperature;
-	[ReadOnly] public NativeArray<float> Vapor;
 	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> Energy;
+	[ReadOnly] public NativeArray<float> AirPressure;
+	[ReadOnly] public NativeArray<float> LastVapor;
+	[ReadOnly] public NativeArray<float> LastTemperaturePotential;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeArray<float> SolarRadiationIn;
+	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
+	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
+	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	public void Execute(int i)
 	{
-
-		// TODO: deal with buoyancy here, but rather than storing a vertical velocity, let's just move to neutral buoyancy every time step
-
-		//float lastWindVertical = WindVertical[i];
-		//WindVertical[i] = lastWindVertical;
-		//// TODO: this can overshoot
-		//WindVertical[i] += Buoyancy[i] /* * SecondsPerTick */;
+		float energy =
+			SolarRadiationIn[i]
+			+ ThermalRadiationDelta[i]
+			+ ConductionEnergyIce[i]
+			+ ConductionEnergyTerrain[i]
+			+ ConductionEnergyWater[i];
 
 		float airMass = AirMass[i];
-		float specificHeat = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * Vapor[i];
-		AirTemperaturePotential[i] = LastTemperature[i] + Energy[i] / specificHeat;
+		float specificHeat = WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWaterVapor * LastVapor[i];
+		AirTemperaturePotential[i] = LastTemperaturePotential[i] + energy / specificHeat;
 	}
 }
 
@@ -40,15 +47,34 @@ public struct EnergyAirJob : IJobParallelFor {
 public struct EnergyWaterJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> LastTemperature;
-	[ReadOnly] public NativeArray<float> SaltMass;
-	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float> Energy;
+	[ReadOnly] public NativeArray<float> LastMass;
+	[ReadOnly] public NativeArray<float> LastSaltMass;
+	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeArray<float> SolarRadiationIn;
+	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
+	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
+	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
+	[ReadOnly] public NativeArray<float> AirVapor;
+	[ReadOnly] public NativeArray<float> AirPressure;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float3> SurfaceWind;
+	[ReadOnly] public NativeArray<float> IceCoverage;
+	[ReadOnly] public NativeArray<float> WaterCoverage;
 	public void Execute(int i)
 	{
-		if (Mass[i] > 0)
+		if (LastMass[i] > 0)
 		{
-			float specificHeat = WorldData.SpecificHeatWater * Mass[i] + WorldData.SpecificHeatSalt * SaltMass[i];
-			Temperature[i] = LastTemperature[i] + Energy[i] / specificHeat;
+			float energy = 
+				- ConductionEnergyAir[i] 
+				- ConductionEnergyIce[i] 
+				+ SolarRadiationIn[i]
+				+ ConductionEnergyTerrain[i] 
+				+ ThermalRadiationDelta[i];
+			float specificHeat = WorldData.SpecificHeatWater * LastMass[i] + WorldData.SpecificHeatSalt * LastSaltMass[i];
+			Temperature[i] = LastTemperature[i] + energy / specificHeat;
 		}
 		else
 		{
@@ -63,14 +89,25 @@ public struct EnergyWaterJob : IJobParallelFor {
 #endif
 public struct EnergyIceJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
-	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float> FluxEnergyIce;
+	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeArray<float> SolarRadiationIn;
+	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
+	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
+	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+
 	public void Execute(int i)
 	{
-		if (Mass[i] > 0)
+		if (LastMass[i] > 0)
 		{
-			Temperature[i] = LastTemperature[i] + FluxEnergyIce[i] / (Mass[i] * WorldData.SpecificHeatIce);
+			float energy = 
+				-ConductionEnergyAir[i] 
+				+ SolarRadiationIn[i] 
+				+ ConductionEnergyWater[i] 
+				+ ConductionEnergyTerrain[i] 
+				+ ThermalRadiationDelta[i];
+			Temperature[i] = LastTemperature[i] + energy / (LastMass[i] * WorldData.SpecificHeatIce);
 		}
 		else
 		{

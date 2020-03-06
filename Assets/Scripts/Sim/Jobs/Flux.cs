@@ -12,19 +12,14 @@ using Unity.Mathematics;
 #endif
 public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
+	public NativeArray<float> EvaporatedWaterTemperaturePotential;
 	public NativeArray<float> FrozenMass;
 	public NativeArray<float> FrozenTemperature;
-	public NativeArray<float> Energy;
-	public NativeArray<float> EnergyFluxAir;
-	[ReadOnly] public NativeArray<float> LastTemperature;
+	public NativeArray<float> LatentHeatWater;
+	public NativeArray<float> LatentHeatAir;
+	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaTop;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaBottom;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
-	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
-	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
-	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirVapor;
@@ -38,17 +33,16 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public float FreezePointReductionPerSalinity;
 	public void Execute(int i)
 	{
-		float temperature = LastTemperature[i];
+		float temperature = Temperature[i];
 		float waterMass = LastMass[i];
 		float saltMass = LastSaltMass[i];
-		float energyTop = -ConductionEnergyAir[i] - ConductionEnergyIce[i] + ThermalRadiationDeltaTop[i] + SolarRadiationIn[i];
-		float energyBottom = ConductionEnergyTerrain[i] + ThermalRadiationDeltaBottom[i];
 
 		float latentHeatFromAir = 0;
 		float evapMass = 0;
-		float frozenTopMass = 0;
-		float frozenBottomMass = 0;
+		float frozenMass = 0;
 		float freezingTemperature = 0;
+		float energyFlux = 0;
+		float evapTemperaturePotential = 0;
 
 		if (waterMass > 0)
 		{
@@ -61,55 +55,40 @@ public struct FluxWaterJob : IJobParallelFor {
 			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
 			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
 			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
-			energyTop *= 1.0f - (evapMass / waterMass);
-			energyBottom *= 1.0f - (evapMass / waterMass);
 			waterMass -= evapMass;
 			latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
+			evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
 			//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
 
 #endif
 
 			float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass) / (waterMass + saltMass);
 			float heatingMass = math.min(waterMass, WaterHeatingDepth * WorldData.MassWater);
-			float newTempTop = temperature + energyTop / (specificHeatSaltWater * heatingMass);
 			freezingTemperature = Atmosphere.GetFreezingPoint(Atmosphere.GetWaterSalinity(waterMass, saltMass), FreezePointReductionPerSalinity);
 
 #if !DISABLE_FREEZE_TOP
 			if (waterMass > 0)
 			{
-				if (newTempTop < freezingTemperature)
+				// TODO: this is only applicable for water exposed to the air... what about water under ice?
+				if (airTemperatureAbsolute < freezingTemperature)
 				{
 					// TODO: some fo the energy in the ehating mass should also be accounted for
-					float energyToRelease = (freezingTemperature - newTempTop) * specificHeatSaltWater * heatingMass;
-					frozenTopMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
-					energyTop += frozenTopMass * WorldData.LatentHeatWaterLiquid;
-					waterMass -= frozenTopMass;
-				}
-			}
-#endif
-
-#if !DISABLE_FREEZE_BOTTOM
-			if (waterMass > 0)
-			{
-				float newTempBottom = temperature + energyBottom / (specificHeatSaltWater * heatingMass);
-				if (newTempBottom < freezingTemperature)
-				{
-					// TODO: some fo the energy in the ehating mass should also be accounted for
-					float energyToRelease = (freezingTemperature - newTempBottom) * specificHeatSaltWater * heatingMass;
-					frozenBottomMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
-					energyBottom += frozenBottomMass * WorldData.LatentHeatWaterLiquid;
-					waterMass -= frozenBottomMass;
+					float energyToRelease = (freezingTemperature - airTemperatureAbsolute) * specificHeatSaltWater * heatingMass;
+					frozenMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
+					energyFlux += frozenMass * WorldData.LatentHeatWaterLiquid;
+					waterMass -= frozenMass;
 				}
 			}
 #endif
 		}
 
 
+		EvaporatedWaterTemperaturePotential[i] = evapTemperaturePotential;
 		EvaporatedWaterMass[i] = evapMass;
-		FrozenMass[i] = frozenTopMass + frozenBottomMass;
+		FrozenMass[i] = frozenMass;
 		FrozenTemperature[i] = freezingTemperature;
-		Energy[i] = energyTop + energyBottom;
-		EnergyFluxAir[i] += -latentHeatFromAir;
+		LatentHeatWater[i] = energyFlux;
+		LatentHeatAir[i] += -latentHeatFromAir;
 
 	}
 }
@@ -133,7 +112,9 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> RelativeHumidityCloud;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
-	[ReadOnly] public NativeArray<float> SurfaceAirTemperature;
+	[ReadOnly] public NativeArray<float> SurfaceAirTemperaturePotential;
+	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
+	[ReadOnly] public NativeArray<float> SurfaceLayerHeight;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public float RainDropMinSize;
@@ -212,7 +193,7 @@ public struct FluxCloudJob : IJobParallelFor {
 
 		if (precipitationMass > 0)
 		{
-			PrecipitationTemperature[i] = SurfaceAirTemperature[i];
+			PrecipitationTemperature[i] = Atmosphere.GetAbsoluteTemperature(SurfaceAirTemperaturePotential[i], SurfaceLayerElevation[i] + SurfaceLayerHeight[i] / 2);
 		}
 		PrecipitationMass[i] = precipitationMass;
 		DropletDelta[i] = dropletMass - LastDropletMass[i];
@@ -225,35 +206,24 @@ public struct FluxCloudJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct FluxAirJob : IJobParallelFor {
-	public NativeArray<float> FluxEnergy;
+	public NativeArray<float> LatentHeat;
 	public NativeArray<float> CondensationGroundMass;
 	public NativeArray<float> CondensationCloudMass;
+	[ReadOnly] public NativeArray<float> TemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LastVapor;
-	[ReadOnly] public NativeArray<float> LastTemperaturePotential;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
-	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
-	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
-	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	public void Execute(int i)
 	{
 		float condensationGroundMass = 0;
 		float condensationCloudMass = 0;
-
-		float energy =
-			SolarRadiationIn[i] 
-			+ ThermalRadiationDelta[i]
-			+ ConductionEnergyIce[i]
-			+ ConductionEnergyTerrain[i]
-			+ ConductionEnergyWater[i];
+		float energyFlux = 0;
 
 #if !DISABLE_CONDENSATION
-		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(LastTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
+		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
 		var relativeHumidity = Atmosphere.GetRelativeHumidity(AirMass[i], LastVapor[i], temperatureAbsolute, AirPressure[i]);
 		if (relativeHumidity > 1.0f)
 		{
@@ -261,11 +231,11 @@ public struct FluxAirJob : IJobParallelFor {
 			float vaporToCondense = (relativeHumidity - 1.0f) / relativeHumidity * LastVapor[i];
 			condensationCloudMass = aboveCloud * vaporToCondense;
 			condensationGroundMass = (1.0f - aboveCloud) * vaporToCondense;
-			energy += vaporToCondense * WorldData.LatentHeatWaterVapor;
+			energyFlux += vaporToCondense * WorldData.LatentHeatWaterVapor;
 		}
 #endif
 
-		FluxEnergy[i] = energy;
+		LatentHeat[i] = energyFlux;
 		CondensationGroundMass[i] = condensationGroundMass;
 		CondensationCloudMass[i] = condensationCloudMass;
 	}
@@ -277,26 +247,22 @@ public struct FluxAirJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct FluxIceJob : IJobParallelFor {
-	public NativeArray<float> Energy;
+	public NativeArray<float> LatentHeatAir;
+	public NativeArray<float> LatentHeatWater;
 	public NativeArray<float> MeltedMass;
+	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
-	[ReadOnly] public NativeArray<float> LastTemperature;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaBottom;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDeltaTop;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
-	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
-	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
-	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	[ReadOnly] public float IceHeatingDepth;
 	public void Execute(int i)
 	{
-		float energyTop = -ConductionEnergyAir[i] + ThermalRadiationDeltaTop[i] + SolarRadiationIn[i];
-		float energyBottom = ConductionEnergyWater[i] + ConductionEnergyTerrain[i] + ThermalRadiationDeltaBottom[i];
-
 		float meltedTopMass = 0;
 		float meltedBottomMass = 0;
 		float iceMass = LastMass[i];
-		float iceTemperature = LastTemperature[i];
+		float iceTemperature = Temperature[i];
 
 #if !DISABLE_MELTING_TOP
 		if (iceMass > 0)
@@ -304,12 +270,12 @@ public struct FluxIceJob : IJobParallelFor {
 			float iceDepth = iceMass / WorldData.MassIce;
 			float heatingDepth = math.min(IceHeatingDepth, iceDepth);
 			float heatingMass = heatingDepth * WorldData.MassIce;
-			float newTempTop = iceTemperature + energyTop / (WorldData.SpecificHeatIce * heatingMass);
-			if (newTempTop > WorldData.FreezingTemperature)
+			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i]);
+			if (airTemperatureAbsolute > WorldData.FreezingTemperature)
 			{
-				float energyToAbsorb = (newTempTop - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
+				float energyToAbsorb = (airTemperatureAbsolute - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
 				meltedTopMass = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
-				energyTop -= meltedTopMass * WorldData.LatentHeatWaterLiquid;
+				LatentHeatAir[i] -= meltedTopMass * WorldData.LatentHeatWaterLiquid;
 				iceMass -= meltedTopMass;
 			}
 		}
@@ -321,19 +287,18 @@ public struct FluxIceJob : IJobParallelFor {
 			float iceDepth = iceMass / WorldData.MassIce;
 			float heatingDepth = math.min(IceHeatingDepth, iceDepth);
 			float heatingMass = heatingDepth * WorldData.MassIce;
-			float newTempBottom = iceTemperature + energyBottom / (WorldData.SpecificHeatIce * heatingMass);
-			if (newTempBottom > WorldData.FreezingTemperature)
+			float waterTemperature = WaterTemperature[i];
+			if (waterTemperature > WorldData.FreezingTemperature)
 			{
-				float energyToAbsorb = (newTempBottom - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
+				float energyToAbsorb = (WaterTemperature[i] - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
 				meltedBottomMass = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
 				float latentEnergy = meltedBottomMass * WorldData.LatentHeatWaterLiquid;
-				energyBottom -= latentEnergy;
+				LatentHeatWater[i] -= latentEnergy;
 				iceMass -= meltedBottomMass;
 			}
 		}
 #endif
 
-		Energy[i] = energyTop + energyBottom;
 		MeltedMass[i] = meltedTopMass + meltedBottomMass;
 	}
 }

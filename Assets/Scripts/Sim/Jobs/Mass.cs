@@ -151,6 +151,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 			newDropletSize = 0;
 		}
 
+
 		CloudMass[i] = newCloudMass;
 		CloudDropletMass[i] = newDropletSize;
 		VaporMass[i] = newVaporMass;
@@ -215,6 +216,54 @@ public struct UpdateMassIceJob : IJobParallelFor {
 			IceTemperature[i] = 0;
 		}
 		IceMass[i] = newIceMass;
+	}
+}
+
+
+#if !ApplyLatentHeatIceJobDebug
+[BurstCompile]
+#endif
+public struct ApplyLatentHeatIceJob : IJobParallelFor {
+	public NativeArray<float> IceTemperature;
+	[ReadOnly] public NativeArray<float> IceMass;
+	[ReadOnly] public NativeArray<float> LatentHeat;
+	public void Execute(int i)
+	{
+		if (IceMass[i] > 0)
+		{
+			IceTemperature[i] += LatentHeat[i] / (WorldData.SpecificHeatIce * IceMass[i]);
+		}
+	}
+}
+
+#if !ApplyLatentHeatAirJobDebug
+[BurstCompile]
+#endif
+public struct ApplyLatentHeatAirJob : IJobParallelFor {
+	public NativeArray<float> AirTemperaturePotential;
+	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> VaporMass;
+	[ReadOnly] public NativeArray<float> LatentHeat;
+	public void Execute(int i)
+	{
+		AirTemperaturePotential[i] += LatentHeat[i] / (AirMass[i] * WorldData.SpecificHeatAtmosphere + VaporMass[i] * WorldData.SpecificHeatWaterVapor);
+	}
+}
+
+#if !ApplyLatentHeatAirJobDebug
+[BurstCompile]
+#endif
+public struct ApplyLatentHeatWaterJob : IJobParallelFor {
+	public NativeArray<float> WaterTemperature;
+	[ReadOnly] public NativeArray<float> WaterMass;
+	[ReadOnly] public NativeArray<float> SaltMass;
+	[ReadOnly] public NativeArray<float> LatentHeat;
+	public void Execute(int i)
+	{
+		if (WaterMass[i] > 0)
+		{
+			WaterTemperature[i] += LatentHeat[i] / (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt);
+		}
 	}
 }
 

@@ -56,7 +56,6 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> IceCoverage;
 	public NativeArray<float> VegetationCoverage;
 	public NativeArray<float> CloudCoverage;
-	public NativeArray<float> SurfaceAirTemperature;
 	public NativeArray<float> IceEnergy;
 	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public NativeArray<float> IceMass;
@@ -85,10 +84,10 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceAirTemperatureAbsolute;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> SurfaceElevation;
+	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
 	public void Execute(int i)
 	{
-		SurfaceAirTemperatureAbsolute[i] = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceElevation[i]);
+		SurfaceAirTemperatureAbsolute[i] = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceLayerElevation[i]);
 	}
 
 }

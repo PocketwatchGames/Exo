@@ -345,11 +345,11 @@ public static class WorldGen {
 				layerDepthMax = worldGenData.SurfaceWaterDepth;
 				layerCount = 1;
 			}
-			else if (i == worldData.WaterLayers - 3)
-			{
-				layerDepthMax = worldGenData.ThermoclineDepth;
-				layerCount = 1;
-			}
+			//else if (i == worldData.WaterLayers - 3)
+			//{
+			//	layerDepthMax = worldGenData.ThermoclineDepth;
+			//	layerCount = 1;
+			//}
 			else
 			{
 				layerDepthMax = float.MaxValue;
@@ -444,7 +444,6 @@ public static class WorldGen {
 			IceCoverage = dependent.IceCoverage,
 			SurfaceElevation = dependent.SurfaceElevation,
 			VegetationCoverage = dependent.VegetationCoverage,
-			SurfaceAirTemperature = dependent.SurfaceAirTemperatureAbsolute,
 			IceEnergy = dependent.IceEnergy,
 			WaterDepth = dependent.WaterDepthTotal,
 
@@ -501,7 +500,7 @@ public static class WorldGen {
 			SurfaceAirTemperatureAbsolute = dependent.SurfaceAirTemperatureAbsolute,
 
 			AirTemperaturePotential = state.AirTemperaturePotential[1],
-			SurfaceElevation = dependent.LayerElevation[1]
+			SurfaceLayerElevation = dependent.LayerElevation[1]
 		}, lowerAirHandle);
 		updateDependenciesJobHandles.Add(updateSurfaceDependentStateJobHandle);
 

@@ -121,23 +121,3 @@ public struct ConductionWaterTerrainJob : IJobParallelFor {
 	}
 }
 
-#if !ConductionWaterBottomJobDebug
-[BurstCompile]
-#endif
-public struct ConductionWaterBottomJob : IJobParallelFor {
-	public NativeArray<float> EnergyDelta;
-	public NativeArray<float> EnergyDeltaWaterTotal;
-	[ReadOnly] public NativeArray<float> TemperatureA;
-	[ReadOnly] public NativeArray<float> TemperatureB;
-	[ReadOnly] public NativeArray<float> EnergyA;
-	[ReadOnly] public NativeArray<float> Coverage;
-	[ReadOnly] public float ConductionCoefficient;
-	[ReadOnly] public float SecondsPerTick;
-	public void Execute(int i)
-	{
-		// TODO: this can conduct heat past a point of equilibrium
-		float delta = math.max((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * Coverage[i], -EnergyA[i]);
-		EnergyDelta[i] = delta;
-		EnergyDeltaWaterTotal[i] += delta;
-	}
-}

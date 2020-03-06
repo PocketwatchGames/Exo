@@ -2114,6 +2114,8 @@ MonoBehaviour:
       Enabled: 0
     UpdateMassCloudJob:
       Enabled: 0
+    ApplyLatentHeatJob:
+      Enabled: 0
     DiffusionAirJob:
       Enabled: 0
     DiffusionWaterJob:
