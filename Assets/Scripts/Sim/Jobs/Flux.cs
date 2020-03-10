@@ -1,4 +1,11 @@
-﻿//#define DISABLE_RAINFALL
+﻿#define DISABLE_FREEZE_TOP
+#define DISABLE_EVAPORATION
+#define DISABLE_CONDENSATION
+#define DISABLE_CLOUD_DISSAPATION
+#define DISABLE_RAINFALL
+#define DISABLE_MELTING_TOP
+#define DISABLE_MELTING_BOTTOM
+
 //#define FluxCloudJobDebug
 //#define FluxWaterJobDebug
 
@@ -47,13 +54,14 @@ public struct FluxWaterJob : IJobParallelFor {
 		if (waterMass > 0)
 		{
 
-#if !DISABLE_EVAPORATION
+			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
+
+			#if !DISABLE_EVAPORATION
 			// evap formula from here:
 			// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
 			// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
 			// so i'm using the air temperature instead of the water temperature, which means the the formula just reduces to (1-RH)*WindCoefficient
 			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
-			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
 			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
 			waterMass -= evapMass;
 			latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;

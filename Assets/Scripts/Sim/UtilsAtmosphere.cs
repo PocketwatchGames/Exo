@@ -48,16 +48,8 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetStandardPressureAtElevation(float elevation, float potentialTemperature, float gravity)
 	{
-		float pressure = Atmosphere.GetPressureAtElevation(elevation, gravity, WorldData.StaticPressure, potentialTemperature, 0);
+		float pressure = Atmosphere.GetPressureAtElevation(elevation, gravity, WorldData.StandardPressure, potentialTemperature, 0);
 		return pressure;
-	}
-
-	[BurstCompile]
-	static public float GetAirMass(float layerElevation, float layerHeight, float potentialTemperature, float gravity)
-	{
-		float layerMiddle = layerElevation + layerHeight / 2;
-		float standardPressure = GetStandardPressureAtElevation(layerMiddle, potentialTemperature, gravity);
-		return standardPressure* layerHeight * WorldData.MolarMassAir / (WorldData.UniversalGasConstant * GetAbsoluteTemperature(potentialTemperature, layerMiddle));
 	}
 
 	//[BurstCompile]

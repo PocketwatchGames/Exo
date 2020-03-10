@@ -1,4 +1,7 @@
-﻿using Unity.Burst;
+﻿#define DISABLE_CONDUCTION
+#define ConductionAirTerrainJobDebug
+
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -18,8 +21,10 @@ public struct ConductionAirIceJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
+#if !DISABLE_CONDUCTION
 		// TODO: this can conduct heat past a point of equilibrium
 		EnergyDelta[i] = math.min((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * Coverage[i], EnergyB[i]);
+#endif
 	}
 }
 
@@ -38,8 +43,10 @@ public struct ConductionAirWaterJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
+#if !DISABLE_CONDUCTION
 		// TODO: this can conduct heat past a point of equilibrium
 		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * math.min(1.0f - CoverageIce[i], CoverageWater[i]), -EnergyA[i], EnergyB[i]);
+#endif
 	}
 }
 
@@ -58,8 +65,10 @@ public struct ConductionIceWaterJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
+#if !DISABLE_CONDUCTION
 		// TODO: this can conduct heat past a point of equilibrium
 		EnergyDelta[i] = math.clamp((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * math.min(CoverageA[i], CoverageB[i]), -EnergyA[i], EnergyB[i]);
+#endif
 	}
 }
 
@@ -77,8 +86,10 @@ public struct ConductionIceTerrainJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
+#if !DISABLE_CONDUCTION
 		// TODO: this can conduct heat past a point of equilibrium
 		EnergyDelta[i] = math.max((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * math.min(CoverageIce[i], 1.0f - CoverageWater[i]), -EnergyA[i]);
+#endif
 	}
 }
 
@@ -95,7 +106,9 @@ public struct ConductionAirTerrainJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
+#if !DISABLE_CONDUCTION
 		EnergyDelta[i] = (TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * (1.0f - math.max(CoverageIce[i], CoverageWater[i]));
+#endif
 	}
 }
 
@@ -114,10 +127,12 @@ public struct ConductionWaterTerrainJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
+#if !DISABLE_CONDUCTION
 		// TODO: this can conduct heat past a point of equilibrium
 		float delta = math.max((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * Coverage[i] * (1.0f - CoverageBelow[i]), -EnergyA[i]);
 		EnergyDelta[i] = delta;
 		EnergyDeltaWaterTotal[i] += delta;
+#endif
 	}
 }
 

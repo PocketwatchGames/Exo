@@ -71,9 +71,9 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 
 		if (beforeCloud > 0)
 		{
-			energyReflectedAtmosphere = incomingRadiation * math.max(0, 1.0f - 1.0f / math.exp10(reflectivity * beforeCloud));
+			energyReflectedAtmosphere += incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(reflectivity * beforeCloud));
 			incomingRadiation -= energyReflectedAtmosphere;
-			absorbed += incomingRadiation * math.max(0, 1.0f - 1.0f / math.exp10(absorptivity * beforeCloud));
+			absorbed += incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(absorptivity * beforeCloud));
 			incomingRadiation -= absorbed;
 		}
 
@@ -85,9 +85,9 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 			float rainDropSizeAlbedo = math.saturate(1.0f - CloudDropletMass[i] / CloudMass[i]) * (worldData.rainDropSizeAlbedoMax - worldData.rainDropSizeAlbedoMin) + worldData.rainDropSizeAlbedoMin;
 			float cloudAlbedo = math.min(1.0f, worldData.SolarReflectivityCloud * cloudTemperatureAlbedo * CloudMass[i] * rainDropSizeAlbedo / math.max(worldData.maxCloudSlopeAlbedo, 1.0f - WaterSlopeAlbedo[i]));
 
-			energyReflectedClouds = incomingRadiation * math.max(0, 1.0f - 1.0f / math.exp10(cloudAlbedo * cloudMass));
+			energyReflectedClouds = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(cloudAlbedo * cloudMass));
 			incomingRadiation -= energyReflectedClouds;
-			absorbedByCloudsIncoming = incomingRadiation * math.max(0, 1.0f - 1.0f / math.exp10(SolarAbsorptivityCloud * cloudMass));
+			absorbedByCloudsIncoming = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(SolarAbsorptivityCloud * cloudMass));
 			incomingRadiation -= absorbedByCloudsIncoming;
 
 			energyReflectedAtmosphere += energyReflectedClouds;
@@ -97,10 +97,10 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 		// below cloud
 		if (afterCloud > 0)
 		{
-			float reflectedBelow = incomingRadiation * math.max(0, 1.0f - 1.0f / math.exp10(reflectivity * afterCloud));
+			float reflectedBelow = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(reflectivity * afterCloud));
 			incomingRadiation -= reflectedBelow;
 			energyReflectedAtmosphere += reflectedBelow;
-			float absorbedBelow = incomingRadiation * math.max(0, 1.0f - 1.0f / math.exp10(absorptivity * afterCloud));
+			float absorbedBelow = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(absorptivity * afterCloud));
 			absorbed += absorbedBelow;
 			incomingRadiation -= absorbedBelow;
 		}

@@ -105,8 +105,8 @@ public struct WorldData {
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;
 	public const float AdiabaticLapseRate = 0.0098f;
-	public const float StaticPressure = 101325;
-	public const float StdTemp = 288.15f;
+	public const float StandardPressure = 101325;
+	public const float StandardTemperature = 288.15f;
 	public const float MolarMassAir = 0.0289647f;
 	public const float MolarMassWater = 0.01802f;
 	public const float UniversalGasConstant = 8.3144598f;
@@ -132,10 +132,10 @@ public struct WorldData {
 	public const float EmissivityWater = 0.96f;
 	public const float EmissivitySalt = 0.34f;
 	public const float EmissivityIce = 0.97f;
-	public const float EmissivityDirt = 0.92f;
-	public const float EmissivitySand = 0.76f;
 	public const float EmissivityAir = 0.8f;
 	public const float EmissivityWaterVapor = 0.4f;
+	public const float EmissivityDirt = 0.92f;
+	public const float EmissivitySand = 0.76f;
 	public const float EmissivityVegetation = 0.95f;
 	public const float MassEarthAir = 1.29f;
 	public const float MassWater = 1000f;

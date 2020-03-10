@@ -15,17 +15,15 @@ public struct StaticState {
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
 	public NativeArray<float> CoriolisMultiplier;
-	public NativeArray<float> StratosphereMass;
 
 
-	public void Init(float radius, Icosphere icosphere, float stratosphereMass, ref WorldData worldData)
+	public void Init(float radius, Icosphere icosphere, ref WorldData worldData)
 	{
 		PlanetRadius = radius;
 		Count = icosphere.Vertices.Length;
 		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
 		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent);
 		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent);
-		StratosphereMass = new NativeArray<float>(Count, Allocator.Persistent);
 		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
@@ -34,7 +32,6 @@ public struct StaticState {
 		for (int i = 0; i < Count; i++)
 		{
 			neighborList[i] = new List<Tuple<int, float3>>();
-			StratosphereMass[i] = stratosphereMass;
 		}
 
 		for (int i = 0; i < Count; i++)
@@ -105,7 +102,6 @@ public struct StaticState {
 		Coordinate.Dispose();
 		SphericalPosition.Dispose();
 		CoriolisMultiplier.Dispose();
-		StratosphereMass.Dispose();
 	}
 
 	public int GetWaterIndex(int layer, int i)

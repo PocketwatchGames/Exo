@@ -9,7 +9,6 @@
 	"TiltAngle": -23.5,
 	"SpinTime": 24,
 	"OrbitTime": 8760,
-	"StratosphereMass": 2583,
 	"TroposphereMass": 7749,
 	"AtmosphereMass": 5260000000000000000,
 	"MinTemperature": 253,

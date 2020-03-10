@@ -261,9 +261,17 @@ public struct DisplayState {
 	public float EnergyThermalBackRadiation;
 	public float EnergyThermalAbsorbedAtmosphere;
 	public float EnergySurfaceConduction;
-	public float EnergyTerrain;
+	public double GlobalEnthalpy;
+	public double GlobalEnthalpyTerrain;
+	public double GlobalEnthalpyWater;
+	public double GlobalEnthalpyAir;
+	public double GlobalEnthalpyDelta;
+	public double GlobalEnthalpyDeltaTerrain;
+	public double GlobalEnthalpyDeltaWater;
+	public double GlobalEnthalpyDeltaAir;
 	public float GlobalIceMass;
-	public float GlobalTemperature;
+	public float GlobalSurfaceTemperature;
+	public double GlobalAirTemperaturePotential;
 	public float GlobalOceanCoverage;
 	public float GlobalOceanVolume;
 	public float GlobalOceanTemperature;
@@ -274,7 +282,8 @@ public struct DisplayState {
 	public float GlobalRainfall;
 	public float GlobalCondensationCloud;
 	public float GlobalCondensationGround;
-	public float GlobalWaterVapor;
+	public double GlobalWaterVapor;
+	public double GlobalAirMass;
 	public float GlobalCloudMass;
 
 	public NativeArray<float> SolarRadiationAbsorbedSurface;
@@ -282,6 +291,9 @@ public struct DisplayState {
 	public NativeArray<float> CondensationCloud;
 	public NativeArray<float> CondensationGround;
 	public NativeArray<float> Evaporation;
+	public NativeArray<float> EnthalpyTerrain;
+	public NativeArray<float>[] EnthalpyWater;
+	public NativeArray<float>[] EnthalpyAir;
 	public NativeArray<float>[] Salinity;
 	public NativeArray<float>[] Pressure;
 	public NativeArray<float3>[] PressureGradientForce;
@@ -293,19 +305,24 @@ public struct DisplayState {
 		CondensationCloud = new NativeArray<float>(count, Allocator.Persistent);
 		CondensationGround = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
+		EnthalpyTerrain = new NativeArray<float>(count, Allocator.Persistent);
 
 		Pressure = new NativeArray<float>[airLayers];
 		PressureGradientForce = new NativeArray<float3>[airLayers];
+		EnthalpyAir = new NativeArray<float>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
 			Pressure[i] = new NativeArray<float>(count, Allocator.Persistent);
 			PressureGradientForce[i] = new NativeArray<float3>(count, Allocator.Persistent);
+			EnthalpyAir[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 
 		Salinity = new NativeArray<float>[waterLayers];
+		EnthalpyWater = new NativeArray<float>[waterLayers];
 		for (int i=0;i<waterLayers;i++)
 		{
 			Salinity[i] = new NativeArray<float>(count, Allocator.Persistent);
+			EnthalpyWater[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 	}
 
@@ -316,14 +333,17 @@ public struct DisplayState {
 		CondensationCloud.Dispose();
 		CondensationGround.Dispose();
 		Evaporation.Dispose();
+		EnthalpyTerrain.Dispose();
 		for (int i = 0; i < Pressure.Length; i++)
 		{
 			Pressure[i].Dispose();
 			PressureGradientForce[i].Dispose();
+			EnthalpyAir[i].Dispose();
 		}
 		for (int i=0;i<Salinity.Length;i++)
 		{
 			Salinity[i].Dispose();
+			EnthalpyWater[i].Dispose();
 		}
 	}
 
