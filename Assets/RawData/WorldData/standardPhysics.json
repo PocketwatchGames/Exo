@@ -7,6 +7,8 @@
 	"FullCoverageWater": 50.0,
 	"FullCoverageCloud": 0.5,
 	"FullCoverageVegetation": 2000,
+	"TropopauseElevation": 11000,
+	"BoundaryZoneElevation": 1000,
 
 	"SolarAbsorptivityAir": 0.00001,
 	"SolarAbsorptivityWaterVapor": 0.001,

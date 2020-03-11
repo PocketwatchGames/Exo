@@ -57,40 +57,61 @@ public static class SimJobs {
 			}, dependencies);
 		}
 
-
-		for (int j = 1; j < worldData.AirLayers - 1; j++)
-		{
-			dependencies = jobHelper.Run(new UpdateAirLayerHeightsJob()
-			{
-				LayerHeight = dependent.LayerHeight[j],
-				LayerElevation = dependent.LayerElevation[j],
-
-				DownLayerElevation = dependent.LayerElevation[j - 1],
-				DownLayerHeight = dependent.LayerHeight[j - 1],
-				AirMass = dependent.AirMass[j],
-				AirTemperaturePotential = state.AirTemperaturePotential[j],
-			}, dependencies);
-		}
-
-
 		dependencies = jobHelper.Run(new UpdateDependentStateJob()
 		{
 			CloudCoverage = dependent.CloudCoverage,
 			IceCoverage = dependent.IceCoverage,
 			IceEnergy = dependent.IceEnergy,
-			SurfaceElevation = dependent.SurfaceElevation,
+			SurfaceElevation = dependent.LayerElevation[1],
 			VegetationCoverage = dependent.VegetationCoverage,
 			WaterDepth = dependent.WaterDepthTotal,
-			StratosphereMass = airMassTotal,
 
 			CloudMass = state.CloudMass,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
-			TropopauseElevation = dependent.LayerElevation[worldData.AirLayers - 2],
-			TropopauseHeight = dependent.LayerHeight[worldData.AirLayers - 2],
 			Terrain = state.Terrain,
 			worldData = worldData,
 		}, dependencies);
+
+
+		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		{
+			float minumumHeight;
+			float columnPercent;
+			if (j == 1)
+			{
+				minumumHeight = worldData.BoundaryZoneElevation;
+				columnPercent = 0;
+			}
+			else
+			{
+				minumumHeight = 0;
+				columnPercent = 1.0f / (worldData.AirLayers - 1 - j);
+			}
+			dependencies = jobHelper.Run(new UpdateAirLayerHeightsJob()
+			{
+				LayerHeight = dependent.LayerHeight[j],
+				UpLayerElevation = dependent.LayerElevation[j + 1],
+				AirMass = dependent.AirMass[j],
+
+				LayerElevation = dependent.LayerElevation[j],				
+				AirTemperaturePotential = state.AirTemperaturePotential[j],
+				TropopauseElevation = worldData.TropopauseElevation,
+				MinimumHeight = minumumHeight,
+				ColumnPercent = columnPercent,
+				Gravity = state.PlanetState.Gravity,
+			}, dependencies);
+		}
+
+		dependencies = jobHelper.Run(new UpdateStratosphereJob()
+		{
+			StratosphereMass = airMassTotal,
+
+			TropopauseElevation = dependent.LayerElevation[worldData.AirLayers - 2],
+			TropopauseHeight = dependent.LayerHeight[worldData.AirLayers - 2],
+			Gravity = state.PlanetState.Gravity
+		}, dependencies);
+
 
 		for (int j = worldData.AirLayers - 2; j > 0; j--)
 		{
@@ -104,7 +125,7 @@ public static class SimJobs {
 				VaporMass = state.AirVapor[j],
 				LayerElevation = dependent.LayerElevation[j],
 				LayerHeight = dependent.LayerHeight[j],
-				SurfaceElevation = dependent.SurfaceElevation,
+				SurfaceElevation = dependent.LayerElevation[1],
 				Gravity = state.PlanetState.Gravity,
 			}, dependencies);
 			dependencies = JobHandle.CombineDependencies(dependencies, jobHelper.Run(new UpdateDependentAirLayerJob()
@@ -133,7 +154,7 @@ public static class SimJobs {
 
 				AirMass = dependent.AirMass[j],
 				VaporMass = state.AirVapor[j],
-				SurfaceElevation = dependent.SurfaceElevation,
+				SurfaceElevation = dependent.LayerElevation[1],
 				DewPoint = dependent.DewPoint,
 				Pressure = dependent.AirPressure[j],
 				AirTemperaturePotential = state.AirTemperaturePotential[j],
@@ -164,45 +185,18 @@ public static class SimJobs {
 #if !UpdateDependentJobDebug
 [BurstCompile]
 #endif
-public struct UpdateAirLayerHeightsJob : IJobParallelFor {
-	public NativeArray<float> LayerElevation;
-	public NativeArray<float> LayerHeight;
-
-	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> DownLayerElevation;
-	[ReadOnly] public NativeArray<float> DownLayerHeight;
-
-	public void Execute(int i)
-	{
-		float airTemperaturePotential = AirTemperaturePotential[i];
-		float layerElevation = DownLayerElevation[i] + DownLayerHeight[i];
-		LayerElevation[i] = layerElevation;
-
-		float layerHeight = 2000;
-		LayerHeight[i] = layerHeight;
-	}
-}
-
-#if !UpdateDependentJobDebug
-[BurstCompile]
-#endif
 public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceElevation;
 	public NativeArray<float> IceCoverage;
 	public NativeArray<float> VegetationCoverage;
 	public NativeArray<float> CloudCoverage;
 	public NativeArray<float> IceEnergy;
-	public NativeArray<float> StratosphereMass;
 	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public NativeArray<float> IceMass;
 	[ReadOnly] public NativeArray<float> IceTemperature;
 	[ReadOnly] public NativeArray<float> CloudMass;
-	[ReadOnly] public NativeArray<float> TropopauseElevation;
-	[ReadOnly] public NativeArray<float> TropopauseHeight;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public WorldData worldData;
-	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
 		float iceMass = IceMass[i];
@@ -215,6 +209,50 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 		float cloudMass = CloudMass[i];
 		CloudCoverage[i] = math.saturate(cloudMass * worldData.inverseFullCoverageCloud);
 
+	}
+
+}
+
+
+#if !UpdateDependentJobDebug
+[BurstCompile]
+#endif
+public struct UpdateAirLayerHeightsJob : IJobParallelFor {
+	public NativeArray<float> AirMass;
+	public NativeArray<float> UpLayerElevation;
+	public NativeArray<float> LayerHeight;
+
+	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public float Gravity;
+	[ReadOnly] public float TropopauseElevation;
+	[ReadOnly] public float MinimumHeight;
+	[ReadOnly] public float ColumnPercent;
+
+	public void Execute(int i)
+	{
+		float layerElevation = LayerElevation[i];
+		float standardLayerHeight = math.max(MinimumHeight, (TropopauseElevation - layerElevation) * ColumnPercent);
+		float airMass = (Atmosphere.GetStandardPressureAtElevation(layerElevation, WorldData.StandardTemperature, Gravity) - Atmosphere.GetStandardPressureAtElevation(layerElevation + standardLayerHeight, WorldData.StandardTemperature, Gravity)) / Gravity;
+		AirMass[i] = airMass;
+
+		float airTemperaturePotential = AirTemperaturePotential[i];
+		float layerHeight = standardLayerHeight * AirTemperaturePotential[i] / WorldData.StandardTemperature;
+		LayerHeight[i] = layerHeight;
+		UpLayerElevation[i] = layerElevation + layerHeight;
+	}
+}
+
+#if !UpdateDependentJobDebug
+[BurstCompile]
+#endif
+public struct UpdateStratosphereJob : IJobParallelFor {
+	public NativeArray<float> StratosphereMass;
+	[ReadOnly] public NativeArray<float> TropopauseElevation;
+	[ReadOnly] public NativeArray<float> TropopauseHeight;
+	[ReadOnly] public float Gravity;
+	public void Execute(int i)
+	{
 		// TODO: rebalance stratosphere mass
 		float tropopauseElevation = TropopauseElevation[i] + TropopauseHeight[i];
 		float stratosphereMass = Atmosphere.GetStandardPressureAtElevation(tropopauseElevation, WorldData.StandardTemperature, Gravity) / Gravity;

@@ -108,7 +108,6 @@ public struct PlanetState {
 
 public struct DependentState {
 
-	public NativeArray<float> SurfaceElevation;
 	public NativeArray<float> CloudCoverage;
 	public NativeArray<float> VegetationCoverage;
 	public NativeArray<float> IceCoverage;
@@ -139,7 +138,6 @@ public struct DependentState {
 
 	public void Init(int count, int airLayers, int waterLayers)
 	{
-		SurfaceElevation = new NativeArray<float>(count, Allocator.Persistent);
 		CloudCoverage = new NativeArray<float>(count, Allocator.Persistent);
 		VegetationCoverage = new NativeArray<float>(count, Allocator.Persistent);
 		IceCoverage = new NativeArray<float>(count, Allocator.Persistent);
@@ -193,7 +191,6 @@ public struct DependentState {
 
 	public void Dispose()
 	{
-		SurfaceElevation.Dispose();
 		CloudCoverage.Dispose();
 		VegetationCoverage.Dispose();
 		IceCoverage.Dispose();

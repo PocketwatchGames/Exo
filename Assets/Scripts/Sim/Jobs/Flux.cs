@@ -115,7 +115,6 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastDropletMass;
 	[ReadOnly] public NativeArray<float> LastCloudMass;
 	[ReadOnly] public NativeArray<float> AirDensityCloud;
-	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
 	[ReadOnly] public NativeArray<float> SurfaceAirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
@@ -130,7 +129,7 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		float surfaceElevation = SurfaceElevation[i];
+		float surfaceElevation = SurfaceLayerElevation[i];
 
 		float cloudMass = LastCloudMass[i];
 		float dropletMass = LastDropletMass[i];

@@ -1235,7 +1235,6 @@ public class WorldSim {
 				SecondsPerTick = worldData.SecondsPerTick,
 				CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
-				SurfaceElevation = dependent.SurfaceElevation,
 			});
 
 			fluxJobHandles[_iceLayer] = FluxIceJob.Run(new FluxIceJob()
@@ -1945,7 +1944,7 @@ public class WorldSim {
 					display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers-2][i];
 					display.GlobalSurfaceTemperature += dependent.SurfaceAirTemperatureAbsolute[i];
 					display.GlobalOceanVolume += dependent.WaterDepthTotal[i];
-					display.GlobalSeaLevel += dependent.SurfaceElevation[i];
+					display.GlobalSeaLevel += dependent.LayerElevation[1][i];
 					display.GlobalEvaporation += display.Evaporation[i];
 					display.GlobalRainfall += display.Rainfall[i];
 					display.GlobalCondensationCloud += display.CondensationCloud[i];
@@ -2139,7 +2138,7 @@ public class WorldSim {
 	{
 		StringBuilder s = new StringBuilder();
 		s.AppendFormat("{0} Index: {1}\n", title, i);
-		s.AppendFormat("Surface Elevation: {0}\n", dependent.SurfaceElevation[i]);
+		s.AppendFormat("Surface Elevation: {0}\n", dependent.LayerElevation[1][i]);
 		s.AppendFormat("Water Depth: {0}\n", dependent.WaterDepthTotal[i]);
 		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
 		s.AppendFormat("Cloud Coverage: {0}\n", dependent.CloudCoverage[i]);

@@ -14,6 +14,8 @@ public struct WorldData {
 	public float FullCoverageWater;
 	public float FullCoverageVegetation;
 	public float FullCoverageCloud; // how much heat gain/loss is caused by cloud cover (cumulus cloud is 0.3g/cubic meter, and about 3 kilometers high)
+	public float TropopauseElevation;
+	public float BoundaryZoneElevation;
 
 	[Header("Solar Energy")]
 	// atmospheric heat balance https://energyeducation.ca/encyclopedia/Earth%27s_heat_balance

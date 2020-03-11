@@ -33,8 +33,5 @@ public class WorldGenData {
 	public float SurfaceWaterDepth;
 	public float ThermoclineDepth;
 	public float WaterTemperatureDepthFalloff;
-	public float TropopauseElevation;
-	public float BoundaryZoneElevation;
-	public float stratosphereElevation;
 
 }

@@ -138,10 +138,8 @@ public static class WorldGen {
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 		[ReadOnly] public NativeArray<CellTerrain> terrain;
 		[ReadOnly] public float inversePI;
-		[ReadOnly] public float TropopauseElevation;
 		[ReadOnly] public float rainDropMinSize;
 		[ReadOnly] public float WaterTemperatureDepthFalloff;
-		[ReadOnly] public float BoundaryZoneElevation;
 		[ReadOnly] public float FullWaterCoverage;
 
 		public void Execute(int i)
@@ -151,7 +149,6 @@ public static class WorldGen {
 			float waterDepth = math.max(0, -elevation);
 			float surfaceElevation = elevation + waterDepth;
 
-			float troposphereColumnHeight = TropopauseElevation - surfaceElevation;
 			float airTemperatureSurface = TemperaturePotential[i] + WorldData.TemperatureLapseRate * surfaceElevation;
 
 			WaterTemperatureSurface[i] = Mathf.Max(WorldData.FreezingTemperature, TemperaturePotential[i] + 2);
@@ -177,36 +174,22 @@ public static class WorldGen {
 		}
 	}
 
-
 #if ASYNC_WORLDGEN
 	[BurstCompile]
 #endif
-	private struct WorldGenAirMassJob : IJobParallelFor {
+	private struct WorldGenAirLayerJob : IJobParallelFor {
 
 		public NativeArray<float> AirTemperaturePotential;
-		public NativeArray<float> AirMass;
-		public NativeArray<float> UpLayerElevation;
-		public NativeArray<float> LayerHeight;
 
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
-		[ReadOnly] public NativeArray<float> LayerElevation;
-		[ReadOnly] public float Gravity;
-		[ReadOnly] public float TropopauseElevation;
-		[ReadOnly] public float MinimumHeight;
-		[ReadOnly] public float ColumnPercent;
+
 		public void Execute(int i)
 		{
-			float temperaturePotential = TemperaturePotential[i];
-			float layerElevation = LayerElevation[i];
-			float layerHeight = math.max(MinimumHeight, (TropopauseElevation - layerElevation) * ColumnPercent);
-			float airMass = (Atmosphere.GetStandardPressureAtElevation(layerElevation, WorldData.StandardTemperature, Gravity) - Atmosphere.GetStandardPressureAtElevation(layerElevation + layerHeight, WorldData.StandardTemperature, Gravity)) / Gravity;
-
 			AirTemperaturePotential[i] = TemperaturePotential[i];
-			AirMass[i] = airMass;
-			UpLayerElevation[i] = layerElevation + layerHeight;
-			LayerHeight[i] = layerHeight;
 		}
 	}
+
+
 #if ASYNC_WORLDGEN
 	[BurstCompile]
 #endif
@@ -339,9 +322,7 @@ public static class WorldGen {
 			FullWaterCoverage = worldData.FullCoverageWater,
 			inversePI = inversePI,
 			rainDropMinSize = worldData.rainDropMinSize,
-			TropopauseElevation = worldGenData.TropopauseElevation,
 			WaterTemperatureDepthFalloff = worldGenData.WaterTemperatureDepthFalloff,
-			BoundaryZoneElevation = worldGenData.BoundaryZoneElevation,
 		});
 
 		for (int i = worldData.WaterLayers - 2; i >= 1; i--)
@@ -385,34 +366,13 @@ public static class WorldGen {
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
-			float minumumHeight;
-			float columnPercent;
-			if (i==1)
-			{
-				minumumHeight = worldGenData.BoundaryZoneElevation;
-				columnPercent = 0;
-			} else
-			{
-				minumumHeight = 0;
-				columnPercent = 1.0f / (worldData.AirLayers - 1 - i);
-			}
-			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenAirMassJob()
+			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenAirLayerJob()
 			{
 				AirTemperaturePotential = state.AirTemperaturePotential[i],
-				AirMass = dependent.AirMass[i],
-				LayerHeight = dependent.LayerHeight[i],
-				UpLayerElevation = dependent.LayerElevation[i+1],
 
-				LayerElevation = dependent.LayerElevation[i],
-				TropopauseElevation = worldGenData.TropopauseElevation,
-				MinimumHeight = minumumHeight,
-				ColumnPercent = columnPercent, 
 				TemperaturePotential = temperaturePotential,
-				Gravity = state.PlanetState.Gravity,
 			}, worldGenJobHandle);
 		}
-
-		// calc average temperature and total troposphere mass
 
 		var tempArrays = new List<NativeArray<float>>();
 		SimJobs.UpdateDependentVariables(

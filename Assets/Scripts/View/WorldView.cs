@@ -356,7 +356,7 @@ public class WorldView : MonoBehaviour {
 			VegetationCoverage = dependent.VegetationCoverage,
 			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers-2],
 			WaterDepth = dependent.WaterDepthTotal,
-			SurfaceElevation = dependent.SurfaceElevation,
+			SurfaceElevation = dependent.LayerElevation[1],
 			MeshOverlayData = meshOverlay.Values,
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
 			WindOverlayData = windOverlayData.Values

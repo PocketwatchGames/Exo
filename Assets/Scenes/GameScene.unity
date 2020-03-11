@@ -1967,6 +1967,8 @@ MonoBehaviour:
     FullCoverageWater: 0
     FullCoverageVegetation: 0
     FullCoverageCloud: 0
+    TropopauseElevation: 0
+    BoundaryZoneElevation: 0
     SolarAbsorptivityAir: 0
     SolarAbsorptivityWaterVapor: 0
     SolarAbsorptivityCloud: 0
