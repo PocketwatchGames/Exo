@@ -167,6 +167,7 @@ public struct AccelerationWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DownLayerHeight;
 	[ReadOnly] public NativeArray<float> DownWaterDensity;
 	[ReadOnly] public NativeArray<float> DownWaterPressure;
+	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public float FrictionCoefficient;
@@ -178,7 +179,7 @@ public struct AccelerationWaterJob : IJobParallelFor {
 		{
 			float3 pressureGradient = 0;
 			var pos = Positions[i];
-			float midDepth = LayerDepth[i] + LayerHeight[i] / 2;
+			float midDepthElevation = SurfaceElevation[i] - (LayerDepth[i] - LayerHeight[i] / 2);
 			float pressure = WaterPressure[i];
 			for (int j = 0; j < 6; j++)
 			{
@@ -188,8 +189,8 @@ public struct AccelerationWaterJob : IJobParallelFor {
 					// TODO: we should cache this value
 					float3 diff = (pos - Positions[n]) * PlanetRadius;
 
-					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] + LayerHeight[n] / 2, WaterDensity[n], Gravity);
-					pressureGradient += diff / math.lengthsq(diff) * (neighborDepthAtPressure - midDepth);
+					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
+					pressureGradient += diff / math.lengthsq(diff) * ((SurfaceElevation[n] - neighborDepthAtPressure) - midDepthElevation);
 				}
 			}
 

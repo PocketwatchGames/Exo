@@ -19,6 +19,9 @@ public struct UpdateDisplayJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Precipitation;
 	[ReadOnly] public NativeArray<float> Evaporation;
 	[ReadOnly] public NativeArray<float> TerrainTemperature;
+	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> IceMass;
+	[ReadOnly] public NativeArray<float> IceTemperature;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public float HeatingDepth;
 	public void Execute(int i)
@@ -26,7 +29,10 @@ public struct UpdateDisplayJob : IJobParallelFor {
 		SolarRadiationAbsorbedSurface[i] = SolarRadiationInTerrain[i] + SolarRadiationInIce[i] + SolarRadiationInWaterSurface[i];
 		DisplayPrecipitation[i] = Precipitation[i];
 		DisplayEvaporation[i] = Evaporation[i];
-		Enthalpy[i] = TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, Terrain[i].Vegetation);
+		Enthalpy[i] = 
+			TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, Terrain[i].Vegetation) 
+			+ CloudMass[i] * WorldData.LatentHeatWaterLiquid
+			+ IceMass[i] * IceTemperature[i] * WorldData.SpecificHeatIce;
 	}
 }
 
@@ -57,7 +63,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 		DisplayCondensationCloud[i] += CondensationGround[i];
 		if (AirMass[i] > 0)
 		{
-			Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]);
+			Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]) + VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);
 		}
 	}
 }
@@ -75,7 +81,7 @@ public struct InitDisplayWaterLayerJob : IJobParallelFor {
 		Salinity[i] = Atmosphere.GetWaterSalinity(WaterMass[i], SaltMass[i]);
 		if (WaterMass[i] > 0)
 		{
-			Enthalpy[i] = WaterTemperature[i] * (WorldData.SpecificHeatWater * WaterMass[i] + WorldData.SpecificHeatSalt * SaltMass[i]);
+			Enthalpy[i] = WaterTemperature[i] * (WorldData.SpecificHeatWater * WaterMass[i] + WorldData.SpecificHeatSalt * SaltMass[i]) + WaterMass[i] * WorldData.LatentHeatWaterLiquid;
 		}
 	}
 }

@@ -243,12 +243,16 @@ public static class WorldGen {
 			{
 			} else
 			{
+				WaterTemperature[i] = math.pow(WaterTemperatureSurface[i] - WorldData.FreezingTemperature, 1.0f / (1.0f - ElevationTop[i] / 500.0f)) + WorldData.FreezingTemperature;
+
 				float salinity = Math.Abs(coord[i].y) * (MaxSalinity - MinSalinity) + MinSalinity;
-				//float deepSalinity = deepDepth == 0 ? 0 : Math.Abs(coord.y) * (worldGenData.MaxSalinity - worldGenData.MinSalinity) + worldGenData.MinSalinity;
 				float waterAndSaltMass = GetWaterMass(layerDepth, WaterTemperature[i], salinity, WaterDensityPerDegree, WaterDensityPerSalinity);
 				float waterMass = waterAndSaltMass * (1.0f - salinity);
 				float saltMass = waterAndSaltMass * salinity;
-				WaterTemperature[i] = math.pow(WaterTemperatureSurface[i] - WorldData.FreezingTemperature, 1.0f / (1.0f - ElevationTop[i] / 500.0f)) + WorldData.FreezingTemperature;
+
+				float density = Atmosphere.GetWaterDensity(waterMass, saltMass, WaterTemperature[i], WaterDensityPerSalinity, WaterDensityPerDegree);
+				float actualDepth = (waterMass + saltMass) / density;
+				
 				WaterMass[i] = waterMass;
 				SaltMass[i] = saltMass;
 				ElevationTop[i] -= layerDepth;
@@ -334,11 +338,11 @@ public static class WorldGen {
 				layerDepthMax = worldGenData.SurfaceWaterDepth;
 				layerCount = 1;
 			}
-			//else if (i == worldData.WaterLayers - 3)
-			//{
-			//	layerDepthMax = worldGenData.ThermoclineDepth;
-			//	layerCount = 1;
-			//}
+			else if (i == worldData.WaterLayers - 3)
+			{
+				layerDepthMax = worldGenData.ThermoclineDepth;
+				layerCount = 1;
+			}
 			else
 			{
 				layerDepthMax = float.MaxValue;
@@ -349,8 +353,8 @@ public static class WorldGen {
 				WaterTemperature = state.WaterTemperature[i],
 				SaltMass = state.SaltMass[i],
 				WaterMass = state.WaterMass[i],
-
 				ElevationTop= WaterLayerElevation,
+
 				LayerCount = layerCount,
 				LayerDepthMax = layerDepthMax,
 				coord = staticState.Coordinate,
