@@ -134,7 +134,7 @@ public static class WorldGen {
 		public NativeArray<float> TerrainTemperature;
 		public NativeArray<float> WaterTemperatureSurface;
 		public NativeArray<float> WaterTemperatureBottom;
-		
+
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 		[ReadOnly] public NativeArray<CellTerrain> terrain;
 		[ReadOnly] public float inversePI;
@@ -181,46 +181,51 @@ public static class WorldGen {
 #if ASYNC_WORLDGEN
 	[BurstCompile]
 #endif
-	private struct WorldGenAirLayerJob : IJobParallelFor {
+	private struct WorldGenAirMassJob : IJobParallelFor {
 
-		public NativeArray<float> AirVapor;
 		public NativeArray<float> AirTemperaturePotential;
 		public NativeArray<float> AirMass;
-		public NativeArray<float> LayerElevation;
+		public NativeArray<float> UpLayerElevation;
 		public NativeArray<float> LayerHeight;
-		public NativeArray<float> AirMassBelow;
 
-		[ReadOnly] public NativeArray<float> TotalAirMass;
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
-		[ReadOnly] public NativeArray<float> RelativeHumidity;
-		[ReadOnly] public NativeArray<float> DownLayerElevation;
-		[ReadOnly] public NativeArray<float> DownLayerHeight;
+		[ReadOnly] public NativeArray<float> LayerElevation;
 		[ReadOnly] public float Gravity;
-		[ReadOnly] public float TroposphereAirMass;
-		[ReadOnly] public float AirMassPercent;
+		[ReadOnly] public float TropopauseElevation;
+		[ReadOnly] public float MinimumHeight;
+		[ReadOnly] public float ColumnPercent;
 		public void Execute(int i)
 		{
 			float temperaturePotential = TemperaturePotential[i];
-			float layerElevation = DownLayerElevation[i] + DownLayerHeight[i];
-			float airMass = TotalAirMass[i] * AirMassPercent;
+			float layerElevation = LayerElevation[i];
+			float layerHeight = math.max(MinimumHeight, (TropopauseElevation - layerElevation) * ColumnPercent);
+			float airMass = (Atmosphere.GetStandardPressureAtElevation(layerElevation, WorldData.StandardTemperature, Gravity) - Atmosphere.GetStandardPressureAtElevation(layerElevation + layerHeight, WorldData.StandardTemperature, Gravity)) / Gravity;
 
-			float standardPressure = Atmosphere.GetStandardPressureAtElevation(layerMiddle, WorldData.StandardTemperature, Gravity);
-			float layerHeight = airMass * WorldData.UniversalGasConstant * Atmosphere.GetAbsoluteTemperature(temperaturePotential, layerMiddle) / (standardPressure * WorldData.MolarMassAir);
-
-			float tropopauseElevation;
-			float stratosphereMass = Atmosphere.GetStandardPressureAtElevation(tropopauseElevation, WorldData.StandardTemperature, Gravity) / Gravity;
-
-			LayerHeight[i] = layerHeight;
-			LayerElevation[i] = layerElevation;
-
-			float layerMiddle = layerElevation + layerHeight / 2;
-			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * layerMiddle;
-			float pressure = (stratosphereMass + TotalAirMass[i] - AirMassBelow[i] - airMass / 2) * Gravity;
-			float airVapor = Atmosphere.GetMaxVaporAtTemperature(airMass, airTemperatureAbsolute, pressure) * RelativeHumidity[i];
 			AirTemperaturePotential[i] = TemperaturePotential[i];
 			AirMass[i] = airMass;
+			UpLayerElevation[i] = layerElevation + layerHeight;
+			LayerHeight[i] = layerHeight;
+		}
+	}
+#if ASYNC_WORLDGEN
+	[BurstCompile]
+#endif
+	private struct WorldGenWaterVaporJob : IJobParallelFor {
+
+		public NativeArray<float> AirVapor;
+
+		[ReadOnly] public NativeArray<float> AirMass;
+		[ReadOnly] public NativeArray<float> Pressure;
+		[ReadOnly] public NativeArray<float> LayerElevation;
+		[ReadOnly] public NativeArray<float> LayerHeight;
+		[ReadOnly] public NativeArray<float> TemperaturePotential;
+		[ReadOnly] public NativeArray<float> RelativeHumidity;
+		public void Execute(int i)
+		{
+			float layerMiddle = LayerElevation[i] + LayerHeight[i] / 2;
+			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * layerMiddle;
+			float airVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, Pressure[i]) * RelativeHumidity[i];
 			AirVapor[i] = airVapor;
-			AirMassBelow[i] += airMass;
 		}
 	}
 
@@ -296,7 +301,6 @@ public static class WorldGen {
 		var WaterTemperatureTop = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var RelativeHumidity = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var WaterLayerElevation = new NativeArray<float>(staticState.Count, Allocator.TempJob);
-		var airMassBelow = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 
 		var worldGenInitJob = new WorldGenInitJob()
 		{
@@ -340,7 +344,6 @@ public static class WorldGen {
 			BoundaryZoneElevation = worldGenData.BoundaryZoneElevation,
 		});
 
-		var worldGenWaterLayerJobHandle = worldGenJobHandle;
 		for (int i = worldData.WaterLayers - 2; i >= 1; i--)
 		{
 			float layerDepthMax;
@@ -360,7 +363,7 @@ public static class WorldGen {
 				layerDepthMax = float.MaxValue;
 				layerCount = i;
 			}
-			worldGenWaterLayerJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
+			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
 			{
 				WaterTemperature = state.WaterTemperature[i],
 				SaltMass = state.SaltMass[i],
@@ -377,34 +380,39 @@ public static class WorldGen {
 				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
 				WaterTemperatureBottom = WaterTemperatureBottom,
 				WaterTemperatureSurface = WaterTemperatureTop,
-			}, worldGenWaterLayerJobHandle);
+			}, worldGenJobHandle);
 		}
 
-		var worldGenAirLayerJobHandle = default(JobHandle);
-		for (int i = 1; i < worldData.AirLayers-1; i++)
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
-			worldGenAirLayerJobHandle = worldGenJobHelper.Run(new WorldGenAirLayerJob()
+			float minumumHeight;
+			float columnPercent;
+			if (i==1)
+			{
+				minumumHeight = worldGenData.BoundaryZoneElevation;
+				columnPercent = 0;
+			} else
+			{
+				minumumHeight = 0;
+				columnPercent = 1.0f / (worldData.AirLayers - 1 - i);
+			}
+			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenAirMassJob()
 			{
 				AirTemperaturePotential = state.AirTemperaturePotential[i],
-				AirVapor = state.AirVapor[i],
 				AirMass = dependent.AirMass[i],
 				LayerHeight = dependent.LayerHeight[i],
-				LayerElevation = dependent.LayerElevation[i],
-				AirMassBelow = airMassBelow,
+				UpLayerElevation = dependent.LayerElevation[i+1],
 
-				DownLayerElevation = dependent.LayerElevation[i - 1],
-				DownLayerHeight = dependent.LayerHeight[i - 1],
-				TroposphereAirMass = worldGenData.TroposphereMass,
+				LayerElevation = dependent.LayerElevation[i],
+				TropopauseElevation = worldGenData.TropopauseElevation,
+				MinimumHeight = minumumHeight,
+				ColumnPercent = columnPercent, 
 				TemperaturePotential = temperaturePotential,
-				RelativeHumidity = RelativeHumidity,
 				Gravity = state.PlanetState.Gravity,
-				AirMassPercent = 1.0f / (worldData.AirLayers - 2),
-			}, worldGenAirLayerJobHandle);
+			}, worldGenJobHandle);
 		}
 
-
-		///////////////////////////////////
-		// Update dependent variables
+		// calc average temperature and total troposphere mass
 
 		var tempArrays = new List<NativeArray<float>>();
 		SimJobs.UpdateDependentVariables(
@@ -412,7 +420,35 @@ public static class WorldGen {
 			ref state,
 			ref dependent,
 			ref worldData,
-			worldGenWaterLayerJobHandle,
+			worldGenJobHandle,
+			tempArrays
+		).Complete();
+
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenWaterVaporJob()
+			{
+				AirVapor = state.AirVapor[i],
+
+				AirMass = dependent.AirMass[i],
+				Pressure = dependent.AirPressure[i],
+				LayerHeight = dependent.LayerHeight[i],
+				LayerElevation = dependent.LayerElevation[i],
+				TemperaturePotential = temperaturePotential,
+				RelativeHumidity = RelativeHumidity,
+			}, worldGenJobHandle);
+		}
+
+
+		///////////////////////////////////
+		// Update dependent variables
+
+		SimJobs.UpdateDependentVariables(
+			worldGenJobHelper,
+			ref state,
+			ref dependent,
+			ref worldData,
+			worldGenJobHandle,
 			tempArrays
 		).Complete();
 
@@ -423,7 +459,6 @@ public static class WorldGen {
 		WaterTemperatureTop.Dispose();
 		WaterLayerElevation.Dispose();
 		RelativeHumidity.Dispose();
-		airMassBelow.Dispose();
 		foreach (var a in tempArrays)
 		{
 			a.Dispose();

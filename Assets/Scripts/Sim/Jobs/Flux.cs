@@ -114,10 +114,7 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DewPoint;
 	[ReadOnly] public NativeArray<float> LastDropletMass;
 	[ReadOnly] public NativeArray<float> LastCloudMass;
-	[ReadOnly] public NativeArray<float> AirMassCloud;
-	[ReadOnly] public NativeArray<float> WaterVaporCloud;
-	[ReadOnly] public NativeArray<float> AirPressureCloud;
-	[ReadOnly] public NativeArray<float> RelativeHumidityCloud;
+	[ReadOnly] public NativeArray<float> AirDensityCloud;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
 	[ReadOnly] public NativeArray<float> SurfaceAirTemperaturePotential;
@@ -154,7 +151,6 @@ public struct FluxCloudJob : IJobParallelFor {
 			dropletMass += cloudMass * 0.00000001f;
 
 
-			float airDensityAtElevation = Atmosphere.GetAirDensity(AirPressureCloud[i], dewPoint, AirMassCloud[i], WaterVaporCloud[i]);
 			float waterDensityAtElevation = Atmosphere.GetWaterDensityAtElevation(dewPoint, cloudElevation);
 			float rainDropRadius = math.clamp(Atmosphere.GetDropletRadius(dropletMass, waterDensityAtElevation), RainDropMinSize, RainDropMaxSize);
 			float rainDropVolume = 4 / 3 * math.PI * math.pow(rainDropRadius, 3);
@@ -164,7 +160,7 @@ public struct FluxCloudJob : IJobParallelFor {
 			// We shouldn't be using the Air's buoyancy force as a stand in for the water droplets buoyancy
 			// We should instead just be adding the vertical velocity of the air parcel
 			float windVertical = math.dot(lastVelocity, Position[i]);
-			float terminalVelocity = windVertical - math.sqrt(8 * rainDropRadius * waterDensityAtElevation * Gravity / (3 * airDensityAtElevation * RainDropDragCoefficient));
+			float terminalVelocity = windVertical - math.sqrt(8 * rainDropRadius * waterDensityAtElevation * Gravity / (3 * AirDensityCloud[i] * RainDropDragCoefficient));
 			if (terminalVelocity < 0 && dropletMass > 0)
 			{
 

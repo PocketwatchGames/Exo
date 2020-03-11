@@ -16,10 +16,9 @@
 //#define FluxCloudJobDebug
 //#define GetVectorDestCoordsJobDebug
 //#define DiffusionCloudJobDebug
-//#define UpdateDependentWaterLayerJobDebug
 //#define FluxWaterJobDebug
-//#define UpdateDependentAirLayerJobDebug
 //#define UpdateMassEvaporationJobDebug
+#define UpdateDependentJobDebug
 #define ConductionAirTerrainJobDebug
 
 using System;
@@ -94,8 +93,6 @@ public class WorldSim {
 	public JobHelper ApplyAdvectionAirJob;
 	public JobHelper ApplyAdvectionWaterJob;
 	public JobHelper ApplyAdvectionCloudJob;
-	public JobHelper UpdateDependentWaterLayerJob;
-	public JobHelper UpdateDependentAirLayerJob;
 	public JobHelper UpdateDependentJob;
 	public JobHelper GetVectorDestCoordsJob;
 
@@ -215,8 +212,6 @@ public class WorldSim {
 		ApplyAdvectionAirJob = new JobHelper(_cellCount);
 		ApplyAdvectionWaterJob = new JobHelper(_cellCount);
 		ApplyAdvectionCloudJob = new JobHelper(_cellCount);
-		UpdateDependentWaterLayerJob = new JobHelper(_cellCount);
-		UpdateDependentAirLayerJob = new JobHelper(_cellCount);
 		UpdateDependentJob = new JobHelper(_cellCount);
 		GetVectorDestCoordsJob = new JobHelper(_cellCount);
 
@@ -399,15 +394,6 @@ public class WorldSim {
 
 #if UpdateMassEvaporationJobDebug
 		UpdateMassEvaporationJob.Async = false;
-#endif
-
-
-#if UpdateDependentWaterLayerJobDebug
-		UpdateDependentWaterLayerJob.Async = false;
-#endif
-
-#if UpdateDependentAirLayerJobDebug
-		UpdateDependentAirLayerJob.Async = false;
 #endif
 
 #if UpdateDependentJobDebug
@@ -1240,10 +1226,7 @@ public class WorldSim {
 				LastDropletMass = lastState.CloudDropletMass,
 				CloudElevation = dependent.CloudElevation,
 				DewPoint = dependent.DewPoint,
-				AirMassCloud = dependent.AirMassCloud,
-				WaterVaporCloud = dependent.AirVaporCloud,
-				AirPressureCloud = dependent.AirPressureCloud,
-				RelativeHumidityCloud = dependent.AirHumidityRelativeCloud,
+				AirDensityCloud = dependent.AirDensityCloud,
 				Position = staticState.SphericalPosition,
 				Gravity = lastState.PlanetState.Gravity,
 				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
@@ -1831,7 +1814,7 @@ public class WorldSim {
 
 			#region Update dependent variables
 
-			SimJobs.UpdateDependentVariables(WaterDepthJob, ref nextState, ref dependent, ref worldData, default(JobHandle), tempArrays).Complete();
+			SimJobs.UpdateDependentVariables(UpdateDependentJob, ref nextState, ref dependent, ref worldData, default(JobHandle), tempArrays).Complete();
 
 			#endregion
 

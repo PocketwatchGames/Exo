@@ -2134,10 +2134,6 @@ MonoBehaviour:
       Enabled: 0
     ApplyAdvectionCloudJob:
       Enabled: 0
-    UpdateDependentWaterLayerJob:
-      Enabled: 0
-    UpdateDependentAirLayerJob:
-      Enabled: 0
     UpdateDependentJob:
       Enabled: 0
     GetVectorDestCoordsJob:
