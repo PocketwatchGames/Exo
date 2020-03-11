@@ -1,4 +1,6 @@
-﻿using Unity.Burst;
+﻿//#define SolarRadiationAbsorbedAirJobDebug
+
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -8,17 +10,20 @@ using Unity.Mathematics;
 #endif
 public struct SolarRadiationJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiation;
+	public NativeArray<float> GeothermalRadiation;
 	public NativeArray<float> DisplaySolarRadiation;
 	public NativeArray<float> WaterSlopeAlbedo;
 	[ReadOnly] public NativeArray<float3> SphericalPosition;
 	[ReadOnly] public float3 SunToPlanetDir;
 	[ReadOnly] public quaternion PlanetRotation;
 	[ReadOnly] public float IncomingSolarRadiation;
+	[ReadOnly] public float IncomingGeothermalRadiation;
 	public void Execute(int i)
 	{
 		float sunDotSurface = math.max(0, math.dot(SunToPlanetDir, math.rotate(PlanetRotation, -SphericalPosition[i])));
 		WaterSlopeAlbedo[i] = math.pow(1.0f - math.max(0, sunDotSurface), 9);
 		float r = IncomingSolarRadiation * sunDotSurface;
+		GeothermalRadiation[i] = IncomingGeothermalRadiation;
 		SolarRadiation[i] = r;
 		DisplaySolarRadiation[i] = r;
 	}

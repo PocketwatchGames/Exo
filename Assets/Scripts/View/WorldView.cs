@@ -355,7 +355,7 @@ public class WorldView : MonoBehaviour {
 			IceCoverage = dependent.IceCoverage,
 			VegetationCoverage = dependent.VegetationCoverage,
 			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers-2],
-			WaterDepth = dependent.WaterDepthTotal,
+			WaterDepth = dependent.WaterLayerDepth[1],
 			SurfaceElevation = dependent.LayerElevation[1],
 			MeshOverlayData = meshOverlay.Values,
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
@@ -775,7 +775,7 @@ public class WorldView : MonoBehaviour {
 
 		var totalReflected = display.EnergySolarReflectedAtmosphere + display.EnergySolarReflectedSurface;
 		var totalOutgoing = display.EnergyThermalSurfaceOutAtmosphericWindow + display.EnergyThermalOutAtmosphere;
-		s.AppendFormat("Delta: {0:N1}", ConvertTileEnergyToWatts((display.SolarRadiation - totalReflected - totalOutgoing) * Sim.InverseCellCount));
+		s.AppendFormat("Delta: {0:N1}", ConvertTileEnergyToWatts((display.SolarRadiation + display.GeothermalRadiation - totalReflected - totalOutgoing) * Sim.InverseCellCount));
 		s.AppendFormat("\nEnthalpy Delta: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDelta * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Water: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaWater * Sim.InverseCellCount)));
@@ -793,6 +793,7 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("\nT Surface Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalSurfaceRadiation * Sim.InverseCellCount));
 		s.AppendFormat("\nT Atm Absorbed: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalAbsorbedAtmosphere * Sim.InverseCellCount));
 		s.AppendFormat("\nT Back Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalBackRadiation * Sim.InverseCellCount));
+		s.AppendFormat("\nGeothermal Incoming: {0:N1}", ConvertTileEnergyToWatts(display.GeothermalRadiation * Sim.InverseCellCount));
 		s.AppendFormat("\nEvapotranspiration: {0:N1}", ConvertTileEnergyToWatts(display.EnergyEvapotranspiration * Sim.InverseCellCount));
 		s.AppendFormat("\nSurface Conduction: {0:N1}", ConvertTileEnergyToWatts(display.EnergySurfaceConduction * Sim.InverseCellCount));
 		s.AppendFormat("\nOcean Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalOceanRadiation * Sim.InverseCellCount));
@@ -828,6 +829,7 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("RAIN: {0:N3} kg\n", display.Rainfall[ActiveCellIndex]);
 		s.AppendFormat("EVAP: {0:N3} kg\n", display.Evaporation[ActiveCellIndex]);
 		s.AppendFormat("SURFACE TEMP: {0:N3}\n", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("TROPOPAUSE ELE: {0:N0}m\n", dependent.LayerElevation[Sim.WorldData.AirLayers-1][ActiveCellIndex]);
 
 		if (cloudMass > 0)
 		{
@@ -892,7 +894,7 @@ public class WorldView : MonoBehaviour {
 		{
 			s.AppendFormat("ICE: 0 m\n");
 		}
-		s.AppendFormat("DEPTH: {0:N3} m\n", dependent.WaterDepthTotal[ActiveCellIndex]);
+		s.AppendFormat("DEPTH: {0:N3} m\n", dependent.WaterLayerDepth[1][ActiveCellIndex]);
 		s.AppendLine();
 
 		for (int i = Sim.WorldData.WaterLayers - 2; i >= 1; i--) {
@@ -908,6 +910,10 @@ public class WorldView : MonoBehaviour {
 					state.SaltMass[i][ActiveCellIndex],
 					current.x, current.y, current.z,
 					dependent.WaterPressure[i][ActiveCellIndex]);
+				s.AppendFormat("DEPTH: {0:N0} m HEIGHT: {1:N0} m\n",
+					dependent.WaterLayerDepth[i][ActiveCellIndex],
+					dependent.WaterLayerHeight[i][ActiveCellIndex]
+					);
 				s.AppendLine();
 			}
 		}

@@ -1,4 +1,4 @@
-﻿#define EnergyTerrainJobDebug
+﻿//#define EnergyTerrainJobDebug
 //#define ConductionWaterBottomJobDebug
 //#define ConductionWaterTerrainJobDebug
 //#define SolarRadiationAbsorbedTerrainJobDebug
@@ -10,6 +10,7 @@
 //#define AdvectionCloudJobDebug
 //#define WaterFrictionJobDebug
 //#define AccelerationAirJobDebug
+//#define AccelerationWaterJobDebug
 //#define StateChangeJobDebug
 //#define EnergyIceJobDebug
 //#define StateChangeAirLayerJobDebug
@@ -18,8 +19,9 @@
 //#define DiffusionCloudJobDebug
 //#define FluxWaterJobDebug
 //#define UpdateMassEvaporationJobDebug
-#define UpdateDependentJobDebug
-#define ConductionAirTerrainJobDebug
+//#define UpdateDependentJobDebug
+//#define ConductionAirTerrainJobDebug
+//#define SolarRadiationAbsorbedAirJobDebug
 
 using System;
 using System.Collections.Generic;
@@ -138,6 +140,7 @@ public class WorldSim {
 	private NativeArray<float> frozenMass;
 	private NativeArray<float> evaporationMass;
 	private NativeArray<float> evaporationTemperaturePotential;
+	private NativeArray<float> geothermalRadiation;
 
 	private NativeArray<float> displaySolarRadiation;
 
@@ -466,6 +469,7 @@ public class WorldSim {
 		conductionIceWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionIceTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		displaySolarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		geothermalRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 
 	}
 
@@ -509,6 +513,7 @@ public class WorldSim {
 		conductionUpperAirTerrain.Dispose();
 		conductionIceWater.Dispose();
 		conductionIceTerrain.Dispose();
+		geothermalRadiation.Dispose();
 
 
 		displaySolarRadiation.Dispose();
@@ -579,14 +584,17 @@ public class WorldSim {
 			var solarInJobHandle = SolarRadiationInJob.Run(new SolarRadiationJob()
 			{
 				SolarRadiation = solarRadiation,
+				GeothermalRadiation = geothermalRadiation,
 				DisplaySolarRadiation = displaySolarRadiation,
 				WaterSlopeAlbedo = waterSlopeAlbedo,
 
 				SphericalPosition = staticState.SphericalPosition,
 				IncomingSolarRadiation = lastState.PlanetState.SolarRadiation * worldData.SecondsPerTick,
+				IncomingGeothermalRadiation = lastState.PlanetState.GeothermalHeat * worldData.SecondsPerTick,
 				PlanetRotation = quaternion.Euler(lastState.PlanetState.Rotation),
 				SunToPlanetDir = math.normalize(lastState.PlanetState.Position),
 			}, lastJobHandle);
+			solarInJobHandle.Complete();
 
 			#endregion
 
@@ -1049,7 +1057,7 @@ public class WorldSim {
 				ConductionEnergyAir = conductionSurfaceAirTerrain,
 				ConductionEnergyIce = conductionIceTerrain,
 				ConductionEnergyWater = conductionWaterTerrainTotal,
-				GeothermalEnergy = nextState.PlanetState.GeothermalHeat * worldData.SecondsPerTick,
+				GeothermalEnergy = geothermalRadiation,
 				HeatingDepth = worldData.SoilHeatDepth
 			}, JobHandle.CombineDependencies(terrainEnergyJobHandleDependencies));
 
@@ -1540,10 +1548,12 @@ public class WorldSim {
 					DownWaterPressure = dependent.WaterPressure[j - 1],
 					DownLayerDepth = dependent.WaterLayerDepth[j - 1],
 					DownLayerHeight = dependent.WaterLayerHeight[j - 1],
+					SurfaceElevation = dependent.LayerElevation[1],
 					Friction = waterFriction,
 					FrictionCoefficient = j == _surfaceWaterLayer ? 1 : 0,
 					Gravity = lastState.PlanetState.Gravity,
 					PlanetRadius = staticState.PlanetRadius,
+					SecondsPerTick = worldData.SecondsPerTick
 
 				}, waterFrictionJobHandle));
 				waterAccelerationJobHandles[j] = velocityJobHandle;
@@ -1922,6 +1932,9 @@ public class WorldSim {
 					Terrain = nextState.Terrain,
 					TerrainTemperature = nextState.TerrainTemperature,
 					HeatingDepth = worldData.SoilHeatDepth,
+					CloudMass = nextState.CloudMass,
+					IceMass = nextState.IceMass,
+					IceTemperature = nextState.IceTemperature,
 				};
 				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
 				var displayHandles = JobHandle.CombineDependencies(initDisplayAirHandle, initDisplayWaterHandle, updateDisplayJobHandle);
@@ -1930,7 +1943,6 @@ public class WorldSim {
 				float globalWaterMass = 0;
 				float globalWaterSurfaceMass = 0;
 				double globalAirMass = 0;
-				double globalVaporMass = 0;
 				double globalAirTemperature = 0;
 				for (int i = 0; i < _cellCount; i++)
 				{
@@ -1938,12 +1950,13 @@ public class WorldSim {
 					globalWaterSurfaceMass += waterMassSurface;
 					display.GlobalOceanSurfaceTemperature += curState.WaterTemperature[_surfaceWaterLayer][i] * waterMassSurface;
 					display.SolarRadiation += displaySolarRadiation[i];
+					display.GeothermalRadiation += geothermalRadiation[i];
 					display.GlobalCloudCoverage += dependent.CloudCoverage[i];
 					display.GlobalCloudMass += curState.CloudMass[i];
 					display.GlobalIceMass += curState.IceMass[i];
 					display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers-2][i];
 					display.GlobalSurfaceTemperature += dependent.SurfaceAirTemperatureAbsolute[i];
-					display.GlobalOceanVolume += dependent.WaterDepthTotal[i];
+					display.GlobalOceanVolume += dependent.WaterLayerDepth[1][i];
 					display.GlobalSeaLevel += dependent.LayerElevation[1][i];
 					display.GlobalEvaporation += display.Evaporation[i];
 					display.GlobalRainfall += display.Rainfall[i];
@@ -1954,11 +1967,13 @@ public class WorldSim {
 					{
 						globalAirTemperature += curState.AirTemperaturePotential[j][i] * (dependent.AirMass[j][i] + curState.AirVapor[j][i]);
 						globalAirMass += dependent.AirMass[j][i];
-						globalVaporMass += curState.AirVapor[j][i];
+						display.GlobalWaterVapor += curState.AirVapor[j][i];
 						display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
 						display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
 						display.GlobalEnthalpyAir += display.EnthalpyAir[j][i];
 					}
+					display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
+					display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
 					for (int j = 1; j < _waterLayers - 1; j++)
 					{
 						float waterMass = curState.WaterMass[j][i];
@@ -1971,8 +1986,6 @@ public class WorldSim {
 						display.EnergySolarReflectedSurface += solarReflected[j + _waterLayer0][i];
 						display.GlobalEnthalpyWater += display.EnthalpyWater[j][i];
 					}
-					display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
-					display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
 					display.EnergySurfaceConduction += conductionSurfaceAirIce[i] + conductionSurfaceAirTerrain[i] + conductionSurfaceAirWater[i];
 					display.EnergyOceanConduction += conductionSurfaceAirWater[i];
 					display.EnergyEvapotranspiration += evaporationMass[i] * WorldData.LatentHeatWaterVapor;
@@ -1988,14 +2001,14 @@ public class WorldSim {
 					display.EnergyThermalAbsorbedAtmosphere += surfaceRadiation - surfaceRadiationOutWindow - radiationToSpace;
 
 				}
-				display.GlobalAirTemperaturePotential = globalAirTemperature / (globalAirMass + globalVaporMass);
+				display.GlobalAirTemperaturePotential = globalAirTemperature / (globalAirMass + display.GlobalWaterVapor);
 				display.GlobalOceanSurfaceTemperature /= globalWaterSurfaceMass;
 				display.GlobalOceanTemperature /= globalWaterMass;
 				display.GlobalEnthalpy = display.GlobalEnthalpyTerrain + display.GlobalEnthalpyAir + display.GlobalEnthalpyWater;
-				display.GlobalEnthalpyDelta = lastDisplay.GlobalEnthalpy - display.GlobalEnthalpy;
-				display.GlobalEnthalpyDeltaTerrain = lastDisplay.GlobalEnthalpyTerrain - display.GlobalEnthalpyTerrain;
-				display.GlobalEnthalpyDeltaAir = lastDisplay.GlobalEnthalpyAir - display.GlobalEnthalpyAir;
-				display.GlobalEnthalpyDeltaWater = lastDisplay.GlobalEnthalpyWater - display.GlobalEnthalpyWater;
+				display.GlobalEnthalpyDelta = display.GlobalEnthalpy - lastDisplay.GlobalEnthalpy;
+				display.GlobalEnthalpyDeltaTerrain = display.GlobalEnthalpyTerrain - lastDisplay.GlobalEnthalpyTerrain;
+				display.GlobalEnthalpyDeltaAir = display.GlobalEnthalpyAir - lastDisplay.GlobalEnthalpyAir;
+				display.GlobalEnthalpyDeltaWater = display.GlobalEnthalpyWater - lastDisplay.GlobalEnthalpyWater;
 
 				lastDisplay.Dispose();
 
@@ -2139,7 +2152,7 @@ public class WorldSim {
 		StringBuilder s = new StringBuilder();
 		s.AppendFormat("{0} Index: {1}\n", title, i);
 		s.AppendFormat("Surface Elevation: {0}\n", dependent.LayerElevation[1][i]);
-		s.AppendFormat("Water Depth: {0}\n", dependent.WaterDepthTotal[i]);
+		s.AppendFormat("Water Depth: {0}\n", dependent.WaterLayerDepth[1][i]);
 		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
 		s.AppendFormat("Cloud Coverage: {0}\n", dependent.CloudCoverage[i]);
 		s.AppendFormat("Cloud Elevation: {0}\n", dependent.CloudElevation[i]);

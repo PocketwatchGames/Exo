@@ -1,4 +1,4 @@
-﻿#define UpdateDependentJobDebug
+﻿//#define UpdateDependentJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -11,23 +11,21 @@ public static class SimJobs {
 	public static JobHandle UpdateDependentVariables(JobHelper jobHelper, ref SimState state, ref DependentState dependent, ref WorldData worldData, JobHandle dependencies, List<NativeArray<float>> arraysToDispose)
 	{
 		var waterMassSum = new NativeArray<float>(state.IceMass, Allocator.TempJob);
-		var waterDepthSum = new NativeArray<float>(state.IceMass.Length, Allocator.TempJob);
 		var airMassTotal = new NativeArray<float>(state.IceMass.Length, Allocator.TempJob);
+		var standardLayerElevation = new NativeArray<float>(state.IceMass.Length, Allocator.TempJob);
+		var waterMassTotal = new NativeArray<float>(state.IceMass.Length, Allocator.Persistent);
 		arraysToDispose.Add(waterMassSum);
-		arraysToDispose.Add(waterDepthSum);
 		arraysToDispose.Add(airMassTotal);
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		arraysToDispose.Add(standardLayerElevation);
+		arraysToDispose.Add(waterMassTotal);
+		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
 			dependencies = jobHelper.Run(new UpdateWaterDepthJob()
 			{
 				Density = dependent.WaterDensity[j],
-				Pressure = dependent.WaterPressure[j],
 				LayerDepth = dependent.WaterLayerDepth[j],
 				LayerHeight = dependent.WaterLayerHeight[j],
-				WaterMassTotal = dependent.WaterMassTotal,
-				WaterDepthTotal = dependent.WaterDepthTotal,
 				WaterMassSum = waterMassSum,
-				WaterDepthSum = waterDepthSum,
 
 				Temperature = state.WaterTemperature[j],
 				SaltMass = state.SaltMass[j],
@@ -36,7 +34,6 @@ public static class SimJobs {
 				UpLayerHeight = dependent.WaterLayerHeight[j + 1],
 				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
 				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
-				Gravity = state.PlanetState.Gravity,
 
 			}, dependencies);
 		}
@@ -48,12 +45,15 @@ public static class SimJobs {
 			{
 				WaterCoverage = dependent.WaterCoverage[j],
 				PotentialEnergy = dependent.WaterPotentialEnergy[j],
+				Pressure = dependent.WaterPressure[j],
+				WaterMassTotal = waterMassTotal,
 
 				LayerHeight = dependent.WaterLayerHeight[j],
 				SaltMass = state.SaltMass[j],
 				WaterMass = state.WaterMass[j],
 				Temperature = state.WaterTemperature[j],
 				Terrain = state.Terrain,
+				Gravity = state.PlanetState.Gravity,
 			}, dependencies);
 		}
 
@@ -64,7 +64,7 @@ public static class SimJobs {
 			IceEnergy = dependent.IceEnergy,
 			SurfaceElevation = dependent.LayerElevation[1],
 			VegetationCoverage = dependent.VegetationCoverage,
-			WaterDepth = dependent.WaterDepthTotal,
+			WaterDepth = dependent.WaterLayerDepth[1],
 
 			CloudMass = state.CloudMass,
 			IceMass = state.IceMass,
@@ -90,6 +90,7 @@ public static class SimJobs {
 			}
 			dependencies = jobHelper.Run(new UpdateAirLayerHeightsJob()
 			{
+				StandardLayerElevation = standardLayerElevation,
 				LayerHeight = dependent.LayerHeight[j],
 				UpLayerElevation = dependent.LayerElevation[j + 1],
 				AirMass = dependent.AirMass[j],
@@ -221,6 +222,7 @@ public struct UpdateAirLayerHeightsJob : IJobParallelFor {
 	public NativeArray<float> AirMass;
 	public NativeArray<float> UpLayerElevation;
 	public NativeArray<float> LayerHeight;
+	public NativeArray<float> StandardLayerElevation;
 
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> LayerElevation;
@@ -231,12 +233,14 @@ public struct UpdateAirLayerHeightsJob : IJobParallelFor {
 
 	public void Execute(int i)
 	{
-		float layerElevation = LayerElevation[i];
-		float standardLayerHeight = math.max(MinimumHeight, (TropopauseElevation - layerElevation) * ColumnPercent);
-		float airMass = (Atmosphere.GetStandardPressureAtElevation(layerElevation, WorldData.StandardTemperature, Gravity) - Atmosphere.GetStandardPressureAtElevation(layerElevation + standardLayerHeight, WorldData.StandardTemperature, Gravity)) / Gravity;
+		float standardLayerHeight = math.max(MinimumHeight, (TropopauseElevation - StandardLayerElevation[i]) * ColumnPercent);
+		float standardLayerElevation = StandardLayerElevation[i];
+		float airMass = (Atmosphere.GetStandardPressureAtElevation(standardLayerElevation, WorldData.StandardTemperature, Gravity) - Atmosphere.GetStandardPressureAtElevation(standardLayerElevation + standardLayerHeight, WorldData.StandardTemperature, Gravity)) / Gravity;
+		StandardLayerElevation[i] = standardLayerElevation + standardLayerHeight;
 		AirMass[i] = airMass;
 
 		float airTemperaturePotential = AirTemperaturePotential[i];
+		float layerElevation = LayerElevation[i];
 		float layerHeight = standardLayerHeight * AirTemperaturePotential[i] / WorldData.StandardTemperature;
 		LayerHeight[i] = layerHeight;
 		UpLayerElevation[i] = layerElevation + layerHeight;
@@ -383,20 +387,27 @@ public struct UpdateDependentCloudJob : IJobParallelFor {
 public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 	public NativeArray<float> WaterCoverage;
 	public NativeArray<float> PotentialEnergy;
+	public NativeArray<float> Pressure;
+	public NativeArray<float> WaterMassTotal;
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
 	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
 		if (WaterMass[i] > 0)
 		{
 			WaterCoverage[i] = math.min(1, LayerHeight[i] / math.max(1, Terrain[i].Roughness));
 			PotentialEnergy[i] = (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt) * Temperature[i];
+			float layerMass = WaterMass[i] + SaltMass[i];
+			Pressure[i] = (WaterMassTotal[i] + layerMass / 2) * Gravity;
+			WaterMassTotal[i] += layerMass;
 		}
 		else
 		{
+			Pressure[i] = 0;
 			WaterCoverage[i] = 0;
 			PotentialEnergy[i] = 0;
 		}
@@ -408,13 +419,9 @@ public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct UpdateWaterDepthJob : IJobParallelFor {
-	public NativeArray<float> Pressure;
 	public NativeArray<float> LayerDepth;
 	public NativeArray<float> LayerHeight;
 	public NativeArray<float> Density;
-	public NativeArray<float> WaterDepthTotal;
-	public NativeArray<float> WaterMassTotal;
-	public NativeArray<float> WaterDepthSum;
 	public NativeArray<float> WaterMassSum;
 	[ReadOnly] public NativeArray<float> UpLayerDepth;
 	[ReadOnly] public NativeArray<float> UpLayerHeight;
@@ -423,7 +430,6 @@ public struct UpdateWaterDepthJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public float WaterDensityPerDegree;
 	[ReadOnly] public float WaterDensityPerSalinity;
-	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
 		if (WaterMass[i] > 0)
@@ -432,22 +438,15 @@ public struct UpdateWaterDepthJob : IJobParallelFor {
 			float saltMass = SaltMass[i];
 			Density[i] = Atmosphere.GetWaterDensity(waterMass, saltMass, Temperature[i], WaterDensityPerSalinity, WaterDensityPerDegree);
 			float waterDepth = (waterMass + saltMass) / Density[i];
-			LayerDepth[i] = UpLayerDepth[i] + UpLayerHeight[i] + waterDepth;
+			LayerDepth[i] = UpLayerDepth[i] + waterDepth;
 			LayerHeight[i] = waterDepth;
-			WaterDepthSum[i] += waterDepth;
-			float layerMass = waterMass + saltMass;
-			Pressure[i] = WaterMassTotal[i] + layerMass / 2 * Gravity;
-			WaterMassSum[i] += layerMass;
 		}
 		else
 		{
-			LayerDepth[i] = 0;
+			LayerDepth[i] = UpLayerDepth[i];
 			LayerHeight[i] = 0;
-			Pressure[i] = 0;
 			Density[i] = 0;
 		}
-		WaterDepthTotal[i] = WaterDepthSum[i];
-		WaterMassTotal[i] = WaterMassSum[i];
 	}
 }
 

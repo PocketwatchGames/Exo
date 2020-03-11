@@ -1,6 +1,6 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
-#define DISABLE_AIR_ADVECTION
-#define DISABLE_WATER_ADVECTION
+//#define DISABLE_AIR_ADVECTION
+//#define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
 //#define AdvectionAirJobDebug
 //#define AdvectionCloudJobDebug
@@ -62,6 +62,17 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 		float3 velHorizontal = deflectedVelocity - velVertical;
 
 		float3 moveHorizontal = velHorizontal * SecondsPerTick;
+
+		// TODO: deal with high wind speeds appropriately and remove this section
+		float windMoveHorizontal = math.length(moveHorizontal);
+
+		const float maxWindMove = 200000;
+		if (windMoveHorizontal > maxWindMove)
+		{
+			moveHorizontal = moveHorizontal / windMoveHorizontal * maxWindMove;
+		}
+
+
 		float3 movePos = pos + moveHorizontal;
 		DeflectedVelocity[i] = deflectedVelocity;
 
@@ -98,10 +109,10 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 		// TODO: this means the velocity is too high and has skipped over our neighbors!
 		Destination[i] = new BarycentricValue
 		{
-			indexA = -1,
+			indexA = i,
 			indexB = -1,
 			indexC = -1,
-			valueA = 0,
+			valueA = 1,
 			valueB = 0,
 			valueC = 0
 		};
@@ -330,6 +341,12 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float waterMass = Mass[i];
+
+		if (waterMass == 0)
+		{
+			return;
+		}
+
 		float newMass;
 		float newSaltMass;
 		float newTemperature;
@@ -341,19 +358,32 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		newTemperature = Temperature[i];
 		newVelocity = Velocity[i];
 #else
-		float newMass = 0;
-		float newSaltMass = 0;
-		float newTemperature = 0;
-		float3 newVelocity = 0;
+		newMass = 0;
+		newSaltMass = 0;
+		newTemperature = 0;
+		newVelocity = 0;
 
-		if (Destination[i].indexA == i)
+		float valueRemaining = 0;
+		int destIndexA = Destination[i].indexA;
+		if (destIndexA == i || destIndexA < 0 || Mass[destIndexA] == 0)
 		{
-			float v = Destination[i].valueA;
-			newTemperature += Temperature[i] * v;
-			newMass += Mass[i] * v;
-			newSaltMass += Salt[i] * v;
-			newVelocity += Velocity[i] * v;
+			valueRemaining += Destination[i].valueA;
 		}
+		int destIndexB = Destination[i].indexB;
+		if (destIndexB == i || destIndexB < 0 || Mass[destIndexB] == 0)
+		{
+			valueRemaining += Destination[i].valueB;
+		}
+		int destIndexC = Destination[i].indexC;
+		if (destIndexC == i || destIndexC < 0 || Mass[destIndexC] == 0)
+		{
+			valueRemaining += Destination[i].valueC;
+		}
+		newTemperature += Temperature[i] * valueRemaining;
+		newMass += Mass[i] * valueRemaining;
+		newSaltMass += Salt[i] * valueRemaining;
+		newVelocity += Velocity[i] * valueRemaining;
+		
 
 		for (int j = 0; j < 6; j++)
 		{

@@ -1,7 +1,7 @@
 ﻿//#define EnergyAirJobDebug
 //#define EnergyWaterSurfaceJobDebug
 //#define EnergyIceJobDebug
-#define EnergyTerrainJobDebug
+//#define EnergyTerrainJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -129,7 +129,7 @@ public struct EnergyTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
-	[ReadOnly] public float GeothermalEnergy;
+	[ReadOnly] public NativeArray<float> GeothermalEnergy;
 	[ReadOnly] public float HeatingDepth;
 	public void Execute(int i)
 	{
@@ -137,7 +137,7 @@ public struct EnergyTerrainJob : IJobParallelFor {
 			-ConductionEnergyAir[i]
 			- ConductionEnergyWater[i]
 			- ConductionEnergyIce[i];
-		float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta + GeothermalEnergy;
+		float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta + GeothermalEnergy[i];
 		float specificHeat = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, Terrain[i].Vegetation);
 		Temperature[i] = LastTemperature[i] + energy / specificHeat;
 	}
