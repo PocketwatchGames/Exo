@@ -136,8 +136,9 @@ public class WorldSim {
 	private NativeArray<float> conductionIceWater;
 	private NativeArray<float> conductionIceTerrain;
 	private NativeArray<float>[] conductionWaterTerrain;
-	private NativeArray<float>[] frozenTemperature;
+	private NativeArray<float> frozenTemperature;
 	private NativeArray<float> frozenMass;
+	private NativeArray<float> saltPlume;
 	private NativeArray<float> evaporationMass;
 	private NativeArray<float> evaporationTemperaturePotential;
 	private NativeArray<float> geothermalRadiation;
@@ -443,16 +444,16 @@ public class WorldSim {
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		destinationWater = new NativeArray<BarycentricValue>[_waterLayers];
 		conductionWaterTerrain = new NativeArray<float>[_waterLayers];
-		frozenTemperature = new NativeArray<float>[_waterLayers];
 		for (int i = 0; i < _waterLayers; i++)
 		{
 			diffusionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			advectionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			destinationWater[i] = new NativeArray<BarycentricValue>(_cellCount, Allocator.Persistent);
 			conductionWaterTerrain[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
-			frozenTemperature[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
+		frozenTemperature = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		frozenMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		saltPlume = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		evaporationMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		evaporationTemperaturePotential = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -495,9 +496,10 @@ public class WorldSim {
 			advectionWater[i].Dispose();
 			destinationWater[i].Dispose();
 			conductionWaterTerrain[i].Dispose();
-			frozenTemperature[i].Dispose();
 		}
+		frozenTemperature.Dispose();
 		frozenMass.Dispose();
+		saltPlume.Dispose();
 		evaporationMass.Dispose();
 		evaporationTemperaturePotential.Dispose();
 		windFriction.Dispose();
@@ -1196,9 +1198,10 @@ public class WorldSim {
 				EvaporatedWaterMass = evaporationMass,
 				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotential,
 				FrozenMass = frozenMass,
-				FrozenTemperature = frozenTemperature[_surfaceWaterLayer],
+				FrozenTemperature = frozenTemperature,
 				LatentHeatWater = latentHeat[_waterLayer0 + _surfaceWaterLayer],
 				LatentHeatAir = latentHeat[_airLayer0 + 1],
+				SaltPlume = saltPlume,
 
 				Temperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
@@ -1277,8 +1280,12 @@ public class WorldSim {
 				{
 					WaterMass = nextState.WaterMass[j],
 					SaltMass = nextState.SaltMass[j],
+					WaterTemperature = nextState.WaterTemperature[j],
+					SaltPlume = saltPlume,
+					SaltPlumeTemperature = frozenTemperature,
 					LastSaltMass = lastState.SaltMass[j],
 					LastWaterMass = lastState.WaterMass[j],
+					DownLastWaterMass = lastState.WaterMass[j-1]
 				}));
 				updateMassWaterJobHandles[j] = updateMassJobHandle;
 			}
@@ -1306,6 +1313,7 @@ public class WorldSim {
 				WaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				WaterMass = nextState.WaterMass[_surfaceWaterLayer],
 				SaltMass = nextState.SaltMass[_surfaceWaterLayer],
+				SaltPlume = saltPlume,
 				Evaporation = evaporationMass,
 				IceMelted = iceMeltedMass,
 				Precipitation = precipitationMass,
@@ -1370,7 +1378,7 @@ public class WorldSim {
 				LastIceMass = lastState.IceMass,
 				IceMelted = iceMeltedMass,
 				WaterFrozen = frozenMass,
-				WaterTemperature = frozenTemperature[_surfaceWaterLayer],
+				WaterTemperature = frozenTemperature,
 				Precipitation = precipitationMass,
 				PrecipitationTemperature = precipitationTemperature,
 			});
@@ -1839,10 +1847,10 @@ public class WorldSim {
 				degen |= CheckDegen(_cellCount, degenIndices, "CloudVelocity", nextState.CloudVelocity, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "CloudElevation", dependent.CloudElevation, -100000, 100000, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
-				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 300, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, degenVarNames);
 				for (int i = 1; i < _airLayers - 1; i++) {
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 400, degenVarNames);
-					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 1000, degenVarNames);
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 10000, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "AirVelocity" + i, nextState.AirVelocity[i], degenVarNames);
 				}
 				for (int i=1;i<_waterLayers - 1;i++)

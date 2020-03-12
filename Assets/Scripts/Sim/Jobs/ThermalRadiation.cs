@@ -19,19 +19,19 @@ public struct ThermalEnergyRadiatedJob : IJobParallelFor {
 	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
-		//float maxRadiationPercent = 0.01f;
+		float maxRadiationPercent = 0.01f;
 
-		//// radiate half up and half down
-		//float transmittedUp = math.min(Energy[i] * maxRadiationPercent, Atmosphere.GetRadiationRate(TemperatureAbsolute[i], Emissivity[i]) * SecondsPerTick);
-		//ThermalRadiationDelta[i] = -2 * transmittedUp;
+		// radiate half up and half down
+		float transmittedUp = math.min(Energy[i] * maxRadiationPercent, Atmosphere.GetRadiationRate(TemperatureAbsolute[i], Emissivity[i]) * SecondsPerTick);
+		ThermalRadiationDelta[i] = -2 * transmittedUp;
 
-		//float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
-		//transmittedUp -= windowTransmittedUp;
+		float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
+		transmittedUp -= windowTransmittedUp;
 
-		//WindowRadiationTransmittedUp[i] = windowTransmittedUp;
-		//WindowRadiationTransmittedDown[i] = windowTransmittedUp;
-		//ThermalRadiationTransmittedUp[i] = transmittedUp;
-		//ThermalRadiationTransmittedDown[i] = transmittedUp;
+		WindowRadiationTransmittedUp[i] = windowTransmittedUp;
+		WindowRadiationTransmittedDown[i] = windowTransmittedUp;
+		ThermalRadiationTransmittedUp[i] = transmittedUp;
+		ThermalRadiationTransmittedDown[i] = transmittedUp;
 	}
 }
 
@@ -53,19 +53,19 @@ public struct ThermalEnergyRadiatedAirJob : IJobParallelFor {
 	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
-		//float maxRadiationPercent = 0.01f;
+		float maxRadiationPercent = 0.01f;
 
-		//// radiate half up and half down
-		//float transmittedUp = math.min(Energy[i] * maxRadiationPercent, Atmosphere.GetRadiationRate(Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2), Emissivity[i]) * SecondsPerTick);
-		//ThermalRadiationDelta[i] = -2 * transmittedUp;
+		// radiate half up and half down
+		float transmittedUp = math.min(Energy[i] * maxRadiationPercent, Atmosphere.GetRadiationRate(Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2), Emissivity[i]) * SecondsPerTick);
+		ThermalRadiationDelta[i] = -2 * transmittedUp;
 
-		//float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
-		//transmittedUp -= windowTransmittedUp;
+		float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
+		transmittedUp -= windowTransmittedUp;
 
-		//WindowRadiationTransmittedUp[i] = windowTransmittedUp;
-		//WindowRadiationTransmittedDown[i] = windowTransmittedUp;
-		//ThermalRadiationTransmittedUp[i] = transmittedUp;
-		//ThermalRadiationTransmittedDown[i] = transmittedUp;
+		WindowRadiationTransmittedUp[i] = windowTransmittedUp;
+		WindowRadiationTransmittedDown[i] = windowTransmittedUp;
+		ThermalRadiationTransmittedUp[i] = transmittedUp;
+		ThermalRadiationTransmittedDown[i] = transmittedUp;
 	}
 }
 
@@ -86,17 +86,17 @@ public struct ThermalEnergyRadiatedConstantEmissivityJob : IJobParallelFor {
 	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
-		//// radiate half up and half down
-		//float transmittedUp = math.min(Energy[i] / 2, Atmosphere.GetRadiationRate(Temperature[i], Emissivity) * SurfaceArea[i] * SecondsPerTick);
-		//ThermalRadiationDelta[i] = -2 * transmittedUp;
+		// radiate half up and half down
+		float transmittedUp = math.min(Energy[i] / 2, Atmosphere.GetRadiationRate(Temperature[i], Emissivity) * SurfaceArea[i] * SecondsPerTick);
+		ThermalRadiationDelta[i] = -2 * transmittedUp;
 
-		//float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
-		//transmittedUp -= windowTransmittedUp;
+		float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
+		transmittedUp -= windowTransmittedUp;
 
-		//WindowRadiationTransmittedUp[i] = windowTransmittedUp;
-		//WindowRadiationTransmittedDown[i] = windowTransmittedUp;
-		//ThermalRadiationTransmittedUp[i] = transmittedUp;
-		//ThermalRadiationTransmittedDown[i] = transmittedUp;
+		WindowRadiationTransmittedUp[i] = windowTransmittedUp;
+		WindowRadiationTransmittedDown[i] = windowTransmittedUp;
+		ThermalRadiationTransmittedUp[i] = transmittedUp;
+		ThermalRadiationTransmittedDown[i] = transmittedUp;
 	}
 }
 
@@ -113,14 +113,14 @@ public struct ThermalEnergyRadiatedTerrainJob : IJobParallelFor {
 	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
-		//// radiate half up and half down
-		//float emitted = Atmosphere.GetRadiationRate(Temperature[i], Emissivity[i]) * SecondsPerTick;
-		//ThermalRadiationDelta[i] = -emitted;
+		// radiate half up and half down
+		float emitted = Atmosphere.GetRadiationRate(Temperature[i], Emissivity[i]) * SecondsPerTick;
+		ThermalRadiationDelta[i] = -emitted;
 
-		//float emittedOutAtmosphericWindow = emitted * PercentRadiationInAtmosphericWindow;
-		//emitted -= emittedOutAtmosphericWindow;
-		//WindowRadiationTransmitted[i] = emittedOutAtmosphericWindow;
-		//ThermalRadiationTransmitted[i] = emitted;
+		float emittedOutAtmosphericWindow = emitted * PercentRadiationInAtmosphericWindow;
+		emitted -= emittedOutAtmosphericWindow;
+		WindowRadiationTransmitted[i] = emittedOutAtmosphericWindow;
+		ThermalRadiationTransmitted[i] = emitted;
 	}
 }
 

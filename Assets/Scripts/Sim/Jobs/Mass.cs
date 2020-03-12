@@ -14,12 +14,21 @@ using Unity.Mathematics;
 public struct UpdateMassWaterJob : IJobParallelFor {
 	public NativeArray<float> WaterMass;
 	public NativeArray<float> SaltMass;
+	public NativeArray<float> WaterTemperature;
+	[ReadOnly] public NativeArray<float> SaltPlume;
+	[ReadOnly] public NativeArray<float> SaltPlumeTemperature;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float> LastWaterMass;
+	[ReadOnly] public NativeArray<float> DownLastWaterMass;
 	public void Execute(int i)
 	{
 		WaterMass[i] = LastWaterMass[i];
 		SaltMass[i] = LastSaltMass[i];
+		if (DownLastWaterMass[i] == 0 && LastWaterMass[i] > 0)
+		{
+			WaterTemperature[i] = (WaterTemperature[i] * (LastWaterMass[i] * WorldData.SpecificHeatWater + LastSaltMass[i] * WorldData.SpecificHeatSalt) + SaltPlumeTemperature[i] * SaltPlume[i] * WorldData.SpecificHeatSalt) / (LastWaterMass[i] * WorldData.SpecificHeatWater + (LastSaltMass[i] + SaltPlume[i]) * WorldData.SpecificHeatSalt);
+			SaltMass[i] += SaltPlume[i];
+		}
 	}
 }
 #if !UpdateMassWaterSurfaceJobDebug
@@ -28,12 +37,13 @@ public struct UpdateMassWaterJob : IJobParallelFor {
 public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	public NativeArray<float> WaterTemperature;
 	public NativeArray<float> WaterMass;
-	[ReadOnly] public NativeArray<float> SaltMass;
+	public NativeArray<float> SaltMass;
 	[ReadOnly] public NativeArray<float> Evaporation;
 	[ReadOnly] public NativeArray<float> IceMelted;
 	[ReadOnly] public NativeArray<float> Precipitation;
 	[ReadOnly] public NativeArray<float> PrecipitationTemperature;
 	[ReadOnly] public NativeArray<float> WaterFrozen;
+	[ReadOnly] public NativeArray<float> SaltPlume;
 	public void Execute(int i)
 	{
 		float precipitationTemperature = PrecipitationTemperature[i];
@@ -42,6 +52,7 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		float waterMass = WaterMass[i];
 		float newMass = waterMass + IceMelted[i] + rainMass - Evaporation[i] - WaterFrozen[i];
 		WaterMass[i] = newMass;
+		SaltMass[i] -= SaltPlume[i];
 
 		if (newMass <= 0)
 		{

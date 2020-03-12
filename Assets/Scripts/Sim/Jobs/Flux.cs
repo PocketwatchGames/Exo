@@ -22,6 +22,7 @@ public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterTemperaturePotential;
 	public NativeArray<float> FrozenMass;
 	public NativeArray<float> FrozenTemperature;
+	public NativeArray<float> SaltPlume;
 	public NativeArray<float> LatentHeatWater;
 	public NativeArray<float> LatentHeatAir;
 	[ReadOnly] public NativeArray<float> Temperature;
@@ -50,6 +51,7 @@ public struct FluxWaterJob : IJobParallelFor {
 		float freezingTemperature = 0;
 		float energyFlux = 0;
 		float evapTemperaturePotential = 0;
+		float saltPlume = 0;
 
 		if (waterMass > 0)
 		{
@@ -83,6 +85,7 @@ public struct FluxWaterJob : IJobParallelFor {
 					// TODO: some fo the energy in the ehating mass should also be accounted for
 					float energyToRelease = (freezingTemperature - airTemperatureAbsolute) * specificHeatSaltWater * heatingMass;
 					frozenMass = math.min(waterMass, energyToRelease / WorldData.LatentHeatWaterLiquid);
+					saltPlume += frozenMass / waterMass * saltMass;
 					energyFlux += frozenMass * WorldData.LatentHeatWaterLiquid;
 					waterMass -= frozenMass;
 				}
@@ -95,6 +98,7 @@ public struct FluxWaterJob : IJobParallelFor {
 		EvaporatedWaterMass[i] = evapMass;
 		FrozenMass[i] = frozenMass;
 		FrozenTemperature[i] = freezingTemperature;
+		SaltPlume[i] = saltPlume;
 		LatentHeatWater[i] = energyFlux;
 		LatentHeatAir[i] += -latentHeatFromAir;
 

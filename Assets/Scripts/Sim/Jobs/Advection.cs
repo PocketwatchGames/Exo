@@ -363,6 +363,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		newTemperature = 0;
 		newVelocity = 0;
 
+		// TODO: remove this when we have incompressibility
+		float totalMass = 0;
+
+
 		float valueRemaining = 0;
 		int destIndexA = Destination[i].indexA;
 		if (destIndexA == i || destIndexA < 0 || Mass[destIndexA] == 0)
@@ -379,11 +383,12 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		{
 			valueRemaining += Destination[i].valueC;
 		}
-		newTemperature += Temperature[i] * valueRemaining;
-		newMass += Mass[i] * valueRemaining;
+		totalMass = Mass[i] * valueRemaining;
+		newMass = totalMass;
 		newSaltMass += Salt[i] * valueRemaining;
-		newVelocity += Velocity[i] * valueRemaining;
-		
+		newTemperature += Temperature[i] * totalMass;
+		newVelocity += Velocity[i] * totalMass;
+
 
 		for (int j = 0; j < 6; j++)
 		{
@@ -404,12 +409,28 @@ public struct AdvectionWaterJob : IJobParallelFor {
 				{
 					incoming = Destination[n].valueC;
 				}
-				newTemperature += Temperature[n] * incoming;
-				newMass += Mass[n] * incoming;
+				float massIncoming = Mass[n] * incoming;
+				newMass += massIncoming;
 				newSaltMass += Salt[n] * incoming;
-				newVelocity += DeflectedVelocity[n] * incoming;
+				newTemperature += Temperature[n] * massIncoming;
+				newVelocity += DeflectedVelocity[n] * massIncoming;
+				totalMass += massIncoming;
 			}
 		}
+
+
+		if (totalMass > 0)
+		{
+			newTemperature /= totalMass;
+			newVelocity /= totalMass;
+		}
+		else
+		{
+			// TODO: remove once we have incompressibility
+			newTemperature = Temperature[i];
+			newVelocity = Velocity[i];
+		}
+
 #endif
 
 
