@@ -18,7 +18,7 @@
 //#define GetVectorDestCoordsJobDebug
 //#define DiffusionCloudJobDebug
 //#define FluxWaterJobDebug
-//#define UpdateMassEvaporationJobDebug
+#define UpdateMassEvaporationJobDebug
 //#define UpdateDependentJobDebug
 //#define ConductionAirTerrainJobDebug
 //#define SolarRadiationAbsorbedAirJobDebug
@@ -1363,7 +1363,7 @@ public class WorldSim {
 
 				AirMass = dependent.AirMass[1],
 				Evaporation = evaporationMass,
-				EvaporationTemperature = evaporationTemperaturePotential,
+				EvaporationTemperaturePotential = evaporationTemperaturePotential,
 				LayerElevation = dependent.LayerElevation[1],
 				LayerHeight = dependent.LayerHeight[1]
 			}, JobHandle.CombineDependencies(updateMassAirJobHandles[1], surfaceWaterMassHandle));

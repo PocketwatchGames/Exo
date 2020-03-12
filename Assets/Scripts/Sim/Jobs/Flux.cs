@@ -64,7 +64,7 @@ public struct FluxWaterJob : IJobParallelFor {
 			// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
 			// so i'm using the air temperature instead of the water temperature, which means the the formula just reduces to (1-RH)*WindCoefficient
 			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
-			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
+			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], Temperature[i], AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
 			waterMass -= evapMass;
 			latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
 			evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
