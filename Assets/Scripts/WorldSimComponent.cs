@@ -66,7 +66,7 @@ public class WorldSimComponent : MonoBehaviour
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
 
 		_displayState = new DisplayState();
-		_displayState.Init(CellCount, WorldData.AirLayers+2, WorldData.WaterLayers);
+		_displayState.Init(CellCount, WorldData.AirLayers+2, WorldData.WaterLayers, 12);
 
 		JobHandle initDisplayHandle = default(JobHandle);
 		for (int i = 1; i < WorldData.AirLayers - 1; i++)

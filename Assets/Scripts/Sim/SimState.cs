@@ -249,6 +249,7 @@ public struct DisplayState {
 	public double GlobalEnthalpyDeltaTerrain;
 	public double GlobalEnthalpyDeltaWater;
 	public double GlobalEnthalpyDeltaAir;
+	public double GlobalTerrainTemperature;
 	public float GlobalIceMass;
 	public float GlobalSurfaceTemperature;
 	public double GlobalAirTemperaturePotential;
@@ -277,8 +278,12 @@ public struct DisplayState {
 	public NativeArray<float>[] Salinity;
 	public NativeArray<float>[] Pressure;
 	public NativeArray<float3>[] PressureGradientForce;
+	public NativeArray<float>[] ThermalDelta;
+	public NativeArray<float>[] ConductionDelta;
+	public NativeArray<float>[] SolarDelta;
+	public NativeArray<float>[] LatentHeatDelta;
 
-	public void Init(int count, int airLayers, int waterLayers)
+	public void Init(int count, int airLayers, int waterLayers, int totalLayers)
 	{
 		SolarRadiationAbsorbedSurface = new NativeArray<float>(count, Allocator.Persistent);
 		Rainfall = new NativeArray<float>(count, Allocator.Persistent);
@@ -304,6 +309,19 @@ public struct DisplayState {
 			Salinity[i] = new NativeArray<float>(count, Allocator.Persistent);
 			EnthalpyWater[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
+
+		ThermalDelta = new NativeArray<float>[totalLayers];
+		ConductionDelta = new NativeArray<float>[totalLayers];
+		SolarDelta = new NativeArray<float>[totalLayers];
+		LatentHeatDelta = new NativeArray<float>[totalLayers];
+		for (int i = 0; i < totalLayers; i++)
+		{
+			ThermalDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
+			ConductionDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
+			SolarDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
+			LatentHeatDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
+		}
+
 	}
 
 	public void Dispose()
@@ -324,6 +342,13 @@ public struct DisplayState {
 		{
 			Salinity[i].Dispose();
 			EnthalpyWater[i].Dispose();
+		}
+		for (int i=0;i<ThermalDelta.Length;i++)
+		{
+			ThermalDelta[i].Dispose();
+			ConductionDelta[i].Dispose();
+			SolarDelta[i].Dispose();
+			LatentHeatDelta[i].Dispose();
 		}
 	}
 

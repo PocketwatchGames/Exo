@@ -1,4 +1,7 @@
-﻿using Unity.Burst;
+﻿//#define ThermalEnergyAbsorbedAirJobDebug
+//#define ThermalEnergyAbsorbedPartialCoverageJobDebug
+
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -32,6 +35,35 @@ public struct ThermalEnergyRadiatedJob : IJobParallelFor {
 		WindowRadiationTransmittedDown[i] = windowTransmittedUp;
 		ThermalRadiationTransmittedUp[i] = transmittedUp;
 		ThermalRadiationTransmittedDown[i] = transmittedUp;
+	}
+}
+
+#if !ThermalEnergyRadiatedWaterJobDebug
+[BurstCompile]
+#endif
+public struct ThermalEnergyRadiatedWaterJob : IJobParallelFor {
+	public NativeArray<float> ThermalRadiationDelta;
+	public NativeArray<float> ThermalRadiationTransmittedUp;
+	public NativeArray<float> WindowRadiationTransmittedUp;
+	[ReadOnly] public NativeArray<float> TemperatureAbsolute;
+	[ReadOnly] public NativeArray<float> Energy;
+	[ReadOnly] public NativeArray<float> Emissivity;
+	[ReadOnly] public NativeArray<float> SurfaceArea;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
+	public void Execute(int i)
+	{
+		float maxRadiationPercent = 0.01f;
+
+		// radiate half up
+		float transmittedUp = math.min(Energy[i] * maxRadiationPercent, Atmosphere.GetRadiationRate(TemperatureAbsolute[i], Emissivity[i]) * SurfaceArea[i] * SecondsPerTick);
+		ThermalRadiationDelta[i] = -transmittedUp;
+
+		float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;
+		transmittedUp -= windowTransmittedUp;
+
+		WindowRadiationTransmittedUp[i] = windowTransmittedUp;
+		ThermalRadiationTransmittedUp[i] = transmittedUp;
 	}
 }
 
@@ -168,6 +200,7 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 
 		float incoming = ThermalRadiationIncoming[i];
 		float absorbedBeforeCloud = incoming * math.saturate(1.0f - 1.0f / math.exp10(absorptivity));
+		float totalAbsorbed = absorbedBeforeCloud;
 		incoming -= absorbedBeforeCloud;
 		ThermalRadiationDelta[i] += absorbedBeforeCloud;
 
@@ -178,10 +211,10 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 			float transmittingAbsorbedByCloud = beforeCloud * transmitting * absorbance;
 			ThermalRadiationDelta[i] += incomingAbsorbedByCloud + transmittingAbsorbedByCloud;
 
+			totalAbsorbed += incomingAbsorbedByCloud;
 			incoming -= incomingAbsorbedByCloud;
 			transmitting -= transmittingAbsorbedByCloud;
 		}
-
 
 		ThermalRadiationTransmitted[i] = transmitting + incoming;
 	}

@@ -751,10 +751,11 @@ public class WorldView : MonoBehaviour {
 		NumberFormatInfo nfi2 = new NumberFormatInfo() { NumberDecimalDigits = 2 };
 		s.AppendFormat("CO2: {0}", state.PlanetState.CarbonDioxide);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * Sim.InverseCellCount);
-		s.AppendFormat("\nTemperature: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nAtm Temperature: {0}", GetTemperatureString((float)(display.GlobalAirTemperaturePotential), ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nOcean Surface Temp: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nOcean Temperature: {0:N0}", GetTemperatureString(display.GlobalOceanTemperature, ActiveTemperatureUnits, 4));
+		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
+		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
+		s.AppendFormat("\nTemperature Air: {0}", GetTemperatureString((float)(display.GlobalAirTemperaturePotential), ActiveTemperatureUnits, 2));
+		s.AppendFormat("\nTemperature Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanTemperature, ActiveTemperatureUnits, 4));
+		s.AppendFormat("\nTemperature Terrain: {0:N0}", GetTemperatureString((float)display.GlobalTerrainTemperature, ActiveTemperatureUnits, 4));
 		s.AppendFormat("\nWater Vapor: {0:N0}", display.GlobalWaterVapor);
 		s.AppendFormat("\nRainfall: {0:N3}", display.GlobalRainfall * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
 		s.AppendFormat("\nCondensationCloud: {0:N3}", display.GlobalCondensationCloud * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
@@ -775,6 +776,7 @@ public class WorldView : MonoBehaviour {
 
 		var totalReflected = display.EnergySolarReflectedAtmosphere + display.EnergySolarReflectedSurface;
 		var totalOutgoing = display.EnergyThermalSurfaceOutAtmosphericWindow + display.EnergyThermalOutAtmosphere;
+		var emittedByAtmosphere = display.EnergyThermalOutAtmosphere - display.EnergyThermalSurfaceOutAtmosphericWindow;
 		s.AppendFormat("Delta: {0:N1}", ConvertTileEnergyToWatts((display.SolarRadiation + display.GeothermalRadiation - totalReflected - totalOutgoing) * Sim.InverseCellCount));
 		s.AppendFormat("\nEnthalpy Delta: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDelta * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * Sim.InverseCellCount)));
@@ -792,12 +794,13 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("\nT Out Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalOutAtmosphere * Sim.InverseCellCount));
 		s.AppendFormat("\nT Surface Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalSurfaceRadiation * Sim.InverseCellCount));
 		s.AppendFormat("\nT Atm Absorbed: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalAbsorbedAtmosphere * Sim.InverseCellCount));
+		s.AppendFormat("\nT Atm Emitted: {0:N1}", ConvertTileEnergyToWatts(emittedByAtmosphere * Sim.InverseCellCount));
 		s.AppendFormat("\nT Back Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalBackRadiation * Sim.InverseCellCount));
 		s.AppendFormat("\nGeothermal Incoming: {0:N1}", ConvertTileEnergyToWatts(display.GeothermalRadiation * Sim.InverseCellCount));
 		s.AppendFormat("\nEvapotranspiration: {0:N1}", ConvertTileEnergyToWatts(display.EnergyEvapotranspiration * Sim.InverseCellCount));
 		s.AppendFormat("\nSurface Conduction: {0:N1}", ConvertTileEnergyToWatts(display.EnergySurfaceConduction * Sim.InverseCellCount));
-		s.AppendFormat("\nOcean Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalOceanRadiation * Sim.InverseCellCount));
-		s.AppendFormat("\nOcean Conduction: {0:N1}", ConvertTileEnergyToWatts(display.EnergyOceanConduction * Sim.InverseCellCount));
+		s.AppendFormat("\nOcean Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalOceanRadiation * Sim.InverseCellCount / display.GlobalOceanCoverage));
+		s.AppendFormat("\nOcean Conduction: {0:N1}", ConvertTileEnergyToWatts(display.EnergyOceanConduction * Sim.InverseCellCount / display.GlobalOceanCoverage));
 
 		return s.ToString();
 	}
@@ -814,6 +817,22 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("INDEX: {0}\n", ActiveCellIndex);
 		s.AppendFormat("COORD: ({0:N1}, {1:N1})\n", math.degrees(coord.x), math.degrees(coord.y));
 		s.AppendFormat("POS: ({0:N2}, {1:N2}, {2:N2})\n", pos.x, pos.y, pos.z);
+		//s.AppendFormat("\nSolar Terrain:   {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[0][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Terrain: {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[0][ActiveCellIndex]));
+		//s.AppendFormat("\nSolar Water0:    {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[2][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Water0:  {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[2][ActiveCellIndex]));
+		//s.AppendFormat("\nSolar Water1:    {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[3][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Water1:  {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[3][ActiveCellIndex]));
+		//s.AppendFormat("\nSolar Water2:    {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[4][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Water2:  {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[4][ActiveCellIndex]));
+		//s.AppendFormat("\nSolar Ice:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[6][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Ice:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[6][ActiveCellIndex]));
+		//s.AppendFormat("\nSolar Air0:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[8][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Air0:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[8][ActiveCellIndex]));
+		//s.AppendFormat("\nSolar Air1:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[1][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Air1:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[1][ActiveCellIndex]));
+		//s.AppendFormat("\nSolar Air2:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[2][ActiveCellIndex]));
+		//s.AppendFormat("\nThermal Air2:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[2][ActiveCellIndex]));
 
 		return s.ToString();
 	}

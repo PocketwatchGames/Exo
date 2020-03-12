@@ -1,5 +1,5 @@
 ﻿//#define StateChangeAirLayerJobDebug
-#define UpdateMassEvaporationJobDebug
+//#define UpdateMassEvaporationJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
