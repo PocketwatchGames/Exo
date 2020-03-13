@@ -14,6 +14,8 @@ public struct StaticState {
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
+	public NativeArray<float> NeighborDist;
+	public NativeArray<float3> NeighborDir;
 	public NativeArray<float> CoriolisMultiplier;
 
 
@@ -25,6 +27,8 @@ public struct StaticState {
 		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent);
 		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent);
 		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
+		NeighborDir = new NativeArray<float3>(Count * 6, Allocator.Persistent);
+		NeighborDist = new NativeArray<float>(Count * 6, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
 
@@ -66,13 +70,19 @@ public struct StaticState {
 			});
 			for (int j = 0; j < 6; j++)
 			{
+				int index = i * 6 + j;
 				if (j < neighborList[i].Count)
 				{
-					Neighbors[i * 6 + j] = neighborList[i][j].Item1;
+					int n = neighborList[i][j].Item1;
+					Neighbors[index] = n;
+					var diff = pos - SphericalPosition[n];
+					NeighborDist[index] = math.length(diff * PlanetRadius);
+					NeighborDir[index] = math.normalize(math.cross(math.cross(pos, diff), pos));
+
 				}
 				else
 				{
-					Neighbors[i * 6 + j] = -1;
+					Neighbors[index] = -1;
 				}
 			}
 		}
@@ -99,6 +109,8 @@ public struct StaticState {
 	public void Dispose()
 	{
 		Neighbors.Dispose();
+		NeighborDir.Dispose();
+		NeighborDist.Dispose();
 		Coordinate.Dispose();
 		SphericalPosition.Dispose();
 		CoriolisMultiplier.Dispose();

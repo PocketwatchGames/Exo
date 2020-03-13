@@ -167,7 +167,6 @@ public struct FluxCloudJob : IJobParallelFor {
 			if (terminalVelocity < 0 && dropletMass > 0)
 			{
 
-				// TODO: use this to detemine temperature when it hits the ground (snow or rain)
 				float rainDropFallTime = (cloudElevation - surfaceElevation) / -terminalVelocity;
 				if (rainDropFallTime < SecondsPerTick)
 				{

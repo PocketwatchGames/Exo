@@ -1954,7 +1954,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Seed: 11
   Subdivisions: 5
-  CheckForDegeneracy: 0
+  CheckForDegeneracy: 1
   LogState: 0
   LogStateIndex: 0
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
@@ -6304,6 +6304,7 @@ MonoBehaviour:
   ActiveTemperatureUnits: 0
   LerpStates: 1
   TerrainScale: 100
+  AtmosphereScale: 200
   MinElevation: -11000
   MaxElevation: 10000
   MaxDepth: 11000

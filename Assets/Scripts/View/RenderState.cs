@@ -107,6 +107,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public bool WindMaskedByLand;
 	[ReadOnly] public float WindVelocityMax;
 	[ReadOnly] public float TerrainScale;
+	[ReadOnly] public float AtmosphereScale;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float CloudDropletSizeMin;
 	[ReadOnly] public float InverseCloudDropletSizeRange;
@@ -155,7 +156,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		terrainPosition = icosphere * ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
 		waterPosition = icosphere * ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius * math.saturate(waterDepth / roughness);
 		surfacePosition = icosphere * (surfaceElevation * TerrainScale + PlanetRadius) / PlanetRadius;
-		cloudPosition = icosphere * ((math.max(CloudElevation[i], surfaceElevation) + 100) * TerrainScale + PlanetRadius) / PlanetRadius;
+		cloudPosition = icosphere * (((math.max(0, CloudElevation[i] - surfaceElevation)) * AtmosphereScale) + ((surfaceElevation + 100) * TerrainScale + PlanetRadius)) / PlanetRadius;
 
 		if (WindOverlayActive)
 		{
@@ -188,11 +189,38 @@ public struct BuildRenderStateJob : IJobParallelFor {
 
 	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float vegetationCoverage)
 	{
-		var groundColor = Color32.Lerp(new Color32(50, 50, 80, 255), new Color32(100, 60, 20, 255), soilFertility);
-		var waterColor = Color32.Lerp(groundColor, new Color32(0, 0, 255, 255), math.saturate(math.pow(waterDepth / roughness, 2)));
-		var iceColor = Color32.Lerp(waterColor, new Color32(255, 255, 255, 255), iceCoverage);
-		var vegetationColor = Color32.Lerp(groundColor, new Color32(0, 220, 30, 255), vegetationCoverage);
-		return vegetationColor;
+		if (iceCoverage > 0.5f)
+		{
+			return new Color32(255, 255, 255, 255);
+		//} else if (waterDepth / roughness > 0.5f)
+		//{
+		//	return new Color32(0, 0, 255, 255);
+		}
+		else if (vegetationCoverage > 0.3f)
+		{
+			return new Color32(0, 60, 10, 255);
+		}
+		else if (vegetationCoverage > 0.15f)
+		{
+			return new Color32(40, 100, 30, 255);
+		}
+		else if (soilFertility > 0.5f)
+		{
+			return new Color32(50, 30, 20, 255);
+		}
+		else if (soilFertility > 0.25f)
+		{
+			return new Color32(80, 70, 30, 255);
+		}
+		else
+		{
+			return new Color32(130, 130, 60, 255);
+		}
+		//var groundColor = Color32.Lerp(new Color32(50, 50, 80, 255), new Color32(100, 60, 20, 255), soilFertility);
+		//var waterColor = Color32.Lerp(groundColor, new Color32(0, 0, 255, 255), math.saturate(math.pow(waterDepth / roughness, 2)));
+		//var iceColor = Color32.Lerp(waterColor, new Color32(255, 255, 255, 255), iceCoverage);
+		//var vegetationColor = Color32.Lerp(groundColor, new Color32(0, 220, 30, 255), vegetationCoverage);
+		//return vegetationColor;
 	}
 
 	private Color32 GetWaterColor(float iceCoverage)

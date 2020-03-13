@@ -135,7 +135,6 @@ public static class SimJobs {
 				AbsoluteHumidity = dependent.AirHumidityAbsolute[j],
 				AirMass = dependent.AirMass[j],
 				PotentialEnergy = dependent.AirPotentialEnergy[j],
-				DewPoint = dependent.DewPoint,
 
 				Pressure = dependent.AirPressure[j],
 				AirTemperaturePotential = state.AirTemperaturePotential[j],
@@ -152,11 +151,12 @@ public static class SimJobs {
 			{
 				CloudElevation = dependent.CloudElevation,
 				AirDensityCloud = dependent.AirDensityCloud,
+				DewPoint = dependent.DewPoint,
 
 				AirMass = dependent.AirMass[j],
 				VaporMass = state.AirVapor[j],
 				SurfaceElevation = dependent.LayerElevation[1],
-				DewPoint = dependent.DewPoint,
+				RelativeHumidity = dependent.AirHumidityRelative[j],				
 				Pressure = dependent.AirPressure[j],
 				AirTemperaturePotential = state.AirTemperaturePotential[j],
 				LayerElevation = dependent.LayerElevation[j],
@@ -312,7 +312,6 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 	public NativeArray<float> AbsoluteHumidity;
 	public NativeArray<float> RelativeHumidity;
 	public NativeArray<float> PotentialEnergy;
-	public NativeArray<float> DewPoint;
 
 	[ReadOnly] public NativeArray<float> Pressure;
 	[ReadOnly] public NativeArray<float> AirMass;
@@ -337,9 +336,6 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 		RelativeHumidity[i] = Atmosphere.GetRelativeHumidity(airMass, vaporMass, airTemperatureAbsolute, Pressure[i]);
 		PotentialEnergy[i] = (airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * airTemperatureAbsolute;
 
-		float dewPoint = Atmosphere.GetDewPoint(RelativeHumidity[i], airTemperatureAbsolute);
-		DewPoint[i] = dewPoint;
-
 	}
 }
 
@@ -349,8 +345,9 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 public struct UpdateDependentCloudJob : IJobParallelFor {
 	public NativeArray<float> AirDensityCloud;
 	public NativeArray<float> CloudElevation;
+	public NativeArray<float> DewPoint;
 
-	[ReadOnly] public NativeArray<float> DewPoint;
+	[ReadOnly] public NativeArray<float> RelativeHumidity;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> Pressure;
 	[ReadOnly] public NativeArray<float> AirMass;
@@ -365,14 +362,19 @@ public struct UpdateDependentCloudJob : IJobParallelFor {
 		float airTemperaturePotential = AirTemperaturePotential[i];
 		float layerElevation = LayerElevation[i];
 		float layerHeight = LayerHeight[i];
+		float layerMiddle = layerElevation + LayerHeight[i] / 2;
 
-		float cloudElevation = Atmosphere.GetElevationAtDewPoint(DewPoint[i], airTemperaturePotential);
+		// TODO: this is overwriting such that it only pays attention to the bottom layer of the atmosphere
+		float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(airTemperaturePotential, layerMiddle);
+		float dewPoint = Atmosphere.GetDewPoint(RelativeHumidity[i], airTemperatureAbsolute);
+		DewPoint[i] = dewPoint;
+
+		float cloudElevation = Atmosphere.GetElevationAtDewPoint(dewPoint, airTemperaturePotential);
 		float cloudBaseElevation = math.max(cloudElevation, SurfaceElevation[i]);
-		if (cloudBaseElevation >= layerElevation && cloudBaseElevation < layerElevation + layerHeight)
+		if (cloudBaseElevation >= layerElevation)
 		{
 			float airMassCloud = AirMass[i];
 			float vaporMassCloud = VaporMass[i];
-			float layerMiddle = layerElevation + LayerHeight[i] / 2;
 			float airPressureCloud = Atmosphere.GetPressureAtElevation(cloudBaseElevation, Gravity, Pressure[i], airTemperaturePotential, layerMiddle);
 			AirDensityCloud[i] = Atmosphere.GetAirDensity(airPressureCloud, DewPoint[i], airMassCloud, vaporMassCloud);   
 		}

@@ -50,6 +50,8 @@ public struct AccelerationAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> NeighborDir;
+	[ReadOnly] public NativeArray<float> NeighborDist;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float> UpTemperaturePotential;
 	[ReadOnly] public NativeArray<float> UpHumidity;
@@ -81,11 +83,8 @@ public struct AccelerationAirJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				float3 diff = (position - Positions[n]) * PlanetRadius;
-				// TODO: this should only be using horizontal component, which we should cache
-
 				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, TemperaturePotential[n], Pressure[n], LayerElevation[n] + LayerHeight[n] / 2, Gravity);
-				gradientPressure += diff / math.lengthsq(diff) * (neighborElevationAtPressure - elevation);
+				gradientPressure += NeighborDir[neighborIndex] / NeighborDist[neighborIndex] * (neighborElevationAtPressure - elevation);
 				neighborCount++;
 			}
 		}
@@ -154,6 +153,8 @@ public struct AccelerationWaterJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> Friction;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> NeighborDir;
+	[ReadOnly] public NativeArray<float> NeighborDist;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float> WaterDensity;
 	[ReadOnly] public NativeArray<float> WaterPressure;
@@ -183,14 +184,12 @@ public struct AccelerationWaterJob : IJobParallelFor {
 			float pressure = WaterPressure[i];
 			for (int j = 0; j < 6; j++)
 			{
-				var n = Neighbors[i * 6 + j];
+				int neighborIndex = i * 6 + j;
+				var n = Neighbors[neighborIndex];
 				if (n >= 0 && WaterDensity[n] > 0)
 				{
-					// TODO: we should cache this value
-					float3 diff = (pos - Positions[n]) * PlanetRadius;
-
 					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
-					pressureGradient += diff / math.lengthsq(diff) * ((SurfaceElevation[n] - neighborDepthAtPressure) - midDepthElevation);
+					pressureGradient += NeighborDir[neighborIndex] / NeighborDist[neighborIndex] * ((SurfaceElevation[n] - neighborDepthAtPressure) - midDepthElevation);
 				}
 			}
 

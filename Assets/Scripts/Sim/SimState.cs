@@ -17,6 +17,7 @@ public struct SimState {
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> IceMass;
 	public NativeArray<float> CloudMass;
+	public NativeArray<float> CloudTemperature;
 	public NativeArray<float> CloudDropletMass;
 	public NativeArray<float3> CloudVelocity;
 	public NativeArray<float>[] AirTemperaturePotential;
@@ -34,6 +35,7 @@ public struct SimState {
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
+		CloudTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		CloudDropletMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudVelocity = new NativeArray<float3>(count, Allocator.Persistent);
 		AirTemperaturePotential = new NativeArray<float>[airLayers];
@@ -66,6 +68,7 @@ public struct SimState {
 		IceTemperature.Dispose();
 		IceMass.Dispose();
 		CloudMass.Dispose();
+		CloudTemperature.Dispose();
 		CloudDropletMass.Dispose();
 		CloudVelocity.Dispose();
 		for (int i = 0; i < AirTemperaturePotential.Length; i++)

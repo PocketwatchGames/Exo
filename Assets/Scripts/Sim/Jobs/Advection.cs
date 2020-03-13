@@ -19,6 +19,7 @@ public struct DiffusionAir {
 }
 public struct DiffusionCloud {
 	public float Mass;
+	public float Temperature;
 	public float DropletMass;
 	public float3 Velocity;
 }
@@ -262,6 +263,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 public struct AdvectionCloudJob : IJobParallelFor {
 	public NativeArray<DiffusionCloud> Delta;
 	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> DropletMass;
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> DeflectedVelocity;
@@ -270,26 +272,32 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float newMass;
+		float newTemperature;
 		float newDropletMass;
 		float3 newVelocity;
 
 #if DISABLE_CLOUD_ADVECTION
 		newMass = Mass[i];
+		newTemperature = Temperature[i];
 		newDropletMass = DropletMass[i];
 		newVelocity = Velocity[i];
 
 #else
 		newMass = 0;
+		newTemperature = 0;
 		newDropletMass = 0;
 		newVelocity = 0;
+		float totalMass = 0;
 
 		if (Destination[i].indexA == i)
 		{
 			float v = Destination[i].valueA;
-			newMass += Mass[i] * v;
+			float m = Mass[i] * v;
+			totalMass += m;
+			newMass += m;
+			newTemperature += Temperature[i] * v * m;
 			newDropletMass += DropletMass[i] * v;
 			newVelocity += Velocity[i] * v;
-
 		}
 
 		for (int j = 0; j < 6; j++)
@@ -310,16 +318,25 @@ public struct AdvectionCloudJob : IJobParallelFor {
 				{
 					incoming = Destination[n].valueC;
 				}
-				newMass += Mass[n] * incoming;
+				float m = Mass[n] * incoming;
+				newMass += m;
+				totalMass += totalMass;
+				newTemperature += Temperature[n] * incoming * m;
 				newDropletMass += DropletMass[n] * incoming;
 				newVelocity += DeflectedVelocity[n] * incoming;
 			}
+		}
+
+		if (totalMass > 0)
+		{
+			newTemperature /= totalMass;
 		}
 
 #endif
 		Delta[i] = new DiffusionCloud()
 		{
 			Mass = newMass,
+			Temperature = newTemperature,
 			DropletMass = newDropletMass,
 			Velocity = newVelocity
 		};
@@ -486,11 +503,13 @@ public struct ApplyAdvectionWaterJob : IJobParallelFor {
 public struct ApplyAdvectionCloudJob : IJobParallelFor {
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> DropletMass;
+	public NativeArray<float> Temperature;
 	public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<DiffusionCloud> Advection;
 	public void Execute(int i)
 	{
 		CloudMass[i] = Advection[i].Mass;
+		Temperature[i] = Advection[i].Temperature;
 		DropletMass[i] = Advection[i].DropletMass;
 		Velocity[i] = Advection[i].Velocity;
 	}

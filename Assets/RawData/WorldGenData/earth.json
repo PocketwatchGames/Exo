@@ -18,7 +18,7 @@
 	"NumPlates": 12,
 	"CarbonDioxide": 0.001,
 	"SolarRadiation": 1.367,
-	"GeothermalHeat": 0.06,
+	"GeothermalHeat": 0.00006,
 	"Gravity": 9.80665,
 	"SurfaceWaterDepth": 200,
 	"ThermoclineDepth": 800,

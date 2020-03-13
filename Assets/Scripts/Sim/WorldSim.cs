@@ -104,12 +104,13 @@ public class WorldSim {
 
 	private int _cellCount;
 	private int _batchCount = 100;
-	private const int _terrainLayers = 2;
+	private const int _terrainLayers = 3;
 
 	private int _airLayers;
 	private int _waterLayers;
 	private int _layerCount;
 	private int _terrainLayer;
+	private int _cloudLayer;
 	private int _waterLayer0;
 	private int _iceLayer;
 	private int _airLayer0;
@@ -160,6 +161,7 @@ public class WorldSim {
 		_iceLayer = _waterLayer0 + _waterLayers;
 		_airLayer0 = _iceLayer + 1;
 		_surfaceWaterLayer = _waterLayers - 2;
+		_cloudLayer = _airLayer0 + _airLayers;
 
 		#region Job Initialization
 		DiffusionAirJob = new JobHelper(_cellCount);
@@ -653,6 +655,8 @@ public class WorldSim {
 					SolarRadiationAbsorbed = solarRadiationIn[j],
 					SolarRadiationIncoming = solarRadiation,
 					SolarRadiationReflected = solarReflected[j],
+					SolarRadiationAbsorbedCloud = solarRadiationIn[_cloudLayer],
+					SolarRadiationReflectedCloud = solarReflected[_cloudLayer],
 					AirMass = dependent.AirMass[airLayerIndex],
 					VaporMass = lastState.AirVapor[airLayerIndex],
 					CloudMass = lastState.CloudMass,
@@ -1493,6 +1497,8 @@ public class WorldSim {
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					Neighbors = staticState.Neighbors,
+					NeighborDir = staticState.NeighborDir,
+					NeighborDist = staticState.NeighborDist,
 					Positions = staticState.SphericalPosition,
 					PlanetRadius = staticState.PlanetRadius,
 					Gravity = lastState.PlanetState.Gravity,
@@ -1548,6 +1554,8 @@ public class WorldSim {
 
 					Positions = staticState.SphericalPosition,
 					Neighbors = staticState.Neighbors,
+					NeighborDir = staticState.NeighborDir,
+					NeighborDist = staticState.NeighborDist,
 					WaterDensity = dependent.WaterDensity[j],
 					WaterPressure = dependent.WaterPressure[j],
 					LayerDepth = dependent.WaterLayerDepth[j],
@@ -1647,6 +1655,7 @@ public class WorldSim {
 				Delta = diffusionCloud,
 
 				LastMass = nextState.CloudMass,
+				LastTemperature = nextState.CloudTemperature,
 				LastDropletMass = nextState.CloudDropletMass,
 				LastVelocity = nextState.CloudVelocity,
 				Neighbors = staticState.Neighbors,
@@ -1662,6 +1671,7 @@ public class WorldSim {
 			{
 				Advection = diffusionCloud,
 				CloudMass = nextState.CloudMass,
+				Temperature = nextState.CloudTemperature,
 				DropletMass = nextState.CloudDropletMass,
 				Velocity = nextState.CloudVelocity
 			}, diffusionCloudHandle));
@@ -1787,6 +1797,7 @@ public class WorldSim {
 				Delta = advectionCloud,
 				Destination = destinationCloud,
 				Mass = nextState.CloudMass,
+				Temperature = nextState.CloudTemperature,
 				DropletMass = nextState.CloudDropletMass,
 				Velocity = nextState.CloudVelocity,
 				DeflectedVelocity = dependent.DeflectedCloudVelocity,
@@ -1803,6 +1814,7 @@ public class WorldSim {
 			{
 				Advection = advectionCloud,
 				CloudMass = nextState.CloudMass,
+				Temperature = nextState.CloudTemperature,
 				DropletMass = nextState.CloudDropletMass,
 				Velocity = nextState.CloudVelocity
 			}, advectionJobHandleCloud));
@@ -1890,7 +1902,7 @@ public class WorldSim {
 
 				var lastDisplay = display;
 				display = new DisplayState();
-				display.Init(_cellCount, _airLayers, _waterLayers, 12);
+				display.Init(_cellCount, _airLayers, _waterLayers, 13);
 				JobHandle initDisplayAirHandle = default(JobHandle);
 				JobHandle initDisplayWaterHandle = default(JobHandle);
 				for (int i = 1; i < _airLayers - 1; i++)

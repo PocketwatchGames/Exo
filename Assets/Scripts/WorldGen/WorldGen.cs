@@ -129,6 +129,7 @@ public static class WorldGen {
 
 		public NativeArray<float> IceTemperature;
 		public NativeArray<float> CloudDropletMass;
+		public NativeArray<float> CloudTemperature;
 		public NativeArray<float3> CloudVelocity;
 		public NativeArray<float> IceMass;
 		public NativeArray<float> TerrainTemperature;
@@ -316,6 +317,7 @@ public static class WorldGen {
 			terrain = state.Terrain,
 			TerrainTemperature = state.TerrainTemperature,
 			CloudDropletMass = state.CloudDropletMass,
+			CloudTemperature = state.CloudTemperature,
 			CloudVelocity = state.CloudVelocity,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
@@ -393,6 +395,7 @@ public static class WorldGen {
 			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenWaterVaporJob()
 			{
 				AirVapor = state.AirVapor[i],
+
 
 				AirMass = dependent.AirMass[i],
 				Pressure = dependent.AirPressure[i],

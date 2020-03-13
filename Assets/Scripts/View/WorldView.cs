@@ -78,6 +78,7 @@ public class WorldView : MonoBehaviour {
 
 	[Header("Display")]
 	public float TerrainScale = 100f;
+	public float AtmosphereScale = 1000f;
 //	public TemperatureDisplayType TemperatureDisplay;
 	public float MinElevation = -11000;
 	public float MaxElevation = 10000;
@@ -338,6 +339,7 @@ public class WorldView : MonoBehaviour {
 			SurfacePosition = to.SurfacePosition,
 
 			TerrainScale = TerrainScale,
+			AtmosphereScale = AtmosphereScale,
 			PlanetRadius = staticState.PlanetRadius,
 			CloudDropletSizeMin = worldData.rainDropMinSize,
 			InverseCloudDropletSizeRange = 1.0f / (worldData.rainDropMaxSize - worldData.rainDropMinSize),

@@ -133,12 +133,12 @@ public struct WorldData {
 	// and here https://www.aspen-electronics.com/uploads/3/7/1/2/37123419/emissivity-table.pdf
 	public const float EmissivityWater = 0.96f;
 	public const float EmissivitySalt = 0.34f;
-	public const float EmissivityIce = 0.97f;
+	public const float EmissivityIce = 0.98f;
 	public const float EmissivityAir = 0.8f;
-	public const float EmissivityWaterVapor = 0.4f;
-	public const float EmissivityDirt = 0.92f;
-	public const float EmissivitySand = 0.76f;
-	public const float EmissivityVegetation = 0.95f;
+	public const float EmissivityWaterVapor = 0.96f;
+	public const float EmissivityDirt = 0.95f;
+	public const float EmissivitySand = 0.85f;
+	public const float EmissivityVegetation = 0.98f;
 	public const float MassEarthAir = 1.29f;
 	public const float MassWater = 1000f;
 	public const float MassSalt = 2170f;

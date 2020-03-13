@@ -37,6 +37,8 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
 	public NativeArray<float> SolarRadiationReflected;
+	public NativeArray<float> SolarRadiationAbsorbedCloud;
+	public NativeArray<float> SolarRadiationReflectedCloud;
 	[ReadOnly] public float SolarReflectivityAir;
 	[ReadOnly] public float SolarAbsorptivityAir;
 	[ReadOnly] public float SolarAbsorptivityWaterVapor;
@@ -65,10 +67,10 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 		float layerElevation = LayerElevation[LayerIndex];
 		float layerHeight = LayerHeight[LayerIndex];
 		bool isCloudLayer = cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight;
-		float beforeCloud = math.min(1, (cloudElevation - layerElevation) / layerHeight);
-		float afterCloud = 1.0f - beforeCloud;
+		float afterCloud = math.saturate((cloudElevation - layerElevation) / layerHeight);
+		float beforeCloud = 1.0f - afterCloud;
 
-		float reflectivity = math.min(1, SolarReflectivityAir * (airMass + waterVaporMass));
+		float reflectivity = math.saturate(SolarReflectivityAir * (airMass + waterVaporMass));
 		float absorptivity = SolarAbsorptivityAir * airMass + SolarAbsorptivityWaterVapor * waterVaporMass;
 		float absorbed = 0;
 		float energyReflectedAtmosphere = 0;

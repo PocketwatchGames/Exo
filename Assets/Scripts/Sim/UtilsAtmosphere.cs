@@ -84,7 +84,6 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetWaterDensityAtElevation(float temperature, float elevation)
 	{
-		// TODO: make this vary by temperature and elevation
 		return WorldData.DensityWater;
 	}
 
