@@ -43,15 +43,24 @@ public struct WorldData {
 
 	// TODO: tune these to match the science
 	public float EnergyLostThroughAtmosphereWindow; // AKA Atmospheric window global average = 40 watts = 6.7% of all surface and atmospheric radiation
-	public float ThermalReflectivityCloud;
 
 	// https://en.wikipedia.org/wiki/Electromagnetic_absorption_by_water
 	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.
 	// carbon dioxide accounts for just 26% of the greenhouse effect.
-	public float ThermalAbsorptivityCarbonDioxide;
 	public float ThermalAbsorptivityAir;
-	public float ThermalAbsorptivityWaterLiquid;
-	public float ThermalAbsorptivityWaterVapor;
+	public float ThermalAbsorptivityCloud;
+
+	// emissivity values obtained here: https://www.thermoworks.com/emissivity-table
+	// and here https://www.aspen-electronics.com/uploads/3/7/1/2/37123419/emissivity-table.pdf
+	public float EmissivityWater;
+	public float EmissivitySalt;
+	public float EmissivityIce;
+	public float EmissivityAir;
+	public float EmissivityCarbonDioxide;
+	public float EmissivityWaterVapor;
+	public float EmissivityDirt;
+	public float EmissivitySand;
+	public float EmissivityVegetation;
 
 	// TODO: should we parameterize the micro-conduction that allows for water to heat the air faster than it can cool it?
 	//public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
@@ -129,16 +138,6 @@ public struct WorldData {
 	public const float SpecificHeatSoil = 0.84f;
 	public const float LatentHeatWaterLiquid = 334.0f;
 	public const float LatentHeatWaterVapor = 2264.705f;
-	// emissivity values obtained here: https://www.thermoworks.com/emissivity-table
-	// and here https://www.aspen-electronics.com/uploads/3/7/1/2/37123419/emissivity-table.pdf
-	public const float EmissivityWater = 0.96f;
-	public const float EmissivitySalt = 0.34f;
-	public const float EmissivityIce = 0.98f;
-	public const float EmissivityAir = 0.8f;
-	public const float EmissivityWaterVapor = 0.96f;
-	public const float EmissivityDirt = 0.95f;
-	public const float EmissivitySand = 0.85f;
-	public const float EmissivityVegetation = 0.98f;
 	public const float MassEarthAir = 1.29f;
 	public const float MassWater = 1000f;
 	public const float MassSalt = 2170f;

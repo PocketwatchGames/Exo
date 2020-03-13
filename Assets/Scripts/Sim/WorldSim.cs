@@ -630,6 +630,10 @@ public class WorldSim {
 					Emissivity = emissivity[layerIndex],
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
+					CarbonDioxide = lastState.PlanetState.CarbonDioxide,
+					EmissivityAir = worldData.EmissivityAir,
+					EmissivityWaterVapor = worldData.EmissivityWaterVapor,
+					EmissivityCarbonDioxide = worldData.EmissivityCarbonDioxide
 				});
 			}
 
@@ -640,49 +644,20 @@ public class WorldSim {
 				{
 					Emissivity = emissivity[_waterLayer0 + _surfaceWaterLayer],
 					WaterMass = lastState.WaterMass[_surfaceWaterLayer],
-					SaltMass = lastState.SaltMass[_surfaceWaterLayer]
+					SaltMass = lastState.SaltMass[_surfaceWaterLayer],
+					EmissivitySalt = worldData.EmissivitySalt,
+					EmissivityWater = worldData.EmissivityWater
 				});
 			}
 			emissivityJobHandles[_terrainLayer] = EmissivityTerrainJob.Run(new EmissivityTerrainJob()
 			{
 				Emissivity = emissivity[_terrainLayer],
 				Terrain = lastState.Terrain,
-				VegetationCoverage = dependent.VegetationCoverage
+				VegetationCoverage = dependent.VegetationCoverage,
+				EmissivityDirt = worldData.EmissivityDirt,
+				EmissivitySand = worldData.EmissivitySand,
+				EmissivityVegetation = worldData.EmissivityVegetation
 			});
-
-			var absorptivityAirJobHandles = new JobHandle[_airLayers];
-			for (int j = _airLayers - 2; j > 0; j--)
-			{
-				absorptivityAirJobHandles[j] = SolarAbsorptivityAirJob.Run(new AbsorptivityAirJob()
-				{
-					AbsorptivitySolar = absorptivitySolar[j],
-					AbsorptivityThermal = absorptivityThermal[j],
-					AirMass = dependent.AirMass[j],
-					VaporMass = lastState.AirVapor[j],
-					CloudMass = lastState.CloudMass,
-					CloudDropletMass = lastState.CloudDropletMass,
-					DewPoint = dependent.DewPoint,
-					CloudElevation = dependent.CloudElevation,
-					LayerElevation = dependent.LayerElevation[j],
-					LayerHeight = dependent.LayerHeight[j],
-					WaterSlopeAlbedo = waterSlopeAlbedo,
-					CarbonDioxide = lastState.PlanetState.CarbonDioxide,
-					CloudFreezingTemperatureMax = worldData.maxCloudFreezingTemperature,
-					CloudFreezingTemperatureMin = worldData.minCloudFreezingTemperature,
-					CloudSlopeAlbedoMax = worldData.maxCloudSlopeAlbedo,
-					RainDropSizeAlbedoMax = worldData.rainDropSizeAlbedoMax,
-					RainDropSizeAlbedoMin = worldData.rainDropSizeAlbedoMin,
-					SolarAbsorptivityAir = worldData.SolarAbsorptivityAir,
-					SolarAbsorptivityCloud = worldData.SolarAbsorptivityCloud,
-					SolarAbsorptivityWaterVapor = worldData.SolarAbsorptivityWaterVapor,
-					SolarReflectivityAir = worldData.SolarReflectivityAir,
-					SolarReflectivityCloud = worldData.SolarReflectivityCloud,
-					ThermalAbsorptivityAir = worldData.ThermalAbsorptivityAir,
-					ThermalAbsorptivityCarbonDioxide = worldData.ThermalAbsorptivityCarbonDioxide,
-					ThermalAbsorptivityWater = worldData.ThermalAbsorptivityWaterLiquid,
-					ThermalAbsorptivityWaterVapor = worldData.ThermalAbsorptivityWaterVapor
-				});
-			}
 
 			#endregion
 
@@ -700,7 +675,7 @@ public class WorldSim {
 				WindowRadiationTransmittedDown = windowRadiationTransmittedDown[_iceLayer],
 
 				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
-				Emissivity = WorldData.EmissivityIce,
+				Emissivity = worldData.EmissivityIce,
 				Energy = dependent.IceEnergy,
 				Temperature = lastState.IceTemperature,
 				SurfaceArea = dependent.IceCoverage,
@@ -766,6 +741,44 @@ public class WorldSim {
 			}
 			#endregion
 
+
+			#region absorptivity
+
+			var absorptivityAirJobHandles = new JobHandle[_airLayers];
+			for (int j = _airLayers - 2; j > 0; j--)
+			{
+				absorptivityAirJobHandles[j] = SolarAbsorptivityAirJob.Run(new AbsorptivityAirJob()
+				{
+					AbsorptivitySolar = absorptivitySolar[j],
+					AbsorptivityThermal = absorptivityThermal[j],
+					EmissivityAir = emissivity[_airLayer0 + j],
+					AirMass = dependent.AirMass[j],
+					VaporMass = lastState.AirVapor[j],
+					CloudMass = lastState.CloudMass,
+					CloudDropletMass = lastState.CloudDropletMass,
+					DewPoint = dependent.DewPoint,
+					CloudElevation = dependent.CloudElevation,
+					LayerElevation = dependent.LayerElevation[j],
+					LayerHeight = dependent.LayerHeight[j],
+					WaterSlopeAlbedo = waterSlopeAlbedo,
+					CarbonDioxide = lastState.PlanetState.CarbonDioxide,
+					CloudFreezingTemperatureMax = worldData.maxCloudFreezingTemperature,
+					CloudFreezingTemperatureMin = worldData.minCloudFreezingTemperature,
+					CloudSlopeAlbedoMax = worldData.maxCloudSlopeAlbedo,
+					RainDropSizeAlbedoMax = worldData.rainDropSizeAlbedoMax,
+					RainDropSizeAlbedoMin = worldData.rainDropSizeAlbedoMin,
+					SolarAbsorptivityAir = worldData.SolarAbsorptivityAir,
+					SolarAbsorptivityCloud = worldData.SolarAbsorptivityCloud,
+					SolarAbsorptivityWaterVapor = worldData.SolarAbsorptivityWaterVapor,
+					SolarReflectivityAir = worldData.SolarReflectivityAir,
+					SolarReflectivityCloud = worldData.SolarReflectivityCloud,
+					ThermalAbsorptivityAir = worldData.ThermalAbsorptivityAir,
+					ThermalAbsorptivityCloud = worldData.ThermalAbsorptivityCloud,
+					EmissivityCloud = worldData.EmissivityWater,
+				}, emissivityJobHandles[_airLayer0 + j]);
+			}
+
+			#endregion
 
 
 			// Follow the solar radiation down from the top of the atmosphere to ther terrain, and absorb some as it passes through each layer
