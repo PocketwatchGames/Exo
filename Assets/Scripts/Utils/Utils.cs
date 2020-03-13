@@ -154,12 +154,8 @@ public struct Optional<T> {
 	}
 }
 
-[Serializable]
 public class JobHelper {
 
-	public bool Enabled = true;
-	[NonSerialized]
-	public bool Async = true;
 	private int _cellCount;
 
 	public JobHelper(int cellCount)
@@ -170,22 +166,12 @@ public class JobHelper {
 	public static int DefaultBatchCount = 100;
 	public JobHandle Run<T>(T job, JobHandle dependences = default(JobHandle)) where T : struct, IJobParallelFor
 	{
-		return Run(job, Enabled, Async, _cellCount, DefaultBatchCount, dependences);
+		dependences.Complete();
+		job.Run(_cellCount);
+		return default(JobHandle);
 	}
-
-	public static JobHandle Run<T>(T job, bool enabled, bool async, int count, int batchCount, JobHandle dependences) where T : struct, IJobParallelFor
+	public JobHandle Schedule<T>(T job, JobHandle dependences = default(JobHandle)) where T : struct, IJobParallelFor
 	{
-		if (enabled)
-		{
-			if (async)
-			{
-				return job.Schedule(count, batchCount, dependences);
-			}
-			dependences.Complete();
-			job.Run(count);
-			return default(JobHandle);
-		}
-		return dependences;
+		return job.Schedule(_cellCount, DefaultBatchCount, dependences);
 	}
-
 }

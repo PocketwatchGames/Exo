@@ -276,11 +276,6 @@ public static class WorldGen {
 		InitSync(worldGenData, icosphere, ref worldData, ref staticState, ref state, ref dependent);
 
 		JobHelper worldGenJobHelper = new JobHelper(staticState.Count);
-#if ASYNC_WORLDGEN
-		worldGenJobHelper.Async = true;
-#else
-		worldGenJobHelper.Async = false;
-#endif
 
 		var waterMassTotal = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var waterDepthTotal = new NativeArray<float>(staticState.Count, Allocator.TempJob);
@@ -312,7 +307,7 @@ public static class WorldGen {
 		};
 		worldGenInitJob.Run(staticState.Count);
 
-		var worldGenJobHandle = worldGenJobHelper.Run(new WorldGenJob()
+		var worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenJob()
 		{
 			terrain = state.Terrain,
 			TerrainTemperature = state.TerrainTemperature,
@@ -350,7 +345,7 @@ public static class WorldGen {
 				layerDepthMax = float.MaxValue;
 				layerCount = i;
 			}
-			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenWaterLayerJob()
+			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterLayerJob()
 			{
 				WaterTemperature = state.WaterTemperature[i],
 				SaltMass = state.SaltMass[i],
@@ -372,13 +367,15 @@ public static class WorldGen {
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
-			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenAirLayerJob()
+			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenAirLayerJob()
 			{
 				AirTemperaturePotential = state.AirTemperaturePotential[i],
 
 				TemperaturePotential = temperaturePotential,
 			}, worldGenJobHandle);
 		}
+
+		worldGenJobHandle.Complete();
 
 		var tempArrays = new List<NativeArray<float>>();
 		SimJobs.UpdateDependentVariables(
@@ -392,7 +389,7 @@ public static class WorldGen {
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
-			worldGenJobHandle = worldGenJobHelper.Run(new WorldGenWaterVaporJob()
+			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterVaporJob()
 			{
 				AirVapor = state.AirVapor[i],
 

@@ -7,14 +7,17 @@ using Unity.Collections;
 using Unity.Mathematics;
 
 public struct SolarAbsorptivity {
-	public float AbsorptivityAir;
-	public float ReflectivityAir;
+	public float AbsorptivityAirAbove;
+	public float ReflectivityAirAbove;
+	public float AbsorptivityAirBelow;
+	public float ReflectivityAirBelow;
 	public float AbsorptivityCloud;
 	public float ReflectivityCloud;
 }
 
 public struct ThermalAbsorptivity {
-	public float AbsorptivityAir;
+	public float AbsorptivityAirAbove;
+	public float AbsorptivityAirBelow;
 	public float AbsorptivityCloud;
 }
 
@@ -58,24 +61,27 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	{
 		float incomingRadiation = SolarRadiationIncoming[i];
 
-		float absorbedAir = 0;
-		float reflectedAir = 0;
 		float absorbedCloud = 0;
 		float reflectedCloud = 0;
 
-		reflectedAir += incomingRadiation * AbsorptivitySolar[i].ReflectivityAir;
-		incomingRadiation -= reflectedAir;
-		absorbedAir += incomingRadiation * AbsorptivitySolar[i].AbsorptivityAir;
-		incomingRadiation -= absorbedAir;
+		float reflectedAirAbove = incomingRadiation * AbsorptivitySolar[i].ReflectivityAirAbove;
+		incomingRadiation -= reflectedAirAbove;
+		float absorbedAirAbove = incomingRadiation * AbsorptivitySolar[i].AbsorptivityAirAbove;
+		incomingRadiation -= absorbedAirAbove;
 
 		reflectedCloud = incomingRadiation * AbsorptivitySolar[i].ReflectivityCloud;
 		incomingRadiation -= reflectedCloud;
 		absorbedCloud = incomingRadiation * AbsorptivitySolar[i].AbsorptivityCloud;
 		incomingRadiation -= absorbedCloud;
 
-		SolarRadiationAbsorbed[i] = absorbedAir + absorbedCloud;
+		float reflectedAirBelow = incomingRadiation * AbsorptivitySolar[i].ReflectivityAirBelow;
+		incomingRadiation -= reflectedAirBelow;
+		float absorbedAirBelow = incomingRadiation * AbsorptivitySolar[i].AbsorptivityAirBelow;
+		incomingRadiation -= absorbedAirBelow;
+
+		SolarRadiationAbsorbed[i] = absorbedAirAbove + absorbedAirBelow + absorbedCloud;
 		SolarRadiationIncoming[i] = incomingRadiation;
-		SolarRadiationReflected[i] = reflectedAir + reflectedCloud;
+		SolarRadiationReflected[i] = reflectedAirAbove + reflectedAirBelow + reflectedCloud;
 		SolarRadiationReflectedCloud[i] = reflectedCloud;
 		SolarRadiationAbsorbedCloud[i] = absorbedCloud;
 	}

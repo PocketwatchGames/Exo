@@ -20,7 +20,7 @@ public static class SimJobs {
 		arraysToDispose.Add(waterMassTotal);
 		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
-			dependencies = jobHelper.Run(new UpdateWaterDepthJob()
+			dependencies = jobHelper.Schedule(new UpdateWaterDepthJob()
 			{
 				Density = dependent.WaterDensity[j],
 				LayerDepth = dependent.WaterLayerDepth[j],
@@ -41,7 +41,7 @@ public static class SimJobs {
 
 		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
-			dependencies = jobHelper.Run(new UpdateDependentWaterLayerJob()
+			dependencies = jobHelper.Schedule(new UpdateDependentWaterLayerJob()
 			{
 				WaterCoverage = dependent.WaterCoverage[j],
 				PotentialEnergy = dependent.WaterPotentialEnergy[j],
@@ -57,7 +57,7 @@ public static class SimJobs {
 			}, dependencies);
 		}
 
-		dependencies = jobHelper.Run(new UpdateDependentStateJob()
+		dependencies = jobHelper.Schedule(new UpdateDependentStateJob()
 		{
 			CloudCoverage = dependent.CloudCoverage,
 			IceCoverage = dependent.IceCoverage,
@@ -88,7 +88,7 @@ public static class SimJobs {
 				minumumHeight = 0;
 				columnPercent = 1.0f / (worldData.AirLayers - 1 - j);
 			}
-			dependencies = jobHelper.Run(new UpdateAirLayerHeightsJob()
+			dependencies = jobHelper.Schedule(new UpdateAirLayerHeightsJob()
 			{
 				StandardLayerElevation = standardLayerElevation,
 				LayerHeight = dependent.LayerHeight[j],
@@ -104,7 +104,7 @@ public static class SimJobs {
 			}, dependencies);
 		}
 
-		dependencies = jobHelper.Run(new UpdateStratosphereJob()
+		dependencies = jobHelper.Schedule(new UpdateStratosphereJob()
 		{
 			StratosphereMass = airMassTotal,
 
@@ -116,7 +116,7 @@ public static class SimJobs {
 
 		for (int j = worldData.AirLayers - 2; j > 0; j--)
 		{
-			var pressureHandle = jobHelper.Run(new UpdateAirPressureJob()
+			var pressureHandle = jobHelper.Schedule(new UpdateAirPressureJob()
 			{
 				Pressure = dependent.AirPressure[j],
 				AirMassTotal = airMassTotal,
@@ -129,7 +129,7 @@ public static class SimJobs {
 				SurfaceElevation = dependent.LayerElevation[1],
 				Gravity = state.PlanetState.Gravity,
 			}, dependencies);
-			dependencies = JobHandle.CombineDependencies(dependencies, jobHelper.Run(new UpdateDependentAirLayerJob()
+			dependencies = JobHandle.CombineDependencies(dependencies, jobHelper.Schedule(new UpdateDependentAirLayerJob()
 			{
 				RelativeHumidity = dependent.AirHumidityRelative[j],
 				AbsoluteHumidity = dependent.AirHumidityAbsolute[j],
@@ -147,7 +147,7 @@ public static class SimJobs {
 
 		for (int j = 1; j < worldData.AirLayers - 1; j++)
 		{
-			dependencies = jobHelper.Run(new UpdateDependentCloudJob()
+			dependencies = jobHelper.Schedule(new UpdateDependentCloudJob()
 			{
 				CloudElevation = dependent.CloudElevation,
 				AirDensityCloud = dependent.AirDensityCloud,
@@ -165,7 +165,7 @@ public static class SimJobs {
 			}, dependencies);
 		}
 
-		dependencies = jobHelper.Run(new UpdateSurfaceDependentStateJob()
+		dependencies = jobHelper.Schedule(new UpdateSurfaceDependentStateJob()
 		{
 			SurfaceAirTemperatureAbsolute = dependent.SurfaceAirTemperatureAbsolute,
 

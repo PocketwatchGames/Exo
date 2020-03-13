@@ -175,18 +175,26 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 		float cloudElevation = CloudElevation[i];
 		float layerElevation = LayerElevation[i];
 		float layerHeight = LayerHeight[i];
-		bool isCloudLayer = cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight;
 		float beforeCloud = math.min(1, (cloudElevation - layerElevation) / layerHeight);
 		float thermalRadiationDelta = ThermalRadiationDelta[i];
+
+		float absorptivityBefore;
+		float absorptivityAfter;
 		if (!FromTop)
 		{
 			beforeCloud = 1.0f - beforeCloud;
+			absorptivityBefore = AbsorptivityThermal[i].AbsorptivityAirBelow;
+			absorptivityAfter = AbsorptivityThermal[i].AbsorptivityAirAbove;
+		} else
+		{
+			absorptivityBefore = AbsorptivityThermal[i].AbsorptivityAirAbove;
+			absorptivityAfter = AbsorptivityThermal[i].AbsorptivityAirBelow;
 		}
 
 		float transmitting = ThermalRadiationTransmitted[i];
 
 		float incoming = ThermalRadiationIncoming[i];
-		float absorbedBeforeCloud = incoming * AbsorptivityThermal[i].AbsorptivityAir * beforeCloud;
+		float absorbedBeforeCloud = incoming * absorptivityBefore;
 		incoming -= absorbedBeforeCloud;
 		thermalRadiationDelta += absorbedBeforeCloud;
 
@@ -197,7 +205,7 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 		incoming -= incomingAbsorbedByCloud;
 		transmitting -= transmittingAbsorbedByCloud;
 
-		float absorbedAfterCloud = incoming * AbsorptivityThermal[i].AbsorptivityAir * (1.0f - beforeCloud);
+		float absorbedAfterCloud = incoming * absorptivityAfter;
 		incoming -= absorbedAfterCloud;
 		thermalRadiationDelta += absorbedAfterCloud;
 

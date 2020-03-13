@@ -25,9 +25,8 @@ public struct WorldData {
 	public float SolarAbsorptivityAir; // total absorbed by atmosphere AFTER reflection about 30%
 	public float SolarAbsorptivityWaterVapor; // total absorbed by atmosphere AFTER reflection about 30%
 	public float SolarAbsorptivityCloud; // 6% absorbed by clouds
-	public float SolarReflectivityAir; // 7% is reflected due to atmospheric scattering 
-	public float SolarReflectivityWater; // 7% is reflected due to atmospheric scattering 
-	public float SolarReflectivityCloud;
+	public float AlbedoAir; // 7% is reflected due to atmospheric scattering 
+	public float AlbedoCloud;
 	public float AlbedoReductionSoilQuality;
 	public float minCloudFreezingTemperature;
 	public float maxCloudFreezingTemperature;
