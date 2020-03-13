@@ -6,6 +6,18 @@ using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
 
+public struct SolarAbsorptivity {
+	public float AbsorptivityAir;
+	public float ReflectivityAir;
+	public float AbsorptivityCloud;
+	public float ReflectivityCloud;
+}
+
+public struct ThermalAbsorptivity {
+	public float AbsorptivityAir;
+	public float AbsorptivityCloud;
+}
+
 #if !SolarRadiationJobDebug
 [BurstCompile]
 #endif
@@ -30,6 +42,8 @@ public struct SolarRadiationJob : IJobParallelFor {
 	}
 }
 
+
+
 #if !SolarRadiationAbsorbedAirJobDebug
 [BurstCompile]
 #endif
@@ -39,83 +53,31 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationReflected;
 	public NativeArray<float> SolarRadiationAbsorbedCloud;
 	public NativeArray<float> SolarRadiationReflectedCloud;
-	[ReadOnly] public float SolarReflectivityAir;
-	[ReadOnly] public float SolarAbsorptivityAir;
-	[ReadOnly] public float SolarAbsorptivityWaterVapor;
-	[ReadOnly] public float SolarAbsorptivityCloud;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> CloudCoverage;
-	[ReadOnly] public NativeArray<float> CloudMass;
-	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float> DewPoint;
-	[ReadOnly] public NativeArray<float> CloudDropletMass;
-	[ReadOnly] public NativeArray<float> WaterSlopeAlbedo;
-	[ReadOnly] public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public int LayerIndex;
-	[ReadOnly] public WorldData worldData;
+	[ReadOnly] public NativeArray<SolarAbsorptivity> AbsorptivitySolar;
 	public void Execute(int i)
 	{
-		float airMass = AirMass[i];
-		float waterVaporMass = VaporMass[i];
 		float incomingRadiation = SolarRadiationIncoming[i];
 
+		float absorbedAir = 0;
+		float reflectedAir = 0;
+		float absorbedCloud = 0;
+		float reflectedCloud = 0;
 
-		float cloudMass = CloudMass[i];
-		float cloudElevation = CloudElevation[i];
-		float layerElevation = LayerElevation[LayerIndex];
-		float layerHeight = LayerHeight[LayerIndex];
-		bool isCloudLayer = cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight;
-		float afterCloud = math.saturate((cloudElevation - layerElevation) / layerHeight);
-		float beforeCloud = 1.0f - afterCloud;
+		reflectedAir += incomingRadiation * AbsorptivitySolar[i].ReflectivityAir;
+		incomingRadiation -= reflectedAir;
+		absorbedAir += incomingRadiation * AbsorptivitySolar[i].AbsorptivityAir;
+		incomingRadiation -= absorbedAir;
 
-		float reflectivity = math.saturate(SolarReflectivityAir * (airMass + waterVaporMass));
-		float absorptivity = SolarAbsorptivityAir * airMass + SolarAbsorptivityWaterVapor * waterVaporMass;
-		float absorbed = 0;
-		float energyReflectedAtmosphere = 0;
-		float absorbedByCloudsIncoming = 0;
-		float energyReflectedClouds = 0;
+		reflectedCloud = incomingRadiation * AbsorptivitySolar[i].ReflectivityCloud;
+		incomingRadiation -= reflectedCloud;
+		absorbedCloud = incomingRadiation * AbsorptivitySolar[i].AbsorptivityCloud;
+		incomingRadiation -= absorbedCloud;
 
-		if (beforeCloud > 0)
-		{
-			energyReflectedAtmosphere += incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(reflectivity * beforeCloud));
-			incomingRadiation -= energyReflectedAtmosphere;
-			absorbed += incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(absorptivity * beforeCloud));
-			incomingRadiation -= absorbed;
-		}
-
-
-		if (isCloudLayer)
-		{
-			float cloudIceContent = math.saturate((DewPoint[i] - worldData.minCloudFreezingTemperature) / (worldData.maxCloudFreezingTemperature - worldData.minCloudFreezingTemperature));
-			float cloudTemperatureAlbedo = WorldData.AlbedoIce + (WorldData.AlbedoWater - WorldData.AlbedoIce) * cloudIceContent;
-			float rainDropSizeAlbedo = math.saturate(1.0f - CloudDropletMass[i] / CloudMass[i]) * (worldData.rainDropSizeAlbedoMax - worldData.rainDropSizeAlbedoMin) + worldData.rainDropSizeAlbedoMin;
-			float cloudAlbedo = math.min(1.0f, worldData.SolarReflectivityCloud * cloudTemperatureAlbedo * CloudMass[i] * rainDropSizeAlbedo / math.max(worldData.maxCloudSlopeAlbedo, 1.0f - WaterSlopeAlbedo[i]));
-
-			energyReflectedClouds = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(cloudAlbedo * cloudMass));
-			incomingRadiation -= energyReflectedClouds;
-			absorbedByCloudsIncoming = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(SolarAbsorptivityCloud * cloudMass));
-			incomingRadiation -= absorbedByCloudsIncoming;
-
-			energyReflectedAtmosphere += energyReflectedClouds;
-			absorbed += absorbedByCloudsIncoming;
-		}
-
-		// below cloud
-		if (afterCloud > 0)
-		{
-			float reflectedBelow = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(reflectivity * afterCloud));
-			incomingRadiation -= reflectedBelow;
-			energyReflectedAtmosphere += reflectedBelow;
-			float absorbedBelow = incomingRadiation * math.saturate(1.0f - 1.0f / math.exp10(absorptivity * afterCloud));
-			absorbed += absorbedBelow;
-			incomingRadiation -= absorbedBelow;
-		}
-
-		SolarRadiationAbsorbed[i] = absorbed;
+		SolarRadiationAbsorbed[i] = absorbedAir + absorbedCloud;
 		SolarRadiationIncoming[i] = incomingRadiation;
-		SolarRadiationReflected[i] = energyReflectedAtmosphere;
+		SolarRadiationReflected[i] = reflectedAir + reflectedCloud;
+		SolarRadiationReflectedCloud[i] = reflectedCloud;
+		SolarRadiationAbsorbedCloud[i] = absorbedCloud;
 	}
 }
 

@@ -255,4 +255,16 @@ public static class Atmosphere {
 		return math.pow(mass / waterDensity * ThreeQuarterInversePi, 0.333f);
 	}
 
+	const float DiffusionMax = 0.1f;
+	[BurstCompile]
+	public static float GetDiffusionAmount(float massA, float massB, float diffusionCoefficient, float surfaceAreaA, float surfaceAreaB, float dist)
+	{
+		return math.min(DiffusionMax, massB * diffusionCoefficient * (surfaceAreaA + surfaceAreaB) / (2 * dist * (massA + massB)));
+	}
+	[BurstCompile]
+	public static float GetDiffusionAmount(float massA, float massB, float diffusionCoefficient, float dist)
+	{
+		return math.min(DiffusionMax, massB * diffusionCoefficient / (dist * (massA + massB)));
+	}
+
 }

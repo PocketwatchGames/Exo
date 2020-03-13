@@ -847,16 +847,16 @@ public class WorldView : MonoBehaviour {
 
 		float cloudMass = state.CloudMass[ActiveCellIndex];
 		int upperAtmosphereLayerIndex = Sim.WorldData.AirLayers - 2;
-		s.AppendFormat("RAIN: {0:N3} kg\n", display.Rainfall[ActiveCellIndex]);
-		s.AppendFormat("EVAP: {0:N3} kg\n", display.Evaporation[ActiveCellIndex]);
-		s.AppendFormat("SURFACE TEMP: {0:N3}\n", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("TROPOPAUSE ELE: {0:N0}m\n", dependent.LayerElevation[Sim.WorldData.AirLayers-1][ActiveCellIndex]);
+		s.AppendFormat("RAIN: {0:N3} kg", display.Rainfall[ActiveCellIndex]);
+		s.AppendFormat("\nEVAP: {0:N3} kg", display.Evaporation[ActiveCellIndex]);
+		s.AppendFormat("\nSURFACE TEMP: {0:N3}", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("\nTROPOPAUSE ELE: {0:N0}m", dependent.LayerElevation[Sim.WorldData.AirLayers-1][ActiveCellIndex]);
 
 		if (cloudMass > 0)
 		{
 			float dropletSize = 1000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
 			float3 vel = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex],state.CloudVelocity[ActiveCellIndex]);
-			s.AppendFormat("CLOUD: {0:N3} kg ELE: {1:N0} m R: {2:N3} mm VEL: ({3:N1}, {4:N1}, {5:N1})\n", 
+			s.AppendFormat("\nCLOUD: {0:N3} kg ELE: {1:N0} m R: {2:N3} mm VEL: ({3:N1}, {4:N1}, {5:N1})", 
 				state.CloudMass[ActiveCellIndex],
 				dependent.CloudElevation[ActiveCellIndex],
 				state.CloudDropletMass[ActiveCellIndex],
@@ -864,22 +864,25 @@ public class WorldView : MonoBehaviour {
 		}
 		else
 		{
-			s.AppendFormat("CLOUD: 0 kg\n");
+			s.AppendFormat("\nCLOUD: 0 kg");
 		}
 		s.AppendLine();
 
 		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
 		{
 			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.AirVelocity[i][ActiveCellIndex]);
-			s.AppendFormat("LAYER {0} | TEMP: {1} RH: {2:P1}\n",
+			s.AppendFormat("\nLAYER {0} | TEMP: {1} RH: {2:P1}",
 				i, 
 				GetTemperatureString(state.AirTemperaturePotential[i][ActiveCellIndex], ActiveTemperatureUnits, 1),
 				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
-			s.AppendFormat("ELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N1})\n",
+			s.AppendFormat("\nELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N1})",
 				dependent.LayerElevation[i][ActiveCellIndex],
 				display.Pressure[i][ActiveCellIndex],
 				wind.x, wind.y, wind.z);
-			s.AppendFormat("MASS: {0:N0} kg VAPOR: {1:N0} kg\n", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex]);
+			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex]);
+			s.AppendFormat("\nSOLAR ABSORB: {0:P0} kJ REFLECT: {1:P0} kJ", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAir, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAir);
+			s.AppendFormat("\nCLOUD ABSORB: {0:P0} kJ REFLECT: {1:P0} kJ", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityCloud, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityCloud);
+			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} kJ CLOUD: {1:P0} kJ", display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAir, display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityCloud);
 			s.AppendLine();
 		}
 		return s.ToString();

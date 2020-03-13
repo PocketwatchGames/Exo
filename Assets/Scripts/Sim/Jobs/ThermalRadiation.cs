@@ -167,30 +167,17 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ThermalRadiationIncoming;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> CloudSurfaceArea;
 	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float> CloudMass;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> VaporMass;
-	[ReadOnly] public float AirAbsorptivity;
-	[ReadOnly] public float VaporAbsorptivity;
-	[ReadOnly] public float WaterAbsorptivity;
-	[ReadOnly] public float CarbonAbsorptivity;
-	[ReadOnly] public float CarbonDioxide;
-	[ReadOnly] public int LayerIndex;
+	[ReadOnly] public NativeArray<ThermalAbsorptivity> AbsorptivityThermal;
 	[ReadOnly] public bool FromTop;
 	public void Execute(int i)
 	{
-		WindowRadiationTransmitted[i] += WindowRadiationIncoming[i];
-
-		float absorptivity = AirMass[i] * ((1.0f - CarbonDioxide) * AirAbsorptivity + CarbonDioxide * CarbonAbsorptivity) + VaporMass[i] * VaporAbsorptivity;
-
-		float cloudMass = CloudMass[i];
 		float cloudElevation = CloudElevation[i];
 		float layerElevation = LayerElevation[i];
 		float layerHeight = LayerHeight[i];
 		bool isCloudLayer = cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight;
 		float beforeCloud = math.min(1, (cloudElevation - layerElevation) / layerHeight);
+		float thermalRadiationDelta = ThermalRadiationDelta[i];
 		if (!FromTop)
 		{
 			beforeCloud = 1.0f - beforeCloud;
@@ -199,24 +186,24 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 		float transmitting = ThermalRadiationTransmitted[i];
 
 		float incoming = ThermalRadiationIncoming[i];
-		float absorbedBeforeCloud = incoming * math.saturate(1.0f - 1.0f / math.exp10(absorptivity));
-		float totalAbsorbed = absorbedBeforeCloud;
+		float absorbedBeforeCloud = incoming * AbsorptivityThermal[i].AbsorptivityAir * beforeCloud;
 		incoming -= absorbedBeforeCloud;
-		ThermalRadiationDelta[i] += absorbedBeforeCloud;
+		thermalRadiationDelta += absorbedBeforeCloud;
 
-		if (cloudMass > 0 && isCloudLayer)
-		{
-			float absorbance = math.saturate(1.0f - 1.0f / math.exp10(WaterAbsorptivity * cloudMass));
-			float incomingAbsorbedByCloud = incoming * absorbance;
-			float transmittingAbsorbedByCloud = beforeCloud * transmitting * absorbance;
-			ThermalRadiationDelta[i] += incomingAbsorbedByCloud + transmittingAbsorbedByCloud;
+		float incomingAbsorbedByCloud = incoming * AbsorptivityThermal[i].AbsorptivityCloud;
+		float transmittingAbsorbedByCloud = beforeCloud * transmitting * AbsorptivityThermal[i].AbsorptivityCloud;
+		thermalRadiationDelta += incomingAbsorbedByCloud + transmittingAbsorbedByCloud;
 
-			totalAbsorbed += incomingAbsorbedByCloud;
-			incoming -= incomingAbsorbedByCloud;
-			transmitting -= transmittingAbsorbedByCloud;
-		}
+		incoming -= incomingAbsorbedByCloud;
+		transmitting -= transmittingAbsorbedByCloud;
 
+		float absorbedAfterCloud = incoming * AbsorptivityThermal[i].AbsorptivityAir * (1.0f - beforeCloud);
+		incoming -= absorbedAfterCloud;
+		thermalRadiationDelta += absorbedAfterCloud;
+
+		ThermalRadiationDelta[i] = thermalRadiationDelta;
 		ThermalRadiationTransmitted[i] = transmitting + incoming;
+		WindowRadiationTransmitted[i] += WindowRadiationIncoming[i];
 	}
 }
 

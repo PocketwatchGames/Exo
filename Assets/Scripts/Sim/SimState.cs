@@ -285,6 +285,8 @@ public struct DisplayState {
 	public NativeArray<float>[] ConductionDelta;
 	public NativeArray<float>[] SolarDelta;
 	public NativeArray<float>[] LatentHeatDelta;
+	public NativeArray<SolarAbsorptivity>[] AbsorptionSolar;
+	public NativeArray<ThermalAbsorptivity>[] AbsorptionThermal;
 
 	public void Init(int count, int airLayers, int waterLayers, int totalLayers)
 	{
@@ -298,11 +300,15 @@ public struct DisplayState {
 		Pressure = new NativeArray<float>[airLayers];
 		PressureGradientForce = new NativeArray<float3>[airLayers];
 		EnthalpyAir = new NativeArray<float>[airLayers];
+		AbsorptionSolar = new NativeArray<SolarAbsorptivity>[airLayers];
+		AbsorptionThermal = new NativeArray<ThermalAbsorptivity>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
 			Pressure[i] = new NativeArray<float>(count, Allocator.Persistent);
 			PressureGradientForce[i] = new NativeArray<float3>(count, Allocator.Persistent);
 			EnthalpyAir[i] = new NativeArray<float>(count, Allocator.Persistent);
+			AbsorptionSolar[i] = new NativeArray<SolarAbsorptivity>(count, Allocator.Persistent);
+			AbsorptionThermal[i] = new NativeArray<ThermalAbsorptivity>(count, Allocator.Persistent);
 		}
 
 		Salinity = new NativeArray<float>[waterLayers];
@@ -340,6 +346,8 @@ public struct DisplayState {
 			Pressure[i].Dispose();
 			PressureGradientForce[i].Dispose();
 			EnthalpyAir[i].Dispose();
+			AbsorptionSolar[i].Dispose();
+			AbsorptionThermal[i].Dispose();
 		}
 		for (int i=0;i<Salinity.Length;i++)
 		{
