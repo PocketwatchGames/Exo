@@ -1081,8 +1081,10 @@ public class WorldSim {
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle,SimJob.Schedule(new UpdateTerrainJob()
 			{
 				Terrain = nextState.Terrain,
+				GroundWater = nextState.GroundWater,
 
 				LastTerrain = lastState.Terrain,
+				LastGroundWater = lastState.GroundWater,
 			}));
 
 
@@ -1546,6 +1548,7 @@ public class WorldSim {
 				SortedSet<int> degenIndices = new SortedSet<int>();
 				List<string> degenVarNames = new List<string>();
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 400, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "GroundWater", nextState.GroundWater, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
 				degen |= CheckDegen(_cellCount, degenIndices, "CloudVelocity", nextState.CloudVelocity, degenVarNames);
@@ -1849,6 +1852,7 @@ public class WorldSim {
 		s.AppendFormat("Roughness: {0}\n", state.Terrain[i].Roughness);
 		s.AppendFormat("SoilFertility: {0}\n", state.Terrain[i].SoilFertility);
 		s.AppendFormat("Vegetation: {0}\n", state.Terrain[i].Vegetation);
+		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
 		s.AppendFormat("TerrainTemperature: {0}\n", state.TerrainTemperature[i]);
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
 		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);

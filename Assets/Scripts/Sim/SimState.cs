@@ -14,6 +14,7 @@ public struct SimState {
 	public PlanetState PlanetState;
 	public NativeArray<CellTerrain> Terrain;
 	public NativeArray<float> TerrainTemperature;
+	public NativeArray<float> GroundWater;
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> IceMass;
 	public NativeArray<float> CloudMass;
@@ -32,6 +33,7 @@ public struct SimState {
 	{
 		Terrain = new NativeArray<CellTerrain>(count, Allocator.Persistent);
 		TerrainTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		GroundWater = new NativeArray<float>(count, Allocator.Persistent);
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -65,6 +67,7 @@ public struct SimState {
 	{
 		Terrain.Dispose();
 		TerrainTemperature.Dispose();
+		GroundWater.Dispose();
 		IceTemperature.Dispose();
 		IceMass.Dispose();
 		CloudMass.Dispose();

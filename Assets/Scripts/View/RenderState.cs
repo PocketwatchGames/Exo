@@ -92,6 +92,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> CloudCoverage;
 	[ReadOnly] public NativeArray<float> IceCoverage;
+	[ReadOnly] public NativeArray<float> GroundWater;
 	[ReadOnly] public NativeArray<float> VegetationCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> WaterDepth;
@@ -145,7 +146,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		}
 		else
 		{
-			terrainColor = GetTerrainColor(roughness, Terrain[i].SoilFertility, waterDepth, iceCoverage, vegetationCoverage);
+			terrainColor = GetTerrainColor(roughness, Terrain[i].SoilFertility, waterDepth, iceCoverage, vegetationCoverage, GroundWater[i]);
 			waterColor = GetWaterColor(iceCoverage);
 		}
 		cloudColor = GetCloudColor(math.saturate((CloudDropletMass[i] - CloudDropletSizeMin) * InverseCloudDropletSizeRange), cloudCoverage);
@@ -187,14 +188,19 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		SurfacePosition[i] = surfacePosition;
 	}
 
-	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float vegetationCoverage)
+	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float vegetationCoverage, float groundWater)
 	{
+		float groundWaterDepth = groundWater / WorldData.MassWater;
 		if (iceCoverage > 0.5f)
 		{
 			return new Color32(255, 255, 255, 255);
 		//} else if (waterDepth / roughness > 0.5f)
 		//{
 		//	return new Color32(0, 0, 255, 255);
+		}
+		else if (groundWaterDepth >= soilFertility)
+		{
+			return new Color32(0, 0, 255, 255);
 		}
 		else if (vegetationCoverage > 0.3f)
 		{
@@ -206,14 +212,26 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		}
 		else if (soilFertility > 0.5f)
 		{
+			if (groundWaterDepth > soilFertility * 0.5f)
+			{
+				return new Color32(40, 20, 20, 255);
+			}
 			return new Color32(50, 30, 20, 255);
 		}
 		else if (soilFertility > 0.25f)
 		{
+			if (groundWaterDepth > soilFertility * 0.5f)
+			{
+				return new Color32(70, 60, 30, 255);
+			}
 			return new Color32(80, 70, 30, 255);
 		}
 		else
 		{
+			if (groundWaterDepth > soilFertility * 0.5f)
+			{
+				return new Color32(120, 120, 60, 255);
+			}
 			return new Color32(130, 130, 60, 255);
 		}
 		//var groundColor = Color32.Lerp(new Color32(50, 50, 80, 255), new Color32(100, 60, 20, 255), soilFertility);
