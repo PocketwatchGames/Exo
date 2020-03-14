@@ -79,8 +79,7 @@ public struct ThermalEnergyRadiatedAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> TemperaturePotential;
 	[ReadOnly] public NativeArray<float> Energy;
 	[ReadOnly] public NativeArray<float> Emissivity;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerMiddle;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
@@ -88,7 +87,7 @@ public struct ThermalEnergyRadiatedAirJob : IJobParallelFor {
 		float maxRadiationPercent = 0.01f;
 
 		// radiate half up and half down
-		float transmittedUp = math.min(Energy[i] * maxRadiationPercent, Atmosphere.GetRadiationRate(Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2), Emissivity[i]) * SecondsPerTick);
+		float transmittedUp = math.min(Energy[i] * maxRadiationPercent, Atmosphere.GetRadiationRate(Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerMiddle[i]), Emissivity[i]) * SecondsPerTick);
 		ThermalRadiationDelta[i] = -2 * transmittedUp;
 
 		float windowTransmittedUp = transmittedUp * PercentRadiationInAtmosphericWindow;

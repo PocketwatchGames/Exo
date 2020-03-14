@@ -200,14 +200,12 @@ public static class WorldGen {
 
 		[ReadOnly] public NativeArray<float> AirMass;
 		[ReadOnly] public NativeArray<float> Pressure;
-		[ReadOnly] public NativeArray<float> LayerElevation;
-		[ReadOnly] public NativeArray<float> LayerHeight;
+		[ReadOnly] public NativeArray<float> LayerMiddle;
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 		[ReadOnly] public NativeArray<float> RelativeHumidity;
 		public void Execute(int i)
 		{
-			float layerMiddle = LayerElevation[i] + LayerHeight[i] / 2;
-			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * layerMiddle;
+			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * LayerMiddle[i];
 			float airVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, Pressure[i]) * RelativeHumidity[i];
 			AirVapor[i] = airVapor;
 		}
@@ -396,8 +394,7 @@ public static class WorldGen {
 
 				AirMass = dependent.AirMass[i],
 				Pressure = dependent.AirPressure[i],
-				LayerHeight = dependent.LayerHeight[i],
-				LayerElevation = dependent.LayerElevation[i],
+				LayerMiddle = dependent.LayerMiddle[i],
 				TemperaturePotential = temperaturePotential,
 				RelativeHumidity = RelativeHumidity,
 			}, worldGenJobHandle);

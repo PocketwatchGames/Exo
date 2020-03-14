@@ -47,8 +47,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	public NativeArray<float> Enthalpy;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirPressure;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerMiddle;
 	[ReadOnly] public NativeArray<float> CondensationCloud;
 	[ReadOnly] public NativeArray<float> CondensationGround;
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
@@ -57,7 +56,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
-		DisplayPressure[i] = Atmosphere.GetPressureAtElevation(0, Gravity, AirPressure[i], AirTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
+		DisplayPressure[i] = Atmosphere.GetPressureAtElevation(0, Gravity, AirPressure[i], AirTemperaturePotential[i], LayerMiddle[i]);
 		DisplayPressureGradientForce[i] = PressureGradientForce[i];
 		DisplayCondensationGround[i] += CondensationCloud[i];
 		DisplayCondensationCloud[i] += CondensationGround[i];

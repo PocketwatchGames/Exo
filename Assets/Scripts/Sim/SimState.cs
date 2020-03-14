@@ -130,6 +130,7 @@ public struct DependentState {
 	public NativeArray<float>[] AirPotentialEnergy;
 	public NativeArray<float>[] LayerHeight;
 	public NativeArray<float>[] LayerElevation;
+	public NativeArray<float>[] LayerMiddle;
 	public NativeArray<float> CloudElevation;
 	public NativeArray<float> DewPoint;
 	public NativeArray<float> AirDensityCloud;
@@ -156,6 +157,7 @@ public struct DependentState {
 		AirHumidityRelative = new NativeArray<float>[airLayers];
 		LayerHeight = new NativeArray<float>[airLayers];
 		LayerElevation = new NativeArray<float>[airLayers];
+		LayerMiddle = new NativeArray<float>[airLayers];
 		AirPotentialEnergy = new NativeArray<float>[airLayers];
 		DeflectedAirVelocity = new NativeArray<float3>[waterLayers];
 		WaterDensity = new NativeArray<float>[waterLayers];
@@ -173,6 +175,7 @@ public struct DependentState {
 			AirHumidityRelative[i] = new NativeArray<float>(count, Allocator.Persistent);
 			LayerHeight[i] = new NativeArray<float>(count, Allocator.Persistent);
 			LayerElevation[i] = new NativeArray<float>(count, Allocator.Persistent);
+			LayerMiddle[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirPotentialEnergy[i] = new NativeArray<float>(count, Allocator.Persistent);
 			DeflectedAirVelocity[i] = new NativeArray<float3>(count, Allocator.Persistent);
 		}
@@ -209,6 +212,7 @@ public struct DependentState {
 			AirHumidityAbsolute[i].Dispose();
 			LayerHeight[i].Dispose();
 			LayerElevation[i].Dispose();
+			LayerMiddle[i].Dispose();
 			AirPotentialEnergy[i].Dispose();
 			DeflectedAirVelocity[i].Dispose();
 		}

@@ -1954,7 +1954,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Seed: 11
   Subdivisions: 5
-  CheckForDegeneracy: 1
+  CheckForDegeneracy: 0
+  CollectGlobals: 1
   LogState: 0
   LogStateIndex: 0
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
@@ -1972,9 +1973,8 @@ MonoBehaviour:
     SolarAbsorptivityAir: 0
     SolarAbsorptivityWaterVapor: 0
     SolarAbsorptivityCloud: 0
-    SolarReflectivityAir: 0
-    SolarReflectivityWater: 0
-    SolarReflectivityCloud: 0
+    AlbedoAir: 0
+    AlbedoCloud: 0
     AlbedoReductionSoilQuality: 0.15
     minCloudFreezingTemperature: 0
     maxCloudFreezingTemperature: 0
@@ -2025,129 +2025,6 @@ MonoBehaviour:
     MinTemperatureVegetation: 0
     MaxTemperatureVegetation: 0
   TimeScale: 0
-  _worldSim:
-    SolarRadiationInJob:
-      Enabled: 0
-    UpdateTerrainJob:
-      Enabled: 0
-    SolarAbsorptivityAirJob:
-      Enabled: 0
-    EmissivityAirJob:
-      Enabled: 0
-    EmissivityWaterJob:
-      Enabled: 0
-    EmissivityTerrainJob:
-      Enabled: 0
-    SolarRadiationAbsorbedAirJob:
-      Enabled: 0
-    SolarRadiationAbsorbedIceJob:
-      Enabled: 0
-    SolarRadiationAbsorbedWaterJob:
-      Enabled: 0
-    SolarRadiationAbsorbedTerrainJob:
-      Enabled: 0
-    ThermalOutCloudJob:
-      Enabled: 0
-    ThermalOutAirJob:
-      Enabled: 0
-    ThermalOutIceJob:
-      Enabled: 0
-    ThermalOutWaterJob:
-      Enabled: 0
-    ThermalOutTerrainJob:
-      Enabled: 0
-    ThermalInUpAirJob:
-      Enabled: 0
-    ThermalInUpIceJob:
-      Enabled: 0
-    ThermalInUpWaterJob:
-      Enabled: 0
-    ThermalInDownAirJob:
-      Enabled: 0
-    ThermalInDownIceJob:
-      Enabled: 0
-    ThermalInDownWaterJob:
-      Enabled: 0
-    ThermalInDownTerrainJob:
-      Enabled: 0
-    AccelerationAirJob:
-      Enabled: 0
-    UpdateCloudVelocityJob:
-      Enabled: 0
-    WaterDepthJob:
-      Enabled: 0
-    AccelerationWaterJob:
-      Enabled: 0
-    AirTerrainFrictionJob:
-      Enabled: 0
-    WaterFrictionJob:
-      Enabled: 0
-    ConductionAirIceJob:
-      Enabled: 0
-    ConductionAirWaterJob:
-      Enabled: 0
-    ConductionAirTerrainJob:
-      Enabled: 0
-    ConductionIceWaterJob:
-      Enabled: 0
-    ConductionIceTerrainJob:
-      Enabled: 0
-    ConductionWaterTerrainJob:
-      Enabled: 0
-    EnergyTerrainJob:
-      Enabled: 0
-    FluxCloudJob:
-      Enabled: 0
-    FluxAirJob:
-      Enabled: 0
-    FluxWaterJob:
-      Enabled: 0
-    FluxIceJob:
-      Enabled: 0
-    EnergyIceJob:
-      Enabled: 0
-    EnergyWaterJob:
-      Enabled: 0
-    EnergyAirJob:
-      Enabled: 0
-    UpdateMassWaterJob:
-      Enabled: 0
-    UpdateMassWaterSurfaceJob:
-      Enabled: 0
-    UpdateMassAirJob:
-      Enabled: 0
-    UpdateMassEvaporationJob:
-      Enabled: 0
-    UpdateMassCondensationJob:
-      Enabled: 0
-    UpdateMassIceJob:
-      Enabled: 0
-    UpdateMassCloudJob:
-      Enabled: 0
-    ApplyLatentHeatJob:
-      Enabled: 0
-    DiffusionAirJob:
-      Enabled: 0
-    DiffusionWaterJob:
-      Enabled: 0
-    DiffusionCloudJob:
-      Enabled: 0
-    AdvectionAirJob:
-      Enabled: 0
-    AdvectionWaterJob:
-      Enabled: 0
-    AdvectionCloudJob:
-      Enabled: 0
-    ApplyAdvectionAirJob:
-      Enabled: 0
-    ApplyAdvectionWaterJob:
-      Enabled: 0
-    ApplyAdvectionCloudJob:
-      Enabled: 0
-    UpdateDependentJob:
-      Enabled: 0
-    GetVectorDestCoordsJob:
-      Enabled: 0
 --- !u!4 &365555217
 Transform:
   m_ObjectHideFlags: 0

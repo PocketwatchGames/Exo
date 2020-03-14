@@ -39,9 +39,9 @@ public static class Atmosphere {
 
 
 	[BurstCompile]
-	static public float GetElevationAtPressure(float pressure, float temperaturePotential, float referencePressure, float referenceElevation, float gravity)
+	static public float GetElevationAtPressure(float pressure, float temperaturePotential, float referencePressure, float referenceElevation, float inverseGravity)
 	{
-		float elevation = referenceElevation + (temperaturePotential / WorldData.TemperatureLapseRate + referenceElevation) * (math.pow(pressure / referencePressure, -1.0f / (gravity * WorldData.PressureExponent * WorldData.MolarMassAir)) - 1);
+		float elevation = referenceElevation + (temperaturePotential * WorldData.TemperatureLapseRateInverse + referenceElevation) * (math.pow(pressure / referencePressure, -inverseGravity * WorldData.UniversalGasConstant * WorldData.TemperatureLapseRate * WorldData.MolarMassAirInverse) - 1);
 		return elevation;
 	}
 
@@ -157,7 +157,7 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetElevationAtDewPoint(float dewPoint, float potentialTemperature)
 	{
-		return (dewPoint - potentialTemperature) / WorldData.TemperatureLapseRate;
+		return (dewPoint - potentialTemperature) * WorldData.TemperatureLapseRateInverse;
 	}
 
 	[BurstCompile]
@@ -257,9 +257,9 @@ public static class Atmosphere {
 
 	const float DiffusionMax = 0.1f;
 	[BurstCompile]
-	public static float GetDiffusionAmount(float massA, float massB, float diffusionCoefficient, float surfaceAreaA, float surfaceAreaB, float dist)
+	public static float GetDiffusionAmount(float massA, float massB, float diffusionCoefficient, float surfaceAreaA, float surfaceAreaB, float distInverse)
 	{
-		return math.min(DiffusionMax, massB * diffusionCoefficient * (surfaceAreaA + surfaceAreaB) / (2 * dist * (massA + massB)));
+		return math.min(DiffusionMax, massB * diffusionCoefficient * (surfaceAreaA + surfaceAreaB) * distInverse / (2 * (massA + massB)));
 	}
 	[BurstCompile]
 	public static float GetDiffusionAmount(float massA, float massB, float diffusionCoefficient, float dist)

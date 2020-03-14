@@ -11,6 +11,7 @@ public class WorldSimComponent : MonoBehaviour
 	public int Seed;
 	public int Subdivisions = 5;
 	public bool CheckForDegeneracy;
+	public bool CollectGlobals = false;
 	public bool LogState;
 	public int LogStateIndex;
 	public TextAsset WorldGenAsset;
@@ -82,8 +83,7 @@ public class WorldSimComponent : MonoBehaviour
 				Gravity = ActiveSimState.PlanetState.Gravity,
 				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],
 				AirPressure = DependentState.AirPressure[i],
-				LayerElevation = DependentState.LayerElevation[i],
-				LayerHeight = DependentState.LayerHeight[i],
+				LayerMiddle = DependentState.LayerMiddle[i],
 				PressureGradientForce = ActiveSimState.AirVelocity[i], // TODO: using wind as placeholder, this is broken
 				CondensationCloud = ActiveSimState.CloudMass, // TODO: using wind as placeholder, this is broken
 				CondensationGround = ActiveSimState.CloudDropletMass, // TODO: using wind as placeholder, this is broken
@@ -130,7 +130,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
-		_worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref _displayState, ref StaticState, ref WorldData, ref _activeSimState, CheckForDegeneracy, LogState, LogStateIndex);
+		_worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref _displayState, ref StaticState, ref WorldData, ref _activeSimState, CheckForDegeneracy, LogState, LogStateIndex, CollectGlobals);
 
 		OnTick?.Invoke();
 	}

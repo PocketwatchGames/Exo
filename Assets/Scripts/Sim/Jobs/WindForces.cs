@@ -47,23 +47,21 @@ public struct AccelerationAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> TemperaturePotential;
 	[ReadOnly] public NativeArray<float> Pressure;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerMiddle;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> NeighborDir;
-	[ReadOnly] public NativeArray<float> NeighborDist;
+	[ReadOnly] public NativeArray<float> NeighborDistInverse;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float> UpTemperaturePotential;
 	[ReadOnly] public NativeArray<float> UpHumidity;
 	[ReadOnly] public NativeArray<float> UpAirMass;
-	[ReadOnly] public NativeArray<float> UpLayerElevation;
-	[ReadOnly] public NativeArray<float> UpLayerHeight;
+	[ReadOnly] public NativeArray<float> UpLayerMiddle;
 	[ReadOnly] public NativeArray<float> DownTemperaturePotential;
 	[ReadOnly] public NativeArray<float> DownHumidity;
 	[ReadOnly] public NativeArray<float> DownAirMass;
-	[ReadOnly] public NativeArray<float> DownLayerElevation;
-	[ReadOnly] public NativeArray<float> DownLayerHeight;
+	[ReadOnly] public NativeArray<float> DownLayerMiddle;
 	[ReadOnly] public float PlanetRadius;
+	[ReadOnly] public float GravityInverse;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
@@ -73,7 +71,6 @@ public struct AccelerationAirJob : IJobParallelFor {
 	{
 		float3 gradientPressure = 0;
 		float3 position = Positions[i];
-		float elevation = LayerElevation[i] + LayerHeight[i] / 2;
 		float pressure = Pressure[i];
 		float3 force = 0;
 		int neighborCount = 0;
@@ -83,12 +80,12 @@ public struct AccelerationAirJob : IJobParallelFor {
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
-				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, TemperaturePotential[n], Pressure[n], LayerElevation[n] + LayerHeight[n] / 2, Gravity);
-				gradientPressure += NeighborDir[neighborIndex] / NeighborDist[neighborIndex] * (neighborElevationAtPressure - elevation);
+				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, TemperaturePotential[n], Pressure[n], LayerMiddle[n], GravityInverse);
+				gradientPressure += NeighborDir[neighborIndex] * NeighborDistInverse[neighborIndex] * (neighborElevationAtPressure - LayerMiddle[i]);
 				neighborCount++;
 			}
 		}
-		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], elevation), AirMass[i], VaporMass[i]);
+		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerMiddle[i]), AirMass[i], VaporMass[i]);
 		force = gradientPressure * Gravity * inverseDensity / neighborCount;
 
 
@@ -154,7 +151,7 @@ public struct AccelerationWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Friction;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> NeighborDir;
-	[ReadOnly] public NativeArray<float> NeighborDist;
+	[ReadOnly] public NativeArray<float> NeighborDistInverse;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float> WaterDensity;
 	[ReadOnly] public NativeArray<float> WaterPressure;
@@ -189,7 +186,7 @@ public struct AccelerationWaterJob : IJobParallelFor {
 				if (n >= 0 && WaterDensity[n] > 0)
 				{
 					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
-					pressureGradient += NeighborDir[neighborIndex] / NeighborDist[neighborIndex] * ((SurfaceElevation[n] - neighborDepthAtPressure) - midDepthElevation);
+					pressureGradient += NeighborDir[neighborIndex] * NeighborDistInverse[neighborIndex] * ((SurfaceElevation[n] - neighborDepthAtPressure) - midDepthElevation);
 				}
 			}
 

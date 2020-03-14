@@ -114,11 +114,13 @@ public struct WorldData {
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;
+	public const float TemperatureLapseRateInverse = 1.0f / TemperatureLapseRate;
 	public const float AdiabaticLapseRate = 0.0098f;
 	public const float StandardPressure = 101325;
 	public const float StandardTemperature = 288.15f;
 	public const float MolarMassAir = 0.0289647f;
 	public const float MolarMassWater = 0.01802f;
+	public const float MolarMassAirInverse = 1.0f / MolarMassAir;
 	public const float UniversalGasConstant = 8.3144598f;
 	public const float FreezingTemperature = 273.15f;
 	public const float StefanBoltzmannConstant = 0.00000005670373f;

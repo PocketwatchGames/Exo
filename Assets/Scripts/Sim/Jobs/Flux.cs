@@ -33,7 +33,7 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirVapor;
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerMiddle;
 	[ReadOnly] public NativeArray<float3> SurfaceWind;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
@@ -56,7 +56,7 @@ public struct FluxWaterJob : IJobParallelFor {
 		if (waterMass > 0)
 		{
 
-			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
+			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerMiddle[i]);
 
 			#if !DISABLE_EVAPORATION
 			// evap formula from here:
@@ -122,7 +122,7 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
 	[ReadOnly] public NativeArray<float> SurfaceAirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
-	[ReadOnly] public NativeArray<float> SurfaceLayerHeight;
+	[ReadOnly] public NativeArray<float> SurfaceLayerMiddle;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public float RainDropMinSize;
@@ -199,7 +199,7 @@ public struct FluxCloudJob : IJobParallelFor {
 
 		if (precipitationMass > 0)
 		{
-			PrecipitationTemperature[i] = Atmosphere.GetAbsoluteTemperature(SurfaceAirTemperaturePotential[i], SurfaceLayerElevation[i] + SurfaceLayerHeight[i] / 2);
+			PrecipitationTemperature[i] = Atmosphere.GetAbsoluteTemperature(SurfaceAirTemperaturePotential[i], SurfaceLayerMiddle[i]);
 		}
 		PrecipitationMass[i] = precipitationMass;
 		DropletDelta[i] = dropletMass - LastDropletMass[i];
@@ -222,6 +222,7 @@ public struct FluxAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerMiddle;
 	public void Execute(int i)
 	{
 		float condensationGroundMass = 0;
@@ -229,7 +230,7 @@ public struct FluxAirJob : IJobParallelFor {
 		float energyFlux = 0;
 
 #if !DISABLE_CONDENSATION
-		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
+		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerMiddle[i]);
 		var relativeHumidity = Atmosphere.GetRelativeHumidity(AirMass[i], LastVapor[i], temperatureAbsolute, AirPressure[i]);
 		if (relativeHumidity > 1.0f)
 		{
@@ -259,7 +260,6 @@ public struct FluxIceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public float IceHeatingDepth;

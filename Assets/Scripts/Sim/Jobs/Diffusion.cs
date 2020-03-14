@@ -20,7 +20,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> UpTemperature;
 	[ReadOnly] public NativeArray<float> UpVapor;
@@ -34,7 +33,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> DownAirVelocity;
 	[ReadOnly] public NativeArray<float> DownLayerElevation;
 	[ReadOnly] public NativeArray<float> DownLayerHeight;
-	[ReadOnly] public NativeArray<float> NeighborDist;
+	[ReadOnly] public NativeArray<float> NeighborDistInverse;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
 	[ReadOnly] public float DiffusionCoefficientHoriztonal;
@@ -59,7 +58,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 				float3 nVelocity = LastVelocity[n];
 
 				float neighborMass = AirMass[n];
-				float diffusionAmount = Atmosphere.GetDiffusionAmount(airMass, neighborMass, DiffusionCoefficientHoriztonal, layerHeight, LayerHeight[n], NeighborDist[neighborIndex]);
+				float diffusionAmount = Atmosphere.GetDiffusionAmount(airMass, neighborMass, DiffusionCoefficientHoriztonal, layerHeight, LayerHeight[n], NeighborDistInverse[neighborIndex]);
 				float neighborHumidity = LastVapor[n] / neighborMass;
 				newHumidity += (neighborHumidity - absoluteHumidity) * diffusionAmount;
 				newVelocity += (nVelocity - LastVelocity[i]) * diffusionAmount;
@@ -189,7 +188,7 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> DownCurrent;
 	[ReadOnly] public NativeArray<float> DownLayerHeight;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<float> NeighborDist;
+	[ReadOnly] public NativeArray<float> NeighborDistInverse;
 	[ReadOnly] public float DiffusionCoefficientHoriztonal;
 	[ReadOnly] public float DiffusionCoefficientVertical;
 	public void Execute(int i)
@@ -213,7 +212,7 @@ public struct DiffusionWaterJob : IJobParallelFor {
 					float nMass = LastMass[n];
 					if (nMass > 0)
 					{
-						float diffusionAmount = Atmosphere.GetDiffusionAmount(waterMass, nMass, DiffusionCoefficientHoriztonal, layerHeight, LayerHeight[n], NeighborDist[nIndex]);
+						float diffusionAmount = Atmosphere.GetDiffusionAmount(waterMass, nMass, DiffusionCoefficientHoriztonal, layerHeight, LayerHeight[n], NeighborDistInverse[nIndex]);
 						float neighborSalinity = LastSalt[n] / nMass;
 
 						newSaltMass += (neighborSalinity - salinity) * waterMass * diffusionAmount;

@@ -80,8 +80,7 @@ public struct UpdateMassCondensationGroundJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> GroundCondensation;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerMiddle;
 	public void Execute(int i)
 	{
 		float waterMass = SurfaceWaterMass[i];
@@ -92,7 +91,7 @@ public struct UpdateMassCondensationGroundJob : IJobParallelFor {
 		}
 		else
 		{
-			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i] + LayerHeight[i] / 2);
+			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerMiddle[i]);
 			SurfaceWaterTemperature[i] = 
 				((waterMass * WorldData.SpecificHeatWater + SurfaceSaltMass[i] * WorldData.SpecificHeatSalt) * SurfaceWaterTemperature[i] 
 				+ GroundCondensation[i] * WorldData.SpecificHeatWater * airTemperatureAbsolute) 
@@ -174,13 +173,10 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Evaporation;
 	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
  	public void Execute(int i)
 	{
 		float vaporMass = VaporMass[i];
 		float airMass = AirMass[i];
-		float elevation = LayerElevation[i] + LayerHeight[i] / 2;
 
 		AirTemperaturePotential[i] =
 			((airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * AirTemperaturePotential[i] +
