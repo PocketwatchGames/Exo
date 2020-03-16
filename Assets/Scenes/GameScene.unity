@@ -1964,10 +1964,6 @@ MonoBehaviour:
     SecondsPerTick: 0
     AirLayers: 0
     WaterLayers: 0
-    FullCoverageIce: 0
-    FullCoverageWater: 0
-    FullCoverageVegetation: 0
-    FullCoverageCloud: 0
     TropopauseElevation: 0
     BoundaryZoneElevation: 0
     SolarAbsorptivityAir: 0
@@ -1984,16 +1980,15 @@ MonoBehaviour:
     EnergyLostThroughAtmosphereWindow: 0.1007
     ThermalAbsorptivityAir: 0
     ThermalAbsorptivityCloud: 0
-    EmissivityWater: 0
-    EmissivitySalt: 0
-    EmissivityIce: 0
-    EmissivityAir: 0
-    EmissivityCarbonDioxide: 0
-    EmissivityWaterVapor: 0
-    EmissivityDirt: 0
-    EmissivitySand: 0
-    EmissivityVegetation: 0
-    SoilHeatDepth: 2
+    ThermalEmissivityWater: 0
+    ThermalEmissivitySalt: 0
+    ThermalEmissivityIce: 0
+    ThermalEmissivityAir: 0
+    ThermalEmissivityCarbonDioxide: 0
+    ThermalEmissivityWaterVapor: 0
+    ThermalEmissivityDirt: 0
+    ThermalEmissivitySand: 0
+    ThermalEmissivityVegetation: 0
     WaterHeatingDepth: 0
     IceHeatingDepth: 0
     FreezePointReductionPerSalinity: 0
@@ -2018,10 +2013,15 @@ MonoBehaviour:
     WaterDensityPerSalinity: 0
     WaterDensityPerDegree: 0
     WaterDensityCurrentSpeed: 0
-    MaxSoilPorousness: 0.1
-    GroundWaterReplenishmentSpeed: 10
+    SoilHeatDepth: 2
     GroundWaterFlowSpeed: 0.5
-    maxGroundWaterTemperature: 283
+    GroundWaterMax: 0
+    GroundWaterAbsorptionRate: 0
+    GroundWaterDiffusionCoefficient: 0
+    FullCoverageIce: 0
+    FullCoverageWater: 0
+    FullCoverageVegetation: 0
+    FullCoverageCloud: 0
     MinTemperatureVegetation: 0
     MaxTemperatureVegetation: 0
   TimeScale: 0

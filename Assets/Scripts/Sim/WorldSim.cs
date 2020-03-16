@@ -13,6 +13,7 @@ using UnityEngine;
 public class WorldSim {
 
 	public JobHelper SimJob;
+	public JobHelper NeighborJob;
 
 
 	private int _cellCount;
@@ -46,6 +47,7 @@ public class WorldSim {
 	private NativeArray<BarycentricValue>[] destinationAir;
 	private NativeArray<BarycentricValue>[] destinationWater;
 	private NativeArray<float3>[] airAcceleration;
+	private NativeArray<float> terrainGradient;
 	private NativeArray<float> windFriction;
 	private NativeArray<float3> waterFriction;
 	private NativeArray<float> conductionSurfaceAirIce;
@@ -63,6 +65,8 @@ public class WorldSim {
 	private NativeArray<float> evaporationMass;
 	private NativeArray<float> evaporationTemperaturePotential;
 	private NativeArray<float> geothermalRadiation;
+	private NativeArray<float> groundWaterFlowMass;
+	private NativeArray<float> groundWaterFlowTemperature;
 
 	private NativeArray<float> displaySolarRadiation;
 
@@ -80,6 +84,7 @@ public class WorldSim {
 		_cloudLayer = _airLayer0 + _airLayers;
 
 		SimJob = new JobHelper(_cellCount);
+		NeighborJob = new JobHelper(_cellCount * 6);
 
 		solarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterSlopeAlbedo = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -137,10 +142,13 @@ public class WorldSim {
 		conductionIceTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		displaySolarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		geothermalRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		terrainGradient = new NativeArray<float>(_cellCount * 6, Allocator.Persistent);
+		groundWaterFlowMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		groundWaterFlowTemperature = new NativeArray<float>(_cellCount, Allocator.Persistent);
 
-	}
+}
 
-	public void Dispose()
+public void Dispose()
 	{
 		solarRadiation.Dispose();
 		waterSlopeAlbedo.Dispose();
@@ -185,6 +193,10 @@ public class WorldSim {
 		conductionIceWater.Dispose();
 		conductionIceTerrain.Dispose();
 		geothermalRadiation.Dispose();
+		terrainGradient.Dispose();
+		groundWaterFlowMass.Dispose();
+		groundWaterFlowTemperature.Dispose();
+
 
 
 		displaySolarRadiation.Dispose();
@@ -284,9 +296,9 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					CarbonDioxide = lastState.PlanetState.CarbonDioxide,
-					EmissivityAir = worldData.EmissivityAir,
-					EmissivityWaterVapor = worldData.EmissivityWaterVapor,
-					EmissivityCarbonDioxide = worldData.EmissivityCarbonDioxide
+					EmissivityAir = worldData.ThermalEmissivityAir,
+					EmissivityWaterVapor = worldData.ThermalEmissivityWaterVapor,
+					EmissivityCarbonDioxide = worldData.ThermalEmissivityCarbonDioxide
 				});
 			}
 
@@ -298,8 +310,8 @@ public class WorldSim {
 					Emissivity = emissivity[_waterLayer0 + _surfaceWaterLayer],
 					WaterMass = lastState.WaterMass[_surfaceWaterLayer],
 					SaltMass = lastState.SaltMass[_surfaceWaterLayer],
-					EmissivitySalt = worldData.EmissivitySalt,
-					EmissivityWater = worldData.EmissivityWater
+					EmissivitySalt = worldData.ThermalEmissivitySalt,
+					EmissivityWater = worldData.ThermalEmissivityWater
 				});
 			}
 			emissivityJobHandles[_terrainLayer] =SimJob.Schedule(new EmissivityTerrainJob()
@@ -307,9 +319,9 @@ public class WorldSim {
 				Emissivity = emissivity[_terrainLayer],
 				Terrain = lastState.Terrain,
 				VegetationCoverage = dependent.VegetationCoverage,
-				EmissivityDirt = worldData.EmissivityDirt,
-				EmissivitySand = worldData.EmissivitySand,
-				EmissivityVegetation = worldData.EmissivityVegetation
+				EmissivityDirt = worldData.ThermalEmissivityDirt,
+				EmissivitySand = worldData.ThermalEmissivitySand,
+				EmissivityVegetation = worldData.ThermalEmissivityVegetation
 			});
 
 			#endregion
@@ -328,7 +340,7 @@ public class WorldSim {
 				WindowRadiationTransmittedDown = windowRadiationTransmittedDown[_iceLayer],
 
 				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
-				Emissivity = worldData.EmissivityIce,
+				Emissivity = worldData.ThermalEmissivityIce,
 				Energy = dependent.IceEnergy,
 				Temperature = lastState.IceTemperature,
 				SurfaceArea = dependent.IceCoverage,
@@ -434,7 +446,7 @@ public class WorldSim {
 					SolarAbsorptivityWaterVapor = worldData.SolarAbsorptivityWaterVapor,
 					ThermalAbsorptivityAir = worldData.ThermalAbsorptivityAir,
 					ThermalAbsorptivityCloud = worldData.ThermalAbsorptivityCloud,
-					EmissivityCloud = worldData.EmissivityWater,
+					EmissivityCloud = worldData.ThermalEmissivityWater,
 				}, JobHandle.CombineDependencies(cloudAlbedoJobHandle, emissivityJobHandles[_airLayer0 + j]));
 			}
 
@@ -1126,7 +1138,63 @@ public class WorldSim {
 			latentHeatJobHandle.Complete();
 			#endregion
 
+			#region Ground Water Flux
 
+			var terrainGradientJob = NeighborJob.Run(new TerrainGradientJob()
+			{
+				Gradient = terrainGradient,
+
+				Terrain = lastState.Terrain,
+				Neighbors = staticState.Neighbors,
+				NeighborDistInverse = staticState.NeighborDistInverse
+			});
+
+			var groundWaterDiffusionJob = SimJob.Schedule(new GroundWaterDiffusionJob()
+			{
+				GroundWater = nextState.GroundWater,
+				GroundWaterTemperature = nextState.GroundWaterTemperature,
+		 
+				LastGroundWater = lastState.GroundWater,
+				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				Neighbors = staticState.Neighbors,
+				DiffusionCoefficient = worldData.GroundWaterDiffusionCoefficient
+			});
+
+			var groundWaterFlowJob = SimJob.Run(new GroundWaterFlowJob()
+			{
+				GroundWater = groundWaterFlowMass,
+				GroundWaterTemperature = groundWaterFlowTemperature,
+
+				LastGroundWater = nextState.GroundWater,
+				LastGroundWaterTemperature = nextState.GroundWaterTemperature,
+				TerrainGradient = terrainGradient,
+				Neighbors = staticState.Neighbors,
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				FlowSpeed = worldData.GroundWaterFlowSpeed,
+				GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
+			}, JobHandle.CombineDependencies(terrainGradientJob, groundWaterDiffusionJob));
+
+
+			var groundWaterAbsorptionJob = default(JobHandle);
+			for (int i = 1; i < _waterLayers - 1; i++) {
+				groundWaterAbsorptionJob = SimJob.Schedule(new GroundWaterAbsorptionJob()
+				{
+					GroundWater = nextState.GroundWater,
+					GroundWaterTemperature = nextState.GroundWaterTemperature,
+
+					LastGroundWater = groundWaterFlowMass,
+					LastGroundWaterTemperature = groundWaterFlowTemperature,
+					WaterMass = nextState.WaterMass[i],
+					WaterTemperature = nextState.WaterTemperature[i],
+					WaterBelow = nextState.WaterMass[i - 1],
+					GroundWaterAbsorptionRate = worldData.GroundWaterAbsorptionRate * worldData.SecondsPerTick,
+					GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
+				}, JobHandle.CombineDependencies(groundWaterFlowJob, groundWaterAbsorptionJob));
+			}
+			groundWaterAbsorptionJob.Complete();
+
+			#endregion
 
 			// Buoyancy, Updrafts, and mixing occur across air layers and water layers
 			// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 

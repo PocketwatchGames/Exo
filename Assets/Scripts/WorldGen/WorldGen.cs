@@ -42,6 +42,7 @@ public static class WorldGen {
 		public NativeArray<float> potentialTemperature;
 		public NativeArray<float> CloudMass;
 		public NativeArray<float> GroundWater;
+		public NativeArray<float> GroundWaterTemperature;
 		public NativeArray<CellTerrain> Terrain;
 		public NativeArray<float> LayerElevationBase;
 
@@ -56,6 +57,7 @@ public static class WorldGen {
 		[ReadOnly] public float FullCoverageVegetation;
 		[ReadOnly] public float MinTemperatureCanopy;
 		[ReadOnly] public float MaxTemperatureCanopy;
+		[ReadOnly] public float MaxGroundWater;
 
 		public void Run(int count)
 		{
@@ -110,10 +112,16 @@ public static class WorldGen {
 			}
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 2.0f);
 
-			GroundWater[i] = soilFertility * WorldData.MassWater *
-				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 1560, -5, 5) +
-				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.2f, 4381, -10, 10) +
-				GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 692, -10, 10);
+			float groundWater = MaxGroundWater;
+			if (elevation > 0)
+			{
+				groundWater *= 
+					0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 1560) +
+					0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.2f, 4381) +
+					0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 692);
+			}
+			GroundWater[i] = groundWater;
+			GroundWaterTemperature[i] = (airTemperatureSurface + WorldData.FreezingTemperature) / 2;
 
 			LayerElevationBase[i] = surfaceElevation;
 			Terrain[i] = new CellTerrain()
@@ -297,6 +305,7 @@ public static class WorldGen {
 			relativeHumidity = RelativeHumidity,
 			LayerElevationBase = dependent.LayerHeight[0],
 			GroundWater = state.GroundWater,
+			GroundWaterTemperature = state.GroundWaterTemperature,
 
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
@@ -309,6 +318,7 @@ public static class WorldGen {
 			MaxRoughness =worldGenData.MaxRoughness,
 			MinTemperature = worldGenData.MinTemperature,
 			MaxTemperature = worldGenData.MaxTemperature,
+			MaxGroundWater = worldData.GroundWaterMax
 		};
 		worldGenInitJob.Run(staticState.Count);
 

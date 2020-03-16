@@ -10,10 +10,6 @@ public struct WorldData {
 	public float SecondsPerTick;
 	public int AirLayers;
 	public int WaterLayers;
-	public float FullCoverageIce;
-	public float FullCoverageWater;
-	public float FullCoverageVegetation;
-	public float FullCoverageCloud; // how much heat gain/loss is caused by cloud cover (cumulus cloud is 0.3g/cubic meter, and about 3 kilometers high)
 	public float TropopauseElevation;
 	public float BoundaryZoneElevation;
 
@@ -51,21 +47,20 @@ public struct WorldData {
 
 	// emissivity values obtained here: https://www.thermoworks.com/emissivity-table
 	// and here https://www.aspen-electronics.com/uploads/3/7/1/2/37123419/emissivity-table.pdf
-	public float EmissivityWater;
-	public float EmissivitySalt;
-	public float EmissivityIce;
-	public float EmissivityAir;
-	public float EmissivityCarbonDioxide;
-	public float EmissivityWaterVapor;
-	public float EmissivityDirt;
-	public float EmissivitySand;
-	public float EmissivityVegetation;
+	public float ThermalEmissivityWater;
+	public float ThermalEmissivitySalt;
+	public float ThermalEmissivityIce;
+	public float ThermalEmissivityAir;
+	public float ThermalEmissivityCarbonDioxide;
+	public float ThermalEmissivityWaterVapor;
+	public float ThermalEmissivityDirt;
+	public float ThermalEmissivitySand;
+	public float ThermalEmissivityVegetation;
 
 	// TODO: should we parameterize the micro-conduction that allows for water to heat the air faster than it can cool it?
 	//public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
 
 	[Header("Evaporation")] // evaporation on earth maxes out around 2.5M per year
-	public float SoilHeatDepth;
 	public float WaterHeatingDepth;
 
 	[Header("Ice")]
@@ -101,12 +96,16 @@ public struct WorldData {
 	public float WaterDensityPerDegree;
 	public float WaterDensityCurrentSpeed;
 
-	[Header("Ground Water")]
-	public float MaxSoilPorousness;
-	public float GroundWaterReplenishmentSpeed;
+	[Header("Terrain and Ground Water")]
+	public float SoilHeatDepth;
 	public float GroundWaterFlowSpeed;
-	public float maxGroundWaterTemperature;
-
+	public float GroundWaterMax;
+	public float GroundWaterAbsorptionRate;
+	public float GroundWaterDiffusionCoefficient;
+	public float FullCoverageIce;
+	public float FullCoverageWater;
+	public float FullCoverageVegetation;
+	public float FullCoverageCloud; // TODO: this is only used for rendering these days, remove from here and put it in worldview (and remove from dependents)
 
 	[Header("Vegetation")]
 	public float MinTemperatureVegetation;

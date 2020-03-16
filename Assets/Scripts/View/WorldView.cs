@@ -14,8 +14,14 @@ public class WorldView : MonoBehaviour {
 
 	public enum MeshOverlay {
 		None,
-		GroundTemperature,
 		TemperatureSurface,
+		Evaporation,
+		Rainfall,
+		Condensation,
+		HeatAbsorbed,
+		GroundTemperature,
+		GroundWater,
+		GroundWaterTemperature,
 		PotentialTemperature0,
 		PotentialTemperature1,
 		PotentialTemperature2,
@@ -33,10 +39,6 @@ public class WorldView : MonoBehaviour {
 		AbsoluteHumidity1,
 		AbsoluteHumidity2,
 		RelativeHumidity0,
-		Evaporation,
-		Rainfall,
-		Condensation,
-		HeatAbsorbed,
 	}
 
 	public enum WindOverlay {
@@ -699,9 +701,15 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.Evaporation:
 				overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 				return true;
-			//case MeshOverlay.VerticalWind:
-			//	overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, simState.WindVertical[1]);
-			//	return true;
+			case MeshOverlay.GroundWater:
+				overlay = new MeshOverlayData(0, Sim.WorldData.GroundWaterMax, _normalizedRainbow, simState.GroundWater);
+				return true;
+			case MeshOverlay.GroundWaterTemperature:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundWaterTemperature);
+				return true;
+				//case MeshOverlay.VerticalWind:
+				//	overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, simState.WindVertical[1]);
+				//	return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 		return false;

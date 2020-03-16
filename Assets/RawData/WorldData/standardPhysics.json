@@ -25,15 +25,15 @@
 	"EnergyLostThroughAtmosphereWindow": 0.1007,
 	"ThermalAbsorptivityAir": 0.0005,
 	"ThermalAbsorptivityCloud": 0.1,
-	"EmissivityWater": 0.96,
-	"EmissivitySalt": 0.34,
-	"EmissivityIce": 0.98,
-	"EmissivityAir": 0.8,
-	"EmissivityCarbonDioxide": 0.9,
-	"EmissivityWaterVapor": 0.96,
-	"EmissivityDirt": 0.95,
-	"EmissivitySand": 0.85,
-	"EmissivityVegetation": 0.98,
+	"ThermalEmissivityWater": 0.96,
+	"ThermalEmissivitySalt": 0.34,
+	"ThermalEmissivityIce": 0.98,
+	"ThermalEmissivityAir": 0.8,
+	"ThermalEmissivityCarbonDioxide": 0.9,
+	"ThermalEmissivityWaterVapor": 0.96,
+	"ThermalEmissivityDirt": 0.95,
+	"ThermalEmissivitySand": 0.85,
+	"ThermalEmissivityVegetation": 0.98,
 
 	"SoilHeatDepth": 2,
 	"WaterHeatingDepth": 0.1,
@@ -68,9 +68,10 @@
 
 	"MinTemperatureVegetation": 223.15,
 	"MaxTemperatureVegetation": 323.15,
-	"MaxSoilPorousness": 0.1,
-	"GroundWaterReplenishmentSpeed": 0.01,
+
 	"GroundWaterFlowSpeed": 0.5,
-	"maxGroundWaterTemperature": 283
+	"GroundWaterMax": 10000,
+	"GroundWaterAbsorptionRate": 0.01,
+	"GroundWaterDiffusionCoefficient": 0.001
 
 }
