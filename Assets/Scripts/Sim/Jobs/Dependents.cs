@@ -185,8 +185,8 @@ public static class SimJobs {
 			IceMass = state.IceMass,
 			AirTemperaturePotential = state.AirTemperaturePotential[1],
 			SurfaceLayerElevation = dependent.LayerElevation[1],
-			inverseFullCoverageFlora = 1.0f / worldData.FullCoverageFlora,
-			inverseFullCoverageIce = 1.0f / worldData.FullCoverageIce,
+			inverseFullCoverageFloraMass = 1.0f / worldData.FullCoverageFlora,
+			inverseFullCoverageIceMass = 1.0f / (worldData.FullCoverageIce * WorldData.MassIce),
 		}, dependencies);
 
 
@@ -468,16 +468,16 @@ public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
-	[ReadOnly] public float inverseFullCoverageIce;
-	[ReadOnly] public float inverseFullCoverageFlora;
+	[ReadOnly] public float inverseFullCoverageIceMass;
+	[ReadOnly] public float inverseFullCoverageFloraMass;
 	public void Execute(int i)
 	{
 		SurfaceAirTemperatureAbsolute[i] = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceLayerElevation[i]);
 
-		float floraCoverage = math.saturate(FloraMass[i] * inverseFullCoverageFlora);
+		float floraCoverage = math.saturate(FloraMass[i] * inverseFullCoverageFloraMass);
 		FloraCoverage[i] = floraCoverage;
 
-		float iceCoverage = math.saturate(IceMass[i] * inverseFullCoverageIce);
+		float iceCoverage = math.saturate(IceMass[i] * inverseFullCoverageIceMass);
 		IceCoverage[i] = iceCoverage;
 
 		float waterCoverage = WaterCoverage[i];

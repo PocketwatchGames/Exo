@@ -189,7 +189,7 @@ public struct WorldData {
 
 		inverseFullCoverageFlora = 1.0f / FullCoverageFlora;
 		inverseFullCoverageWater = 1.0f / FullCoverageWater;
-		inverseFullCoverageIce = 1.0f / (MassIce * FullCoverageIce);
+		inverseFullCoverageIce = 1.0f / FullCoverageIce;
 		wattsToKJPerTick = SecondsPerTick * 1000;
 		sunHitsAtmosphereBelowHorizonAmount = 0.055f;
 		inverseSunAtmosphereAmount = 1.0f / (1.0f + sunHitsAtmosphereBelowHorizonAmount);
