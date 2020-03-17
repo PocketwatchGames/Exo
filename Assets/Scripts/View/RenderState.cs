@@ -88,12 +88,13 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	public NativeArray<float3> VelocityArrow;
 
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
-	[ReadOnly] public NativeArray<float> CloudCoverage;
+	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> GroundWater;
-	[ReadOnly] public NativeArray<float> VegetationCoverage;
+	[ReadOnly] public NativeArray<float> FloraCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
@@ -112,6 +113,8 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float CloudDropletSizeMin;
 	[ReadOnly] public float InverseCloudDropletSizeRange;
+	[ReadOnly] public float InverseCloudMass;
+	[ReadOnly] public float GroundWaterMax;
 
 	public void Execute(int i)
 	{
@@ -129,12 +132,12 @@ public struct BuildRenderStateJob : IJobParallelFor {
 
 
 		float waterDepth = WaterDepth[i];
-		float cloudCoverage = CloudCoverage[i];
+		float cloudCoverage = CloudMass[i]* InverseCloudMass;
 		float waterCoverage = WaterCoverage[i];
 		float iceCoverage = IceCoverage[i];
-		float vegetationCoverage = VegetationCoverage[i];
+		float floraCoverage = FloraCoverage[i];
 		var icosphere = Icosphere[i];
-		var elevation = Terrain[i].Elevation;
+		var elevation = Elevation[i];
 		float roughness = Terrain[i].Roughness;
 		float surfaceElevation = elevation + math.max(roughness, waterDepth);
 
@@ -146,7 +149,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		}
 		else
 		{
-			terrainColor = GetTerrainColor(roughness, Terrain[i].SoilFertility, waterDepth, iceCoverage, vegetationCoverage, GroundWater[i]);
+			terrainColor = GetTerrainColor(roughness, Terrain[i].SoilFertility, waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
 			waterColor = GetWaterColor(iceCoverage);
 		}
 		cloudColor = GetCloudColor(math.saturate((CloudDropletMass[i] - CloudDropletSizeMin) * InverseCloudDropletSizeRange), cloudCoverage);
@@ -188,9 +191,8 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		SurfacePosition[i] = surfacePosition;
 	}
 
-	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float vegetationCoverage, float groundWater)
+	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float floraCoverage, float groundWaterSaturation)
 	{
-		float groundWaterDepth = groundWater / WorldData.MassWater;
 		if (iceCoverage > 0.5f)
 		{
 			return new Color32(255, 255, 255, 255);
@@ -198,21 +200,21 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		//{
 		//	return new Color32(0, 0, 255, 255);
 		}
-		else if (groundWaterDepth >= soilFertility)
+		else if (groundWaterSaturation >= 1)
 		{
 			return new Color32(0, 0, 255, 255);
 		}
-		else if (vegetationCoverage > 0.3f)
+		else if (floraCoverage > 0.3f)
 		{
 			return new Color32(0, 60, 10, 255);
 		}
-		else if (vegetationCoverage > 0.15f)
+		else if (floraCoverage > 0.15f)
 		{
 			return new Color32(40, 100, 30, 255);
 		}
 		else if (soilFertility > 0.5f)
 		{
-			if (groundWaterDepth > soilFertility * 0.5f)
+			if (groundWaterSaturation > 0.5f)
 			{
 				return new Color32(40, 20, 20, 255);
 			}
@@ -220,7 +222,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		}
 		else if (soilFertility > 0.25f)
 		{
-			if (groundWaterDepth > soilFertility * 0.5f)
+			if (groundWaterSaturation > 0.5f)
 			{
 				return new Color32(70, 60, 30, 255);
 			}
@@ -228,7 +230,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		}
 		else
 		{
-			if (groundWaterDepth > soilFertility * 0.5f)
+			if (groundWaterSaturation > 0.5f)
 			{
 				return new Color32(120, 120, 60, 255);
 			}
@@ -237,8 +239,8 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		//var groundColor = Color32.Lerp(new Color32(50, 50, 80, 255), new Color32(100, 60, 20, 255), soilFertility);
 		//var waterColor = Color32.Lerp(groundColor, new Color32(0, 0, 255, 255), math.saturate(math.pow(waterDepth / roughness, 2)));
 		//var iceColor = Color32.Lerp(waterColor, new Color32(255, 255, 255, 255), iceCoverage);
-		//var vegetationColor = Color32.Lerp(groundColor, new Color32(0, 220, 30, 255), vegetationCoverage);
-		//return vegetationColor;
+		//var floraColor = Color32.Lerp(groundColor, new Color32(0, 220, 30, 255), floraCoverage);
+		//return floraColor;
 	}
 
 	private Color32 GetWaterColor(float iceCoverage)

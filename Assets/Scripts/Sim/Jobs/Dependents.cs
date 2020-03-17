@@ -59,18 +59,19 @@ public static class SimJobs {
 
 		dependencies = jobHelper.Schedule(new UpdateDependentStateJob()
 		{
-			CloudCoverage = dependent.CloudCoverage,
 			IceCoverage = dependent.IceCoverage,
 			IceEnergy = dependent.IceEnergy,
 			SurfaceElevation = dependent.LayerElevation[1],
-			VegetationCoverage = dependent.VegetationCoverage,
+			FloraCoverage = dependent.FloraCoverage,
 			WaterDepth = dependent.WaterLayerDepth[1],
 
+			Elevation = state.Elevation,
 			CloudMass = state.CloudMass,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
 			Terrain = state.Terrain,
-			worldData = worldData,
+			inverseFullCoverageIce = worldData.inverseFullCoverageIce,
+			inverseFullCoverageFlora = worldData.inverseFullCoverageFlora
 		}, dependencies);
 
 
@@ -120,6 +121,7 @@ public static class SimJobs {
 			var pressureHandle = jobHelper.Schedule(new UpdateAirPressureJob()
 			{
 				Pressure = dependent.AirPressure[j],
+				PressureInverse = dependent.AirPressureInverse[j],
 				AirMassTotal = airMassTotal,
 
 				AirMass = dependent.AirMass[j],
@@ -189,26 +191,26 @@ public static class SimJobs {
 public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceElevation;
 	public NativeArray<float> IceCoverage;
-	public NativeArray<float> VegetationCoverage;
-	public NativeArray<float> CloudCoverage;
+	public NativeArray<float> FloraCoverage;
 	public NativeArray<float> IceEnergy;
 	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public NativeArray<float> IceMass;
 	[ReadOnly] public NativeArray<float> IceTemperature;
 	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
-	[ReadOnly] public WorldData worldData;
+	[ReadOnly] public float inverseFullCoverageIce;
+	[ReadOnly] public float inverseFullCoverageFlora;
 	public void Execute(int i)
 	{
 		float iceMass = IceMass[i];
-		SurfaceElevation[i] = Terrain[i].Elevation + WaterDepth[i] + iceMass / WorldData.MassIce;
-		VegetationCoverage[i] = math.saturate(Terrain[i].Vegetation * worldData.inverseFullCoverageVegetation);
+		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce;
+		FloraCoverage[i] = math.saturate(Terrain[i].Flora * inverseFullCoverageFlora);
 
-		IceCoverage[i] = math.saturate(iceMass * worldData.inverseFullCoverageIce);
+		IceCoverage[i] = math.saturate(iceMass * inverseFullCoverageIce);
 		IceEnergy[i] = WorldData.SpecificHeatIce * iceMass * IceTemperature[i];
 
 		float cloudMass = CloudMass[i];
-		CloudCoverage[i] = math.saturate(cloudMass * worldData.inverseFullCoverageCloud);
 
 	}
 
@@ -287,6 +289,7 @@ public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
 #endif
 public struct UpdateAirPressureJob : IJobParallelFor {
 	public NativeArray<float> Pressure;
+	public NativeArray<float> PressureInverse;
 	public NativeArray<float> AirMassTotal;
 
 	[ReadOnly] public NativeArray<float> AirMass;
@@ -300,7 +303,9 @@ public struct UpdateAirPressureJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float airMass = AirMass[i];
-		Pressure[i] = (AirMassTotal[i] + airMass / 2) * Gravity;
+		var pressure = (AirMassTotal[i] + airMass / 2) * Gravity;
+		Pressure[i] = pressure;
+		PressureInverse[i] = 1.0f / pressure;
 		AirMassTotal[i] += airMass;
 
 	}

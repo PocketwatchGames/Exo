@@ -55,7 +55,7 @@ public struct WorldData {
 	public float ThermalEmissivityWaterVapor;
 	public float ThermalEmissivityDirt;
 	public float ThermalEmissivitySand;
-	public float ThermalEmissivityVegetation;
+	public float ThermalEmissivityFlora;
 
 	// TODO: should we parameterize the micro-conduction that allows for water to heat the air faster than it can cool it?
 	//public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
@@ -86,7 +86,7 @@ public struct WorldData {
 	public float WindIceFriction;
 	public float WindTerrainFrictionMin;
 	public float WindTerrainFrictionMax;
-	public float WindVegetationFriction;
+	public float WindFloraFriction;
 	public float MaxTerrainRoughnessForWindFriction;
 	public float WaterSurfaceFrictionDepth;
 
@@ -104,12 +104,11 @@ public struct WorldData {
 	public float GroundWaterDiffusionCoefficient;
 	public float FullCoverageIce;
 	public float FullCoverageWater;
-	public float FullCoverageVegetation;
-	public float FullCoverageCloud; // TODO: this is only used for rendering these days, remove from here and put it in worldview (and remove from dependents)
+	public float FullCoverageFlora;
 
-	[Header("Vegetation")]
-	public float MinTemperatureVegetation;
-	public float MaxTemperatureVegetation;
+	[Header("Flora")]
+	public float MinTemperatureFlora;
+	public float MaxTemperatureFlora;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;
@@ -130,7 +129,7 @@ public struct WorldData {
 	public const float AlbedoFoliage = 0.1f;
 	//public const float AlbedoCloud = 0.05f; // 24% incoming  reflected back to space by clouds (avg, globally)
 	public const float SpecificHeatIce = 2.108f;
-	public const float SpecificHeatVegetation = 3; // TODO: this is totally invented
+	public const float SpecificHeatFlora = 3; // TODO: this is totally invented
 	public const float SpecificHeatWater = 4.187f;
 	public const float SpecificHeatWaterVapor = 1.996f;
 	public const float SpecificHeatSalt = 0.85f;
@@ -168,10 +167,9 @@ public struct WorldData {
 	#region Nonserialized
 	[NonSerialized] public float TicksPerSecond;
 	[NonSerialized] public float TicksPerYear;
-	[NonSerialized] public float inverseFullCoverageVegetation;
+	[NonSerialized] public float inverseFullCoverageFlora;
 	[NonSerialized] public float inverseFullCoverageWater;
 	[NonSerialized] public float inverseFullCoverageIce;
-	[NonSerialized] public float inverseFullCoverageCloud;
 	[NonSerialized] public float wattsToKJPerTick;
 	[NonSerialized] public float declinationOfSun;
 	[NonSerialized] public float sunHitsAtmosphereBelowHorizonAmount;
@@ -184,10 +182,9 @@ public struct WorldData {
 		TicksPerSecond = 1.0f / SecondsPerTick;
 		TicksPerYear = 60 * 60 * 24 * 365 / SecondsPerTick;
 
-		inverseFullCoverageVegetation = 1.0f / FullCoverageVegetation;
+		inverseFullCoverageFlora = 1.0f / FullCoverageFlora;
 		inverseFullCoverageWater = 1.0f / FullCoverageWater;
 		inverseFullCoverageIce = 1.0f / (MassIce * FullCoverageIce);
-		inverseFullCoverageCloud = 1.0f / FullCoverageCloud;
 		wattsToKJPerTick = SecondsPerTick * 1000;
 		sunHitsAtmosphereBelowHorizonAmount = 0.055f;
 		inverseSunAtmosphereAmount = 1.0f / (1.0f + sunHitsAtmosphereBelowHorizonAmount);

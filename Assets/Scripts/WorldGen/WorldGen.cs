@@ -45,6 +45,7 @@ public static class WorldGen {
 		public NativeArray<float> GroundWaterTemperature;
 		public NativeArray<CellTerrain> Terrain;
 		public NativeArray<float> LayerElevationBase;
+		public NativeArray<float> Elevation;
 
 		[ReadOnly] public NativeArray<float2> Coordinate;
 		[ReadOnly] public NativeArray<float3> SphericalPosition;
@@ -54,7 +55,7 @@ public static class WorldGen {
 		[ReadOnly] public float MaxElevation;
 		[ReadOnly] public float MaxTemperature;
 		[ReadOnly] public float MinTemperature;
-		[ReadOnly] public float FullCoverageVegetation;
+		[ReadOnly] public float FullCoverageFlora;
 		[ReadOnly] public float MinTemperatureCanopy;
 		[ReadOnly] public float MaxTemperatureCanopy;
 		[ReadOnly] public float MaxGroundWater;
@@ -101,11 +102,11 @@ public static class WorldGen {
 				(1.0f - coord.y * coord.y) * (MaxTemperature - MinTemperature) + MinTemperature;
 
 			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * surfaceElevation;
-			float vegetation = 0;
+			float flora = 0;
 			if (elevation > 0)
 			{
-				vegetation =
-					FullCoverageVegetation
+				flora =
+					FullCoverageFlora
 					* soilFertility
 					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
 					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureCanopy) / (MaxTemperatureCanopy - MinTemperatureCanopy)));
@@ -124,12 +125,12 @@ public static class WorldGen {
 			GroundWaterTemperature[i] = (airTemperatureSurface + WorldData.FreezingTemperature) / 2;
 
 			LayerElevationBase[i] = surfaceElevation;
+			Elevation[i] = elevation;
 			Terrain[i] = new CellTerrain()
 			{
-				Elevation = elevation,
 				Roughness = roughness,
 				SoilFertility = soilFertility,
-				Vegetation = vegetation,
+				Flora = flora,
 			};
 
 			CloudMass[i] = cloudMass;
@@ -151,7 +152,7 @@ public static class WorldGen {
 		public NativeArray<float> WaterTemperatureBottom;
 
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
-		[ReadOnly] public NativeArray<CellTerrain> terrain;
+		[ReadOnly] public NativeArray<float> Elevation;
 		[ReadOnly] public float inversePI;
 		[ReadOnly] public float rainDropMinSize;
 		[ReadOnly] public float WaterTemperatureDepthFalloff;
@@ -159,7 +160,7 @@ public static class WorldGen {
 
 		public void Execute(int i)
 		{
-			float elevation = terrain[i].Elevation;
+			float elevation = Elevation[i];
 
 			float waterDepth = math.max(0, -elevation);
 			float surfaceElevation = elevation + waterDepth;
@@ -238,7 +239,7 @@ public static class WorldGen {
 		[ReadOnly] public NativeArray<float> WaterTemperatureSurface;
 		[ReadOnly] public NativeArray<float> WaterTemperatureBottom;
 		[ReadOnly] public NativeArray<float2> coord;
-		[ReadOnly] public NativeArray<CellTerrain> terrain;
+		[ReadOnly] public NativeArray<float> Elevation;
 		[ReadOnly] public float MinSalinity;
 		[ReadOnly] public float MaxSalinity;
 		[ReadOnly] public float WaterDensityPerDegree;
@@ -249,8 +250,7 @@ public static class WorldGen {
 
 		public void Execute(int i)
 		{
-			float terrainElevation = terrain[i].Elevation;
-			float layerDepth = math.clamp((ElevationTop[i] - terrainElevation) / LayerCount, 0, LayerDepthMax);
+			float layerDepth = math.clamp((ElevationTop[i] - Elevation[i]) / LayerCount, 0, LayerDepthMax);
 
 			if (layerDepth == 0)
 			{
@@ -306,13 +306,14 @@ public static class WorldGen {
 			LayerElevationBase = dependent.LayerHeight[0],
 			GroundWater = state.GroundWater,
 			GroundWaterTemperature = state.GroundWaterTemperature,
+			Elevation = state.Elevation,
 
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
 			Coordinate = staticState.Coordinate,
-			FullCoverageVegetation =worldData.FullCoverageVegetation,
-			MinTemperatureCanopy = worldData.MinTemperatureVegetation,
-			MaxTemperatureCanopy = worldData.MaxTemperatureVegetation,
+			FullCoverageFlora =worldData.FullCoverageFlora,
+			MinTemperatureCanopy = worldData.MinTemperatureFlora,
+			MaxTemperatureCanopy = worldData.MaxTemperatureFlora,
 			MinElevation = worldGenData.MinElevation,
 			MaxElevation = worldGenData.MaxElevation,
 			MaxRoughness =worldGenData.MaxRoughness,
@@ -324,7 +325,7 @@ public static class WorldGen {
 
 		var worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenJob()
 		{
-			terrain = state.Terrain,
+			Elevation = state.Elevation,
 			TerrainTemperature = state.TerrainTemperature,
 			CloudDropletMass = state.CloudDropletMass,
 			CloudTemperature = state.CloudTemperature,
@@ -372,7 +373,7 @@ public static class WorldGen {
 				coord = staticState.Coordinate,
 				MaxSalinity = worldGenData.MaxSalinity,
 				MinSalinity = worldGenData.MinSalinity,
-				terrain = state.Terrain,
+				Elevation = state.Elevation,
 				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
 				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
 				WaterTemperatureBottom = WaterTemperatureBottom,

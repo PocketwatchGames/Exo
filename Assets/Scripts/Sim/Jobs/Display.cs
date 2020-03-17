@@ -30,7 +30,7 @@ public struct UpdateDisplayJob : IJobParallelFor {
 		DisplayPrecipitation[i] = Precipitation[i];
 		DisplayEvaporation[i] = Evaporation[i];
 		Enthalpy[i] = 
-			TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, Terrain[i].Vegetation) 
+			TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, Terrain[i].Flora) 
 			+ CloudMass[i] * WorldData.LatentHeatWaterLiquid
 			+ IceMass[i] * IceTemperature[i] * WorldData.SpecificHeatIce;
 	}

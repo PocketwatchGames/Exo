@@ -102,13 +102,14 @@ public class WorldView : MonoBehaviour {
 	public float DisplayWindSpeedDeepWaterMax = 0.5f;
 	public float DisplayVerticalWindSpeedMax = 1.0f;
 	public float DisplayEvaporationMax = 5.0f;
-	public float DisplayVegetationMax = 1000;
+	public float DisplayFloraMax = 1000;
 	public float DisplayTemperatureMin = 223;
 	public float DisplayTemperatureMax = 323;
 	public float DisplayAbsoluteHumidityMax = 0.05f;
 	public float DisplayAirPressureMin = 97000;
 	public float DisplayAirPressureMax = 110000;
 	public float DisplayHeatAbsorbedMax = 1000;
+	public float DisplayCloudMassMax = 10;
 
 	[Header("References")]
 	public WorldSimComponent Sim;
@@ -327,7 +328,7 @@ public class WorldView : MonoBehaviour {
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
 		var buildRenderStateJob = new BuildRenderStateJob()
-		{ 
+		{
 			TerrainColor = to.TerrainColor,
 			TerrainNormal = to.TerrainNormal,
 			TerrainPosition = to.TerrainPosition,
@@ -354,17 +355,20 @@ public class WorldView : MonoBehaviour {
 			CloudElevation = dependent.CloudElevation,
 			Icosphere = Sim.Icosphere.Vertices,
 			Terrain = from.Terrain,
+			Elevation = from.Elevation,
 			CloudDropletMass = from.CloudDropletMass,
-			CloudCoverage = dependent.CloudCoverage,
+			CloudMass = from.CloudMass,
 			IceCoverage = dependent.IceCoverage,
-			VegetationCoverage = dependent.VegetationCoverage,
-			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers-2],
+			FloraCoverage = dependent.FloraCoverage,
+			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers - 2],
 			WaterDepth = dependent.WaterLayerDepth[1],
 			SurfaceElevation = dependent.LayerElevation[1],
 			GroundWater = from.GroundWater,
 			MeshOverlayData = meshOverlay.Values,
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
-			WindOverlayData = windOverlayData.Values
+			WindOverlayData = windOverlayData.Values,
+			GroundWaterMax = worldData.GroundWaterMax,
+			InverseCloudMass = 1.0f / DisplayCloudMassMax
 		};
 
 		var buildRenderStateJobHandle = buildRenderStateJob.Schedule(Sim.CellCount, 100);
@@ -904,11 +908,11 @@ public class WorldView : MonoBehaviour {
 		StringBuilder s = new StringBuilder();
 
 		var terrain = state.Terrain[ActiveCellIndex];
-		s.AppendFormat("ELE: {0:N0} m\n", terrain.Elevation);
+		s.AppendFormat("ELE: {0:N0} m\n", state.Elevation[ActiveCellIndex]);
 		s.AppendFormat("ROUGH: {0:N0} m\n", terrain.Roughness);
 		s.AppendFormat("TEMP: {0}\n", GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("FERT: {0:N2}\n", terrain.SoilFertility);
-		s.AppendFormat("VEG: {0:N2}\n", terrain.Vegetation);
+		s.AppendFormat("VEG: {0:N2}\n", terrain.Flora);
 		return s.ToString();
 	}
 	private string GetCellInfoWater(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)

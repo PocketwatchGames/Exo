@@ -138,7 +138,7 @@ public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationReflected;
 	[ReadOnly] public NativeArray<float> SolarRadiationIncoming;
-	[ReadOnly] public NativeArray<float> VegetationCoverage;
+	[ReadOnly] public NativeArray<float> FloraCoverage;
 	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
 	[ReadOnly] public WorldData worldData;
 	public void Execute(int i)
@@ -146,9 +146,9 @@ public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 		float incoming = SolarRadiationIncoming[i];
 
 		float slopeAlbedo = 0;
-		float vegetationCoverage = VegetationCoverage[i];
+		float floraCoverage = FloraCoverage[i];
 		float soilReflectivity = Atmosphere.GetAlbedo(WorldData.AlbedoLand - worldData.AlbedoReductionSoilQuality * LastTerrain[i].SoilFertility, slopeAlbedo);
-		float reflected = incoming * (vegetationCoverage * WorldData.AlbedoFoliage + (1.0f - vegetationCoverage) * soilReflectivity);
+		float reflected = incoming * (floraCoverage * WorldData.AlbedoFoliage + (1.0f - floraCoverage) * soilReflectivity);
 		incoming -= reflected;
 
 		SolarRadiationReflected[i] = reflected;

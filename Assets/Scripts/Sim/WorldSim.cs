@@ -277,7 +277,6 @@ public void Dispose()
 				PlanetRotation = quaternion.Euler(lastState.PlanetState.Rotation),
 				SunToPlanetDir = math.normalize(lastState.PlanetState.Position),
 			}, lastJobHandle);
-			solarInJobHandle.Complete();
 
 			#endregion
 
@@ -318,10 +317,10 @@ public void Dispose()
 			{
 				Emissivity = emissivity[_terrainLayer],
 				Terrain = lastState.Terrain,
-				VegetationCoverage = dependent.VegetationCoverage,
+				FloraCoverage = dependent.FloraCoverage,
 				EmissivityDirt = worldData.ThermalEmissivityDirt,
 				EmissivitySand = worldData.ThermalEmissivitySand,
-				EmissivityVegetation = worldData.ThermalEmissivityVegetation
+				EmissivityFlora = worldData.ThermalEmissivityFlora
 			});
 
 			#endregion
@@ -422,7 +421,7 @@ public void Dispose()
 				CloudSlopeAlbedoMax = worldData.maxCloudSlopeAlbedo,
 				RainDropSizeAlbedoMax = worldData.rainDropSizeAlbedoMax,
 				RainDropSizeAlbedoMin = worldData.rainDropSizeAlbedoMin,
-			});
+			}, solarInJobHandle);
 
 			var absorptivityAirJobHandles = new JobHandle[_airLayers];
 			for (int j = _airLayers - 2; j > 0; j--)
@@ -455,6 +454,7 @@ public void Dispose()
 
 			// Follow the solar radiation down from the top of the atmosphere to ther terrain, and absorb some as it passes through each layer
 			#region Solar Radiation Absorbed
+
 			// process each vertical layer in order
 
 			// atmosphere
@@ -502,7 +502,7 @@ public void Dispose()
 				SolarRadiationAbsorbed = solarRadiationIn[_terrainLayer],
 				SolarRadiationIncoming = solarRadiation,
 				SolarRadiationReflected = solarReflected[_terrainLayer],
-				VegetationCoverage = dependent.VegetationCoverage,
+				FloraCoverage = dependent.FloraCoverage,
 				worldData = worldData,
 				LastTerrain = lastState.Terrain,
 			}, solarInJobHandle);
@@ -760,7 +760,7 @@ public void Dispose()
 			jobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
 			energyJobHandles[_terrainLayer] =SimJob.Schedule(new EnergyTerrainJob()
 			{
-				Temperature = nextState.TerrainTemperature,
+				TerrainTemperature = nextState.TerrainTemperature,
 				LastTemperature = lastState.TerrainTemperature,
 				Terrain = lastState.Terrain,
 				SolarRadiationIn = solarRadiationIn[_terrainLayer],
@@ -769,7 +769,7 @@ public void Dispose()
 				ConductionEnergyIce = conductionIceTerrain,
 				ConductionEnergyWater = conductionWaterTerrainTotal,
 				GeothermalEnergy = geothermalRadiation,
-				HeatingDepth = worldData.SoilHeatDepth
+				HeatingDepth = worldData.SoilHeatDepth,
 			}, JobHandle.CombineDependencies(terrainEnergyJobHandleDependencies));
 
 			var energyIceJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
@@ -1094,7 +1094,9 @@ public void Dispose()
 			{
 				Terrain = nextState.Terrain,
 				GroundWater = nextState.GroundWater,
+				Elevation = nextState.Elevation,
 
+				LastElevation = lastState.Elevation,
 				LastTerrain = lastState.Terrain,
 				LastGroundWater = lastState.GroundWater,
 			}));
@@ -1138,47 +1140,39 @@ public void Dispose()
 			latentHeatJobHandle.Complete();
 			#endregion
 
-			#region Ground Water Flux
+			#region Ground Water
 
-			var terrainGradientJob = NeighborJob.Run(new TerrainGradientJob()
-			{
-				Gradient = terrainGradient,
-
-				Terrain = lastState.Terrain,
-				Neighbors = staticState.Neighbors,
-				NeighborDistInverse = staticState.NeighborDistInverse
-			});
-
-			var groundWaterDiffusionJob = SimJob.Schedule(new GroundWaterDiffusionJob()
+			var groundWaterJob = default(JobHandle);
+			groundWaterJob = SimJob.Schedule(new GroundWaterFlowJob()
 			{
 				GroundWater = nextState.GroundWater,
 				GroundWaterTemperature = nextState.GroundWaterTemperature,
-		 
+
 				LastGroundWater = lastState.GroundWater,
 				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
-				NeighborDistInverse = staticState.NeighborDistInverse,
+				Elevation = nextState.Elevation,
 				Neighbors = staticState.Neighbors,
-				DiffusionCoefficient = worldData.GroundWaterDiffusionCoefficient
-			});
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				FlowSpeed = worldData.GroundWaterFlowSpeed,
+				GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
+			}, groundWaterJob);
 
-			var groundWaterFlowJob = SimJob.Run(new GroundWaterFlowJob()
+			groundWaterJob = SimJob.Schedule(new GroundWaterDiffusionJob()
 			{
 				GroundWater = groundWaterFlowMass,
 				GroundWaterTemperature = groundWaterFlowTemperature,
 
 				LastGroundWater = nextState.GroundWater,
 				LastGroundWaterTemperature = nextState.GroundWaterTemperature,
-				TerrainGradient = terrainGradient,
-				Neighbors = staticState.Neighbors,
+				NeighborDist = staticState.NeighborDist,
 				NeighborDistInverse = staticState.NeighborDistInverse,
-				FlowSpeed = worldData.GroundWaterFlowSpeed,
-				GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
-			}, JobHandle.CombineDependencies(terrainGradientJob, groundWaterDiffusionJob));
+				Neighbors = staticState.Neighbors,
+				DiffusionCoefficient = worldData.GroundWaterDiffusionCoefficient
+			}, groundWaterJob);
 
 
-			var groundWaterAbsorptionJob = default(JobHandle);
 			for (int i = 1; i < _waterLayers - 1; i++) {
-				groundWaterAbsorptionJob = SimJob.Schedule(new GroundWaterAbsorptionJob()
+				groundWaterJob = SimJob.Schedule(new GroundWaterAbsorptionJob()
 				{
 					GroundWater = nextState.GroundWater,
 					GroundWaterTemperature = nextState.GroundWaterTemperature,
@@ -1190,9 +1184,24 @@ public void Dispose()
 					WaterBelow = nextState.WaterMass[i - 1],
 					GroundWaterAbsorptionRate = worldData.GroundWaterAbsorptionRate * worldData.SecondsPerTick,
 					GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
-				}, JobHandle.CombineDependencies(groundWaterFlowJob, groundWaterAbsorptionJob));
+				}, groundWaterJob);
 			}
-			groundWaterAbsorptionJob.Complete();
+
+			groundWaterJob = SimJob.Schedule(new GroundWaterConductionJob()
+			{
+				GroundWaterTemperature = groundWaterFlowTemperature,
+				TerrainTemperature = nextState.TerrainTemperature,
+
+				GroundWater = nextState.GroundWater,
+				LastGroundWaterTemperature = nextState.GroundWaterTemperature,
+				Terrain = nextState.Terrain,
+				GroundWaterConductionCoefficient = WorldData.ConductivityWaterTerrain,
+				HeatingDepth = worldData.SoilHeatDepth,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, groundWaterJob);
+
+
+			groundWaterJob.Complete();
 
 			#endregion
 
@@ -1208,12 +1217,12 @@ public void Dispose()
 				Force = windFriction,
 				IceCoverage = dependent.IceCoverage,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
-				VegetationCoverage = dependent.VegetationCoverage,
+				FloraCoverage = dependent.FloraCoverage,
 				Terrain = lastState.Terrain,
 				IceFriction = worldData.WindIceFriction,
 				TerrainFrictionMin = worldData.WindTerrainFrictionMin,
 				TerrainFrictionMax = worldData.WindTerrainFrictionMax,
-				VegetationFriction = worldData.WindVegetationFriction,
+				FloraFriction = worldData.WindFloraFriction,
 				WaterFriction = worldData.WindWaterFriction,
 				MaxTerrainRoughness = worldData.MaxTerrainRoughnessForWindFriction
 			});
@@ -1252,8 +1261,7 @@ public void Dispose()
 					VaporMass = lastState.AirVapor[j],
 					LayerMiddle = dependent.LayerMiddle[j],
 					Neighbors = staticState.Neighbors,
-					NeighborDir = staticState.NeighborDir,
-					NeighborDistInverse = staticState.NeighborDistInverse,
+					NeighborDiffInverse = staticState.NeighborDiffInverse,
 					Positions = staticState.SphericalPosition,
 					PlanetRadius = staticState.PlanetRadius,
 					Gravity = lastState.PlanetState.Gravity,
@@ -1308,8 +1316,7 @@ public void Dispose()
 
 					Positions = staticState.SphericalPosition,
 					Neighbors = staticState.Neighbors,
-					NeighborDir = staticState.NeighborDir,
-					NeighborDistInverse = staticState.NeighborDistInverse,
+					NeighborDiffInverse = staticState.NeighborDiffInverse,
 					WaterDensity = dependent.WaterDensity[j],
 					WaterPressure = dependent.WaterPressure[j],
 					LayerDepth = dependent.WaterLayerDepth[j],
@@ -1743,7 +1750,6 @@ public void Dispose()
 						display.GlobalOceanSurfaceTemperature += curState.WaterTemperature[_surfaceWaterLayer][i] * waterMassSurface;
 						display.SolarRadiation += displaySolarRadiation[i];
 						display.GeothermalRadiation += geothermalRadiation[i];
-						display.GlobalCloudCoverage += dependent.CloudCoverage[i];
 						display.GlobalCloudMass += curState.CloudMass[i];
 						display.GlobalIceMass += curState.IceMass[i];
 						display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers - 2][i];
@@ -1764,6 +1770,7 @@ public void Dispose()
 							display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
 							display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
 							display.GlobalEnthalpyAir += display.EnthalpyAir[j][i];
+							display.GlobalCloudCoverage += absorptivitySolar[j][i].AbsorptivityCloud;
 						}
 						display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
 						display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
@@ -1916,10 +1923,10 @@ public void Dispose()
 		}
 		s.AppendLine("");
 		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
-		s.AppendFormat("Elevation: {0}\n", state.Terrain[i].Elevation);
+		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
 		s.AppendFormat("Roughness: {0}\n", state.Terrain[i].Roughness);
 		s.AppendFormat("SoilFertility: {0}\n", state.Terrain[i].SoilFertility);
-		s.AppendFormat("Vegetation: {0}\n", state.Terrain[i].Vegetation);
+		s.AppendFormat("Flora: {0}\n", state.Terrain[i].Flora);
 		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
 		s.AppendFormat("TerrainTemperature: {0}\n", state.TerrainTemperature[i]);
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
@@ -1949,7 +1956,6 @@ public void Dispose()
 		s.AppendFormat("Surface Elevation: {0}\n", dependent.LayerElevation[1][i]);
 		s.AppendFormat("Water Depth: {0}\n", dependent.WaterLayerDepth[1][i]);
 		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
-		s.AppendFormat("Cloud Coverage: {0}\n", dependent.CloudCoverage[i]);
 		s.AppendFormat("Cloud Elevation: {0}\n", dependent.CloudElevation[i]);
 		for (int j = 1; j < _waterLayers - 1; j++)
 		{

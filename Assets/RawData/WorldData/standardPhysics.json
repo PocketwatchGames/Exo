@@ -5,8 +5,7 @@
 
 	"FullCoverageIce": 3.0,
 	"FullCoverageWater": 50.0,
-	"FullCoverageCloud": 0.5,
-	"FullCoverageVegetation": 2000,
+	"FullCoverageFlora": 2000,
 	"TropopauseElevation": 11000,
 	"BoundaryZoneElevation": 1000,
 
@@ -33,7 +32,7 @@
 	"ThermalEmissivityWaterVapor": 0.96,
 	"ThermalEmissivityDirt": 0.95,
 	"ThermalEmissivitySand": 0.85,
-	"ThermalEmissivityVegetation": 0.98,
+	"ThermalEmissivityFlora": 0.98,
 
 	"SoilHeatDepth": 2,
 	"WaterHeatingDepth": 0.1,
@@ -57,7 +56,7 @@
 	"WindIceFriction": 0.1,
 	"WindTerrainFrictionMax": 0.5,
 	"WindTerrainFrictionMin": 0.25,
-	"WindVegetationFriction": 0.5,
+	"WindFloraFriction": 0.5,
 	"MaxTerrainRoughnessForWindFriction": 1000,
 
 	"WindToWaterCurrentFrictionCoefficient": 0.00001,
@@ -66,12 +65,12 @@
 	"WaterDensityPerDegree": -0.1,
 	"WaterDensityCurrentSpeed": 0.5,
 
-	"MinTemperatureVegetation": 223.15,
-	"MaxTemperatureVegetation": 323.15,
+	"MinTemperatureFlora": 223.15,
+	"MaxTemperatureFlora": 323.15,
 
-	"GroundWaterFlowSpeed": 0.5,
 	"GroundWaterMax": 10000,
 	"GroundWaterAbsorptionRate": 0.01,
-	"GroundWaterDiffusionCoefficient": 0.001
+	"GroundWaterFlowSpeed": 0.05,
+	"GroundWaterDiffusionCoefficient": 100
 
 }
