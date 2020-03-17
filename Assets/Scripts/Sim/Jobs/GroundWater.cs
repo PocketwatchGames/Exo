@@ -111,7 +111,7 @@ public struct GroundWaterConductionJob : IJobParallelFor {
 
 		if (groundWater > 0)
 		{
-			float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility, Terrain[i].Flora);
+			float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility);
 			float groundWaterTempDiff = newGroundWaterTemperature - TerrainTemperature[i];
 			float specificHeatGroundWater = groundWater * WorldData.SpecificHeatWater;
 			float conductionDelta = groundWaterTempDiff * GroundWaterConductionCoefficient * SecondsPerTick;

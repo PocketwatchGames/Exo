@@ -59,19 +59,16 @@ public static class SimJobs {
 
 		dependencies = jobHelper.Schedule(new UpdateDependentStateJob()
 		{
-			IceCoverage = dependent.IceCoverage,
 			IceEnergy = dependent.IceEnergy,
-			SurfaceElevation = dependent.LayerElevation[1],
-			FloraCoverage = dependent.FloraCoverage,
-			WaterDepth = dependent.WaterLayerDepth[1],
+			FloraEnergy = dependent.FloraEnergy,
 
+			SurfaceElevation = dependent.LayerElevation[1],
+			WaterDepth = dependent.WaterLayerDepth[1],
 			Elevation = state.Elevation,
-			CloudMass = state.CloudMass,
+			FloraMass = state.FloraMass,
+			FloraTemperature = state.FloraTemperature,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
-			Terrain = state.Terrain,
-			inverseFullCoverageIce = worldData.inverseFullCoverageIce,
-			inverseFullCoverageFlora = worldData.inverseFullCoverageFlora
 		}, dependencies);
 
 
@@ -170,9 +167,26 @@ public static class SimJobs {
 		dependencies = jobHelper.Schedule(new UpdateSurfaceDependentStateJob()
 		{
 			SurfaceAirTemperatureAbsolute = dependent.SurfaceAirTemperatureAbsolute,
+			SurfaceAreaAirFlora = dependent.SurfaceAreaAirFlora,
+			SurfaceAreaAirIce = dependent.SurfaceAreaAirIce,
+			SurfaceAreaAirTerrain = dependent.SurfaceAreaAirTerrain,
+			SurfaceAreaAirWater = dependent.SurfaceAreaAirWater,
+			SurfaceAreaFloraTerrain = dependent.SurfaceAreaFloraTerrain,
+			SurfaceAreaIceFlora = dependent.SurfaceAreaIceFlora,
+			SurfaceAreaIceTerrain = dependent.SurfaceAreaIceTerrain,
+			SurfaceAreaIceWater = dependent.SurfaceAreaIceWater,
+			SurfaceAreaWaterFlora = dependent.SurfaceAreaWaterFlora,
+			SurfaceAreaWaterTerrain = dependent.SurfaceAreaWaterTerrain,
+			FloraCoverage = dependent.FloraCoverage,
+			IceCoverage = dependent.IceCoverage,
 
+			WaterCoverage = dependent.WaterCoverage[worldData.WaterLayers-2],
+			FloraMass = state.FloraMass,
+			IceMass = state.IceMass,
 			AirTemperaturePotential = state.AirTemperaturePotential[1],
-			SurfaceLayerElevation = dependent.LayerElevation[1]
+			SurfaceLayerElevation = dependent.LayerElevation[1],
+			inverseFullCoverageFlora = 1.0f / worldData.FullCoverageFlora,
+			inverseFullCoverageIce = 1.0f / worldData.FullCoverageIce,
 		}, dependencies);
 
 
@@ -190,28 +204,21 @@ public static class SimJobs {
 #endif
 public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceElevation;
-	public NativeArray<float> IceCoverage;
-	public NativeArray<float> FloraCoverage;
 	public NativeArray<float> IceEnergy;
+	public NativeArray<float> FloraEnergy;
 	[ReadOnly] public NativeArray<float> WaterDepth;
+	[ReadOnly] public NativeArray<float> FloraMass;
+	[ReadOnly] public NativeArray<float> FloraTemperature;
 	[ReadOnly] public NativeArray<float> IceMass;
 	[ReadOnly] public NativeArray<float> IceTemperature;
-	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> Elevation;
-	[ReadOnly] public NativeArray<CellTerrain> Terrain;
-	[ReadOnly] public float inverseFullCoverageIce;
-	[ReadOnly] public float inverseFullCoverageFlora;
 	public void Execute(int i)
 	{
 		float iceMass = IceMass[i];
 		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce;
-		FloraCoverage[i] = math.saturate(Terrain[i].Flora * inverseFullCoverageFlora);
 
-		IceCoverage[i] = math.saturate(iceMass * inverseFullCoverageIce);
 		IceEnergy[i] = WorldData.SpecificHeatIce * iceMass * IceTemperature[i];
-
-		float cloudMass = CloudMass[i];
-
+		FloraEnergy[i] = WorldData.SpecificHeatFlora * FloraMass[i] * FloraTemperature[i];
 	}
 
 }
@@ -265,20 +272,6 @@ public struct UpdateStratosphereJob : IJobParallelFor {
 		float tropopauseElevation = TropopauseElevation[i] + TropopauseHeight[i];
 		float stratosphereMass = Atmosphere.GetStandardPressureAtElevation(tropopauseElevation, WorldData.StandardTemperature, Gravity) / Gravity;
 		StratosphereMass[i] = stratosphereMass;
-	}
-
-}
-
-#if !UpdateDependentJobDebug
-[BurstCompile]
-#endif
-public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
-	public NativeArray<float> SurfaceAirTemperatureAbsolute;
-	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
-	public void Execute(int i)
-	{
-		SurfaceAirTemperatureAbsolute[i] = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceLayerElevation[i]);
 	}
 
 }
@@ -451,6 +444,58 @@ public struct UpdateWaterDepthJob : IJobParallelFor {
 		}
 	}
 }
+
+
+#if !UpdateDependentJobDebug
+[BurstCompile]
+#endif
+public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
+	public NativeArray<float> SurfaceAirTemperatureAbsolute;
+	public NativeArray<float> SurfaceAreaAirIce;
+	public NativeArray<float> SurfaceAreaAirWater;
+	public NativeArray<float> SurfaceAreaAirFlora;
+	public NativeArray<float> SurfaceAreaAirTerrain;
+	public NativeArray<float> SurfaceAreaIceWater;
+	public NativeArray<float> SurfaceAreaIceFlora;
+	public NativeArray<float> SurfaceAreaIceTerrain;
+	public NativeArray<float> SurfaceAreaWaterFlora;
+	public NativeArray<float> SurfaceAreaWaterTerrain;
+	public NativeArray<float> SurfaceAreaFloraTerrain;
+	public NativeArray<float> FloraCoverage;
+	public NativeArray<float> IceCoverage;
+	[ReadOnly] public NativeArray<float> IceMass;
+	[ReadOnly] public NativeArray<float> FloraMass;
+	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
+	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
+	[ReadOnly] public float inverseFullCoverageIce;
+	[ReadOnly] public float inverseFullCoverageFlora;
+	public void Execute(int i)
+	{
+		SurfaceAirTemperatureAbsolute[i] = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceLayerElevation[i]);
+
+		float floraCoverage = math.saturate(FloraMass[i] * inverseFullCoverageFlora);
+		FloraCoverage[i] = floraCoverage;
+
+		float iceCoverage = math.saturate(IceMass[i] * inverseFullCoverageIce);
+		IceCoverage[i] = iceCoverage;
+
+		float waterCoverage = WaterCoverage[i];
+
+		SurfaceAreaAirIce[i] = iceCoverage;
+		SurfaceAreaAirWater[i] = math.max(0, waterCoverage - iceCoverage);
+		SurfaceAreaAirFlora[i] = math.min(floraCoverage, 1.0f - math.max(waterCoverage, iceCoverage));
+		SurfaceAreaAirTerrain[i] = math.max(0, 1.0f - (floraCoverage + math.max(waterCoverage, iceCoverage)));
+		SurfaceAreaIceWater[i] = math.min(waterCoverage, iceCoverage);
+		SurfaceAreaIceFlora[i] = math.max(0, (floraCoverage + math.max(0, iceCoverage - waterCoverage)) - 1.0f);
+		SurfaceAreaIceTerrain[i] = math.max(0, iceCoverage - waterCoverage) - math.max(0, floraCoverage + iceCoverage - 1.0f);
+		SurfaceAreaWaterFlora[i] = math.max(0, (floraCoverage + waterCoverage) - 1.0f);
+		SurfaceAreaWaterTerrain[i] = waterCoverage - math.max(0, (floraCoverage + waterCoverage) - 1.0f);
+		SurfaceAreaFloraTerrain[i] = floraCoverage;
+	}
+
+}
+
 
 #endregion
 

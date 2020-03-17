@@ -912,7 +912,7 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("ROUGH: {0:N0} m\n", terrain.Roughness);
 		s.AppendFormat("TEMP: {0}\n", GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("FERT: {0:N2}\n", terrain.SoilFertility);
-		s.AppendFormat("VEG: {0:N2}\n", terrain.Flora);
+		s.AppendFormat("VEG: {0:N2}\n", state.FloraMass[ActiveCellIndex]);
 		return s.ToString();
 	}
 	private string GetCellInfoWater(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
@@ -943,8 +943,7 @@ public class WorldView : MonoBehaviour {
 					layerIndex,
 					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0),
 					display.Salinity[i][ActiveCellIndex]);
-				s.AppendFormat("MASS: {0:N1} kg VEL: ({1:N3}, {2:N3}, {3:N3}) P: {4}\n",
-					state.SaltMass[i][ActiveCellIndex],
+				s.AppendFormat("VEL: ({0:N3}, {1:N3}, {2:N3}) P: {3}\n",
 					current.x, current.y, current.z,
 					dependent.WaterPressure[i][ActiveCellIndex]);
 				s.AppendFormat("DEPTH: {0:N0} m HEIGHT: {1:N0} m\n",

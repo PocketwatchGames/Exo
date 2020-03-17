@@ -87,44 +87,44 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	}
 }
 
-#if !SolarRadiationAbsorbedIceJobDebug
+#if !SolarRadiationAbsorbedPartialCoverageJobDebug
 [BurstCompile]
 #endif
-public struct SolarRadiationAbsorbedIceJob : IJobParallelFor {
+public struct SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
 	public NativeArray<float> SolarRadiationReflected;
-	[ReadOnly] public float AlbedoIce;
-	[ReadOnly] public NativeArray<float> IceCoverage;
+	[ReadOnly] public float Albedo;
+	[ReadOnly] public NativeArray<float> Coverage;
 	public void Execute(int i)
 	{
 		float incoming = SolarRadiationIncoming[i];
-		float iceCoverage = IceCoverage[i];
-		float reflected = incoming * (AlbedoIce * iceCoverage);
+		float coverage = Coverage[i];
+		float reflected = incoming * (Albedo * coverage);
 		incoming -= reflected;
-		float absorbed = incoming * iceCoverage;
+		float absorbed = incoming * coverage;
 		SolarRadiationAbsorbed[i] = absorbed;
 		SolarRadiationIncoming[i] = incoming - absorbed;
 		SolarRadiationReflected[i] = reflected;
 	}
 }
 
-#if !SolarRadiationAbsorbedWaterJobDebug
+#if !SolarRadiationAbsorbedPartialCoverageJobDebug
 [BurstCompile]
 #endif
-public struct SolarRadiationAbsorbedWaterJob : IJobParallelFor {
+public struct SolarRadiationAbsorbedPartialCoverageJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
 	public NativeArray<float> SolarRadiationReflected;
-	[ReadOnly] public NativeArray<float> WaterCoverage;
-	[ReadOnly] public NativeArray<float> WaterSlopeAlbedo;
+	[ReadOnly] public NativeArray<float> Albedo;
+	[ReadOnly] public NativeArray<float> Coverage;
 	public void Execute(int i)
 	{
 		float incoming = SolarRadiationIncoming[i];
-		float waterCoverage = WaterCoverage[i];
-		float reflected = incoming * (WaterSlopeAlbedo[i] * waterCoverage);
+		float coverage = Coverage[i];
+		float reflected = incoming * (Albedo[i] * coverage);
 		incoming -= reflected;
-		float absorbed = incoming * waterCoverage;
+		float absorbed = incoming * coverage;
 		SolarRadiationAbsorbed[i] = absorbed;
 		SolarRadiationIncoming[i] = incoming - absorbed;
 		SolarRadiationReflected[i] = reflected;
@@ -138,7 +138,6 @@ public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationReflected;
 	[ReadOnly] public NativeArray<float> SolarRadiationIncoming;
-	[ReadOnly] public NativeArray<float> FloraCoverage;
 	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
 	[ReadOnly] public WorldData worldData;
 	public void Execute(int i)
@@ -146,9 +145,8 @@ public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 		float incoming = SolarRadiationIncoming[i];
 
 		float slopeAlbedo = 0;
-		float floraCoverage = FloraCoverage[i];
 		float soilReflectivity = Atmosphere.GetAlbedo(WorldData.AlbedoLand - worldData.AlbedoReductionSoilQuality * LastTerrain[i].SoilFertility, slopeAlbedo);
-		float reflected = incoming * (floraCoverage * WorldData.AlbedoFoliage + (1.0f - floraCoverage) * soilReflectivity);
+		float reflected = incoming * soilReflectivity;
 		incoming -= reflected;
 
 		SolarRadiationReflected[i] = reflected;

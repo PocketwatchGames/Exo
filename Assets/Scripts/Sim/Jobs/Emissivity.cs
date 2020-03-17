@@ -42,16 +42,11 @@ public struct EmissivityWaterJob : IJobParallelFor {
 public struct EmissivityTerrainJob : IJobParallelFor {
 	public NativeArray<float> Emissivity;
 	[ReadOnly] public NativeArray<CellTerrain> Terrain;
-	[ReadOnly] public NativeArray<float> FloraCoverage;
 	[ReadOnly] public float EmissivitySand;
 	[ReadOnly] public float EmissivityDirt;
-	[ReadOnly] public float EmissivityFlora;
 	public void Execute(int i)
 	{
-		Emissivity[i] = math.saturate(math.lerp(
-			math.lerp(EmissivitySand, EmissivityDirt, Terrain[i].SoilFertility),
-			EmissivityFlora,
-			FloraCoverage[i]));
+		Emissivity[i] = math.saturate(math.lerp(EmissivitySand, EmissivityDirt, Terrain[i].SoilFertility));
 	}
 }
 

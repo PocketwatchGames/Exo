@@ -126,7 +126,7 @@ public struct WorldData {
 	public const float AlbedoWater = 0.06f; // How much heat is reflected back by the water
 	public const float AlbedoIce = 0.5f; // How much heat is reflected back by the water
 	public const float AlbedoLand = 0.4f;
-	public const float AlbedoFoliage = 0.1f;
+	public const float AlbedoFlora = 0.1f;
 	//public const float AlbedoCloud = 0.05f; // 24% incoming  reflected back to space by clouds (avg, globally)
 	public const float SpecificHeatIce = 2.108f;
 	public const float SpecificHeatFlora = 3; // TODO: this is totally invented
@@ -149,13 +149,18 @@ public struct WorldData {
 	public const float ConductivityWater = 0.606f;
 	public const float ConductivityIce = 2.18f;
 	public const float ConductivityTerrain = 0.2f;
+	public const float ConductivityFlora = 0.1f;
 	public const float ThermalContactResistance = 0.00005f;
 	public const float ConductivityAirWater = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityWater + ThermalContactResistance);
 	public const float ConductivityAirIce = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityIce + ThermalContactResistance);
+	public const float ConductivityAirFlora = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityFlora + ThermalContactResistance);
 	public const float ConductivityAirTerrain = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityTerrain + ThermalContactResistance);
 	public const float ConductivityIceWater = 1.0f / (1.0f / ConductivityWater + 1.0f / ConductivityIce + ThermalContactResistance);
+	public const float ConductivityIceFlora = 1.0f / (1.0f / ConductivityFlora + 1.0f / ConductivityIce + ThermalContactResistance);
 	public const float ConductivityIceTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityIce + ThermalContactResistance);
+	public const float ConductivityWaterFlora = 1.0f / (1.0f / ConductivityFlora + 1.0f / ConductivityWater + ThermalContactResistance);
 	public const float ConductivityWaterTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityWater + ThermalContactResistance);
+	public const float ConductivityFloraTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityFlora + ThermalContactResistance);
 	public const float GasConstantAir = UniversalGasConstant / MolarMassAir * 1000;
 	public const float GasConstantWaterVapor = UniversalGasConstant / MolarMassWater * 1000;
 	public const float PressureExponent = 1.0f / (UniversalGasConstant * TemperatureLapseRate);

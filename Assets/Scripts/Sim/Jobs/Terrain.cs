@@ -27,4 +27,22 @@ public struct UpdateTerrainJob : IJobParallelFor {
 }
 
 
+#if !UpdateFloraJobDebug
+[BurstCompile]
+#endif
+public struct UpdateFloraJob : IJobParallelFor {
+	public NativeArray<float> FloraMass;
+	public NativeArray<float> FloraWater;
+
+	[ReadOnly] public NativeArray<float> LastMass;
+	[ReadOnly] public NativeArray<float> LastWater;
+	public void Execute(int i)
+	{
+		FloraMass[i] = LastMass[i];
+		FloraWater[i] = LastWater[i];
+	}
+
+}
+
+
 

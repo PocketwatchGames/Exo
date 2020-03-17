@@ -15,6 +15,9 @@ public struct SimState {
 	public NativeArray<float> Elevation;
 	public NativeArray<CellTerrain> Terrain;
 	public NativeArray<float> TerrainTemperature;
+	public NativeArray<float> FloraMass;
+	public NativeArray<float> FloraWater;
+	public NativeArray<float> FloraTemperature;
 	public NativeArray<float> GroundWater;
 	public NativeArray<float> GroundWaterTemperature;
 	public NativeArray<float> IceTemperature;
@@ -38,6 +41,9 @@ public struct SimState {
 		TerrainTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWater = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWaterTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		FloraMass = new NativeArray<float>(count, Allocator.Persistent);
+		FloraWater = new NativeArray<float>(count, Allocator.Persistent);
+		FloraTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -72,6 +78,9 @@ public struct SimState {
 		Terrain.Dispose();
 		Elevation.Dispose();
 		TerrainTemperature.Dispose();
+		FloraMass.Dispose();
+		FloraWater.Dispose();
+		FloraTemperature.Dispose();
 		GroundWater.Dispose();
 		GroundWaterTemperature.Dispose();
 		IceTemperature.Dispose();
@@ -100,7 +109,6 @@ public struct SimState {
 public struct CellTerrain {
 	public float Roughness;
 	public float SoilFertility;
-	public float Flora;
 }
 
 public struct PlanetState {
@@ -123,7 +131,18 @@ public struct DependentState {
 	public NativeArray<float> IceCoverage;
 	public NativeArray<float> SurfaceAirTemperatureAbsolute;
 	public NativeArray<float> IceEnergy;
+	public NativeArray<float> FloraEnergy;
 	public NativeArray<float> WindVerticalCloud;
+	public NativeArray<float> SurfaceAreaAirIce;
+	public NativeArray<float> SurfaceAreaAirWater;
+	public NativeArray<float> SurfaceAreaAirFlora;
+	public NativeArray<float> SurfaceAreaAirTerrain;
+	public NativeArray<float> SurfaceAreaIceWater;
+	public NativeArray<float> SurfaceAreaIceFlora;
+	public NativeArray<float> SurfaceAreaIceTerrain;
+	public NativeArray<float> SurfaceAreaWaterFlora;
+	public NativeArray<float> SurfaceAreaWaterTerrain;
+	public NativeArray<float> SurfaceAreaFloraTerrain;
 	public NativeArray<float>[] AirMass;
 	public NativeArray<float>[] AirPressure;
 	public NativeArray<float>[] AirPressureInverse;
@@ -152,11 +171,22 @@ public struct DependentState {
 		IceCoverage = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAirTemperatureAbsolute = new NativeArray<float>(count, Allocator.Persistent);
 		IceEnergy = new NativeArray<float>(count, Allocator.Persistent);
+		FloraEnergy = new NativeArray<float>(count, Allocator.Persistent);
 		DewPoint = new NativeArray<float>(count, Allocator.Persistent);
 		WindVerticalCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirDensityCloud = new NativeArray<float>(count, Allocator.Persistent);
 		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
 		DeflectedCloudVelocity = new NativeArray<float3>(count, Allocator.Persistent);
+		SurfaceAreaAirIce = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaAirWater = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaAirFlora = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaAirTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaIceWater = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaIceFlora = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaIceTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaWaterFlora = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaWaterTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		SurfaceAreaFloraTerrain = new NativeArray<float>(count, Allocator.Persistent);
 
 		AirMass = new NativeArray<float>[airLayers];
 		AirPressure = new NativeArray<float>[airLayers];
@@ -206,11 +236,22 @@ public struct DependentState {
 		IceCoverage.Dispose();
 		SurfaceAirTemperatureAbsolute.Dispose();
 		IceEnergy.Dispose();
+		FloraEnergy.Dispose();
 		DewPoint.Dispose();
 		WindVerticalCloud.Dispose();
 		AirDensityCloud.Dispose();
 		CloudElevation.Dispose();
 		DeflectedCloudVelocity.Dispose();
+		SurfaceAreaAirIce.Dispose();
+		SurfaceAreaAirWater.Dispose();
+		SurfaceAreaAirFlora.Dispose();
+		SurfaceAreaAirTerrain.Dispose();
+		SurfaceAreaIceWater.Dispose();
+		SurfaceAreaIceFlora.Dispose();
+		SurfaceAreaIceTerrain.Dispose();
+		SurfaceAreaWaterFlora.Dispose();
+		SurfaceAreaWaterTerrain.Dispose();
+		SurfaceAreaFloraTerrain.Dispose();
 
 		for (int i = 0; i < AirPressure.Length; i++)
 		{

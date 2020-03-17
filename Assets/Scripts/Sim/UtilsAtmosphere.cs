@@ -227,10 +227,10 @@ public static class Atmosphere {
 	}
 
 	[BurstCompile]
-	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility, float floraMass)
+	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility)
 	{
 		float landMass = (WorldData.MassSand * (1.0f - soilFertility) + WorldData.MassSoil * soilFertility) * heatingDepth;
-		return (WorldData.SpecificHeatSoil * landMass + WorldData.SpecificHeatFlora * floraMass);
+		return WorldData.SpecificHeatSoil * landMass;
 	}
 
 

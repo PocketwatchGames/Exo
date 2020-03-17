@@ -46,6 +46,9 @@ public static class WorldGen {
 		public NativeArray<CellTerrain> Terrain;
 		public NativeArray<float> LayerElevationBase;
 		public NativeArray<float> Elevation;
+		public NativeArray<float> Flora;
+		public NativeArray<float> FloraWater;
+		public NativeArray<float> FloraTemperature;
 
 		[ReadOnly] public NativeArray<float2> Coordinate;
 		[ReadOnly] public NativeArray<float3> SphericalPosition;
@@ -126,11 +129,13 @@ public static class WorldGen {
 
 			LayerElevationBase[i] = surfaceElevation;
 			Elevation[i] = elevation;
+			Flora[i] = flora;
+			FloraTemperature[i] = airTemperatureSurface;
+			FloraWater[i] = 0;
 			Terrain[i] = new CellTerrain()
 			{
 				Roughness = roughness,
 				SoilFertility = soilFertility,
-				Flora = flora,
 			};
 
 			CloudMass[i] = cloudMass;
@@ -307,6 +312,9 @@ public static class WorldGen {
 			GroundWater = state.GroundWater,
 			GroundWaterTemperature = state.GroundWaterTemperature,
 			Elevation = state.Elevation,
+			Flora = state.FloraMass,
+			FloraWater = state.FloraWater,
+			FloraTemperature = state.FloraTemperature,
 
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
