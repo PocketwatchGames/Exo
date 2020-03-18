@@ -409,26 +409,29 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			int n = Neighbors[i * 6 + j];
 			if (n >= 0)
 			{
-
-				float incoming = 0;
-				if (Destination[n].indexA == i)
+				float nMass = Mass[n];
+				if (nMass > 0)
 				{
-					incoming = Destination[n].valueA;
+					float incoming = 0;
+					if (Destination[n].indexA == i)
+					{
+						incoming = Destination[n].valueA;
+					}
+					else if (Destination[n].indexB == i)
+					{
+						incoming = Destination[n].valueB;
+					}
+					else if (Destination[n].indexC == i)
+					{
+						incoming = Destination[n].valueC;
+					}
+					float massIncoming = nMass * incoming;
+					newMass += massIncoming;
+					newSaltMass += Salt[n] * incoming;
+					newTemperature += Temperature[n] * massIncoming;
+					newVelocity += DeflectedVelocity[n] * massIncoming;
+					totalMass += massIncoming;
 				}
-				else if (Destination[n].indexB == i)
-				{
-					incoming = Destination[n].valueB;
-				}
-				else if (Destination[n].indexC == i)
-				{
-					incoming = Destination[n].valueC;
-				}
-				float massIncoming = Mass[n] * incoming;
-				newMass += massIncoming;
-				newSaltMass += Salt[n] * incoming;
-				newTemperature += Temperature[n] * massIncoming;
-				newVelocity += DeflectedVelocity[n] * massIncoming;
-				totalMass += massIncoming;
 			}
 		}
 

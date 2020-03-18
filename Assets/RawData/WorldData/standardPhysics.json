@@ -34,7 +34,7 @@
 	"ThermalEmissivitySand": 0.85,
 	"ThermalEmissivityFlora": 0.98,
 
-	"SoilHeatDepth": 2,
+	"SoilHeatDepth": 1,
 	"WaterHeatingDepth": 0.1,
 
 	"IceHeatingDepth": 0.1,
@@ -67,7 +67,7 @@
 
 	"FloraEvaporationRate": 0.1,
 	"FloraWaterConsumptionRate": 0.1,
-	"FloraMax": 100000,
+	"FloraMax": 10000,
 	"FloraGrowthRate": 0.01,
 	"FloraDeathRate": 0.001,
 	"FloraDeathRateWater": 0.01,
@@ -75,6 +75,7 @@
 	"FloraDeathRateTemperature": 0.001,
 	"FloraDeathRateAge": 0.0001,
 	"FloraGrowthTemperatureRangeInverse": 0.02,
+	"FloraAirSurfaceArea": 10,
 
 	"GroundWaterMax": 10000,
 	"GroundWaterAbsorptionRate": 0.01,

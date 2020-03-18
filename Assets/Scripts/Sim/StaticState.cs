@@ -67,9 +67,13 @@ public struct StaticState {
 			neighborList[i].Sort(delegate (Tuple<int, float3> a, Tuple<int, float3> b)
 			{
 				float3 diffA = a.Item2 - pos;
-				float3 diffB = a.Item1 - pos;
-				float angleA = math.acos(math.dot(diffA, forward) / (math.length(diffA) * forwardLength));
-				float angleB = math.acos(math.dot(diffB, forward) / (math.length(diffB) * forwardLength));
+				float3 diffB = b.Item2 - pos;
+				float dotA = math.dot(diffA, forward);
+				float dotB = math.dot(diffB, forward);
+				float angleA = diffA.Equals(forward) ? 0 : math.acos(dotA / (math.length(diffA) * forwardLength));
+				float angleB = diffB.Equals(forward) ? 0 : math.acos(dotB / (math.length(diffB) * forwardLength));
+				angleA *= math.sign(math.dot(pos, math.cross(forward, diffA)));
+				angleB *= math.sign(math.dot(pos, math.cross(forward, diffB)));
 				return (int)math.sign(angleB - angleA);
 			});
 			for (int j = 0; j < 6; j++)

@@ -253,7 +253,7 @@ public struct DiffusionWaterJob : IJobParallelFor {
 		{
 			Temperature = newTemperature,
 			SaltMass = newSaltMass,
-			Velocity = newVelocity
+			Velocity = newVelocity,
 		};
 	}
 

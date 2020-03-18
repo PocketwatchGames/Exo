@@ -116,6 +116,7 @@ public struct WorldData {
 	public float FloraEvaporationRate;
 	public float FloraWaterConsumptionRate;
 	public float FloraGrowthTemperatureRangeInverse;
+	public float FloraAirSurfaceArea;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;

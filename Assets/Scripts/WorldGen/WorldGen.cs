@@ -1,4 +1,4 @@
-﻿#define ASYNC_WORLDGEN
+﻿//#define ASYNC_WORLDGEN
 
 using System;
 using System.Collections.Generic;
@@ -265,11 +265,12 @@ public static class WorldGen {
 				WaterTemperature[i] = math.pow(WaterTemperatureSurface[i] - WorldData.FreezingTemperature, 1.0f / (1.0f - ElevationTop[i] / 500.0f)) + WorldData.FreezingTemperature;
 
 				float salinity = Math.Abs(coord[i].y) * (MaxSalinity - MinSalinity) + MinSalinity;
-				float waterAndSaltMass = GetWaterMass(layerDepth, WaterTemperature[i], salinity, WaterDensityPerDegree, WaterDensityPerSalinity);
+				float waterDensity = Atmosphere.GetWaterDensity(salinity, WaterTemperature[i]);
+				float waterAndSaltMass = layerDepth * waterDensity;
 				float waterMass = waterAndSaltMass * (1.0f - salinity);
 				float saltMass = waterAndSaltMass * salinity;
 
-				float density = Atmosphere.GetWaterDensity(waterMass, saltMass, WaterTemperature[i], WaterDensityPerSalinity, WaterDensityPerDegree);
+				float density = Atmosphere.GetWaterDensity(salinity, WaterTemperature[i]);
 				float actualDepth = (waterMass + saltMass) / density;
 				
 				WaterMass[i] = waterMass;
@@ -452,15 +453,6 @@ public static class WorldGen {
 		{
 			a.Dispose();
 		}
-	}
-
-#if ASYNC_WORLDGEN
-	[BurstCompile]
-#endif
-	static public float GetWaterMass(float depth, float temperature, float salinityPSU, float WaterDensityPerDegree, float WaterDensityPerSalinity)
-	{
-		float density = WorldData.DensityWater + WaterDensityPerDegree * (temperature - WorldData.FreezingTemperature) + WaterDensityPerSalinity * salinityPSU;
-		return depth * density;
 	}
 
 #if ASYNC_WORLDGEN

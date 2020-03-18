@@ -952,13 +952,14 @@ public class WorldView : MonoBehaviour {
 			if (state.WaterMass[i][ActiveCellIndex] > 0)
 			{
 				var current = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.WaterVelocity[i][ActiveCellIndex]);
-				s.AppendFormat("LAYER {0} | TEMP: {1} SALT: {2:P3}\n",
+				s.AppendFormat("LAYER {0} | TEMP: {1} SALT: {2:P4}\n",
 					layerIndex,
-					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 0),
+					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 2),
 					display.Salinity[i][ActiveCellIndex]);
-				s.AppendFormat("VEL: ({0:N3}, {1:N3}, {2:N3}) P: {3}\n",
+				s.AppendFormat("VEL: ({0:N3}, {1:N3}, {2:N3}) P: {3} D: {4}\n",
 					current.x, current.y, current.z,
-					dependent.WaterPressure[i][ActiveCellIndex]);
+					dependent.WaterPressure[i][ActiveCellIndex],
+					Atmosphere.GetWaterDensity(display.Salinity[i][ActiveCellIndex], state.WaterTemperature[i][ActiveCellIndex]));
 				s.AppendFormat("DEPTH: {0:N0} m HEIGHT: {1:N0} m\n",
 					dependent.WaterLayerDepth[i][ActiveCellIndex],
 					dependent.WaterLayerHeight[i][ActiveCellIndex]

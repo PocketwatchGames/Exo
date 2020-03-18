@@ -1,5 +1,4 @@
-﻿#define TerrainGradientJobDebug
-
+﻿
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;

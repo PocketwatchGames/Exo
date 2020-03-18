@@ -96,13 +96,38 @@ public static class Atmosphere {
 
 
 	[BurstCompile]
-	static public float GetWaterDensity(float waterMass, float saltMass, float temperature, float waterDensityPerSalinity, float waterDensityPerDegree)
+	static public float GetWaterDensity(float salinity, float temperature)
 	{
-		if (waterMass <= 0)
-		{
-			return 0;
-		}
-		return WorldData.DensityWater + (waterDensityPerSalinity * saltMass / (waterMass + saltMass) + waterDensityPerDegree * (temperature - WorldData.FreezingTemperature));
+		// https://link.springer.com/content/pdf/bbm%3A978-3-319-18908-6%2F1.pdf
+		double tempCelsius = temperature - WorldData.FreezingTemperature;
+		double standardMeanOceanWaterDensity =
+			+ 999.842594
+			+ 0.06793953 * tempCelsius
+			- 0.009095290 * tempCelsius * tempCelsius
+			+ 0.0001001685 * tempCelsius * tempCelsius * tempCelsius
+			- 0.000001120083 * tempCelsius * tempCelsius * tempCelsius * tempCelsius
+			+ 0.000000006536332 * tempCelsius * tempCelsius * tempCelsius * tempCelsius * tempCelsius;
+
+		double b1 =
+			+ 0.82449
+			- 0.0040899 * tempCelsius
+			+ 0.000076438 * tempCelsius * tempCelsius
+			- 0.00000082467 * tempCelsius * tempCelsius * tempCelsius
+			+ 0.0000000053875 * tempCelsius * tempCelsius * tempCelsius * tempCelsius;
+
+		double c1 =
+			-0.0057246
+			+ 0.00010227 * tempCelsius
+			- 0.0000016546 * tempCelsius * tempCelsius;
+
+		double d0 = 0.00048314;
+
+		double salinityPSU = salinity * 10000;
+		double density = standardMeanOceanWaterDensity + b1 * salinityPSU + c1 * math.pow(salinityPSU, 1.5) + d0 * salinityPSU * salinityPSU;
+		return (float)density;
+
+
+	//	return WorldData.DensityWater + (waterDensityPerSalinity * saltMass / (waterMass + saltMass) + waterDensityPerDegree * (temperature - WorldData.FreezingTemperature));
 	}
 
 	[BurstCompile]
@@ -115,16 +140,6 @@ public static class Atmosphere {
 		return saltMass / (waterMass + saltMass);
 	}
 
-
-	[BurstCompile]
-	static public float GetWaterVolume(float waterMass, float saltMass, float temperature, float waterDensityPerSalinity, float waterDensityPerDegree)
-	{
-		if (waterMass <= 0)
-		{
-			return 0;
-		}
-		return (waterMass + saltMass) / GetWaterDensity(waterMass, saltMass, temperature, waterDensityPerSalinity, waterDensityPerDegree);
-	}
 
 	[BurstCompile]
 	static public float GetFreezingPoint(float salinity, float freezePointReductionPerSalinity)
