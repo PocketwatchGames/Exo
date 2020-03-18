@@ -1,4 +1,4 @@
-﻿//#define ASYNC_WORLDGEN
+﻿#define ASYNC_WORLDGEN
 
 using System;
 using System.Collections.Generic;

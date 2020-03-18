@@ -109,6 +109,10 @@ public struct WorldData {
 	[Header("Flora")]
 	public float FloraMax;
 	public float FloraGrowthRate;
+	public float FloraDeathRateWater;
+	public float FloraDeathRateCrowding;
+	public float FloraDeathRateTemperature;
+	public float FloraDeathRateAge;
 	public float FloraEvaporationRate;
 	public float FloraWaterConsumptionRate;
 	public float FloraGrowthTemperatureRangeInverse;

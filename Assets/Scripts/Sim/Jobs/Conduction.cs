@@ -1,6 +1,4 @@
 ﻿//#define DISABLE_CONDUCTION
-//#define ConductionAirTerrainJobDebug
-#define ConductionWaterJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;

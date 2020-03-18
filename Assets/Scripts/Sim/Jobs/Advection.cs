@@ -2,9 +2,6 @@
 //#define DISABLE_AIR_ADVECTION
 //#define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
-//#define AdvectionAirJobDebug
-//#define AdvectionCloudJobDebug
-//#define GetVectorDestCoordsJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;

@@ -1,8 +1,4 @@
-﻿//#define EnergyAirJobDebug
-//#define EnergyWaterSurfaceJobDebug
-//#define EnergyIceJobDebug
-//#define EnergyTerrainJobDebug
-
+﻿
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;

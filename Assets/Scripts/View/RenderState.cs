@@ -205,13 +205,13 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		{
 			return new Color32(0, 0, 255, 255);
 		}
-		else if (floraCoverage > 0.3f)
+		else if (floraCoverage > 0.667f)
 		{
 			return new Color32(0, 60, 10, 255);
 		}
-		else if (floraCoverage > 0.15f)
+		else if (floraCoverage > 0.333f)
 		{
-			return new Color32(40, 100, 30, 255);
+			return new Color32(20, 90, 30, 255);
 		}
 		else if (soilFertility > 0.5f)
 		{
@@ -225,17 +225,17 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		{
 			if (groundWaterSaturation > 0.5f)
 			{
-				return new Color32(70, 60, 30, 255);
+				return new Color32(60, 50, 40, 255);
 			}
-			return new Color32(80, 70, 30, 255);
+			return new Color32(90, 80, 70, 255);
 		}
 		else
 		{
 			if (groundWaterSaturation > 0.5f)
 			{
-				return new Color32(120, 120, 60, 255);
+				return new Color32(110, 110, 100, 255);
 			}
-			return new Color32(130, 130, 60, 255);
+			return new Color32(140, 140, 130, 255);
 		}
 		//var groundColor = Color32.Lerp(new Color32(50, 50, 80, 255), new Color32(100, 60, 20, 255), soilFertility);
 		//var waterColor = Color32.Lerp(groundColor, new Color32(0, 0, 255, 255), math.saturate(math.pow(waterDepth / roughness, 2)));

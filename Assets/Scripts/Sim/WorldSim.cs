@@ -851,7 +851,7 @@ public void Dispose()
 					CoverageBelow = dependent.WaterCoverage[i - 1],
 					SecondsPerTick = worldData.SecondsPerTick
 				}, conductionWaterFloraJobHandle));
-				conductionWaterTerrainJobHandle = JobHandle.CombineDependencies(conductionWaterTerrainJobHandle, SimJob.Run(new ConductionWaterBottomAJob()
+				conductionWaterTerrainJobHandle = JobHandle.CombineDependencies(conductionWaterTerrainJobHandle, SimJob.Schedule(new ConductionWaterBottomAJob()
 				{
 					EnergyDelta = conductionWaterTerrain[i],
 					EnergyDeltaTotal = conductionWaterTerrainTotal,
@@ -1142,6 +1142,10 @@ public void Dispose()
 				FloraEvaporationRate = worldData.FloraEvaporationRate,
 				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate,
 				FloraGrowthRate = worldData.FloraGrowthRate,
+				FloraDeathRateAge = worldData.FloraDeathRateAge,
+				FloraDeathRateTemperature = worldData.FloraDeathRateTemperature,
+				FloraDeathRateWater = worldData.FloraDeathRateWater,
+				FloraDeathRateCrowding = worldData.FloraDeathRateCrowding,
 				FloraMax = worldData.FloraMax,
 				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse
 			}, fluxJobHandles[_waterLayer0 + _surfaceWaterLayer]);

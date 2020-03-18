@@ -1,8 +1,4 @@
-﻿//#define AccelerationAirJobDebug
-//#define WaterFrictionJobDebug
-//#define WaterDensityGradientForceJobDebug
-
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -183,8 +179,8 @@ public struct AccelerationWaterJob : IJobParallelFor {
 				var n = Neighbors[neighborIndex];
 				if (n >= 0 && WaterDensity[n] > 0)
 				{
-					float neighborDepthAtPressure = Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
-					pressureGradient += NeighborDiffInverse[neighborIndex] * ((SurfaceElevation[n] - neighborDepthAtPressure) - midDepthElevation);
+					float neighborElevationAtPressure = SurfaceElevation[n] - Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
+					pressureGradient += NeighborDiffInverse[neighborIndex] * (neighborElevationAtPressure - midDepthElevation);
 				}
 			}
 

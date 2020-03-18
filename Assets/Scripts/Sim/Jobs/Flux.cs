@@ -6,9 +6,6 @@
 //#define DISABLE_MELTING_TOP
 //#define DISABLE_MELTING_BOTTOM
 
-//#define FluxCloudJobDebug
-//#define FluxWaterJobDebug
-
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
@@ -335,6 +332,10 @@ public struct FluxFloraJob : IJobParallelFor {
 	[ReadOnly] public float FloraMax;
 	[ReadOnly] public float FloraGrowthTemperatureRangeInverse;
 	[ReadOnly] public float FloraGrowthRate;
+	[ReadOnly] public float FloraDeathRateAge;
+	[ReadOnly] public float FloraDeathRateCrowding;
+	[ReadOnly] public float FloraDeathRateTemperature;
+	[ReadOnly] public float FloraDeathRateWater;
 	public void Execute(int i)
 	{
 		float mass = FloraMass[i];
@@ -367,10 +368,16 @@ public struct FluxFloraJob : IJobParallelFor {
 #endif
 			}
 
-			groundWaterConsumed = math.min(GroundWater[i], mass * (GroundWater[i] / GroundWaterMax) * math.max(0, 1.0f - waterSaturation) * FloraWaterConsumptionRate);
+			float waterSaturationNormalized = math.min(1, waterSaturation);
+			groundWaterConsumed = math.min(GroundWater[i], mass * (GroundWater[i] / GroundWaterMax) * (1.0f - waterSaturationNormalized) * FloraWaterConsumptionRate);
 
-			floraMassDelta = FloraGrowthRate * (SoilFertility[i] * FloraMax - mass) * waterSaturation * mass * math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse;
-
+			float floraSaturation = mass / (SoilFertility[i] * FloraMax);
+			floraMassDelta = mass * math.max(-1,
+				FloraGrowthRate * (1.0f - floraSaturation) * waterSaturationNormalized * math.sqrt(math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse)
+				- FloraDeathRateWater * math.sqrt(1.0f - waterSaturationNormalized)
+				- FloraDeathRateCrowding * Utils.Sqr(floraSaturation)
+				- FloraDeathRateTemperature * (1.0f - math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse)
+				- FloraDeathRateAge);
 		}
 
 		EvaporatedWaterTemperaturePotential[i] = evapTemperaturePotential;

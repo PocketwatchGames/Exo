@@ -894,7 +894,7 @@ public class WorldView : MonoBehaviour {
 			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.AirVelocity[i][ActiveCellIndex]);
 			s.AppendFormat("\nLAYER {0} | TEMP: {1} RH: {2:P1}",
 				i, 
-				GetTemperatureString(state.AirTemperaturePotential[i][ActiveCellIndex], ActiveTemperatureUnits, 1),
+				GetTemperatureString(Atmosphere.GetAbsoluteTemperature(state.AirTemperaturePotential[i][ActiveCellIndex], dependent.LayerMiddle[i][ActiveCellIndex]), ActiveTemperatureUnits, 1),
 				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
 			s.AppendFormat("\nELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N1})",
 				dependent.LayerElevation[i][ActiveCellIndex],

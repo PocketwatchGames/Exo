@@ -2023,6 +2023,10 @@ MonoBehaviour:
     FullCoverageFlora: 0
     FloraMax: 0
     FloraGrowthRate: 0
+    FloraDeathRateWater: 0
+    FloraDeathRateCrowding: 0
+    FloraDeathRateTemperature: 0
+    FloraDeathRateAge: 0
     FloraEvaporationRate: 0
     FloraWaterConsumptionRate: 0
     FloraGrowthTemperatureRangeInverse: 0

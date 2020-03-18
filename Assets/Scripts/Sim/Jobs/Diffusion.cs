@@ -2,7 +2,6 @@
 //#define DISABLE_AIR_DIFFUSION
 //#define DISABLE_CLOUD_DIFFUSION
 //#define DISABLE_WATER_DIFFUSION
-//#define DiffusionCloudJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;

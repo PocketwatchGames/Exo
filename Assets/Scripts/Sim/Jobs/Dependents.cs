@@ -1,5 +1,4 @@
-﻿//#define UpdateDependentJobDebug
-
+﻿
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;

@@ -1,7 +1,4 @@
-﻿//#define SolarRadiationAbsorbedAirJobDebug
-//#define SolarRadiationAbsorbedTerrainJobDebug
-
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;

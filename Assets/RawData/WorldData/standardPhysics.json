@@ -67,13 +67,18 @@
 
 	"FloraEvaporationRate": 0.1,
 	"FloraWaterConsumptionRate": 0.1,
-	"FloraMax": 10000,
+	"FloraMax": 100000,
 	"FloraGrowthRate": 0.01,
+	"FloraDeathRate": 0.001,
+	"FloraDeathRateWater": 0.01,
+	"FloraDeathRateCrowding": 0.001,
+	"FloraDeathRateTemperature": 0.001,
+	"FloraDeathRateAge": 0.0001,
 	"FloraGrowthTemperatureRangeInverse": 0.02,
 
 	"GroundWaterMax": 10000,
 	"GroundWaterAbsorptionRate": 0.01,
 	"GroundWaterFlowSpeed": 0.05,
-	"GroundWaterDiffusionCoefficient": 100
+	"GroundWaterDiffusionCoefficient": 10
 
 }
