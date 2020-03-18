@@ -356,7 +356,8 @@ public class WorldView : MonoBehaviour {
 			MeshOverlayInverseRange = meshOverlay.InverseRange,
 			CloudElevation = dependent.CloudElevation,
 			Icosphere = Sim.Icosphere.Vertices,
-			Terrain = from.Terrain,
+			SoilFertility = from.SoilFertility,
+			Roughness= from.Roughness,
 			Elevation = from.Elevation,
 			CloudDropletMass = from.CloudDropletMass,
 			CloudMass = from.CloudMass,
@@ -834,7 +835,6 @@ public class WorldView : MonoBehaviour {
 
 		StringBuilder s = new StringBuilder();
 
-		var terrain = state.Terrain[ActiveCellIndex];
 		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
 		var pos = Sim.StaticState.SphericalPosition[ActiveCellIndex];
 		s.AppendFormat("INDEX: {0}\n", ActiveCellIndex);
@@ -915,11 +915,10 @@ public class WorldView : MonoBehaviour {
 
 		StringBuilder s = new StringBuilder();
 
-		var terrain = state.Terrain[ActiveCellIndex];
 		s.AppendFormat("ELE: {0:N0} m\n", state.Elevation[ActiveCellIndex]);
-		s.AppendFormat("ROUGH: {0:N0} m\n", terrain.Roughness);
+		s.AppendFormat("ROUGH: {0:N0} m\n", state.Roughness[ActiveCellIndex]);
 		s.AppendFormat("TEMP: {0}\n", GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("FERT: {0:N2}\n", terrain.SoilFertility);
+		s.AppendFormat("FERT: {0:N2}\n", state.SoilFertility[ActiveCellIndex]);
 		s.AppendFormat("FLORA: {0:N2} WATER: {1:N2} kg TEMP: {2:N2}\n", 
 			state.FloraMass[ActiveCellIndex],
 			state.FloraWater[ActiveCellIndex],

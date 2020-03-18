@@ -43,7 +43,8 @@ public static class WorldGen {
 		public NativeArray<float> CloudMass;
 		public NativeArray<float> GroundWater;
 		public NativeArray<float> GroundWaterTemperature;
-		public NativeArray<CellTerrain> Terrain;
+		public NativeArray<float> Roughness;
+		public NativeArray<float> SoilFertility;
 		public NativeArray<float> LayerElevationBase;
 		public NativeArray<float> Elevation;
 		public NativeArray<float> Flora;
@@ -59,8 +60,8 @@ public static class WorldGen {
 		[ReadOnly] public float MaxTemperature;
 		[ReadOnly] public float MinTemperature;
 		[ReadOnly] public float FullCoverageFlora;
-		[ReadOnly] public float MinTemperatureCanopy;
-		[ReadOnly] public float MaxTemperatureCanopy;
+		[ReadOnly] public float MinTemperatureFlora;
+		[ReadOnly] public float MaxTemperatureFlora;
 		[ReadOnly] public float MaxGroundWater;
 
 		public void Run(int count)
@@ -113,7 +114,7 @@ public static class WorldGen {
 					FullCoverageFlora
 					* soilFertility
 					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
-					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureCanopy) / (MaxTemperatureCanopy - MinTemperatureCanopy)));
+					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureFlora) / (MaxTemperatureFlora - MinTemperatureFlora)));
 				floraWater =
 					flora * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 41630);
 			}
@@ -135,11 +136,8 @@ public static class WorldGen {
 			Flora[i] = flora;
 			FloraTemperature[i] = airTemperatureSurface;
 			FloraWater[i] = floraWater;
-			Terrain[i] = new CellTerrain()
-			{
-				Roughness = roughness,
-				SoilFertility = soilFertility,
-			};
+			Roughness[i] = roughness;
+			SoilFertility[i] = soilFertility;
 
 			CloudMass[i] = cloudMass;
 		}
@@ -307,7 +305,8 @@ public static class WorldGen {
 
 		var worldGenInitJob = new WorldGenInitJob()
 		{
-			Terrain = state.Terrain,
+			Roughness = state.Roughness,
+			SoilFertility = state.SoilFertility,
 			CloudMass = state.CloudMass,
 			potentialTemperature = temperaturePotential,
 			relativeHumidity = RelativeHumidity,
@@ -323,8 +322,8 @@ public static class WorldGen {
 			SphericalPosition = staticState.SphericalPosition,
 			Coordinate = staticState.Coordinate,
 			FullCoverageFlora =worldData.FullCoverageFlora,
-			MinTemperatureCanopy = worldData.MinTemperatureFlora,
-			MaxTemperatureCanopy = worldData.MaxTemperatureFlora,
+			MinTemperatureFlora = WorldData.FreezingTemperature - 10,
+			MaxTemperatureFlora = WorldData.FreezingTemperature + 40,
 			MinElevation = worldGenData.MinElevation,
 			MaxElevation = worldGenData.MaxElevation,
 			MaxRoughness =worldGenData.MaxRoughness,

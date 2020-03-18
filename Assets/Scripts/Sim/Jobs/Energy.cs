@@ -180,7 +180,7 @@ public struct EnergyFloraJob : IJobParallelFor {
 public struct EnergyTerrainJob : IJobParallelFor {
 	public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> LastTemperature;
-	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
@@ -197,7 +197,7 @@ public struct EnergyTerrainJob : IJobParallelFor {
 			- ConductionEnergyIce[i]
 			- ConductionEnergyFlora[i];
 
-		float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility);
+		float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]);
 
 		float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta + GeothermalEnergy[i];
 		TerrainTemperature[i] = LastTemperature[i] + energy / specificHeatTerrain;

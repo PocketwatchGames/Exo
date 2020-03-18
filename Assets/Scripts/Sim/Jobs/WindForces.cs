@@ -13,7 +13,7 @@ using Unity.Mathematics;
 #endif
 public struct AirTerrainFrictionJob : IJobParallelFor {
 	public NativeArray<float> Force;
-	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public NativeArray<float> Roughness;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> FloraCoverage;
@@ -32,7 +32,7 @@ public struct AirTerrainFrictionJob : IJobParallelFor {
 		Force[i] = exposedIce * IceFriction +
 			exposedWater * WaterFriction +
 			exposedFlora * FloraFriction +
-			exposedTerrain * (TerrainFrictionMin + (TerrainFrictionMax - TerrainFrictionMin) * math.saturate(Terrain[i].Roughness / MaxTerrainRoughness));
+			exposedTerrain * (TerrainFrictionMin + (TerrainFrictionMax - TerrainFrictionMin) * math.saturate(Roughness[i] / MaxTerrainRoughness));
 	}
 }
 

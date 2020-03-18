@@ -99,7 +99,7 @@ public struct GroundWaterConductionJob : IJobParallelFor {
 	public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> GroundWater;
 	[ReadOnly] public NativeArray<float> LastGroundWaterTemperature;
-	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public float GroundWaterConductionCoefficient;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float HeatingDepth;
@@ -111,7 +111,7 @@ public struct GroundWaterConductionJob : IJobParallelFor {
 
 		if (groundWater > 0)
 		{
-			float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility);
+			float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]);
 			float groundWaterTempDiff = newGroundWaterTemperature - TerrainTemperature[i];
 			float specificHeatGroundWater = groundWater * WorldData.SpecificHeatWater;
 			float conductionDelta = groundWaterTempDiff * GroundWaterConductionCoefficient * SecondsPerTick;

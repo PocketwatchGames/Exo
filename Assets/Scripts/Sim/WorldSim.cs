@@ -69,6 +69,7 @@ public class WorldSim {
 	private NativeArray<float> evaporationMassFlora;
 	private NativeArray<float> evaporationTemperaturePotentialFlora;
 	private NativeArray<float> groundWaterConsumed;
+	private NativeArray<float> floraMassDelta;
 	private NativeArray<float> geothermalRadiation;
 	private NativeArray<float> groundWaterFlowMass;
 	private NativeArray<float> groundWaterFlowTemperature;
@@ -138,6 +139,7 @@ public class WorldSim {
 		evaporationMassFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		evaporationTemperaturePotentialFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		groundWaterConsumed = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		floraMassDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterFriction = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		diffusionCloud = new NativeArray<DiffusionCloud>(_cellCount, Allocator.Persistent);
@@ -194,6 +196,7 @@ public void Dispose()
 		evaporationMassFlora.Dispose();
 		evaporationTemperaturePotentialFlora.Dispose();
 		groundWaterConsumed.Dispose();
+		floraMassDelta.Dispose();
 		windFriction.Dispose();
 		waterFriction.Dispose();
 		diffusionCloud.Dispose();
@@ -332,7 +335,7 @@ public void Dispose()
 			emissivityJobHandles[_terrainLayer] =SimJob.Schedule(new EmissivityTerrainJob()
 			{
 				Emissivity = emissivity[_terrainLayer],
-				Terrain = lastState.Terrain,
+				SoilFertility = lastState.SoilFertility,
 				EmissivityDirt = worldData.ThermalEmissivityDirt,
 				EmissivitySand = worldData.ThermalEmissivitySand,
 			});
@@ -546,7 +549,7 @@ public void Dispose()
 				SolarRadiationIncoming = solarRadiation,
 				SolarRadiationReflected = solarReflected[_terrainLayer],
 				worldData = worldData,
-				LastTerrain = lastState.Terrain,
+				SoilFertility = lastState.SoilFertility,
 			}, solarInJobHandle);
 			#endregion
 
@@ -885,7 +888,7 @@ public void Dispose()
 			{
 				TerrainTemperature = nextState.TerrainTemperature,
 				LastTemperature = lastState.TerrainTemperature,
-				Terrain = lastState.Terrain,
+				SoilFertility = lastState.SoilFertility,
 				SolarRadiationIn = solarRadiationIn[_terrainLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
 				ConductionEnergyAir = conductionAirTerrain,
@@ -1123,6 +1126,7 @@ public void Dispose()
 				EvaporatedWaterMass = evaporationMassFlora,
 				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotentialFlora,
 				GroundWaterConsumed = groundWaterConsumed,
+				FloraMassDelta = floraMassDelta,
 
 				FloraTemperature = nextState.FloraTemperature,
 				FloraMass = lastState.FloraMass,
@@ -1132,10 +1136,14 @@ public void Dispose()
 				AirMass = dependent.AirMass[1],
 				AirPressure = dependent.AirPressure[1],
 				AirVapor = lastState.AirVapor[1],
+				SoilFertility = lastState.SoilFertility,
 				GroundWater = lastState.GroundWater,
 				GroundWaterMax = worldData.GroundWaterMax,
 				FloraEvaporationRate = worldData.FloraEvaporationRate,
-				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate
+				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate,
+				FloraGrowthRate = worldData.FloraGrowthRate,
+				FloraMax = worldData.FloraMax,
+				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse
 			}, fluxJobHandles[_waterLayer0 + _surfaceWaterLayer]);
 
 			fluxJobHandles[_iceLayer] = SimJob.Schedule(new FluxIceJob()
@@ -1274,12 +1282,14 @@ public void Dispose()
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateTerrainJob()
 			{
-				Terrain = nextState.Terrain,
+				SoilFertility = nextState.SoilFertility,
+				Roughness = nextState.Roughness,
 				GroundWater = nextState.GroundWater,
 				Elevation = nextState.Elevation,
 
 				LastElevation = lastState.Elevation,
-				LastTerrain = lastState.Terrain,
+				LastRoughness = lastState.Roughness,
+				LastSoilFertility = lastState.SoilFertility,
 				LastGroundWater = lastState.GroundWater,
 				GroundWaterConsumed = groundWaterConsumed
 			}));
@@ -1288,6 +1298,7 @@ public void Dispose()
 			{
 				FloraMass = nextState.FloraMass,
 				FloraWater = nextState.FloraWater,
+				FloraMassDelta = floraMassDelta,
 
 				EvaporationMass = evaporationMassFlora,
 				LastMass = lastState.FloraMass,
@@ -1388,7 +1399,7 @@ public void Dispose()
 
 				GroundWater = nextState.GroundWater,
 				LastGroundWaterTemperature = nextState.GroundWaterTemperature,
-				Terrain = nextState.Terrain,
+				SoilFertility = nextState.SoilFertility,
 				GroundWaterConductionCoefficient = WorldData.ConductivityWaterTerrain,
 				HeatingDepth = worldData.SoilHeatDepth,
 				SecondsPerTick = worldData.SecondsPerTick
@@ -1412,7 +1423,7 @@ public void Dispose()
 				IceCoverage = dependent.IceCoverage,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				FloraCoverage = dependent.FloraCoverage,
-				Terrain = lastState.Terrain,
+				Roughness = lastState.Roughness,
 				IceFriction = worldData.WindIceFriction,
 				TerrainFrictionMin = worldData.WindTerrainFrictionMin,
 				TerrainFrictionMax = worldData.WindTerrainFrictionMax,
@@ -1923,7 +1934,7 @@ public void Dispose()
 					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _waterLayers - 2],
 					Evaporation = evaporationMassWater,
 					Precipitation = precipitationMass,
-					Terrain = nextState.Terrain,
+					SoilFertility = nextState.SoilFertility,
 					TerrainTemperature = nextState.TerrainTemperature,
 					Flora = nextState.FloraMass,
 					FloraWater = nextState.FloraWater,
@@ -2124,8 +2135,8 @@ public void Dispose()
 		s.AppendLine("");
 		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
 		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
-		s.AppendFormat("Roughness: {0}\n", state.Terrain[i].Roughness);
-		s.AppendFormat("SoilFertility: {0}\n", state.Terrain[i].SoilFertility);
+		s.AppendFormat("Roughness: {0}\n", state.Roughness[i]);
+		s.AppendFormat("SoilFertility: {0}\n", state.SoilFertility[i]);
 		s.AppendFormat("Flora: {0}\n", state.FloraMass[i]);
 		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
 		s.AppendFormat("TerrainTemperature: {0}\n", state.TerrainTemperature[i]);

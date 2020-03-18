@@ -10,18 +10,21 @@ using Unity.Mathematics;
 [BurstCompile]
 #endif
 public struct UpdateTerrainJob : IJobParallelFor {
-	public NativeArray<CellTerrain> Terrain;
+	public NativeArray<float> SoilFertility;
+	public NativeArray<float> Roughness;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> GroundWater;
 
-	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
+	[ReadOnly] public NativeArray<float> LastSoilFertility;
+	[ReadOnly] public NativeArray<float> LastRoughness;
 	[ReadOnly] public NativeArray<float> LastElevation;
 	[ReadOnly] public NativeArray<float> LastGroundWater;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	public void Execute(int i)
 	{
 		Elevation[i] = LastElevation[i];
-		Terrain[i] = LastTerrain[i];
+		SoilFertility[i] = LastSoilFertility[i];
+		Roughness[i] = LastRoughness[i];
 		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];
 	}
 
@@ -35,13 +38,14 @@ public struct UpdateFloraJob : IJobParallelFor {
 	public NativeArray<float> FloraMass;
 	public NativeArray<float> FloraWater;
 
+	[ReadOnly] public NativeArray<float> FloraMassDelta;
 	[ReadOnly] public NativeArray<float> EvaporationMass;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastWater;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	public void Execute(int i)
 	{
-		FloraMass[i] = LastMass[i];
+		FloraMass[i] = LastMass[i] + FloraMassDelta[i];
 		FloraWater[i] = LastWater[i] - EvaporationMass[i] + GroundWaterConsumed[i];
 	}
 

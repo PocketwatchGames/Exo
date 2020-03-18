@@ -65,10 +65,11 @@
 	"WaterDensityPerDegree": -0.1,
 	"WaterDensityCurrentSpeed": 0.5,
 
-	"MinTemperatureFlora": 223.15,
-	"MaxTemperatureFlora": 323.15,
 	"FloraEvaporationRate": 0.1,
 	"FloraWaterConsumptionRate": 0.1,
+	"FloraMax": 10000,
+	"FloraGrowthRate": 0.01,
+	"FloraGrowthTemperatureRangeInverse": 0.02,
 
 	"GroundWaterMax": 10000,
 	"GroundWaterAbsorptionRate": 0.01,

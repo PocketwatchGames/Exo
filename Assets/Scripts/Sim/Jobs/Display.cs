@@ -24,7 +24,7 @@ public struct UpdateDisplayJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> IceTemperature;
 	[ReadOnly] public NativeArray<float> Flora;
 	[ReadOnly] public NativeArray<float> FloraWater;
-	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public float HeatingDepth;
 	public void Execute(int i)
 	{
@@ -32,7 +32,7 @@ public struct UpdateDisplayJob : IJobParallelFor {
 		DisplayPrecipitation[i] = Precipitation[i];
 		DisplayEvaporation[i] = Evaporation[i];
 		Enthalpy[i] = 
-			TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, Terrain[i].SoilFertility)
+			TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i])
 			+ Flora[i] * WorldData.SpecificHeatFlora
 			+ FloraWater[i] * WorldData.SpecificHeatWater
 			+ CloudMass[i] * WorldData.LatentHeatWaterLiquid

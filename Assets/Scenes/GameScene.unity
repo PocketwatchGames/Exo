@@ -2021,10 +2021,11 @@ MonoBehaviour:
     FullCoverageIce: 0
     FullCoverageWater: 0
     FullCoverageFlora: 0
-    MinTemperatureFlora: 0
-    MaxTemperatureFlora: 0
+    FloraMax: 0
+    FloraGrowthRate: 0
     FloraEvaporationRate: 0
     FloraWaterConsumptionRate: 0
+    FloraGrowthTemperatureRangeInverse: 0
   TimeScale: 0
 --- !u!4 &365555217
 Transform:

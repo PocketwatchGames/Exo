@@ -318,10 +318,12 @@ public struct FluxFloraJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterTemperaturePotential;
 	public NativeArray<float> LatentHeatAir;
 	public NativeArray<float> GroundWaterConsumed;
+	public NativeArray<float> FloraMassDelta;
 	[ReadOnly] public NativeArray<float> FloraTemperature;
 	[ReadOnly] public NativeArray<float> FloraMass;
 	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public NativeArray<float> GroundWater;
+	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> AirVapor;
 	[ReadOnly] public NativeArray<float> AirPressure;
@@ -330,6 +332,9 @@ public struct FluxFloraJob : IJobParallelFor {
 	[ReadOnly] public float FloraEvaporationRate;
 	[ReadOnly] public float GroundWaterMax;
 	[ReadOnly] public float FloraWaterConsumptionRate;
+	[ReadOnly] public float FloraMax;
+	[ReadOnly] public float FloraGrowthTemperatureRangeInverse;
+	[ReadOnly] public float FloraGrowthRate;
 	public void Execute(int i)
 	{
 		float mass = FloraMass[i];
@@ -338,6 +343,7 @@ public struct FluxFloraJob : IJobParallelFor {
 		float evapMass = 0;
 		float evapTemperaturePotential = 0;
 		float groundWaterConsumed = 0;
+		float floraMassDelta = 0;
 		if (mass > 0)
 		{
 			float temperature = FloraTemperature[i];
@@ -361,13 +367,17 @@ public struct FluxFloraJob : IJobParallelFor {
 #endif
 			}
 
-			groundWaterConsumed = math.min(GroundWater[i], mass * (GroundWater[i] / GroundWaterMax) * (1.0f - waterSaturation) * FloraWaterConsumptionRate);
+			groundWaterConsumed = math.min(GroundWater[i], mass * (GroundWater[i] / GroundWaterMax) * math.max(0, 1.0f - waterSaturation) * FloraWaterConsumptionRate);
+
+			floraMassDelta = FloraGrowthRate * (SoilFertility[i] * FloraMax - mass) * waterSaturation * mass * math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse;
+
 		}
 
 		EvaporatedWaterTemperaturePotential[i] = evapTemperaturePotential;
 		EvaporatedWaterMass[i] = evapMass;
 		LatentHeatAir[i] += -latentHeatFromAir;
 		GroundWaterConsumed[i] = groundWaterConsumed;
+		FloraMassDelta[i] = floraMassDelta;
 	}
 }
 

@@ -107,10 +107,11 @@ public struct WorldData {
 	public float FullCoverageFlora;
 
 	[Header("Flora")]
-	public float MinTemperatureFlora;
-	public float MaxTemperatureFlora;
+	public float FloraMax;
+	public float FloraGrowthRate;
 	public float FloraEvaporationRate;
 	public float FloraWaterConsumptionRate;
+	public float FloraGrowthTemperatureRangeInverse;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;

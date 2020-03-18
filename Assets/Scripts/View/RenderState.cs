@@ -87,7 +87,8 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	public NativeArray<float3> SurfacePosition;
 	public NativeArray<float3> VelocityArrow;
 
-	[ReadOnly] public NativeArray<CellTerrain> Terrain;
+	[ReadOnly] public NativeArray<float> Roughness;
+	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
@@ -138,7 +139,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		float floraCoverage = FloraCoverage[i];
 		var icosphere = Icosphere[i];
 		var elevation = Elevation[i];
-		float roughness = Terrain[i].Roughness;
+		float roughness = Roughness[i];
 		float surfaceElevation = elevation + math.max(roughness, waterDepth);
 
 		if (MeshOverlayActive)
@@ -149,7 +150,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		}
 		else
 		{
-			terrainColor = GetTerrainColor(roughness, Terrain[i].SoilFertility, waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
+			terrainColor = GetTerrainColor(roughness, SoilFertility[i], waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
 			waterColor = GetWaterColor(iceCoverage);
 		}
 		cloudColor = GetCloudColor(math.saturate((CloudDropletMass[i] - CloudDropletSizeMin) * InverseCloudDropletSizeRange), cloudCoverage);

@@ -13,7 +13,8 @@ public struct SimState {
 
 	public PlanetState PlanetState;
 	public NativeArray<float> Elevation;
-	public NativeArray<CellTerrain> Terrain;
+	public NativeArray<float> Roughness;
+	public NativeArray<float> SoilFertility;
 	public NativeArray<float> TerrainTemperature;
 	public NativeArray<float> FloraMass;
 	public NativeArray<float> FloraWater;
@@ -36,7 +37,8 @@ public struct SimState {
 
 	public void Init(int count, int airLayers, int waterLayers)
 	{
-		Terrain = new NativeArray<CellTerrain>(count, Allocator.Persistent);
+		Roughness = new NativeArray<float>(count, Allocator.Persistent);
+		SoilFertility = new NativeArray<float>(count, Allocator.Persistent);
 		Elevation = new NativeArray<float>(count, Allocator.Persistent);
 		TerrainTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWater = new NativeArray<float>(count, Allocator.Persistent);
@@ -75,7 +77,8 @@ public struct SimState {
 
 	public void Dispose()
 	{
-		Terrain.Dispose();
+		Roughness.Dispose();
+		SoilFertility.Dispose();
 		Elevation.Dispose();
 		TerrainTemperature.Dispose();
 		FloraMass.Dispose();
@@ -104,11 +107,6 @@ public struct SimState {
 			WaterVelocity[i].Dispose();
 		}
 	}
-}
-
-public struct CellTerrain {
-	public float Roughness;
-	public float SoilFertility;
 }
 
 public struct PlanetState {
