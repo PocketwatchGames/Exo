@@ -78,6 +78,7 @@
 	"FloraAirSurfaceArea": 10,
 
 	"GroundWaterMax": 10000,
+	"GroundWaterMaxDepth": 100,
 	"GroundWaterAbsorptionRate": 0.01,
 	"GroundWaterFlowSpeed": 0.05,
 	"GroundWaterDiffusionCoefficient": 10

@@ -100,6 +100,7 @@ public struct WorldData {
 	public float SoilHeatDepth;
 	public float GroundWaterFlowSpeed;
 	public float GroundWaterMax;
+	public float GroundWaterMaxDepth;
 	public float GroundWaterAbsorptionRate;
 	public float GroundWaterDiffusionCoefficient;
 	public float FullCoverageIce;

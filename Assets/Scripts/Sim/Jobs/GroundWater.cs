@@ -103,6 +103,7 @@ public struct GroundWaterConductionJob : IJobParallelFor {
 	[ReadOnly] public float GroundWaterConductionCoefficient;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float HeatingDepth;
+	[ReadOnly] public float GroundWaterSurfaceAreaInverse;
 	public void Execute(int i)
 	{
 		float groundWater = GroundWater[i];
@@ -114,7 +115,7 @@ public struct GroundWaterConductionJob : IJobParallelFor {
 			float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]);
 			float groundWaterTempDiff = newGroundWaterTemperature - TerrainTemperature[i];
 			float specificHeatGroundWater = groundWater * WorldData.SpecificHeatWater;
-			float conductionDelta = groundWaterTempDiff * GroundWaterConductionCoefficient * SecondsPerTick;
+			float conductionDelta = groundWaterTempDiff * GroundWaterConductionCoefficient * SecondsPerTick * GroundWaterSurfaceAreaInverse;
 
 			// TODO: this can conduct heat past a point of equilibrium
 			newGroundWaterTemperature -= conductionDelta / specificHeatGroundWater;

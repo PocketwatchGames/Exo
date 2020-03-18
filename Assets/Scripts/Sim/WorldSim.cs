@@ -1406,7 +1406,8 @@ public void Dispose()
 				SoilFertility = nextState.SoilFertility,
 				GroundWaterConductionCoefficient = WorldData.ConductivityWaterTerrain,
 				HeatingDepth = worldData.SoilHeatDepth,
-				SecondsPerTick = worldData.SecondsPerTick
+				SecondsPerTick = worldData.SecondsPerTick,
+				GroundWaterSurfaceAreaInverse = worldData.SoilHeatDepth / worldData.GroundWaterMaxDepth
 			}, groundWaterJob);
 
 

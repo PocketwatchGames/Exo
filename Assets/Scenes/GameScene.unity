@@ -1952,7 +1952,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2154d38784c857144af42caef2dc5850, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Seed: 11
+  Seed: 6
   Subdivisions: 5
   CheckForDegeneracy: 0
   CollectGlobals: 0
@@ -2016,6 +2016,7 @@ MonoBehaviour:
     SoilHeatDepth: 2
     GroundWaterFlowSpeed: 0.5
     GroundWaterMax: 0
+    GroundWaterMaxDepth: 0
     GroundWaterAbsorptionRate: 0
     GroundWaterDiffusionCoefficient: 0
     FullCoverageIce: 0
@@ -2030,6 +2031,7 @@ MonoBehaviour:
     FloraEvaporationRate: 0
     FloraWaterConsumptionRate: 0
     FloraGrowthTemperatureRangeInverse: 0
+    FloraAirSurfaceArea: 0
   TimeScale: 0
 --- !u!4 &365555217
 Transform:
