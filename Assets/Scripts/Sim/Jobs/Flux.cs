@@ -310,3 +310,64 @@ public struct FluxIceJob : IJobParallelFor {
 	}
 }
 
+#if !FluxFloraJobDebug
+[BurstCompile]
+#endif
+public struct FluxFloraJob : IJobParallelFor {
+	public NativeArray<float> EvaporatedWaterMass;
+	public NativeArray<float> EvaporatedWaterTemperaturePotential;
+	public NativeArray<float> LatentHeatAir;
+	public NativeArray<float> GroundWaterConsumed;
+	[ReadOnly] public NativeArray<float> FloraTemperature;
+	[ReadOnly] public NativeArray<float> FloraMass;
+	[ReadOnly] public NativeArray<float> FloraWater;
+	[ReadOnly] public NativeArray<float> GroundWater;
+	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> AirVapor;
+	[ReadOnly] public NativeArray<float> AirPressure;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float3> SurfaceWind;
+	[ReadOnly] public float FloraEvaporationRate;
+	[ReadOnly] public float GroundWaterMax;
+	[ReadOnly] public float FloraWaterConsumptionRate;
+	public void Execute(int i)
+	{
+		float mass = FloraMass[i];
+
+		float latentHeatFromAir = 0;
+		float evapMass = 0;
+		float evapTemperaturePotential = 0;
+		float groundWaterConsumed = 0;
+		if (mass > 0)
+		{
+			float temperature = FloraTemperature[i];
+			float waterMass = FloraWater[i];
+			float waterSaturation = waterMass / mass;
+
+			if (waterMass > 0)
+			{
+
+#if !DISABLE_EVAPORATION
+				// evap formula from here:
+				// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
+				// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
+				// so i'm using the air temperature instead of the water temperature, which means the the formula just reduces to (1-RH)*WindCoefficient
+				float evaporationCoefficient = waterSaturation * FloraEvaporationRate * (25 + 19 * math.length(SurfaceWind[i]));
+				evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], FloraTemperature[i], AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
+				waterMass -= evapMass;
+				latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
+				evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
+				//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
+#endif
+			}
+
+			groundWaterConsumed = math.min(GroundWater[i], mass * (GroundWater[i] / GroundWaterMax) * (1.0f - waterSaturation) * FloraWaterConsumptionRate);
+		}
+
+		EvaporatedWaterTemperaturePotential[i] = evapTemperaturePotential;
+		EvaporatedWaterMass[i] = evapMass;
+		LatentHeatAir[i] += -latentHeatFromAir;
+		GroundWaterConsumed[i] = groundWaterConsumed;
+	}
+}
+

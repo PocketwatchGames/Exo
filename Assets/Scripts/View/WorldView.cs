@@ -22,6 +22,8 @@ public class WorldView : MonoBehaviour {
 		GroundTemperature,
 		GroundWater,
 		GroundWaterTemperature,
+		FloraTemperature,
+		FloraWater,
 		PotentialTemperature0,
 		PotentialTemperature1,
 		PotentialTemperature2,
@@ -711,6 +713,12 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.GroundWaterTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundWaterTemperature);
 				return true;
+			case MeshOverlay.FloraTemperature:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.FloraTemperature);
+				return true;
+			case MeshOverlay.FloraWater:
+				overlay = new MeshOverlayData(0, Sim.WorldData.FullCoverageFlora, _normalizedRainbow, simState.FloraWater);
+				return true;
 				//case MeshOverlay.VerticalWind:
 				//	overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, simState.WindVertical[1]);
 				//	return true;
@@ -912,7 +920,13 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("ROUGH: {0:N0} m\n", terrain.Roughness);
 		s.AppendFormat("TEMP: {0}\n", GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("FERT: {0:N2}\n", terrain.SoilFertility);
-		s.AppendFormat("VEG: {0:N2}\n", state.FloraMass[ActiveCellIndex]);
+		s.AppendFormat("FLORA: {0:N2} WATER: {1:N2} kg TEMP: {2:N2}\n", 
+			state.FloraMass[ActiveCellIndex],
+			state.FloraWater[ActiveCellIndex],
+			GetTemperatureString(state.FloraTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("GWATER: {0:N2} TEMP: {1:N2}\n", 
+			state.GroundWater[ActiveCellIndex],
+			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		return s.ToString();
 	}
 	private string GetCellInfoWater(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)

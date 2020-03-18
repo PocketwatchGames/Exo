@@ -67,6 +67,8 @@
 
 	"MinTemperatureFlora": 223.15,
 	"MaxTemperatureFlora": 323.15,
+	"FloraEvaporationRate": 0.1,
+	"FloraWaterConsumptionRate": 0.1,
 
 	"GroundWaterMax": 10000,
 	"GroundWaterAbsorptionRate": 0.01,

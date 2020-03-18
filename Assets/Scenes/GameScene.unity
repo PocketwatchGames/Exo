@@ -1955,7 +1955,7 @@ MonoBehaviour:
   Seed: 11
   Subdivisions: 5
   CheckForDegeneracy: 0
-  CollectGlobals: 1
+  CollectGlobals: 0
   LogState: 0
   LogStateIndex: 0
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
@@ -1988,7 +1988,7 @@ MonoBehaviour:
     ThermalEmissivityWaterVapor: 0
     ThermalEmissivityDirt: 0
     ThermalEmissivitySand: 0
-    ThermalEmissivityVegetation: 0
+    ThermalEmissivityFlora: 0
     WaterHeatingDepth: 0
     IceHeatingDepth: 0
     FreezePointReductionPerSalinity: 0
@@ -2006,7 +2006,7 @@ MonoBehaviour:
     WindIceFriction: 0.1
     WindTerrainFrictionMin: 0
     WindTerrainFrictionMax: 0
-    WindVegetationFriction: 0
+    WindFloraFriction: 0
     MaxTerrainRoughnessForWindFriction: 0
     WaterSurfaceFrictionDepth: 0
     WindToWaterCurrentFrictionCoefficient: 0
@@ -2020,10 +2020,11 @@ MonoBehaviour:
     GroundWaterDiffusionCoefficient: 0
     FullCoverageIce: 0
     FullCoverageWater: 0
-    FullCoverageVegetation: 0
-    FullCoverageCloud: 0
-    MinTemperatureVegetation: 0
-    MaxTemperatureVegetation: 0
+    FullCoverageFlora: 0
+    MinTemperatureFlora: 0
+    MaxTemperatureFlora: 0
+    FloraEvaporationRate: 0
+    FloraWaterConsumptionRate: 0
   TimeScale: 0
 --- !u!4 &365555217
 Transform:
@@ -6131,13 +6132,14 @@ MonoBehaviour:
   DisplayWindSpeedDeepWaterMax: 0.5
   DisplayVerticalWindSpeedMax: 1
   DisplayEvaporationMax: 5
-  DisplayVegetationMax: 1000
+  DisplayFloraMax: 10000
   DisplayTemperatureMin: 223
   DisplayTemperatureMax: 323
   DisplayAbsoluteHumidityMax: 0.05
   DisplayAirPressureMin: 85000
   DisplayAirPressureMax: 110000
   DisplayHeatAbsorbedMax: 5000
+  DisplayCloudMassMax: 0.5
   Sim: {fileID: 365555216}
   Planet: {fileID: 1921819011}
   Sun: {fileID: 575991941}

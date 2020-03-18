@@ -106,6 +106,7 @@ public static class WorldGen {
 
 			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * surfaceElevation;
 			float flora = 0;
+			float floraWater = 0;
 			if (elevation > 0)
 			{
 				flora =
@@ -113,6 +114,8 @@ public static class WorldGen {
 					* soilFertility
 					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
 					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureCanopy) / (MaxTemperatureCanopy - MinTemperatureCanopy)));
+				floraWater =
+					flora * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 41630);
 			}
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 2.0f);
 
@@ -131,7 +134,7 @@ public static class WorldGen {
 			Elevation[i] = elevation;
 			Flora[i] = flora;
 			FloraTemperature[i] = airTemperatureSurface;
-			FloraWater[i] = 0;
+			FloraWater[i] = floraWater;
 			Terrain[i] = new CellTerrain()
 			{
 				Roughness = roughness,

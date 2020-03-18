@@ -17,11 +17,12 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<CellTerrain> LastTerrain;
 	[ReadOnly] public NativeArray<float> LastElevation;
 	[ReadOnly] public NativeArray<float> LastGroundWater;
+	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	public void Execute(int i)
 	{
 		Elevation[i] = LastElevation[i];
 		Terrain[i] = LastTerrain[i];
-		GroundWater[i] = LastGroundWater[i];
+		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];
 	}
 
 }
@@ -34,12 +35,14 @@ public struct UpdateFloraJob : IJobParallelFor {
 	public NativeArray<float> FloraMass;
 	public NativeArray<float> FloraWater;
 
+	[ReadOnly] public NativeArray<float> EvaporationMass;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastWater;
+	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	public void Execute(int i)
 	{
 		FloraMass[i] = LastMass[i];
-		FloraWater[i] = LastWater[i];
+		FloraWater[i] = LastWater[i] - EvaporationMass[i] + GroundWaterConsumed[i];
 	}
 
 }

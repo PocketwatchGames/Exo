@@ -109,6 +109,8 @@ public struct WorldData {
 	[Header("Flora")]
 	public float MinTemperatureFlora;
 	public float MaxTemperatureFlora;
+	public float FloraEvaporationRate;
+	public float FloraWaterConsumptionRate;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;
@@ -129,7 +131,7 @@ public struct WorldData {
 	public const float AlbedoFlora = 0.1f;
 	//public const float AlbedoCloud = 0.05f; // 24% incoming  reflected back to space by clouds (avg, globally)
 	public const float SpecificHeatIce = 2.108f;
-	public const float SpecificHeatFlora = 3; // TODO: this is totally invented
+	public const float SpecificHeatFlora = 1.76f;
 	public const float SpecificHeatWater = 4.187f;
 	public const float SpecificHeatWaterVapor = 1.996f;
 	public const float SpecificHeatSalt = 0.85f;

@@ -170,8 +170,10 @@ public struct UpdateMassAirJob : IJobParallelFor {
 public struct UpdateMassEvaporationJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
 	public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> Evaporation;
-	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotential;
+	[ReadOnly] public NativeArray<float> EvaporationWater;
+	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotentialWater;
+	[ReadOnly] public NativeArray<float> EvaporationFlora;
+	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotentialFlora;
 	[ReadOnly] public NativeArray<float> AirMass;
  	public void Execute(int i)
 	{
@@ -180,10 +182,11 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 
 		AirTemperaturePotential[i] =
 			((airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * AirTemperaturePotential[i] +
-			Evaporation[i] * EvaporationTemperaturePotential[i] * WorldData.SpecificHeatWaterVapor) /
-			(airMass * WorldData.SpecificHeatAtmosphere + (vaporMass + Evaporation[i]) * WorldData.SpecificHeatWaterVapor);
+			EvaporationWater[i] * EvaporationTemperaturePotentialWater[i] * WorldData.SpecificHeatWaterVapor +
+			EvaporationFlora[i] * EvaporationTemperaturePotentialFlora[i] * WorldData.SpecificHeatWaterVapor) /
+			(airMass * WorldData.SpecificHeatAtmosphere + (vaporMass + EvaporationWater[i] + EvaporationFlora[i]) * WorldData.SpecificHeatWaterVapor);
 
-		VaporMass[i] = vaporMass + Evaporation[i];
+		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
 	}
 }
 

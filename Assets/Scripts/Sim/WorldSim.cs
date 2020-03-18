@@ -64,8 +64,11 @@ public class WorldSim {
 	private NativeArray<float> frozenTemperature;
 	private NativeArray<float> frozenMass;
 	private NativeArray<float> saltPlume;
-	private NativeArray<float> evaporationMass;
-	private NativeArray<float> evaporationTemperaturePotential;
+	private NativeArray<float> evaporationMassWater;
+	private NativeArray<float> evaporationTemperaturePotentialWater;
+	private NativeArray<float> evaporationMassFlora;
+	private NativeArray<float> evaporationTemperaturePotentialFlora;
+	private NativeArray<float> groundWaterConsumed;
 	private NativeArray<float> geothermalRadiation;
 	private NativeArray<float> groundWaterFlowMass;
 	private NativeArray<float> groundWaterFlowTemperature;
@@ -130,8 +133,11 @@ public class WorldSim {
 		frozenTemperature = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		frozenMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		saltPlume = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		evaporationMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		evaporationTemperaturePotential = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		evaporationMassWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		evaporationTemperaturePotentialWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		evaporationMassFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		evaporationTemperaturePotentialFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		groundWaterConsumed = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterFriction = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		diffusionCloud = new NativeArray<DiffusionCloud>(_cellCount, Allocator.Persistent);
@@ -183,8 +189,11 @@ public void Dispose()
 		frozenTemperature.Dispose();
 		frozenMass.Dispose();
 		saltPlume.Dispose();
-		evaporationMass.Dispose();
-		evaporationTemperaturePotential.Dispose();
+		evaporationMassWater.Dispose();
+		evaporationTemperaturePotentialWater.Dispose();
+		evaporationMassFlora.Dispose();
+		evaporationTemperaturePotentialFlora.Dispose();
+		groundWaterConsumed.Dispose();
 		windFriction.Dispose();
 		waterFriction.Dispose();
 		diffusionCloud.Dispose();
@@ -929,6 +938,7 @@ public void Dispose()
 				FloraTemperature = nextState.FloraTemperature,
 				LastTemperature = lastState.FloraTemperature,
 				FloraMass = lastState.FloraMass,
+				FloraWater = lastState.FloraWater,
 				SolarRadiationIn = solarRadiationIn[_floraLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_floraLayer],
 				ConductionEnergyAir = conductionAirFlora,
@@ -1054,8 +1064,8 @@ public void Dispose()
 
 			fluxJobHandles[_waterLayer0+_surfaceWaterLayer] =SimJob.Schedule(new FluxWaterJob()
 			{
-				EvaporatedWaterMass = evaporationMass,
-				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotential,
+				EvaporatedWaterMass = evaporationMassWater,
+				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotentialWater,
 				FrozenMass = frozenMass,
 				FrozenTemperature = frozenTemperature,
 				LatentHeatWater = latentHeat[_waterLayer0 + _surfaceWaterLayer],
@@ -1107,7 +1117,28 @@ public void Dispose()
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
 			});
 
-			fluxJobHandles[_iceLayer] =SimJob.Schedule(new FluxIceJob()
+			fluxJobHandles[_floraLayer] = SimJob.Schedule(new FluxFloraJob()
+			{
+				LatentHeatAir = latentHeat[_airLayer0 + 1],
+				EvaporatedWaterMass = evaporationMassFlora,
+				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotentialFlora,
+				GroundWaterConsumed = groundWaterConsumed,
+
+				FloraTemperature = nextState.FloraTemperature,
+				FloraMass = lastState.FloraMass,
+				FloraWater = lastState.FloraWater,
+				LayerElevation = dependent.LayerElevation[1],
+				SurfaceWind = lastState.AirVelocity[1],
+				AirMass = dependent.AirMass[1],
+				AirPressure = dependent.AirPressure[1],
+				AirVapor = lastState.AirVapor[1],
+				GroundWater = lastState.GroundWater,
+				GroundWaterMax = worldData.GroundWaterMax,
+				FloraEvaporationRate = worldData.FloraEvaporationRate,
+				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate
+			}, fluxJobHandles[_waterLayer0 + _surfaceWaterLayer]);
+
+			fluxJobHandles[_iceLayer] = SimJob.Schedule(new FluxIceJob()
 			{
 				LatentHeatAir = latentHeat[_airLayer0 + 1],
 				LatentHeatWater = latentHeat[_waterLayer0 + _surfaceWaterLayer],
@@ -1119,8 +1150,8 @@ public void Dispose()
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				WaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				LayerElevation = dependent.LayerElevation[1],
-				
-			}, fluxJobHandles[_waterLayer0 + _surfaceWaterLayer]);
+
+			}, fluxJobHandles[_floraLayer]);
 
 			JobHandle fluxJobHandle = JobHandle.CombineDependencies(fluxCloudJobHandle, JobHandle.CombineDependencies(fluxJobHandles));
 			fluxJobHandle.Complete();
@@ -1171,7 +1202,7 @@ public void Dispose()
 				WaterMass = nextState.WaterMass[_surfaceWaterLayer],
 				SaltMass = nextState.SaltMass[_surfaceWaterLayer],
 				SaltPlume = saltPlume,
-				Evaporation = evaporationMass,
+				Evaporation = evaporationMassWater,
 				IceMelted = iceMeltedMass,
 				Precipitation = precipitationMass,
 				PrecipitationTemperature = precipitationTemperature,
@@ -1219,8 +1250,10 @@ public void Dispose()
 				VaporMass = nextState.AirVapor[1],
 
 				AirMass = dependent.AirMass[1],
-				Evaporation = evaporationMass,
-				EvaporationTemperaturePotential = evaporationTemperaturePotential,
+				EvaporationWater = evaporationMassWater,
+				EvaporationTemperaturePotentialWater = evaporationTemperaturePotentialWater,
+				EvaporationFlora = evaporationMassFlora,
+				EvaporationTemperaturePotentialFlora = evaporationTemperaturePotentialFlora,
 			}, JobHandle.CombineDependencies(updateMassAirJobHandles[1], surfaceWaterMassHandle));
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateMassEvaporationHandle);
 
@@ -1248,6 +1281,7 @@ public void Dispose()
 				LastElevation = lastState.Elevation,
 				LastTerrain = lastState.Terrain,
 				LastGroundWater = lastState.GroundWater,
+				GroundWaterConsumed = groundWaterConsumed
 			}));
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateFloraJob()
@@ -1255,8 +1289,10 @@ public void Dispose()
 				FloraMass = nextState.FloraMass,
 				FloraWater = nextState.FloraWater,
 
+				EvaporationMass = evaporationMassFlora,
 				LastMass = lastState.FloraMass,
 				LastWater = lastState.FloraWater,
+				GroundWaterConsumed = groundWaterConsumed
 			}));
 
 
@@ -1885,11 +1921,12 @@ public void Dispose()
 					SolarRadiationInTerrain = solarRadiationIn[_terrainLayer],
 					SolarRadiationInIce = solarRadiationIn[_iceLayer],
 					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _waterLayers - 2],
-					Evaporation = evaporationMass,
+					Evaporation = evaporationMassWater,
 					Precipitation = precipitationMass,
 					Terrain = nextState.Terrain,
 					TerrainTemperature = nextState.TerrainTemperature,
 					Flora = nextState.FloraMass,
+					FloraWater = nextState.FloraWater,
 					HeatingDepth = worldData.SoilHeatDepth,
 					CloudMass = nextState.CloudMass,
 					IceMass = nextState.IceMass,
@@ -1950,7 +1987,7 @@ public void Dispose()
 						}
 						display.EnergySurfaceConduction += conductionAirIce[i] + conductionAirTerrain[i] + conductionAirWater[i];
 						display.EnergyOceanConduction += conductionAirWater[i];
-						display.EnergyEvapotranspiration += evaporationMass[i] * WorldData.LatentHeatWaterVapor;
+						display.EnergyEvapotranspiration += (evaporationMassWater[i] + evaporationMassFlora[i]) * WorldData.LatentHeatWaterVapor;
 						display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0 + 1][i] + thermalRadiationTransmittedDown[_airLayer0 + 1][i];
 						display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 2][i] + thermalRadiationTransmittedUp[_waterLayer0 + _surfaceWaterLayer][i]) * dependent.WaterCoverage[_waterLayers - 2][i];
 
