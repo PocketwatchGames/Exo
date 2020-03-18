@@ -93,7 +93,7 @@ public static class WorldGen {
 				0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 40);
 			if (elevation > 0)
 			{
-				relativeHumidity[i] = relativeHumidity[i] * relativeHumidity[i];
+				relativeHumidity[i] *= math.saturate(1.0f - elevation / MaxElevation);
 			}
 			float surfaceElevation = math.max(0, elevation);
 
@@ -343,10 +343,10 @@ public static class WorldGen {
 			CloudVelocity = state.CloudVelocity,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
-			TemperaturePotential = temperaturePotential,
 			WaterTemperatureBottom = WaterTemperatureBottom,
 			WaterTemperatureSurface = WaterTemperatureTop,
 
+			TemperaturePotential = temperaturePotential,
 			FullWaterCoverage = worldData.FullCoverageWater,
 			inversePI = inversePI,
 			rainDropMinSize = worldData.rainDropMinSize,

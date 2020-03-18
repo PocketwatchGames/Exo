@@ -194,7 +194,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 
 	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float floraCoverage, float groundWaterSaturation)
 	{
-		if (iceCoverage > 0.5f)
+		if (iceCoverage > 0.01f)
 		{
 			return new Color32(255, 255, 255, 255);
 		//} else if (waterDepth / roughness > 0.5f)

@@ -11,11 +11,9 @@ public static class SimJobs {
 	{
 		var waterMassSum = new NativeArray<float>(state.IceMass, Allocator.TempJob);
 		var airMassTotal = new NativeArray<float>(state.IceMass.Length, Allocator.TempJob);
-		var standardLayerElevation = new NativeArray<float>(state.IceMass.Length, Allocator.TempJob);
 		var waterMassTotal = new NativeArray<float>(state.IceMass.Length, Allocator.Persistent);
 		arraysToDispose.Add(waterMassSum);
 		arraysToDispose.Add(airMassTotal);
-		arraysToDispose.Add(standardLayerElevation);
 		arraysToDispose.Add(waterMassTotal);
 		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
@@ -60,8 +58,8 @@ public static class SimJobs {
 		{
 			IceEnergy = dependent.IceEnergy,
 			FloraEnergy = dependent.FloraEnergy,
-
 			SurfaceElevation = dependent.LayerElevation[1],
+
 			WaterDepth = dependent.WaterLayerDepth[1],
 			Elevation = state.Elevation,
 			FloraMass = state.FloraMass,
@@ -70,7 +68,10 @@ public static class SimJobs {
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
 		}, dependencies);
+		dependencies.Complete();
 
+		var standardLayerElevation = new NativeArray<float>(dependent.LayerElevation[1], Allocator.TempJob);
+		arraysToDispose.Add(standardLayerElevation);
 
 		for (int j = 1; j < worldData.AirLayers - 1; j++)
 		{
