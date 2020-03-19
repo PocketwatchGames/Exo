@@ -2032,6 +2032,7 @@ MonoBehaviour:
     FloraWaterConsumptionRate: 0
     FloraGrowthTemperatureRangeInverse: 0
     FloraAirSurfaceArea: 0
+    LavaSolidificationTemperature: 0
   TimeScale: 0
 --- !u!4 &365555217
 Transform:
@@ -6147,6 +6148,11 @@ MonoBehaviour:
   DisplayAirPressureMax: 110000
   DisplayHeatAbsorbedMax: 5000
   DisplayCloudMassMax: 0.5
+  DisplayCrustDepthMax: 10000
+  DisplayMagmaMassMax: 1000000
+  DisplayDustHeight: 1000
+  DisplayDustMax: 100
+  DisplayLavaTemperatureMax: 1200
   Sim: {fileID: 365555216}
   Planet: {fileID: 1921819011}
   Sun: {fileID: 575991941}
@@ -6156,6 +6162,8 @@ MonoBehaviour:
   TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   WaterMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
+  DustMaterial: {fileID: 2100000, guid: 082c49268a5446b47badd5c14f5f69a5, type: 2}
+  LavaMaterial: {fileID: 2100000, guid: 097d5a6b0c6e2454c982d85188bcef1b, type: 2}
   SelectionCirclePrefab: {fileID: 3866112454082045954, guid: 3658dbd2135786c4294654eb7281919d,
     type: 3}
   WindArrowPrefab: {fileID: 7613255414872140438, guid: dfd7c185abe49744283f6f7f9c5ac455,

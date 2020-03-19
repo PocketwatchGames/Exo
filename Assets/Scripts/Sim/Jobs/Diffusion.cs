@@ -16,18 +16,21 @@ public struct DiffusionAirJob : IJobParallelFor {
 	public NativeArray<DiffusionAir> Delta;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastVapor;
+	[ReadOnly] public NativeArray<float> LastDust;
 	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> UpTemperature;
 	[ReadOnly] public NativeArray<float> UpVapor;
+	[ReadOnly] public NativeArray<float> UpDust;
 	[ReadOnly] public NativeArray<float> UpAirMass;
 	[ReadOnly] public NativeArray<float3> UpAirVelocity;
 	[ReadOnly] public NativeArray<float> UpLayerElevation;
 	[ReadOnly] public NativeArray<float> UpLayerHeight;
 	[ReadOnly] public NativeArray<float> DownTemperature;
 	[ReadOnly] public NativeArray<float> DownVapor;
+	[ReadOnly] public NativeArray<float> DownDust;
 	[ReadOnly] public NativeArray<float> DownAirMass;
 	[ReadOnly] public NativeArray<float3> DownAirVelocity;
 	[ReadOnly] public NativeArray<float> DownLayerElevation;
@@ -40,10 +43,13 @@ public struct DiffusionAirJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float airMass = AirMass[i];
-		float absoluteHumidity = LastVapor[i] / airMass;
+		float inverseAirMass = 1.0f / airMass;
+		float absoluteHumidity = LastVapor[i] * inverseAirMass;
+		float dust = LastDust[i] * inverseAirMass;
 
 		float newTemperature = LastTemperature[i];
 		float newHumidity = absoluteHumidity;
+		float newDust = LastDust[i];
 		float3 newVelocity = LastVelocity[i];
 		float layerHeight = LayerHeight[i];
 
@@ -57,9 +63,12 @@ public struct DiffusionAirJob : IJobParallelFor {
 				float3 nVelocity = LastVelocity[n];
 
 				float neighborMass = AirMass[n];
+				float neighborMassInverse = 1.0f / neighborMass;
 				float diffusionAmount = Atmosphere.GetDiffusionAmount(airMass, neighborMass, DiffusionCoefficientHoriztonal, layerHeight, LayerHeight[n], NeighborDistInverse[neighborIndex]);
-				float neighborHumidity = LastVapor[n] / neighborMass;
+				float neighborHumidity = LastVapor[n] * neighborMassInverse;
+				float neighborDust = LastDust[n] * neighborMassInverse;
 				newHumidity += (neighborHumidity - absoluteHumidity) * diffusionAmount;
+				newDust += (neighborDust - dust) * diffusionAmount;
 				newVelocity += (nVelocity - LastVelocity[i]) * diffusionAmount;
 				newTemperature += (LastTemperature[n] - LastTemperature[i]) * diffusionAmount;
 
@@ -76,8 +85,12 @@ public struct DiffusionAirJob : IJobParallelFor {
 			float heightDiff = (LayerHeight[i] + UpLayerHeight[i]) / 2;
 			float diffusionAmount = Atmosphere.GetDiffusionAmount(airMass, UpAirMass[i], DiffusionCoefficientVertical, heightDiff);
 
-			float absoluteHumidityUp = UpVapor[i] /  UpAirMass[i];
+			float inverseAirMassUp = 1.0f / UpAirMass[i];
+			float absoluteHumidityUp = UpVapor[i] * inverseAirMassUp;
 			newHumidity += (absoluteHumidityUp - absoluteHumidity) * diffusionAmount;
+
+			float dustUp = UpDust[i] * inverseAirMassUp;
+			newDust += (dustUp - dust) * diffusionAmount;
 
 			float potentialTemperatureUp = UpTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
 			newTemperature += (potentialTemperatureUp - LastTemperature[i]) * diffusionAmount;
@@ -87,8 +100,12 @@ public struct DiffusionAirJob : IJobParallelFor {
 			float heightDiff = (LayerHeight[i] + DownLayerHeight[i]) / 2;
 			float diffusionAmount = Atmosphere.GetDiffusionAmount(airMass, DownAirMass[i], DiffusionCoefficientVertical, heightDiff);
 
-			float absoluteHumidityDown = DownVapor[i] / DownAirMass[i];
+			float inverseAirMassDown = 1.0f / DownAirMass[i];
+			float absoluteHumidityDown = DownVapor[i] * inverseAirMassDown;
 			newHumidity += (absoluteHumidityDown - absoluteHumidity) * diffusionAmount;
+
+			float dustDown = DownDust[i] * inverseAirMassDown;
+			newDust += (dustDown - dust) * diffusionAmount;
 
 			float potentialTemperatureDown = DownTemperature[i] - WorldData.TemperatureLapseRate * heightDiff;
 			newTemperature += (potentialTemperatureDown - LastTemperature[i]) * diffusionAmount;
@@ -101,6 +118,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 		{
 			Temperature = newTemperature,
 			WaterVapor = newHumidity * airMass,
+			Dust = newDust * airMass,
 			Velocity = newVelocity,
 		};
 

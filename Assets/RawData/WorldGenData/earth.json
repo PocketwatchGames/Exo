@@ -22,6 +22,10 @@
 	"Gravity": 9.80665,
 	"SurfaceWaterDepth": 200,
 	"ThermoclineDepth": 800,
-	"WaterTemperatureDepthFalloff": 500
+	"WaterTemperatureDepthFalloff": 500,
+	"MagmaMin": 1000,
+	"MagmaMax": 10000,
+	"CrustMin": 100,
+	"CrustMax": 10000
 
 }

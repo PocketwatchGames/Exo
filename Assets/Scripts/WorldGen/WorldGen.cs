@@ -50,6 +50,8 @@ public static class WorldGen {
 		public NativeArray<float> Flora;
 		public NativeArray<float> FloraWater;
 		public NativeArray<float> FloraTemperature;
+		public NativeArray<float> MagmaMass;
+		public NativeArray<float> CrustDepth;
 
 		[ReadOnly] public NativeArray<float2> Coordinate;
 		[ReadOnly] public NativeArray<float3> SphericalPosition;
@@ -63,6 +65,10 @@ public static class WorldGen {
 		[ReadOnly] public float MinTemperatureFlora;
 		[ReadOnly] public float MaxTemperatureFlora;
 		[ReadOnly] public float MaxGroundWater;
+		[ReadOnly] public float MagmaMin;
+		[ReadOnly] public float MagmaMax;
+		[ReadOnly] public float CrustMin;
+		[ReadOnly] public float CrustMax;
 
 		public void Run(int count)
 		{
@@ -130,6 +136,12 @@ public static class WorldGen {
 			}
 			GroundWater[i] = groundWater;
 			GroundWaterTemperature[i] = (airTemperatureSurface + WorldData.FreezingTemperature) / 2;
+
+			CrustDepth[i] = CrustMin + (CrustMax - CrustMin) * ((elevation - MinElevation) / (MaxElevation - MinElevation)) *
+				(0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 4570) +
+				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1430));
+
+			MagmaMass[i] = MagmaMin + (MagmaMax - MagmaMin) * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630);
 
 			LayerElevationBase[i] = surfaceElevation;
 			Elevation[i] = elevation;
@@ -202,12 +214,14 @@ public static class WorldGen {
 	private struct WorldGenAirLayerJob : IJobParallelFor {
 
 		public NativeArray<float> AirTemperaturePotential;
+		public NativeArray<float> Dust;
 
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 
 		public void Execute(int i)
 		{
 			AirTemperaturePotential[i] = TemperaturePotential[i];
+			Dust[i] = 10;
 		}
 	}
 
@@ -318,6 +332,8 @@ public static class WorldGen {
 			Flora = state.FloraMass,
 			FloraWater = state.FloraWater,
 			FloraTemperature = state.FloraTemperature,
+			CrustDepth = state.CrustDepth,
+			MagmaMass = state.MagmaMass,
 
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
@@ -330,7 +346,11 @@ public static class WorldGen {
 			MaxRoughness =worldGenData.MaxRoughness,
 			MinTemperature = worldGenData.MinTemperature,
 			MaxTemperature = worldGenData.MaxTemperature,
-			MaxGroundWater = worldData.GroundWaterMax
+			MaxGroundWater = worldData.GroundWaterMax,
+			MagmaMin = worldGenData.MagmaMin,
+			MagmaMax = worldGenData.MagmaMax,
+			CrustMin = worldGenData.CrustMin,
+			CrustMax = worldGenData.CrustMax,
 		};
 		worldGenInitJob.Run(staticState.Count);
 
@@ -397,6 +417,7 @@ public static class WorldGen {
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenAirLayerJob()
 			{
 				AirTemperaturePotential = state.AirTemperaturePotential[i],
+				Dust = state.Dust[i],
 
 				TemperaturePotential = temperaturePotential,
 			}, worldGenJobHandle);

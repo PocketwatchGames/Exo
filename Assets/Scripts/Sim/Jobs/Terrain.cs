@@ -13,11 +13,19 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	public NativeArray<float> Roughness;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> GroundWater;
+	public NativeArray<float> LavaMass;
+	public NativeArray<float> LavaTemperature;
+	public NativeArray<float> MagmaMass;
+	public NativeArray<float> CrustDepth;
 
 	[ReadOnly] public NativeArray<float> LastSoilFertility;
 	[ReadOnly] public NativeArray<float> LastRoughness;
 	[ReadOnly] public NativeArray<float> LastElevation;
 	[ReadOnly] public NativeArray<float> LastGroundWater;
+	[ReadOnly] public NativeArray<float> LastLavaMass;
+	[ReadOnly] public NativeArray<float> LastLavaTemperature;
+	[ReadOnly] public NativeArray<float> LastMagmaMass;
+	[ReadOnly] public NativeArray<float> LastCrustDepth;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	public void Execute(int i)
 	{
@@ -25,6 +33,10 @@ public struct UpdateTerrainJob : IJobParallelFor {
 		SoilFertility[i] = LastSoilFertility[i];
 		Roughness[i] = LastRoughness[i];
 		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];
+		LavaMass[i] = LastLavaMass[i];
+		LavaTemperature[i] = LastLavaTemperature[i];
+		MagmaMass[i] = LastMagmaMass[i];
+		CrustDepth[i] = LastCrustDepth[i];
 	}
 
 }

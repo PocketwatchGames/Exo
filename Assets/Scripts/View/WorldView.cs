@@ -24,6 +24,8 @@ public class WorldView : MonoBehaviour {
 		GroundWaterTemperature,
 		FloraTemperature,
 		FloraWater,
+		CrustDepth,
+		MagmaMass,
 		PotentialTemperature0,
 		PotentialTemperature1,
 		PotentialTemperature2,
@@ -114,6 +116,11 @@ public class WorldView : MonoBehaviour {
 	public float DisplayAirPressureMax = 110000;
 	public float DisplayHeatAbsorbedMax = 1000;
 	public float DisplayCloudMassMax = 10;
+	public float DisplayCrustDepthMax = 10000;
+	public float DisplayMagmaMassMax = 1000000;
+	public float DisplayDustHeight = 1000;
+	public float DisplayDustMax = 100;
+	public float DisplayLavaTemperatureMax = 1200;
 
 	[Header("References")]
 	public WorldSimComponent Sim;
@@ -125,6 +132,8 @@ public class WorldView : MonoBehaviour {
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
 	public Material CloudMaterial;
+	public Material DustMaterial;
+	public Material LavaMaterial;
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
 
@@ -144,14 +153,24 @@ public class WorldView : MonoBehaviour {
 	private Vector3[] _cloudVertices;
 	private Vector3[] _cloudNormals;
 	private Color32[] _cloudColors;
+	private Vector3[] _lavaVertices;
+	private Vector3[] _lavaNormals;
+	private Color32[] _lavaColors;
+	private Vector3[] _dustVertices;
+	private Vector3[] _dustNormals;
+	private Color32[] _dustColors;
 
 	private Mesh _terrainMesh;
 	private Mesh _waterMesh;
 	private Mesh _cloudMesh;
+	private Mesh _dustMesh;
+	private Mesh _lavaMesh;
 
 	private GameObject _terrainObject;
 	private GameObject _waterObject;
 	private GameObject _cloudObject;
+	private GameObject _dustObject;
+	private GameObject _lavaObject;
 	private GameObject _selectionCircle;
 	private List<GameObject> _selectionCircleNeighbors;
 
@@ -195,6 +214,8 @@ public class WorldView : MonoBehaviour {
 		_terrainMesh = new Mesh();
 		_cloudMesh = new Mesh();
 		_waterMesh = new Mesh();
+		_lavaMesh = new Mesh();
+		_dustMesh = new Mesh();
 
 		_terrainObject = new GameObject("Terrain Mesh");
 		_terrainObject.transform.SetParent(Planet.transform, false);
@@ -203,6 +224,15 @@ public class WorldView : MonoBehaviour {
 		var terrainCollider = _terrainObject.AddComponent<MeshCollider>();
 		terrainSurfaceRenderer.material = TerrainMaterial;
 		terrainFilter.mesh = terrainCollider.sharedMesh = _terrainMesh;
+
+		_lavaObject = new GameObject("Lava Mesh");
+		_lavaObject.transform.SetParent(Planet.transform, false);
+		var lavaFilter = _lavaObject.AddComponent<MeshFilter>();
+		var lavaSurfaceRenderer = _lavaObject.AddComponent<MeshRenderer>();
+		var lavaCollider = _lavaObject.AddComponent<MeshCollider>();
+		lavaSurfaceRenderer.material = LavaMaterial;
+		lavaFilter.mesh = lavaCollider.sharedMesh = _lavaMesh;
+
 
 		_waterObject = new GameObject("Water Mesh");
 		_waterObject.transform.SetParent(Planet.transform, false);
@@ -218,6 +248,13 @@ public class WorldView : MonoBehaviour {
 		var cloudSurfaceRenderer = _cloudObject.AddComponent<MeshRenderer>();
 		cloudSurfaceRenderer.material = CloudMaterial;
 		cloudFilter.mesh = _cloudMesh;
+
+		_dustObject = new GameObject("Dust Mesh");
+		_dustObject.transform.SetParent(Planet.transform, false);
+		var dustFilter = _dustObject.AddComponent<MeshFilter>();
+		var dustSurfaceRenderer = _dustObject.AddComponent<MeshRenderer>();
+		dustSurfaceRenderer.material = DustMaterial;
+		dustFilter.mesh = _dustMesh;
 
 		_selectionCircle = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
 		_selectionCircle.transform.localScale *= 0.02f;
@@ -267,6 +304,12 @@ public class WorldView : MonoBehaviour {
 		_cloudVertices = new Vector3[Sim.CellCount];
 		_cloudNormals = new Vector3[Sim.CellCount];
 		_cloudColors = new Color32[Sim.CellCount];
+		_dustVertices = new Vector3[Sim.CellCount];
+		_dustNormals = new Vector3[Sim.CellCount];
+		_dustColors = new Color32[Sim.CellCount];
+		_lavaVertices = new Vector3[Sim.CellCount];
+		_lavaNormals = new Vector3[Sim.CellCount];
+		_lavaColors = new Color32[Sim.CellCount];
 
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
@@ -336,12 +379,18 @@ public class WorldView : MonoBehaviour {
 			TerrainColor = to.TerrainColor,
 			TerrainNormal = to.TerrainNormal,
 			TerrainPosition = to.TerrainPosition,
+			LavaColor = to.LavaColor,
+			LavaPosition = to.LavaPosition,
+			LavaNormal = to.LavaNormal,
 			WaterColor = to.WaterColor,
 			WaterNormal = to.WaterNormal,
 			WaterPosition = to.WaterPosition,
 			CloudColor = to.CloudColor,
 			CloudNormal = to.CloudNormal,
 			CloudPosition = to.CloudPosition,
+			DustColor = to.DustColor,
+			DustNormal = to.DustNormal,
+			DustPosition = to.DustPosition,
 			VelocityArrow = to.VelocityArrow,
 			SurfacePosition = to.SurfacePosition,
 
@@ -359,7 +408,7 @@ public class WorldView : MonoBehaviour {
 			CloudElevation = dependent.CloudElevation,
 			Icosphere = Sim.Icosphere.Vertices,
 			SoilFertility = from.SoilFertility,
-			Roughness= from.Roughness,
+			Roughness = from.Roughness,
 			Elevation = from.Elevation,
 			CloudDropletMass = from.CloudDropletMass,
 			CloudMass = from.CloudMass,
@@ -367,13 +416,21 @@ public class WorldView : MonoBehaviour {
 			FloraCoverage = dependent.FloraCoverage,
 			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers - 2],
 			WaterDepth = dependent.WaterLayerDepth[1],
+			WaterTemperature = from.WaterTemperature[Sim.WorldData.WaterLayers - 2],
+			LavaMass = from.LavaMass,
+			LavaTemperature = from.LavaTemperature,
 			SurfaceElevation = dependent.LayerElevation[1],
 			GroundWater = from.GroundWater,
 			MeshOverlayData = meshOverlay.Values,
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
 			WindOverlayData = windOverlayData.Values,
 			GroundWaterMax = worldData.GroundWaterMax,
-			InverseCloudMass = 1.0f / DisplayCloudMassMax
+			InverseCloudMass = 1.0f / DisplayCloudMassMax,
+			DustHeight = DisplayDustHeight,
+			LavaSolidificationTemperature = worldData.LavaSolidificationTemperature,
+			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
+			DustCoverage = display.DustCoverage,
+			DustMaxInverse = 1.0f / DisplayDustMax,
 		};
 
 		var buildRenderStateJobHandle = buildRenderStateJob.Schedule(Sim.CellCount, 100);
@@ -400,6 +457,12 @@ public class WorldView : MonoBehaviour {
 		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.WaterPosition, Start = lastState.WaterPosition, End = nextState.WaterPosition }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.WaterNormal, Start = lastState.WaterNormal, End = nextState.WaterNormal }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.WaterColor, Start = lastState.WaterColor, End = nextState.WaterColor }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.DustPosition, Start = lastState.DustPosition, End = nextState.DustPosition }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.DustNormal, Start = lastState.DustNormal, End = nextState.DustNormal }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.DustColor, Start = lastState.DustColor, End = nextState.DustColor }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.LavaPosition, Start = lastState.LavaPosition, End = nextState.LavaPosition }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.LavaNormal, Start = lastState.LavaNormal, End = nextState.LavaNormal }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.LavaColor, Start = lastState.LavaColor, End = nextState.LavaColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.SurfacePosition, Start = lastState.SurfacePosition, End = nextState.SurfacePosition }).Schedule(Sim.CellCount, _batchCount));
 
 		if (true /* cloudsVisible*/)
@@ -425,6 +488,12 @@ public class WorldView : MonoBehaviour {
 		state.CloudPosition.CopyTo(_cloudVertices);
 		state.CloudNormal.CopyTo(_cloudNormals);
 		state.CloudColor.CopyTo(_cloudColors);
+		state.LavaPosition.CopyTo(_lavaVertices);
+		state.LavaNormal.CopyTo(_lavaNormals);
+		state.LavaColor.CopyTo(_lavaColors);
+		state.DustPosition.CopyTo(_dustVertices);
+		state.DustNormal.CopyTo(_dustNormals);
+		state.DustColor.CopyTo(_dustColors);
 
 		_terrainMesh.vertices = _terrainVertices;
 		_terrainMesh.normals = _terrainNormals;
@@ -438,21 +507,35 @@ public class WorldView : MonoBehaviour {
 		_cloudMesh.normals = _cloudNormals;
 		_cloudMesh.colors32 = _cloudColors;
 
+		_lavaMesh.vertices = _lavaVertices;
+		_lavaMesh.normals = _lavaNormals;
+		_lavaMesh.colors32 = _lavaColors;
+
+		_dustMesh.vertices = _dustVertices;
+		_dustMesh.normals = _dustNormals;
+		_dustMesh.colors32 = _dustColors;
+
 		if (!_indicesInitialized)
 		{
 			_terrainMesh.SetTriangles(indices, 0);
 			_waterMesh.SetTriangles(indices, 0);
 			_cloudMesh.SetTriangles(indices, 0);
+			_lavaMesh.SetTriangles(indices, 0);
+			_dustMesh.SetTriangles(indices, 0);
 			_indicesInitialized = true;
 		}
 
 		_terrainMesh.RecalculateBounds();
 		_waterMesh.RecalculateBounds();
 		_cloudMesh.RecalculateBounds();
+		_lavaMesh.RecalculateBounds();
+		_dustMesh.RecalculateBounds();
 
 		_terrainMesh.RecalculateNormals();
 		_waterMesh.RecalculateNormals();
 		_cloudMesh.RecalculateNormals();
+		_lavaMesh.RecalculateNormals();
+		_dustMesh.RecalculateNormals();
 
 		Planet.transform.SetPositionAndRotation(state.Position, Quaternion.Euler(state.Rotation));
 
@@ -484,6 +567,7 @@ public class WorldView : MonoBehaviour {
 	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
 		_cloudObject.SetActive(toggle.isOn);
+		_dustObject.SetActive(toggle.isOn);
 	}
 	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
 	{
@@ -730,6 +814,12 @@ public class WorldView : MonoBehaviour {
 				return true;
 			case MeshOverlay.VerticalWind2:
 				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, display.WindVertical[3]);
+				return true;
+			case MeshOverlay.CrustDepth:
+				overlay = new MeshOverlayData(DisplayCrustDepthMax, 0, _normalizedRainbow, simState.CrustDepth);
+				return true;
+			case MeshOverlay.MagmaMass:
+				overlay = new MeshOverlayData(0, DisplayMagmaMassMax, _normalizedRainbow, simState.MagmaMass);
 				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);

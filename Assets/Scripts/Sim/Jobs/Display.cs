@@ -50,6 +50,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	public NativeArray<float> DisplayCondensationCloud;
 	public NativeArray<float> Enthalpy;
 	public NativeArray<float> WindVertical;
+	public NativeArray<float> DustCoverage;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LayerMiddle;
@@ -58,6 +59,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
+	[ReadOnly] public NativeArray<float> DustMass;
 	[ReadOnly] public NativeArray<float3> Wind;
 	[ReadOnly] public NativeArray<float3> SphericalPosition;
 	[ReadOnly] public float Gravity;
@@ -67,6 +69,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 		DisplayPressureGradientForce[i] = PressureGradientForce[i];
 		DisplayCondensationGround[i] += CondensationCloud[i];
 		DisplayCondensationCloud[i] += CondensationGround[i];
+		DustCoverage[i] += DustMass[i];
 		if (AirMass[i] > 0)
 		{
 			Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]) + VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);

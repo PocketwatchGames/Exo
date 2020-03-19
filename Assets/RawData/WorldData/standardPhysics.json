@@ -81,6 +81,7 @@
 	"GroundWaterMaxDepth": 100,
 	"GroundWaterAbsorptionRate": 0.01,
 	"GroundWaterFlowSpeed": 0.05,
-	"GroundWaterDiffusionCoefficient": 10
+	"GroundWaterDiffusionCoefficient": 10,
 
+	"LavaSolidificationTemperature": 800
 }

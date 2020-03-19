@@ -33,5 +33,9 @@ public class WorldGenData {
 	public float SurfaceWaterDepth;
 	public float ThermoclineDepth;
 	public float WaterTemperatureDepthFalloff;
+	public float MagmaMin;
+	public float MagmaMax;
+	public float CrustMin;
+	public float CrustMax;
 
 }

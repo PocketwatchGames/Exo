@@ -27,9 +27,14 @@ public struct SimState {
 	public NativeArray<float> CloudTemperature;
 	public NativeArray<float> CloudDropletMass;
 	public NativeArray<float3> CloudVelocity;
+	public NativeArray<float> CrustDepth;
+	public NativeArray<float> MagmaMass;
+	public NativeArray<float> LavaMass;
+	public NativeArray<float> LavaTemperature;
 	public NativeArray<float>[] AirTemperaturePotential;
 	public NativeArray<float>[] AirVapor;
 	public NativeArray<float3>[] AirVelocity;
+	public NativeArray<float>[] Dust;
 	public NativeArray<float>[] WaterTemperature;
 	public NativeArray<float>[] WaterMass;
 	public NativeArray<float>[] SaltMass;
@@ -52,14 +57,20 @@ public struct SimState {
 		CloudTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		CloudDropletMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudVelocity = new NativeArray<float3>(count, Allocator.Persistent);
+		LavaTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		LavaMass = new NativeArray<float>(count, Allocator.Persistent);
+		CrustDepth = new NativeArray<float>(count, Allocator.Persistent);
+		MagmaMass = new NativeArray<float>(count, Allocator.Persistent);
 		AirTemperaturePotential = new NativeArray<float>[airLayers];
 		AirVapor = new NativeArray<float>[airLayers];
 		AirVelocity = new NativeArray<float3>[airLayers];
+		Dust = new NativeArray<float>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
 			AirTemperaturePotential[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVapor[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVelocity[i] = new NativeArray<float3>(count, Allocator.Persistent);
+			Dust[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 
 		WaterTemperature = new NativeArray<float>[waterLayers];
@@ -92,11 +103,16 @@ public struct SimState {
 		CloudTemperature.Dispose();
 		CloudDropletMass.Dispose();
 		CloudVelocity.Dispose();
+		LavaMass.Dispose();
+		LavaTemperature.Dispose();
+		MagmaMass.Dispose();
+		CrustDepth.Dispose();
 		for (int i = 0; i < AirTemperaturePotential.Length; i++)
 		{
 			AirTemperaturePotential[i].Dispose();
 			AirVapor[i].Dispose();
 			AirVelocity[i].Dispose();
+			Dust[i].Dispose();
 		}
 
 		for (int i = 0; i < WaterTemperature.Length; i++)
@@ -317,6 +333,7 @@ public struct DisplayState {
 	public NativeArray<float> CondensationGround;
 	public NativeArray<float> Evaporation;
 	public NativeArray<float> EnthalpyTerrain;
+	public NativeArray<float> DustCoverage;
 	public NativeArray<float>[] EnthalpyWater;
 	public NativeArray<float>[] EnthalpyAir;
 	public NativeArray<float>[] Salinity;
@@ -338,6 +355,7 @@ public struct DisplayState {
 		CondensationGround = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		DustCoverage = new NativeArray<float>(count, Allocator.Persistent);
 
 		Pressure = new NativeArray<float>[airLayers];
 		PressureGradientForce = new NativeArray<float3>[airLayers];
@@ -385,6 +403,7 @@ public struct DisplayState {
 		CondensationGround.Dispose();
 		Evaporation.Dispose();
 		EnthalpyTerrain.Dispose();
+		DustCoverage.Dispose();
 		for (int i = 0; i < Pressure.Length; i++)
 		{
 			Pressure[i].Dispose();

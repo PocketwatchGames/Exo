@@ -1251,6 +1251,7 @@ public class WorldSim {
 				updateAirMassJobHandle =SimJob.Schedule(new UpdateMassAirJob()
 				{
 					VaporMass = nextState.AirVapor[j],
+					DustMass = nextState.Dust[j],
 					CloudMass = nextState.CloudMass,
 					CloudDropletMass = nextState.CloudDropletMass,
 
@@ -1261,6 +1262,7 @@ public class WorldSim {
 					CloudCondensation = condensationCloudMass[j],
 					GroundCondensation = condensationGroundMass[j],
 					LastVaporMass = lastState.AirVapor[j],
+					LastDustMass = lastState.Dust[j],
 					IsTop = j == _airLayers - 2,
 					IsBottom = j == 1,
 				}, JobHandle.CombineDependencies(updateCloudMassJobHandle, updateAirMassJobHandle));
@@ -1301,12 +1303,20 @@ public class WorldSim {
 				Roughness = nextState.Roughness,
 				GroundWater = nextState.GroundWater,
 				Elevation = nextState.Elevation,
+				LavaMass = nextState.LavaMass,
+				LavaTemperature = nextState.LavaTemperature,
+				CrustDepth = nextState.CrustDepth,
+				MagmaMass = nextState.MagmaMass,
 
 				LastElevation = lastState.Elevation,
 				LastRoughness = lastState.Roughness,
 				LastSoilFertility = lastState.SoilFertility,
 				LastGroundWater = lastState.GroundWater,
-				GroundWaterConsumed = groundWaterConsumed
+				GroundWaterConsumed = groundWaterConsumed,
+				LastCrustDepth = lastState.CrustDepth,
+				LastLavaMass = lastState.LavaMass,
+				LastLavaTemperature = lastState.LavaTemperature,
+				LastMagmaMass = lastState.MagmaMass,
 			}));
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateFloraJob()
@@ -1584,6 +1594,7 @@ public class WorldSim {
 
 					LastTemperature = nextState.AirTemperaturePotential[j],
 					LastVapor = nextState.AirVapor[j],
+					LastDust = nextState.Dust[j],
 					LastVelocity = nextState.AirVelocity[j],
 					Neighbors = staticState.Neighbors,
 					LayerHeight = dependent.LayerHeight[j],
@@ -1591,12 +1602,14 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					UpTemperature = nextState.AirTemperaturePotential[j + 1],
 					UpVapor = nextState.AirVapor[j + 1],
+					UpDust = nextState.Dust[j + 1],
 					UpAirVelocity = nextState.AirVelocity[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
 					UpLayerElevation = dependent.LayerElevation[j + 1],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
 					DownTemperature = nextState.AirTemperaturePotential[j - 1],
 					DownVapor = nextState.AirVapor[j - 1],
+					DownDust = nextState.Dust[j - 1],
 					DownAirVelocity = nextState.AirVelocity[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
 					DownLayerElevation = dependent.LayerElevation[j - 1],
@@ -1728,6 +1741,9 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[j],
 					VaporAbove = nextState.AirVapor[j + 1],
 					VaporBelow = nextState.AirVapor[j - 1],
+					Dust = nextState.Dust[j],
+					DustAbove = nextState.Dust[j + 1],
+					DustBelow = nextState.Dust[j - 1],
 					Velocity = nextState.AirVelocity[j],
 					VelocityAbove = nextState.AirVelocity[j + 1],
 					VelocityBelow = nextState.AirVelocity[j - 1],
@@ -1874,7 +1890,7 @@ public class WorldSim {
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, degenVarNames);
 				for (int i = 1; i < _airLayers - 1; i++) {
-					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 400, degenVarNames);
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 600, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 10000, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "AirVelocity" + i, nextState.AirVelocity[i], degenVarNames);
 				}
@@ -1927,6 +1943,7 @@ public class WorldSim {
 						DisplayCondensationCloud = display.CondensationCloud,
 						Enthalpy = display.EnthalpyAir[i],
 						WindVertical = display.WindVertical[i],
+						DustCoverage = display.DustCoverage,
 
 						Gravity = curState.PlanetState.Gravity,
 						AirTemperaturePotential = curState.AirTemperaturePotential[i],
@@ -1937,6 +1954,7 @@ public class WorldSim {
 						CondensationGround = condensationGroundMass[i],
 						AirMass = dependent.AirMass[i],
 						VaporMass = nextState.AirVapor[i],
+						DustMass = nextState.Dust[i],
 						Wind = nextState.AirVelocity[i],
 						SphericalPosition = staticState.SphericalPosition,
 					}).Schedule(_cellCount, _batchCount, initDisplayAirHandle));

@@ -119,6 +119,10 @@ public struct WorldData {
 	public float FloraGrowthTemperatureRangeInverse;
 	public float FloraAirSurfaceArea;
 
+	[Header("Lava")]
+	public float LavaSolidificationTemperature;
+
+
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;
 	public const float TemperatureLapseRateInverse = 1.0f / TemperatureLapseRate;
@@ -152,6 +156,7 @@ public struct WorldData {
 	public const float MassIce = 919f;
 	public const float MassSoil = 1200f;
 	public const float MassSand = 1600f;
+	public const float MassLava = 3100f;
 	public const float DensityWater = 997f;
 	public const float DensityAir = 1.21f;
 	public const float ConductivityAir = 0.0262f;

@@ -129,9 +129,11 @@ public struct UpdateMassCloudJob : IJobParallelFor {
 #endif
 public struct UpdateMassAirJob : IJobParallelFor {
 	public NativeArray<float> VaporMass;
+	public NativeArray<float> DustMass;
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> LastVaporMass;
+	[ReadOnly] public NativeArray<float> LastDustMass;
 	[ReadOnly] public NativeArray<float> CloudEvaporation;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> LayerElevation;
@@ -151,6 +153,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 		}
 		float newVaporMass = LastVaporMass[i] - CloudCondensation[i] - GroundCondensation[i];
 		float newCloudMass = cloudMass + CloudCondensation[i];
+		float newDustMass = LastDustMass[i];
 
 		float newDropletSize = 0;
 		if (newCloudMass > 0)
@@ -166,6 +169,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 		CloudMass[i] = newCloudMass;
 		CloudDropletMass[i] = newDropletSize;
 		VaporMass[i] = newVaporMass;
+		DustMass[i] = newDustMass;
 	}
 }
 

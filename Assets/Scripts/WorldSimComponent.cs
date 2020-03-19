@@ -82,6 +82,7 @@ public class WorldSimComponent : MonoBehaviour
 				DisplayCondensationGround = _displayState.CondensationGround,
 				Enthalpy = _displayState.EnthalpyAir[i],
 				WindVertical = _displayState.WindVertical[i],
+				DustCoverage = _displayState.DustCoverage,
 
 				Gravity = ActiveSimState.PlanetState.Gravity,
 				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],
@@ -91,7 +92,8 @@ public class WorldSimComponent : MonoBehaviour
 				CondensationCloud = ActiveSimState.CloudMass, // TODO: using wind as placeholder, this is broken
 				CondensationGround = ActiveSimState.CloudDropletMass, // TODO: using wind as placeholder, this is broken
 				AirMass = _dependentState.AirMass[i],
-				VaporMass = ActiveSimState.AirVapor[i],		
+				VaporMass = ActiveSimState.AirVapor[i],
+				DustMass = ActiveSimState.Dust[i],
 				Wind = ActiveSimState.AirVelocity[i],
 				SphericalPosition = StaticState.SphericalPosition,
 			};

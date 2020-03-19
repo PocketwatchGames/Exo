@@ -11,19 +11,6 @@ using Unity.Mathematics;
 using UnityEngine;
 
 
-public struct RenderStateCell {
-	public Color32 TerrainColor;
-	public Color32 WaterColor;
-	public Color32 CloudColor;
-	public float3 SurfacePosition;
-	public float3 TerrainPosition;
-	public float3 WaterPosition;
-	public float3 CloudPosition;
-	public float3 TerrainNormal;
-	public float3 WaterNormal;
-	public float3 CloudNormal;
-	public float2 VelocityArrow;
-}
 public struct RenderState {
 
 	public float Ticks;
@@ -31,14 +18,20 @@ public struct RenderState {
 	public float3 Rotation;
 
 	public NativeArray<Color32> TerrainColor;
-	public NativeArray<Color32> WaterColor;
-	public NativeArray<Color32> CloudColor;
 	public NativeArray<Vector3> TerrainPosition;
-	public NativeArray<Vector3> WaterPosition;
-	public NativeArray<Vector3> CloudPosition;
 	public NativeArray<Vector3> TerrainNormal;
+	public NativeArray<Color32> WaterColor;
+	public NativeArray<Vector3> WaterPosition;
 	public NativeArray<Vector3> WaterNormal;
+	public NativeArray<Color32> CloudColor;
+	public NativeArray<Vector3> CloudPosition;
 	public NativeArray<Vector3> CloudNormal;
+	public NativeArray<Color32> LavaColor;
+	public NativeArray<Vector3> LavaPosition;
+	public NativeArray<Vector3> LavaNormal;
+	public NativeArray<Color32> DustColor;
+	public NativeArray<Vector3> DustPosition;
+	public NativeArray<Vector3> DustNormal;
 	public NativeArray<float3> SurfacePosition;
 	public NativeArray<float3> VelocityArrow;
 
@@ -53,6 +46,12 @@ public struct RenderState {
 		CloudColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		CloudNormal = new NativeArray<Vector3>(count, Allocator.Persistent);
 		CloudPosition = new NativeArray<Vector3>(count, Allocator.Persistent);
+		LavaColor = new NativeArray<Color32>(count, Allocator.Persistent);
+		LavaPosition = new NativeArray<Vector3>(count, Allocator.Persistent);
+		LavaNormal = new NativeArray<Vector3>(count, Allocator.Persistent);
+		DustColor = new NativeArray<Color32>(count, Allocator.Persistent);
+		DustPosition = new NativeArray<Vector3>(count, Allocator.Persistent);
+		DustNormal = new NativeArray<Vector3>(count, Allocator.Persistent);
 		VelocityArrow = new NativeArray<float3>(count, Allocator.Persistent);
 		SurfacePosition = new NativeArray<float3>(count, Allocator.Persistent);
 	}
@@ -68,6 +67,12 @@ public struct RenderState {
 		CloudColor.Dispose();
 		CloudNormal.Dispose();
 		CloudPosition.Dispose();
+		LavaColor.Dispose();
+		LavaNormal.Dispose();
+		LavaPosition.Dispose();
+		DustColor.Dispose();
+		DustNormal.Dispose();
+		DustPosition.Dispose();
 		VelocityArrow.Dispose();
 		SurfacePosition.Dispose();
 	}
@@ -76,14 +81,20 @@ public struct RenderState {
 [BurstCompile]
 public struct BuildRenderStateJob : IJobParallelFor {
 	public NativeArray<Color32> TerrainColor;
-	public NativeArray<Color32> WaterColor;
-	public NativeArray<Color32> CloudColor;
 	public NativeArray<Vector3> TerrainPosition;
-	public NativeArray<Vector3> WaterPosition;
-	public NativeArray<Vector3> CloudPosition;
 	public NativeArray<Vector3> TerrainNormal;
+	public NativeArray<Color32> WaterColor;
+	public NativeArray<Vector3> WaterPosition;
 	public NativeArray<Vector3> WaterNormal;
 	public NativeArray<Vector3> CloudNormal;
+	public NativeArray<Vector3> CloudPosition;
+	public NativeArray<Color32> CloudColor;
+	public NativeArray<Color32> LavaColor;
+	public NativeArray<Vector3> LavaPosition;
+	public NativeArray<Vector3> LavaNormal;
+	public NativeArray<Color32> DustColor;
+	public NativeArray<Vector3> DustPosition;
+	public NativeArray<Vector3> DustNormal;
 	public NativeArray<float3> SurfacePosition;
 	public NativeArray<float3> VelocityArrow;
 
@@ -98,11 +109,15 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> FloraCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> WaterDepth;
+	[ReadOnly] public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float3> Icosphere;
 	[ReadOnly] public NativeArray<float> MeshOverlayData;
 	[ReadOnly] public NativeArray<CVP> MeshOverlayColors;
 	[ReadOnly] public NativeArray<float3> WindOverlayData;
+	[ReadOnly] public NativeArray<float> LavaMass;
+	[ReadOnly] public NativeArray<float> LavaTemperature;
+	[ReadOnly] public NativeArray<float> DustCoverage;
 	[ReadOnly] public bool MeshOverlayActive;
 	[ReadOnly] public float MeshOverlayMin;
 	[ReadOnly] public float MeshOverlayInverseRange;
@@ -116,18 +131,28 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public float InverseCloudDropletSizeRange;
 	[ReadOnly] public float InverseCloudMass;
 	[ReadOnly] public float GroundWaterMax;
+	[ReadOnly] public float DustHeight;
+	[ReadOnly] public float LavaSolidificationTemperature;
+	[ReadOnly] public float LavaTemperatureRangeInverse;
+	[ReadOnly] public float DustMaxInverse;
 
 	public void Execute(int i)
 	{
 		Color32 terrainColor;
-		Color32 waterColor;
-		Color32 cloudColor;
 		float3 terrainNormal;
-		float3 waterNormal;
-		float3 cloudNormal;
 		float3 terrainPosition;
+		Color32 waterColor;
+		float3 waterNormal;
 		float3 waterPosition;
+		Color32 cloudColor;
+		float3 cloudNormal;
 		float3 cloudPosition;
+		Color32 lavaColor;
+		float3 lavaNormal;
+		float3 lavaPosition;
+		Color32 dustColor;
+		float3 dustNormal;
+		float3 dustPosition;
 		float3 velocityArrow;
 		float3 surfacePosition;
 
@@ -139,7 +164,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		float floraCoverage = FloraCoverage[i];
 		var icosphere = Icosphere[i];
 		var elevation = Elevation[i];
-		float roughness = Roughness[i];
+		float roughness = math.max(1,  Roughness[i]);
 		float surfaceElevation = elevation + math.max(roughness, waterDepth);
 
 		if (MeshOverlayActive)
@@ -147,21 +172,32 @@ public struct BuildRenderStateJob : IJobParallelFor {
 			var overlayColor = CVP.Lerp(MeshOverlayColors, (MeshOverlayData[i]- MeshOverlayMin) * MeshOverlayInverseRange);
 			terrainColor = overlayColor;
 			waterColor = overlayColor;
+			lavaColor = overlayColor;
 		}
 		else
 		{
 			terrainColor = GetTerrainColor(roughness, SoilFertility[i], waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
-			waterColor = GetWaterColor(iceCoverage);
+			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth);
+			lavaColor = GetLavaColor(LavaTemperature[i], LavaSolidificationTemperature, LavaTemperatureRangeInverse);
 		}
 		cloudColor = GetCloudColor(math.saturate((CloudDropletMass[i] - CloudDropletSizeMin) * InverseCloudDropletSizeRange), cloudCoverage);
+		dustColor = GetDustColor(DustCoverage[i], DustMaxInverse);
 
 		terrainNormal = icosphere;
 		waterNormal = icosphere;
 		cloudNormal = icosphere;
+		lavaNormal = icosphere;
+		dustNormal = icosphere;
 		terrainPosition = icosphere * ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
-		waterPosition = icosphere * ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius * math.saturate(waterDepth / roughness);
+		waterPosition = icosphere * ((waterDepth == 0) ? 0.99f : ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
 		surfacePosition = icosphere * (surfaceElevation * TerrainScale + PlanetRadius) / PlanetRadius;
 		cloudPosition = icosphere * (((math.max(0, CloudElevation[i] - surfaceElevation)) * AtmosphereScale) + ((surfaceElevation + 100) * TerrainScale + PlanetRadius)) / PlanetRadius;
+
+
+		dustPosition = icosphere * (((math.max(0, DustHeight - surfaceElevation)) * AtmosphereScale) + ((surfaceElevation + 100) * TerrainScale + PlanetRadius)) / PlanetRadius;
+
+		float lavaDepth = LavaMass[i] / WorldData.MassLava;
+		lavaPosition = icosphere * ((lavaDepth == 0) ? 0.95f : ((elevation + lavaDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
 
 		if (WindOverlayActive)
 		{
@@ -188,6 +224,12 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		CloudColor[i] = cloudColor;
 		CloudNormal[i] = cloudNormal;
 		CloudPosition[i] = cloudPosition;
+		LavaColor[i] = lavaColor;
+		LavaNormal[i] = lavaNormal;
+		LavaPosition[i] = lavaPosition;
+		DustColor[i] = dustColor;
+		DustNormal[i] = dustNormal;
+		DustPosition[i] = dustPosition;
 		VelocityArrow[i] = velocityArrow;
 		SurfacePosition[i] = surfacePosition;
 	}
@@ -244,21 +286,70 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		//return floraColor;
 	}
 
-	private Color32 GetWaterColor(float iceCoverage)
+	private Color32 GetWaterColor(float iceCoverage, float waterTemperature, float depth)
 	{
-		var waterColor = new Color32(0, 0, 255, 255);
-		var iceColor = Color32.Lerp(waterColor, new Color32(255, 255, 255, 255), iceCoverage);
-		return iceColor;
+		if (iceCoverage > 0.95f)
+		{
+			return new Color32(255, 255, 255, 255);
+		}
+		byte blue;
+		byte red;
+		byte green;
+		if (depth > 2000)
+		{
+			blue = 210;
+			green = 0;
+			red = 0;
+		} else if (depth > 1000) {
+			blue = 230;
+			green = 5;
+			red = 5;
+		} else
+		{
+			blue = 250;
+			green = 10;
+			red = 10;
+		}
+		if (waterTemperature > WorldData.FreezingTemperature + 30)
+		{
+			green += 10;
+		} else if (waterTemperature > WorldData.FreezingTemperature + 15)
+		{
+			green += 5;
+		} else
+		{
+			green += 0;
+		}
+		if (iceCoverage > 0.5f)
+		{
+			red += 50;
+			green += 50;
+		}
+		if (iceCoverage > 0.01f)
+		{
+			red += 10;
+			green += 10;
+		}
+		return new Color32(red, green, blue, 255);
 	}
 
 	private Color32 GetCloudColor(float dropletSize, float cloudCoverage)
 	{
 		var c = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0, 0, 0, 255), dropletSize);
 		float opacity = -math.cos(cloudCoverage * math.PI) / 2 + 0.5f;
-		c.a = (byte)(255 * opacity);
+		c.a = (byte)(150 * opacity);
 		return c;
 	}
 
+	private Color32 GetDustColor(float dustCoverage, float dustMaxInverse)
+	{
+		return Color32.Lerp(new Color32(150, 150, 150, 0), new Color32(0, 0, 0, 150), dustCoverage*dustMaxInverse);
+	}
+
+	private Color32 GetLavaColor(float temperature, float minTemp, float inverseTempRange)
+	{
+		return new Color32((byte)(255 * (temperature - minTemp) * inverseTempRange), 0, 0, 255);
+	}
 
 }
 
