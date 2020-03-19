@@ -94,9 +94,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 			newTemperature += (potentialTemperatureDown - LastTemperature[i]) * diffusionAmount;
 		}
 
-		//		float moveToNeutralBuoyancy = (UpTemperature[i] - Temperature[i]) / WorldData.TemperatureLapseRate - heightDiff;
-		//		float vertMovement = math.min(MaxVerticalMovement, math.clamp(moveToNeutralBuoyancy + DiffusionCoefficient, 0, 1));
-
 #endif
 #endif
 

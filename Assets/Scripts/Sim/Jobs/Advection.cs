@@ -2,6 +2,7 @@
 //#define DISABLE_AIR_ADVECTION
 //#define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
+//#define AdvectionAirJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -34,6 +35,16 @@ public struct BarycentricValue {
 	public float valueB;
 	public float valueC;
 }
+public struct BarycentricValueVertical {
+	public int indexA;
+	public int indexB;
+	public int indexC;
+	public int indexVertical;
+	public float valueA;
+	public float valueB;
+	public float valueC;
+	public float valueVertical;
+}
 
 
 #if !GetVectorDestCoordsJobDebug
@@ -41,39 +52,35 @@ public struct BarycentricValue {
 #endif
 public struct GetVectorDestCoordsJob : IJobParallelFor {
 	public NativeArray<BarycentricValue> Destination;
-	public NativeArray<float3> DeflectedVelocity;
+	public NativeArray<float3> VelocityDeflected;
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> Position;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
-	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public float CoriolisTerm;
 	public void Execute(int i)
 	{
 		float3 position = Position[i];
-		float3 velocity = Velocity[i];
 		float3 pos = position * PlanetRadius;
 
-		float3 deflectedVelocity = velocity + math.cross(position, velocity) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
-		float3 velVertical = math.dot(deflectedVelocity, position) * position;
-		float3 velHorizontal = deflectedVelocity - velVertical;
-
-		float3 moveHorizontal = velHorizontal * SecondsPerTick;
+		float3 velocity = Velocity[i];
+		// save out deflected velocity since this is what we will advect
+		float3 deflectedVelocity = Velocity[i] + math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
+		VelocityDeflected[i] = deflectedVelocity;
 
 		// TODO: deal with high wind speeds appropriately and remove this section
-		float windMoveHorizontal = math.length(moveHorizontal);
-
+		float3 move = deflectedVelocity * SecondsPerTick;
+		float windMoveHorizontalSq = math.lengthsq(move);
 		const float maxWindMove = 200000;
-		if (windMoveHorizontal > maxWindMove)
+		if (windMoveHorizontalSq > maxWindMove * maxWindMove)
 		{
-			moveHorizontal = moveHorizontal / windMoveHorizontal * maxWindMove;
+			move = move / math.sqrt(windMoveHorizontalSq) * maxWindMove;
 		}
 
 
-		float3 movePos = pos + moveHorizontal;
-		DeflectedVelocity[i] = deflectedVelocity;
-
+		float3 movePos = pos + move;
 		for (int j = 0; j < 6; j++)
 		{
 			int indexB = Neighbors[i * 6 + j];
@@ -97,7 +104,7 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 						indexC = indexC,
 						valueA = a,
 						valueB = b,
-						valueC = c
+						valueC = c,
 					};
 					return;
 				}
@@ -112,7 +119,107 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 			indexC = -1,
 			valueA = 1,
 			valueB = 0,
-			valueC = 0
+			valueC = 0,
+		};
+	}
+}
+
+#if !GetVectorDestCoordsJobDebug
+[BurstCompile]
+#endif
+public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
+	public NativeArray<BarycentricValueVertical> Destination;
+	public NativeArray<float3> VelocityDeflected;
+	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> Position;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float PlanetRadius;
+	[ReadOnly] public float CoriolisTerm;
+	public void Execute(int i)
+	{
+		float3 position = Position[i];
+		float3 pos = position * PlanetRadius;
+
+		float3 velocity = Velocity[i];
+		// save out deflected velocity since this is what we will advect
+		float3 deflectedVelocity = Velocity[i] + math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
+		VelocityDeflected[i] = deflectedVelocity;
+
+		// extract vertical velocity
+		float layerHeight = LayerHeight[i];
+		int indexVertical;
+		float valueVertical;
+		float valueVerticalComplement;
+		if (layerHeight > 0)
+		{
+			var velVertical = math.dot(deflectedVelocity, position);
+			indexVertical = (velVertical > 0) ? 1 : -1;
+			valueVertical = math.min(1, math.abs(velVertical) / LayerHeight[i]);
+			valueVerticalComplement = 1.0f - valueVertical;
+		} else
+		{
+			indexVertical = 0;
+			valueVertical = 0;
+			valueVerticalComplement = 1;
+		}
+
+		// TODO: deal with high wind speeds appropriately and remove this section
+		float3 move = deflectedVelocity * SecondsPerTick;
+		float windMoveHorizontalSq = math.lengthsq(move);
+		const float maxWindMove = 200000;
+		if (windMoveHorizontalSq > maxWindMove * maxWindMove)
+		{
+			move = move / math.sqrt(windMoveHorizontalSq) * maxWindMove;
+		}
+
+
+		float3 movePos = pos + move;
+		for (int j = 0; j < 6; j++)
+		{
+			int indexB = Neighbors[i * 6 + j];
+			if (indexB >= 0)
+			{
+				int indexC = Neighbors[i * 6 + (j + 1) % 6];
+				if (indexC < 0)
+				{
+					indexC = Neighbors[i * 6];
+				}
+
+				float a;
+				float b;
+				float c;
+				if (Utils.GetBarycentricIntersection(movePos, pos, Position[indexB] * PlanetRadius, Position[indexC] * PlanetRadius, out a, out b, out c))
+				{
+					Destination[i] = new BarycentricValueVertical
+					{
+						indexA = i,
+						indexB = indexB,
+						indexC = indexC,
+						indexVertical = indexVertical,
+						valueA = a * valueVerticalComplement,
+						valueB = b * valueVerticalComplement,
+						valueC = c * valueVerticalComplement,
+						valueVertical = valueVertical,
+					};
+					return;
+				}
+			}
+		}
+
+		// TODO: this means the velocity is too high and has skipped over our neighbors!
+		Destination[i] = new BarycentricValueVertical
+		{
+			indexA = i,
+			indexB = -1,
+			indexC = -1,
+			indexVertical = indexVertical,
+			valueA = valueVerticalComplement,
+			valueB = 0,
+			valueC = 0,
+			valueVertical = valueVertical,
 		};
 	}
 }
@@ -122,8 +229,10 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 #endif
 public struct UpdateAirVelocityJob : IJobParallelFor {
 	public NativeArray<float3> AirVelocity;
+	public NativeArray<float> AirMovementVertical;
 	[ReadOnly] public NativeArray<float> WindFriction;
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
+	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float WindFrictionMultiplier;
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
@@ -132,6 +241,8 @@ public struct UpdateAirVelocityJob : IJobParallelFor {
 		wind *= (1.0f - WindFriction[i] * WindFrictionMultiplier);
 		wind += PressureGradientForce[i] * SecondsPerTick;
 		AirVelocity[i] = wind;
+
+		AirMovementVertical[i] = math.dot(Position[i], AirVelocity[i]) * SecondsPerTick;
 	}
 }
 
@@ -142,25 +253,20 @@ public struct UpdateAirVelocityJob : IJobParallelFor {
 public struct AdvectionAirJob : IJobParallelFor {
 	public NativeArray<DiffusionAir> Delta;
 	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> TemperatureAbove;
+	[ReadOnly] public NativeArray<float> TemperatureBelow;
 	[ReadOnly] public NativeArray<float> Vapor;
+	[ReadOnly] public NativeArray<float> VaporAbove;
+	[ReadOnly] public NativeArray<float> VaporBelow;
 	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> DeflectedVelocity;
+	[ReadOnly] public NativeArray<float3> VelocityAbove;
+	[ReadOnly] public NativeArray<float3> VelocityBelow;
+	[ReadOnly] public NativeArray<float3> VelocityDeflected;
+	[ReadOnly] public NativeArray<float3> Positions;
+	[ReadOnly] public NativeArray<BarycentricValueVertical> Destination;
+	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationAbove;
+	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationBelow;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<BarycentricValue> Destination;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> UpTemperature;
-	[ReadOnly] public NativeArray<float> UpHumidity;
-	[ReadOnly] public NativeArray<float> UpAirMass;
-	[ReadOnly] public NativeArray<float> UpLayerElevation;
-	[ReadOnly] public NativeArray<float> UpLayerHeight;
-	[ReadOnly] public NativeArray<float> DownTemperature;
-	[ReadOnly] public NativeArray<float> DownHumidity;
-	[ReadOnly] public NativeArray<float> DownAirMass;
-	[ReadOnly] public NativeArray<float> DownLayerElevation;
-	[ReadOnly] public NativeArray<float> DownLayerHeight;
-	[ReadOnly] public bool IsTop;
-	[ReadOnly] public bool IsBottom;
 	public void Execute(int i)
 	{
 		float newTemperature;
@@ -189,7 +295,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 			newVelocity += Velocity[i] * v;
 		}
 
-
+		// TODO: subtract vertical motion first before applying horizontal motion (right now it adds up to more than 1)
 		for (int j = 0; j < 6; j++)
 		{
 			int n = Neighbors[i * 6 + j];
@@ -212,18 +318,41 @@ public struct AdvectionAirJob : IJobParallelFor {
 				totalValue += incoming;
 				newTemperature += Temperature[n] * incoming;
 				newWaterVapor += Vapor[n] * incoming;
-				newVelocity += DeflectedVelocity[n] * incoming;
+
+				// TODO: this is temp
+				// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
+				newVelocity += incoming * (VelocityDeflected[n] - Positions[i] * math.dot(Positions[i], VelocityDeflected[n]));
+
+//				newVelocity += DeflectedVelocity[n] * incoming;
 			}
 		}
 
 
+
 #if !DISABLE_VERTICAL_AIR_MOVEMENT
 
-		if (!IsTop)
+		// from top coming down
 		{
+			var vertMove = DestinationAbove[i];
+			if (vertMove.indexVertical == -1)
+			{
+				totalValue += vertMove.valueVertical;
+				newTemperature += TemperatureAbove[i] * vertMove.valueVertical;
+				newWaterVapor += VaporAbove[i] * vertMove.valueVertical;
+				newVelocity += VelocityAbove[i] * vertMove.valueVertical;
+			}
 		}
-		if (!IsBottom)
+
+		// from bottom going up
 		{
+			var vertMove = DestinationBelow[i];
+			if (vertMove.indexVertical == 1)
+			{
+				totalValue += vertMove.valueVertical;
+				newTemperature += TemperatureBelow[i] * vertMove.valueVertical;
+				newWaterVapor += VaporBelow[i] * vertMove.valueVertical;
+				newVelocity += VelocityBelow[i] * vertMove.valueVertical;
+			}
 		}
 
 #endif
@@ -263,7 +392,7 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> DropletMass;
 	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> DeflectedVelocity;
+	[ReadOnly] public NativeArray<float3> VelocityDeflected;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<BarycentricValue> Destination;
 	public void Execute(int i)
@@ -320,7 +449,7 @@ public struct AdvectionCloudJob : IJobParallelFor {
 				totalMass += totalMass;
 				newTemperature += Temperature[n] * incoming * m;
 				newDropletMass += DropletMass[n] * incoming;
-				newVelocity += DeflectedVelocity[n] * incoming;
+				newVelocity += VelocityDeflected[n] * incoming;
 			}
 		}
 
@@ -345,12 +474,23 @@ public struct AdvectionCloudJob : IJobParallelFor {
 #endif
 public struct AdvectionWaterJob : IJobParallelFor {
 	public NativeArray<DiffusionWater> Delta;
-	[ReadOnly] public NativeArray<BarycentricValue> Destination;
+	[ReadOnly] public NativeArray<BarycentricValueVertical> Destination;
+	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationAbove;
+	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationBelow;
+	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> DeflectedVelocity;
+	[ReadOnly] public NativeArray<float3> VelocityAbove;
+	[ReadOnly] public NativeArray<float3> VelocityBelow;
+	[ReadOnly] public NativeArray<float3> VelocityDeflected;
 	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> MassAbove;
+	[ReadOnly] public NativeArray<float> MassBelow;
 	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> TemperatureAbove;
+	[ReadOnly] public NativeArray<float> TemperatureBelow;
 	[ReadOnly] public NativeArray<float> Salt;
+	[ReadOnly] public NativeArray<float> SaltAbove;
+	[ReadOnly] public NativeArray<float> SaltBelow;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	public void Execute(int i)
 	{
@@ -377,9 +517,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		newTemperature = 0;
 		newVelocity = 0;
 
-		// TODO: remove this when we have incompressibility
-		float totalMass = 0;
-
 
 		float valueRemaining = 0;
 		int destIndexA = Destination[i].indexA;
@@ -397,11 +534,23 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		{
 			valueRemaining += Destination[i].valueC;
 		}
-		totalMass = Mass[i] * valueRemaining;
-		newMass = totalMass;
+		if (Destination[i].indexVertical > 0)
+		{
+			if (MassAbove[i] == 0)
+			{
+				valueRemaining += Destination[i].valueVertical;
+			}
+		} else
+		{
+			if (MassBelow[i] == 0)
+			{
+				valueRemaining += Destination[i].valueVertical;
+			}
+		}
+		newMass = Mass[i] * valueRemaining;
 		newSaltMass += Salt[i] * valueRemaining;
-		newTemperature += Temperature[i] * totalMass;
-		newVelocity += Velocity[i] * totalMass;
+		newTemperature += Temperature[i] * newMass;
+		newVelocity += Velocity[i] * newMass;
 
 
 		for (int j = 0; j < 6; j++)
@@ -429,17 +578,50 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					newMass += massIncoming;
 					newSaltMass += Salt[n] * incoming;
 					newTemperature += Temperature[n] * massIncoming;
-					newVelocity += DeflectedVelocity[n] * massIncoming;
-					totalMass += massIncoming;
+
+					// TODO: this is temp
+					// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
+					newVelocity += massIncoming * (VelocityDeflected[n] - Positions[i] * math.dot(Positions[i], VelocityDeflected[n]));
+
+//					newVelocity += VelocityDeflected[n] * massIncoming;
 				}
 			}
 		}
 
 
-		if (totalMass > 0)
+		// from top coming down
 		{
-			newTemperature /= totalMass;
-			newVelocity /= totalMass;
+			var vertMove = DestinationAbove[i];
+			if (vertMove.indexVertical == -1)
+			{
+				float massIncoming = MassAbove[i] * vertMove.valueVertical;
+				newMass += massIncoming;
+				newTemperature += TemperatureAbove[i] * massIncoming;
+				newVelocity += VelocityAbove[i] * massIncoming;
+				newSaltMass += SaltAbove[i] * vertMove.valueVertical;
+			}
+		}
+
+		// from bottom going up
+		{
+			var vertMove = DestinationBelow[i];
+			if (vertMove.indexVertical == 1)
+			{
+				float massIncoming = MassBelow[i] * vertMove.valueVertical;
+				newMass += massIncoming;
+				newTemperature += TemperatureBelow[i] * massIncoming;
+				newVelocity += VelocityBelow[i] * massIncoming;
+				newSaltMass += SaltBelow[i] * vertMove.valueVertical;
+			}
+		}
+
+
+		// TODO: remove this when we have incompressibility??
+		// OR NOT? water is compressible!
+		if (newMass > 0)
+		{
+			newTemperature /= newMass;
+			newVelocity /= newMass;
 		}
 		else
 		{

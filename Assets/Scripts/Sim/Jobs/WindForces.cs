@@ -1,4 +1,5 @@
-﻿using Unity.Burst;
+﻿
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -83,22 +84,26 @@ public struct AccelerationAirJob : IJobParallelFor {
 		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerMiddle[i]), AirMass[i], VaporMass[i]);
 		force = gradientPressure * Gravity * inverseDensity / neighborCount;
 
+		Force[i] = force;
+		var vel = Velocity[i] + force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
+		vel -= Positions[i] * math.dot(Positions[i], vel);
 
 		float buoyancy = 0;
-		//if (!IsTop)
-		//{
-		//	float heightDiff = (UpLayerElevation[i] + UpLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-		//	buoyancy += Temperature[i] / potentialTemperatureUp - 1;
-		//}
-		//if (!IsBottom)
-		//{
-		//	float heightDiff = (DownLayerElevation[i] + DownLayerHeight[i] / 2) - (LayerElevation[i] + LayerHeight[i] / 2);
-		//	buoyancy -= potentialTemperatureDown / Temperature[i] - 1;
-		//}
+		// Cold air moves into warm air via gravity
+		// Note that if warm air is above cold air, it is stratified but stable, so there's no force
+		if (!IsBottom)
+		{
+			buoyancy = math.min(0, SecondsPerTick * Gravity * (DownTemperaturePotential[i] / TemperaturePotential[i] - 1));
 
-		force += buoyancy * Gravity * Positions[i];
-		Force[i] = force;
-		Velocity[i] += force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
+			// TODO: this is temp, what's a reasonable way to apply a buoyant force over 3600 seconds?
+			buoyancy = buoyancy * 0.001f;
+
+			// TODO: it might be a good idea to just separate buoyancy velocity since we aren't preserving momentum, then we could get rid of this
+			vel += Positions[i] * (buoyancy - math.dot(Positions[i], vel));
+		}
+
+
+		Velocity[i] = vel;
 	}
 }
 

@@ -36,7 +36,9 @@ public class WorldView : MonoBehaviour {
 		Salinity0,
 		Salinity1,
 		Salinity2,
-		VerticalWind,
+		VerticalWind0,
+		VerticalWind1,
+		VerticalWind2,
 		AbsoluteHumidity0,
 		AbsoluteHumidity1,
 		AbsoluteHumidity2,
@@ -720,9 +722,15 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.FloraWater:
 				overlay = new MeshOverlayData(0, Sim.WorldData.FullCoverageFlora, _normalizedRainbow, simState.FloraWater);
 				return true;
-				//case MeshOverlay.VerticalWind:
-				//	overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, simState.WindVertical[1]);
-				//	return true;
+			case MeshOverlay.VerticalWind0:
+				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, display.WindVertical[1]);
+				return true;
+			case MeshOverlay.VerticalWind1:
+				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, display.WindVertical[2]);
+				return true;
+			case MeshOverlay.VerticalWind2:
+				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, display.WindVertical[3]);
+				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 		return false;

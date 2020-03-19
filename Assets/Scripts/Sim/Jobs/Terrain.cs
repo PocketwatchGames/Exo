@@ -44,8 +44,8 @@ public struct UpdateFloraJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	public void Execute(int i)
 	{
-		FloraMass[i] = LastMass[i] + FloraMassDelta[i];
-		FloraWater[i] = LastWater[i] - EvaporationMass[i] + GroundWaterConsumed[i];
+		FloraMass[i] = math.max(0, LastMass[i] + FloraMassDelta[i]);
+		FloraWater[i] = math.max(0, LastWater[i] - EvaporationMass[i] + GroundWaterConsumed[i]);
 	}
 
 }

@@ -1,5 +1,4 @@
-﻿
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -59,11 +58,19 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		else
 		{
 			float remainingWater = waterMass - Evaporation[i] - WaterFrozen[i];
-			float newTemperature = 
-				WaterTemperature[i] * (SaltMass[i] * WorldData.SpecificHeatSalt + remainingWater * WorldData.SpecificHeatWater) 
+			float newTemperature = 				
 				+ precipitationTemperature * rainMass * WorldData.SpecificHeatWater
 				+ WorldData.FreezingTemperature * IceMelted[i] * WorldData.SpecificHeatWater;
-			newTemperature /= (newMass * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt);
+			float divisor =
+				+ rainMass * WorldData.SpecificHeatWater
+				+ IceMelted[i] * WorldData.SpecificHeatWater;
+			if (remainingWater > 0)
+			{
+				newTemperature += WaterTemperature[i] * (SaltMass[i] * WorldData.SpecificHeatSalt + remainingWater * WorldData.SpecificHeatWater);
+				divisor += (SaltMass[i] * WorldData.SpecificHeatSalt + remainingWater * WorldData.SpecificHeatWater);
+			}
+			newTemperature /= divisor;
+			WaterTemperature[i] = newTemperature;
 		}
 	}
 }

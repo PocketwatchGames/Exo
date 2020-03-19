@@ -49,6 +49,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	public NativeArray<float> DisplayCondensationGround;
 	public NativeArray<float> DisplayCondensationCloud;
 	public NativeArray<float> Enthalpy;
+	public NativeArray<float> WindVertical;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LayerMiddle;
@@ -57,6 +58,8 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> PressureGradientForce;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
+	[ReadOnly] public NativeArray<float3> Wind;
+	[ReadOnly] public NativeArray<float3> SphericalPosition;
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
@@ -68,6 +71,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 		{
 			Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]) + VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);
 		}
+		WindVertical[i] = math.dot(SphericalPosition[i], Wind[i]);
 	}
 }
 #if !InitDisplayJobDebug
