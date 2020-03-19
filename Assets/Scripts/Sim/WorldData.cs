@@ -20,8 +20,11 @@ public struct WorldData {
 	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.
 	public float SolarAbsorptivityAir; // total absorbed by atmosphere AFTER reflection about 30%
 	public float SolarAbsorptivityWaterVapor; // total absorbed by atmosphere AFTER reflection about 30%
+	public float SolarAbsorptivityDust; // total absorbed by atmosphere AFTER reflection about 30%
 	public float SolarAbsorptivityCloud; // 6% absorbed by clouds
 	public float AlbedoAir; // 7% is reflected due to atmospheric scattering 
+	public float AlbedoWaterVapor;
+	public float AlbedoDust;
 	public float AlbedoCloud;
 	public float AlbedoReductionSoilQuality;
 	public float minCloudFreezingTemperature;
@@ -43,6 +46,8 @@ public struct WorldData {
 	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.
 	// carbon dioxide accounts for just 26% of the greenhouse effect.
 	public float ThermalAbsorptivityAir;
+	public float ThermalAbsorptivityWaterVapor;
+	public float ThermalAbsorptivityDust;
 	public float ThermalAbsorptivityCloud;
 
 	// emissivity values obtained here: https://www.thermoworks.com/emissivity-table
@@ -53,6 +58,7 @@ public struct WorldData {
 	public float ThermalEmissivityAir;
 	public float ThermalEmissivityCarbonDioxide;
 	public float ThermalEmissivityWaterVapor;
+	public float ThermalEmissivityDust;
 	public float ThermalEmissivityDirt;
 	public float ThermalEmissivitySand;
 	public float ThermalEmissivityFlora;
@@ -121,6 +127,7 @@ public struct WorldData {
 
 	[Header("Lava")]
 	public float LavaSolidificationTemperature;
+	public float CrustDepthForEruption;
 
 
 	#region Constants

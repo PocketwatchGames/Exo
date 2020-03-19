@@ -49,7 +49,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 		float newTemperature = LastTemperature[i];
 		float newHumidity = absoluteHumidity;
-		float newDust = LastDust[i];
+		float newDust = dust;
 		float3 newVelocity = LastVelocity[i];
 		float layerHeight = LayerHeight[i];
 

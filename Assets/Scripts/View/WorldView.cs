@@ -429,7 +429,7 @@ public class WorldView : MonoBehaviour {
 			DustHeight = DisplayDustHeight,
 			LavaSolidificationTemperature = worldData.LavaSolidificationTemperature,
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
-			DustCoverage = display.DustCoverage,
+			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
 		};
 
@@ -970,6 +970,7 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("\nEVAP: {0:N3} kg", display.Evaporation[ActiveCellIndex]);
 		s.AppendFormat("\nSURFACE TEMP: {0:N3}", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("\nTROPOPAUSE ELE: {0:N0}m", dependent.LayerElevation[Sim.WorldData.AirLayers-1][ActiveCellIndex]);
+		s.AppendFormat("\nDUST: {0:N3} kg", display.DustMass[ActiveCellIndex]);
 
 		if (cloudMass > 0)
 		{

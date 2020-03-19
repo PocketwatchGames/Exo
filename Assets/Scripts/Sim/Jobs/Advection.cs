@@ -282,6 +282,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 		newTemperature = Temperature[i];
 		newWaterVapor = Vapor[i];
 		newVelocity = Velocity[i];
+		newDust = Dust[i];
 #else
 
 		newTemperature = 0;
@@ -661,12 +662,14 @@ public struct AdvectionWaterJob : IJobParallelFor {
 public struct ApplyAdvectionAirJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	public NativeArray<float> Vapor;
+	public NativeArray<float> Dust;
 	public NativeArray<float3> AirVelocity;
 	[ReadOnly] public NativeArray<DiffusionAir> Advection;
 	public void Execute(int i)
 	{
 		Temperature[i] = Advection[i].Temperature;
 		Vapor[i] = Advection[i].WaterVapor;
+		Dust[i] = Advection[i].Dust;
 		AirVelocity[i] = Advection[i].Velocity;
 	}
 }

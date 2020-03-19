@@ -1968,8 +1968,11 @@ MonoBehaviour:
     BoundaryZoneElevation: 0
     SolarAbsorptivityAir: 0
     SolarAbsorptivityWaterVapor: 0
+    SolarAbsorptivityDust: 0
     SolarAbsorptivityCloud: 0
     AlbedoAir: 0
+    AlbedoWaterVapor: 0
+    AlbedoDust: 0
     AlbedoCloud: 0
     AlbedoReductionSoilQuality: 0.15
     minCloudFreezingTemperature: 0
@@ -1979,6 +1982,8 @@ MonoBehaviour:
     rainDropSizeAlbedoMax: 0
     EnergyLostThroughAtmosphereWindow: 0.1007
     ThermalAbsorptivityAir: 0
+    ThermalAbsorptivityWaterVapor: 0
+    ThermalAbsorptivityDust: 0
     ThermalAbsorptivityCloud: 0
     ThermalEmissivityWater: 0
     ThermalEmissivitySalt: 0
@@ -1986,6 +1991,7 @@ MonoBehaviour:
     ThermalEmissivityAir: 0
     ThermalEmissivityCarbonDioxide: 0
     ThermalEmissivityWaterVapor: 0
+    ThermalEmissivityDust: 0
     ThermalEmissivityDirt: 0
     ThermalEmissivitySand: 0
     ThermalEmissivityFlora: 0
@@ -2033,6 +2039,7 @@ MonoBehaviour:
     FloraGrowthTemperatureRangeInverse: 0
     FloraAirSurfaceArea: 0
     LavaSolidificationTemperature: 0
+    CrustDepthForEruption: 0
   TimeScale: 0
 --- !u!4 &365555217
 Transform:

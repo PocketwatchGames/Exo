@@ -82,7 +82,7 @@ public class WorldSimComponent : MonoBehaviour
 				DisplayCondensationGround = _displayState.CondensationGround,
 				Enthalpy = _displayState.EnthalpyAir[i],
 				WindVertical = _displayState.WindVertical[i],
-				DustCoverage = _displayState.DustCoverage,
+				DustCoverage = _displayState.DustMass,
 
 				Gravity = ActiveSimState.PlanetState.Gravity,
 				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],

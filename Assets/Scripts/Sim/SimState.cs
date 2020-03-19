@@ -333,7 +333,7 @@ public struct DisplayState {
 	public NativeArray<float> CondensationGround;
 	public NativeArray<float> Evaporation;
 	public NativeArray<float> EnthalpyTerrain;
-	public NativeArray<float> DustCoverage;
+	public NativeArray<float> DustMass;
 	public NativeArray<float>[] EnthalpyWater;
 	public NativeArray<float>[] EnthalpyAir;
 	public NativeArray<float>[] Salinity;
@@ -355,7 +355,7 @@ public struct DisplayState {
 		CondensationGround = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyTerrain = new NativeArray<float>(count, Allocator.Persistent);
-		DustCoverage = new NativeArray<float>(count, Allocator.Persistent);
+		DustMass = new NativeArray<float>(count, Allocator.Persistent);
 
 		Pressure = new NativeArray<float>[airLayers];
 		PressureGradientForce = new NativeArray<float3>[airLayers];
@@ -403,7 +403,7 @@ public struct DisplayState {
 		CondensationGround.Dispose();
 		Evaporation.Dispose();
 		EnthalpyTerrain.Dispose();
-		DustCoverage.Dispose();
+		DustMass.Dispose();
 		for (int i = 0; i < Pressure.Length; i++)
 		{
 			Pressure[i].Dispose();

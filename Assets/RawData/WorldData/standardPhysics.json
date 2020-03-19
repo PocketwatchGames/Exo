@@ -11,8 +11,11 @@
 
 	"SolarAbsorptivityAir": 0.00001,
 	"SolarAbsorptivityWaterVapor": 0.001,
+	"SolarAbsorptivityDust": 1,
 	"SolarAbsorptivityCloud": 1,
-	"AlbedoAir": 0.01,
+	"AlbedoAir": 0.001,
+	"AlbedoWaterVapor": 0.01,
+	"AlbedoDust": 0.9,
 	"AlbedoCloud": 0.75,
 	"AlbedoReductionSoilQuality": 0.15,
 	"minCloudFreezingTemperature": 243,
@@ -23,6 +26,8 @@
 
 	"EnergyLostThroughAtmosphereWindow": 0.1007,
 	"ThermalAbsorptivityAir": 0.0005,
+	"ThermalAbsorptivityWaterVapor": 0.1,
+	"ThermalAbsorptivityDust": 0.1,
 	"ThermalAbsorptivityCloud": 0.1,
 	"ThermalEmissivityWater": 0.96,
 	"ThermalEmissivitySalt": 0.34,
@@ -30,6 +35,7 @@
 	"ThermalEmissivityAir": 0.8,
 	"ThermalEmissivityCarbonDioxide": 0.9,
 	"ThermalEmissivityWaterVapor": 0.96,
+	"ThermalEmissivityDust": 0.95,
 	"ThermalEmissivityDirt": 0.95,
 	"ThermalEmissivitySand": 0.85,
 	"ThermalEmissivityFlora": 0.98,
@@ -83,5 +89,6 @@
 	"GroundWaterFlowSpeed": 0.05,
 	"GroundWaterDiffusionCoefficient": 10,
 
-	"LavaSolidificationTemperature": 800
+	"LavaSolidificationTemperature": 800,
+	"CrustDepthForEruption": 10
 }
