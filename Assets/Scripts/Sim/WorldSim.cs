@@ -76,6 +76,8 @@ public class WorldSim {
 	private NativeArray<float> geothermalRadiation;
 	private NativeArray<float> groundWaterFlowMass;
 	private NativeArray<float> groundWaterFlowTemperature;
+	private NativeArray<float>[] dustUp;
+	private NativeArray<float>[] dustDown;
 
 	private NativeArray<float> displaySolarRadiation;
 
@@ -113,6 +115,8 @@ public class WorldSim {
 		absorptivitySolar = new NativeArray<SolarAbsorptivity>[_airLayers];
 		absorptivityThermal = new NativeArray<ThermalAbsorptivity>[_airLayers];
 		airVelocityDeflected = new NativeArray<float3>[_airLayers];
+		dustUp = new NativeArray<float>[_airLayers];
+		dustDown = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
 		{
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
@@ -122,6 +126,8 @@ public class WorldSim {
 			absorptivitySolar[i] = new NativeArray<SolarAbsorptivity>(_cellCount, Allocator.Persistent);
 			absorptivityThermal[i] = new NativeArray<ThermalAbsorptivity>(_cellCount, Allocator.Persistent);
 			airVelocityDeflected[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
+			dustUp[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
+			dustDown[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
@@ -188,6 +194,8 @@ public class WorldSim {
 			absorptivitySolar[i].Dispose();
 			absorptivityThermal[i].Dispose();
 			airVelocityDeflected[i].Dispose();
+			dustUp[i].Dispose();
+			dustDown[i].Dispose();
 		}
 		for (int i = 0; i < _waterLayers; i++)
 		{
@@ -1070,6 +1078,8 @@ public class WorldSim {
 					LatentHeat = latentHeat[layerIndex],
 					CondensationCloudMass = condensationCloudMass[j],
 					CondensationGroundMass = condensationGroundMass[j],
+					DustUp = dustUp[j],
+					DustDown = dustDown[j],
 
 					TemperaturePotential = nextState.AirTemperaturePotential[j],
 					LastVapor = lastState.AirVapor[j],
@@ -1079,6 +1089,11 @@ public class WorldSim {
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
 					LayerMiddle = dependent.LayerMiddle[j],
+					LastDust = lastState.Dust[j],
+					AirVelocity = lastState.AirVelocity[j],
+					Positions = staticState.SphericalPosition,
+					DustVerticalVelocity = worldData.DustVerticalVelocity,
+					SecondsPerTick = worldData.SecondsPerTick
 
 				});
 			}
@@ -1271,6 +1286,10 @@ public class WorldSim {
 					GroundCondensation = condensationGroundMass[j],
 					LastVaporMass = lastState.AirVapor[j],
 					LastDustMass = lastState.Dust[j],
+					DustUp = dustUp[j],
+					DustDown = dustDown[j],
+					DustFromAbove = dustDown[j + 1],
+					DustFromBelow = dustUp[j - 1],
 					IsTop = j == _airLayers - 2,
 					IsBottom = j == 1,
 				}, JobHandle.CombineDependencies(updateCloudMassJobHandle, updateAirMassJobHandle));
@@ -1325,6 +1344,8 @@ public class WorldSim {
 				LastLavaMass = lastState.LavaMass,
 				LastLavaTemperature = lastState.LavaTemperature,
 				LastMagmaMass = lastState.MagmaMass,
+				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
+				DustSettled = dustDown[1],
 			}));
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateFloraJob()

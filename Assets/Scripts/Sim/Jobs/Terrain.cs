@@ -27,9 +27,12 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastMagmaMass;
 	[ReadOnly] public NativeArray<float> LastCrustDepth;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
+	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeArray<float> DustSettled;
 	public void Execute(int i)
 	{
 		Elevation[i] = LastElevation[i];
+		// TODO: improve soil fertility when dust settles
 		SoilFertility[i] = LastSoilFertility[i];
 		Roughness[i] = LastRoughness[i];
 		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];

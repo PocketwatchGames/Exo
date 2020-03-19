@@ -213,14 +213,21 @@ public struct FluxAirJob : IJobParallelFor {
 	public NativeArray<float> LatentHeat;
 	public NativeArray<float> CondensationGroundMass;
 	public NativeArray<float> CondensationCloudMass;
+	public NativeArray<float> DustUp;
+	public NativeArray<float> DustDown;
 	[ReadOnly] public NativeArray<float> TemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LastVapor;
+	[ReadOnly] public NativeArray<float> LastDust;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> LayerMiddle;
+	[ReadOnly] public NativeArray<float3> AirVelocity;
+	[ReadOnly] public NativeArray<float3> Positions;
+	[ReadOnly] public float DustVerticalVelocity;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		float condensationGroundMass = 0;
@@ -240,9 +247,24 @@ public struct FluxAirJob : IJobParallelFor {
 		}
 #endif
 
+		float layerHeight = LayerHeight[i];
+		var velVertical = (math.dot(AirVelocity[i], Positions[i]) + DustVerticalVelocity) * SecondsPerTick;
+		if (velVertical > 0)
+		{
+			DustDown[i] = 0;
+			DustUp[i] = math.min(1, velVertical / LayerHeight[i]) * LastDust[i];
+		}
+		else
+		{
+			DustUp[i] = 0;
+			DustDown[i] = math.min(1, -velVertical / LayerHeight[i]) * LastDust[i];
+		}
+
+
 		LatentHeat[i] = energyFlux;
 		CondensationGroundMass[i] = condensationGroundMass;
 		CondensationCloudMass[i] = condensationCloudMass;
+
 	}
 }
 

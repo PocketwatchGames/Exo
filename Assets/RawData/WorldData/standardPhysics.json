@@ -90,5 +90,6 @@
 	"GroundWaterDiffusionCoefficient": 10,
 
 	"LavaSolidificationTemperature": 800,
-	"CrustDepthForEruption": 10
+	"CrustDepthForEruption": 10,
+	"DustVerticalVelocity": -0.01
 }

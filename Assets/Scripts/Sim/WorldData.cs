@@ -128,7 +128,7 @@ public struct WorldData {
 	[Header("Lava")]
 	public float LavaSolidificationTemperature;
 	public float CrustDepthForEruption;
-
+	public float DustVerticalVelocity;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;
