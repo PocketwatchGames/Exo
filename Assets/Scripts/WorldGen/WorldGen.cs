@@ -146,7 +146,7 @@ public static class WorldGen {
 
 			MagmaMass[i] = MagmaMin + (MagmaMax - MagmaMin) * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630);
 
-			LavaMass[i] = 10000 * math.max(0, (GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630) - 0.75f));
+			//LavaMass[i] = 10000 * math.max(0, (GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630) - 0.75f));
 			//LavaMass[i] = 10000;
 			LavaTemperature[i] = LavaEruptionTemperature;
 
@@ -228,7 +228,7 @@ public static class WorldGen {
 		public void Execute(int i)
 		{
 			AirTemperaturePotential[i] = TemperaturePotential[i];
-			Dust[i] = 10;
+			Dust[i] = 0;
 		}
 	}
 

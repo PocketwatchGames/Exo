@@ -84,7 +84,10 @@ public class WorldSim {
 	private NativeArray<float>[] dustDown;
 	private NativeArray<float> iceMeltedMass;
 	private NativeArray<float> lavaCrystalizedMass;
-
+	private NativeArray<float> lavaEjected;
+	private NativeArray<float> dustEjected;
+	private NativeArray<float> crustDelta;
+	
 	private NativeArray<float> displaySolarRadiation;
 
 	public WorldSim(int cellCount, int airLayers, int waterLayers)
@@ -184,6 +187,9 @@ public class WorldSim {
 		groundWaterFlowTemperature = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		lavaCrystalizedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		lavaEjected = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		dustEjected = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		crustDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
 
 	}
 
@@ -250,6 +256,9 @@ public class WorldSim {
 		groundWaterFlowTemperature.Dispose();
 		iceMeltedMass.Dispose();
 		lavaCrystalizedMass.Dispose();
+		lavaEjected.Dispose();
+		dustEjected.Dispose();
+		crustDelta.Dispose();
 
 		displaySolarRadiation.Dispose();
 
@@ -1329,10 +1338,19 @@ public class WorldSim {
 			{
 				LatentHeat = latentHeat[_lavaLayer],
 				CrystalizedMass = lavaCrystalizedMass,
+				LavaEjected = lavaEjected,
+				DustEjected = dustEjected,
+				CrustDelta = crustDelta,
 
-				Temperature = nextState.LavaTemperature,
-				Mass = lastState.LavaMass,
-				LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature
+				LavaTemperature = nextState.LavaTemperature,
+				LavaMass = lastState.LavaMass,
+				CrustDepth = lastState.CrustDepth,
+				MagmaMass = lastState.MagmaMass,
+				LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
+				CrustEruptionDepth = worldData.CrustDepthForEruption,
+				DustPerLavaEjected = worldData.DustPerLavaEjected,
+				MagmaPressureCrustReductionSpeedInverse = 1.0f / worldData.MagmaPressureCrustReductionSpeed,
+				SecondsPerTick = worldData.SecondsPerTick
 			}, fluxJobHandles[_lavaLayer]);
 
 			JobHandle fluxJobHandle = JobHandle.CombineDependencies(fluxCloudJobHandle, JobHandle.CombineDependencies(fluxJobHandles));
@@ -1436,12 +1454,14 @@ public class WorldSim {
 			{
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				VaporMass = nextState.AirVapor[1],
+				DustMass = nextState.Dust[1],
 
 				AirMass = dependent.AirMass[1],
 				EvaporationWater = evaporationMassWater,
 				EvaporationTemperaturePotentialWater = evaporationTemperaturePotentialWater,
 				EvaporationFlora = evaporationMassFlora,
 				EvaporationTemperaturePotentialFlora = evaporationTemperaturePotentialFlora,
+				DustEjected = dustEjected,
 			}, JobHandle.CombineDependencies(updateMassAirJobHandles[1], surfaceWaterMassHandle));
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateMassEvaporationHandle);
 
@@ -1469,6 +1489,8 @@ public class WorldSim {
 				LavaMass = nextState.LavaMass,
 				CrustDepth = nextState.CrustDepth,
 				MagmaMass = nextState.MagmaMass,
+				LavaTemperature = nextState.LavaTemperature,
+
 
 				LastElevation = lastState.Elevation,
 				LastRoughness = lastState.Roughness,
@@ -1477,11 +1499,13 @@ public class WorldSim {
 				GroundWaterConsumed = groundWaterConsumed,
 				LastCrustDepth = lastState.CrustDepth,
 				LastLavaMass = lastState.LavaMass,
-				LavaTemperature = nextState.LavaTemperature,
 				LastMagmaMass = lastState.MagmaMass,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				DustSettled = dustDown[1],
-				LavaCrystalized = lavaCrystalizedMass
+				LavaCrystalized = lavaCrystalizedMass,
+				LavaEjected = lavaEjected,
+				MagmaTemperature = worldData.MagmaTemperature,
+				CrustDelta = crustDelta
 			}));
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateFloraJob()
@@ -2056,6 +2080,10 @@ public class WorldSim {
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "CloudElevation", dependent.CloudElevation, -100000, 100000, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 1200, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CrustDepth", nextState.LavaMass, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "MagmaMass", nextState.LavaMass, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "LavaMass", nextState.LavaMass, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "LavaTemperature", nextState.LavaTemperature, degenVarNames);
 				for (int i = 1; i < _airLayers - 1; i++) {
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 1200, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 10000, degenVarNames);
@@ -2367,6 +2395,10 @@ public class WorldSim {
 		s.AppendFormat("CloudVelocity: {0}\n", state.CloudVelocity[i]);
 		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
 		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
+		s.AppendFormat("LavaMass: {0}\n", state.LavaMass[i]);
+		s.AppendFormat("LavaTemperature: {0}\n", state.LavaTemperature[i]);
+		s.AppendFormat("MagmaMass: {0}\n", state.MagmaMass[i]);
+		s.AppendFormat("CrustDepth: {0}\n", state.CrustDepth[i]);
 		s.AppendFormat("FloraMass: {0}\n", state.FloraMass[i]);
 		s.AppendFormat("FloraWater: {0}\n", state.FloraWater[i]);
 		s.AppendFormat("FloraTemperature: {0}\n", state.FloraTemperature[i]);

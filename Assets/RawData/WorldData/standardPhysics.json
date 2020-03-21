@@ -93,5 +93,7 @@
 	"LavaCrystalizationTemperature": 800,
 	"CrustDepthForEruption": 10,
 	"DustVerticalVelocity": -0.01,
-	"MagmaTemperature": 1500
+	"MagmaTemperature": 1500,
+	"DustPerLavaEjected": 0.01,
+	"MagmaPressureCrustReductionSpeed": 0.01
 }

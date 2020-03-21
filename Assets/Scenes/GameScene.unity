@@ -1995,6 +1995,7 @@ MonoBehaviour:
     ThermalEmissivityDirt: 0
     ThermalEmissivitySand: 0
     ThermalEmissivityFlora: 0
+    ThermalEmissivityLava: 0
     WaterHeatingDepth: 0
     IceHeatingDepth: 0
     FreezePointReductionPerSalinity: 0
@@ -2038,8 +2039,12 @@ MonoBehaviour:
     FloraWaterConsumptionRate: 0
     FloraGrowthTemperatureRangeInverse: 0
     FloraAirSurfaceArea: 0
-    LavaSolidificationTemperature: 0
+    LavaCrystalizationTemperature: 0
+    MagmaTemperature: 0
     CrustDepthForEruption: 0
+    DustVerticalVelocity: 0
+    DustPerLavaEjected: 0
+    MagmaPressureCrustReductionSpeed: 0
   TimeScale: 0
 --- !u!4 &365555217
 Transform:
