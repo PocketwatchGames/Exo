@@ -62,6 +62,7 @@ public struct WorldData {
 	public float ThermalEmissivityDirt;
 	public float ThermalEmissivitySand;
 	public float ThermalEmissivityFlora;
+	public float ThermalEmissivityLava;
 
 	// TODO: should we parameterize the micro-conduction that allows for water to heat the air faster than it can cool it?
 	//public float AirWaterConductionPositive; // global avg = 16 watts per degree delta between air and ocean (global avg = 24 watts per m^2 of ocean)
@@ -126,7 +127,8 @@ public struct WorldData {
 	public float FloraAirSurfaceArea;
 
 	[Header("Lava")]
-	public float LavaSolidificationTemperature;
+	public float LavaCrystalizationTemperature;
+	public float MagmaTemperature;
 	public float CrustDepthForEruption;
 	public float DustVerticalVelocity;
 
@@ -155,8 +157,10 @@ public struct WorldData {
 	public const float SpecificHeatSalt = 0.85f;
 	public const float SpecificHeatAtmosphere = 1.158f;
 	public const float SpecificHeatSoil = 0.84f;
+	public const float SpecificHeatLava = 0.84f;
 	public const float LatentHeatWaterLiquid = 334.0f;
 	public const float LatentHeatWaterVapor = 2264.705f;
+	public const float LatentHeatLava = 400000f;
 	public const float MassEarthAir = 1.29f;
 	public const float MassWater = 1000f;
 	public const float MassSalt = 2170f;
@@ -171,17 +175,21 @@ public struct WorldData {
 	public const float ConductivityIce = 2.18f;
 	public const float ConductivityTerrain = 0.2f;
 	public const float ConductivityFlora = 0.1f;
+	public const float ConductivityLava = 1.45f;
 	public const float ThermalContactResistance = 0.00005f;
 	public const float ConductivityAirWater = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityWater + ThermalContactResistance);
 	public const float ConductivityAirIce = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityIce + ThermalContactResistance);
 	public const float ConductivityAirFlora = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityFlora + ThermalContactResistance);
+	public const float ConductivityAirLava = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityLava + ThermalContactResistance);
 	public const float ConductivityAirTerrain = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityTerrain + ThermalContactResistance);
 	public const float ConductivityIceWater = 1.0f / (1.0f / ConductivityWater + 1.0f / ConductivityIce + ThermalContactResistance);
 	public const float ConductivityIceFlora = 1.0f / (1.0f / ConductivityFlora + 1.0f / ConductivityIce + ThermalContactResistance);
+	public const float ConductivityIceLava = 1.0f / (1.0f / ConductivityLava + 1.0f / ConductivityIce + ThermalContactResistance);
 	public const float ConductivityIceTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityIce + ThermalContactResistance);
-	public const float ConductivityWaterFlora = 1.0f / (1.0f / ConductivityFlora + 1.0f / ConductivityWater + ThermalContactResistance);
+	public const float ConductivityWaterLava = 1.0f / (1.0f / ConductivityLava + 1.0f / ConductivityWater + ThermalContactResistance);
 	public const float ConductivityWaterTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityWater + ThermalContactResistance);
 	public const float ConductivityFloraTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityFlora + ThermalContactResistance);
+	public const float ConductivityLavaTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityLava + ThermalContactResistance);
 	public const float GasConstantAir = UniversalGasConstant / MolarMassAir * 1000;
 	public const float GasConstantWaterVapor = UniversalGasConstant / MolarMassWater * 1000;
 	public const float PressureExponent = 1.0f / (UniversalGasConstant * TemperatureLapseRate);

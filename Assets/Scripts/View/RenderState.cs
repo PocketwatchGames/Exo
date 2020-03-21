@@ -132,7 +132,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public float InverseCloudMass;
 	[ReadOnly] public float GroundWaterMax;
 	[ReadOnly] public float DustHeight;
-	[ReadOnly] public float LavaSolidificationTemperature;
+	[ReadOnly] public float LavaCrystalizationTemperature;
 	[ReadOnly] public float LavaTemperatureRangeInverse;
 	[ReadOnly] public float DustMaxInverse;
 
@@ -178,7 +178,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		{
 			terrainColor = GetTerrainColor(roughness, SoilFertility[i], waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
 			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth);
-			lavaColor = GetLavaColor(LavaTemperature[i], LavaSolidificationTemperature, LavaTemperatureRangeInverse);
+			lavaColor = GetLavaColor(LavaTemperature[i], LavaCrystalizationTemperature, LavaTemperatureRangeInverse);
 		}
 		cloudColor = GetCloudColor(math.saturate((CloudDropletMass[i] - CloudDropletSizeMin) * InverseCloudDropletSizeRange), cloudCoverage);
 		dustColor = GetDustColor(DustCoverage[i], DustMaxInverse);
@@ -197,7 +197,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		dustPosition = icosphere * (((math.max(0, DustHeight - surfaceElevation)) * AtmosphereScale) + ((surfaceElevation + 100) * TerrainScale + PlanetRadius)) / PlanetRadius;
 
 		float lavaDepth = LavaMass[i] / WorldData.MassLava;
-		lavaPosition = icosphere * ((lavaDepth == 0) ? 0.95f : ((elevation + lavaDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
+		lavaPosition = icosphere * ((lavaDepth == 0) ? 0.95f : ((elevation + roughness + lavaDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
 
 		if (WindOverlayActive)
 		{

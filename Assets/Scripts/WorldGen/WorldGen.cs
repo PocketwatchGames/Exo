@@ -52,6 +52,8 @@ public static class WorldGen {
 		public NativeArray<float> FloraTemperature;
 		public NativeArray<float> MagmaMass;
 		public NativeArray<float> CrustDepth;
+		public NativeArray<float> LavaMass;
+		public NativeArray<float> LavaTemperature;
 
 		[ReadOnly] public NativeArray<float2> Coordinate;
 		[ReadOnly] public NativeArray<float3> SphericalPosition;
@@ -69,6 +71,7 @@ public static class WorldGen {
 		[ReadOnly] public float MagmaMax;
 		[ReadOnly] public float CrustMin;
 		[ReadOnly] public float CrustMax;
+		[ReadOnly] public float LavaEruptionTemperature;
 
 		public void Run(int count)
 		{
@@ -142,6 +145,10 @@ public static class WorldGen {
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1430));
 
 			MagmaMass[i] = MagmaMin + (MagmaMax - MagmaMin) * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630);
+
+			LavaMass[i] = 10000 * math.max(0, (GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630) - 0.75f));
+			//LavaMass[i] = 10000;
+			LavaTemperature[i] = LavaEruptionTemperature;
 
 			LayerElevationBase[i] = surfaceElevation;
 			Elevation[i] = elevation;
@@ -334,6 +341,8 @@ public static class WorldGen {
 			FloraTemperature = state.FloraTemperature,
 			CrustDepth = state.CrustDepth,
 			MagmaMass = state.MagmaMass,
+			LavaMass = state.LavaMass,
+			LavaTemperature = state.LavaTemperature,
 
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
@@ -351,6 +360,7 @@ public static class WorldGen {
 			MagmaMax = worldGenData.MagmaMax,
 			CrustMin = worldGenData.CrustMin,
 			CrustMax = worldGenData.CrustMax,
+			LavaEruptionTemperature = worldData.MagmaTemperature
 		};
 		worldGenInitJob.Run(staticState.Count);
 

@@ -23,8 +23,8 @@
 	"SurfaceWaterDepth": 200,
 	"ThermoclineDepth": 800,
 	"WaterTemperatureDepthFalloff": 500,
-	"MagmaMin": 1000,
-	"MagmaMax": 10000,
+	"MagmaMin": 100000,
+	"MagmaMax": 100000000,
 	"CrustMin": 100,
 	"CrustMax": 10000
 

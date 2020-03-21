@@ -39,6 +39,7 @@
 	"ThermalEmissivityDirt": 0.95,
 	"ThermalEmissivitySand": 0.85,
 	"ThermalEmissivityFlora": 0.98,
+	"ThermalEmissivityLava": 0.98,
 
 	"SoilHeatDepth": 1,
 	"WaterHeatingDepth": 0.1,
@@ -89,7 +90,8 @@
 	"GroundWaterFlowSpeed": 0.05,
 	"GroundWaterDiffusionCoefficient": 10,
 
-	"LavaSolidificationTemperature": 800,
+	"LavaCrystalizationTemperature": 800,
 	"CrustDepthForEruption": 10,
-	"DustVerticalVelocity": -0.01
+	"DustVerticalVelocity": -0.01,
+	"MagmaTemperature": 1500
 }

@@ -1,11 +1,10 @@
-﻿using Unity.Burst;
+﻿
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
 
-#if !ThermalEnergyRadiatedJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyRadiatedJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmittedUp;
@@ -35,9 +34,7 @@ public struct ThermalEnergyRadiatedJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyRadiatedWaterJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyRadiatedWaterJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmittedUp;
@@ -64,9 +61,7 @@ public struct ThermalEnergyRadiatedWaterJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyRadiatedAirJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyRadiatedAirJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmittedUp;
@@ -97,9 +92,7 @@ public struct ThermalEnergyRadiatedAirJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyRadiatedConstantEmissivityJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyRadiatedConstantEmissivityJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmittedUp;
@@ -128,9 +121,7 @@ public struct ThermalEnergyRadiatedConstantEmissivityJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyRadiatedTerrainJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyRadiatedTerrainJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmitted;
@@ -152,9 +143,7 @@ public struct ThermalEnergyRadiatedTerrainJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyAbsorbedAirJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationDelta;
 	public NativeArray<float> ThermalRadiationTransmitted;
@@ -211,9 +200,7 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyAbsorbedJob
 [BurstCompile]
-#endif
 public struct ThermalEnergyAbsorbedJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationTransmitted;
 	public NativeArray<float> ThermalRadiationDelta;
@@ -236,9 +223,7 @@ public struct ThermalEnergyAbsorbedJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyAbsorbedPartialCoverageJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyAbsorbedPartialCoverageJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationTransmitted;
 	public NativeArray<float> ThermalRadiationDelta;
@@ -261,9 +246,7 @@ public struct ThermalEnergyAbsorbedPartialCoverageJob : IJobParallelFor {
 	}
 }
 
-#if !ThermalEnergyAbsorbedTerrainJobDebug
 [BurstCompile]
-#endif
 public struct ThermalEnergyAbsorbedTerrainJob : IJobParallelFor {
 	public NativeArray<float> ThermalRadiationAbsorbed;
 	[ReadOnly] public NativeArray<float> WindowRadiationIncoming;

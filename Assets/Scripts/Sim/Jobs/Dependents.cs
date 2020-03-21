@@ -58,6 +58,7 @@ public static class SimJobs {
 		{
 			IceEnergy = dependent.IceEnergy,
 			FloraEnergy = dependent.FloraEnergy,
+			LavaEnergy = dependent.LavaEnergy,
 			SurfaceElevation = dependent.LayerElevation[1],
 
 			WaterDepth = dependent.WaterLayerDepth[1],
@@ -65,6 +66,8 @@ public static class SimJobs {
 			FloraMass = state.FloraMass,
 			FloraWater = state.FloraWater,
 			FloraTemperature = state.FloraTemperature,
+			LavaMass = state.LavaMass,
+			LavaTemperature = state.LavaTemperature,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
 		}, dependencies);
@@ -169,26 +172,34 @@ public static class SimJobs {
 		{
 			SurfaceAirTemperatureAbsolute = dependent.SurfaceAirTemperatureAbsolute,
 			SurfaceAreaAirFlora = dependent.SurfaceAreaAirFlora,
+			SurfaceAreaAirLava = dependent.SurfaceAreaAirLava,
 			SurfaceAreaAirIce = dependent.SurfaceAreaAirIce,
 			SurfaceAreaAirTerrain = dependent.SurfaceAreaAirTerrain,
 			SurfaceAreaAirWater = dependent.SurfaceAreaAirWater,
-			SurfaceAreaFloraTerrain = dependent.SurfaceAreaFloraTerrain,
+			SurfaceAreaIceLava = dependent.SurfaceAreaIceLava,
 			SurfaceAreaIceFlora = dependent.SurfaceAreaIceFlora,
 			SurfaceAreaIceTerrain = dependent.SurfaceAreaIceTerrain,
 			SurfaceAreaIceWater = dependent.SurfaceAreaIceWater,
+			SurfaceAreaWaterLava = dependent.SurfaceAreaWaterLava,
 			SurfaceAreaWaterFlora = dependent.SurfaceAreaWaterFlora,
 			SurfaceAreaWaterTerrain = dependent.SurfaceAreaWaterTerrain,
+			SurfaceAreaFloraLava = dependent.SurfaceAreaFloraLava,
+			SurfaceAreaFloraTerrain = dependent.SurfaceAreaFloraTerrain,
+			SurfaceAreaLavaTerrain = dependent.SurfaceAreaLavaTerrain,
+			LavaCoverage = dependent.LavaCoverage,
 			FloraCoverage = dependent.FloraCoverage,
 			IceCoverage = dependent.IceCoverage,
 
 			WaterCoverage = dependent.WaterCoverage[worldData.WaterLayers - 2],
 			FloraMass = state.FloraMass,
 			IceMass = state.IceMass,
+			LavaMass = state.LavaMass,
 			AirTemperaturePotential = state.AirTemperaturePotential[1],
 			SurfaceLayerElevation = dependent.LayerElevation[1],
 			inverseFullCoverageFloraMass = 1.0f / worldData.FullCoverageFlora,
 			inverseFullCoverageIceMass = 1.0f / (worldData.FullCoverageIce * WorldData.MassIce),
-			FloraAirSurfaceArea = worldData.FloraAirSurfaceArea
+			FloraAirSurfaceArea = worldData.FloraAirSurfaceArea,
+			Roughness = state.Roughness
 		}, dependencies);
 
 
@@ -208,19 +219,24 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceElevation;
 	public NativeArray<float> IceEnergy;
 	public NativeArray<float> FloraEnergy;
+	public NativeArray<float> LavaEnergy;
 	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public NativeArray<float> FloraMass;
 	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public NativeArray<float> FloraTemperature;
 	[ReadOnly] public NativeArray<float> IceMass;
 	[ReadOnly] public NativeArray<float> IceTemperature;
+	[ReadOnly] public NativeArray<float> LavaMass;
+	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> Elevation;
 	public void Execute(int i)
 	{
 		float iceMass = IceMass[i];
-		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce;
+		float lavaMass = LavaMass[i];
+		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce + lavaMass / WorldData.MassLava;
 
 		IceEnergy[i] = WorldData.SpecificHeatIce * iceMass * IceTemperature[i];
+		LavaEnergy[i] = WorldData.SpecificHeatLava * lavaMass * LavaTemperature[i];
 		FloraEnergy[i] = (WorldData.SpecificHeatFlora * FloraMass[i] + WorldData.SpecificHeatWater * FloraWater[i]) * FloraTemperature[i];
 	}
 
@@ -457,20 +473,28 @@ public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceAreaAirIce;
 	public NativeArray<float> SurfaceAreaAirWater;
 	public NativeArray<float> SurfaceAreaAirFlora;
+	public NativeArray<float> SurfaceAreaAirLava;
 	public NativeArray<float> SurfaceAreaAirTerrain;
 	public NativeArray<float> SurfaceAreaIceWater;
 	public NativeArray<float> SurfaceAreaIceFlora;
+	public NativeArray<float> SurfaceAreaIceLava;
 	public NativeArray<float> SurfaceAreaIceTerrain;
 	public NativeArray<float> SurfaceAreaWaterFlora;
+	public NativeArray<float> SurfaceAreaWaterLava;
 	public NativeArray<float> SurfaceAreaWaterTerrain;
+	public NativeArray<float> SurfaceAreaFloraLava;
 	public NativeArray<float> SurfaceAreaFloraTerrain;
+	public NativeArray<float> SurfaceAreaLavaTerrain;
 	public NativeArray<float> FloraCoverage;
+	public NativeArray<float> LavaCoverage;
 	public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> IceMass;
 	[ReadOnly] public NativeArray<float> FloraMass;
+	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> SurfaceLayerElevation;
+	[ReadOnly] public NativeArray<float> Roughness;
 	[ReadOnly] public float inverseFullCoverageIceMass;
 	[ReadOnly] public float inverseFullCoverageFloraMass;
 	[ReadOnly] public float FloraAirSurfaceArea;
@@ -481,6 +505,9 @@ public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
 		float floraCoverage = math.saturate(FloraMass[i] * inverseFullCoverageFloraMass);
 		FloraCoverage[i] = floraCoverage;
 
+		float lavaCoverage = math.saturate(LavaMass[i] / (Roughness[i] * WorldData.MassLava));
+		LavaCoverage[i] = lavaCoverage;
+
 		float iceCoverage = math.saturate(IceMass[i] * inverseFullCoverageIceMass);
 		IceCoverage[i] = iceCoverage;
 
@@ -489,13 +516,18 @@ public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
 		SurfaceAreaAirIce[i] = iceCoverage;
 		SurfaceAreaAirWater[i] = math.max(0, waterCoverage - iceCoverage);
 		SurfaceAreaAirFlora[i] = math.min(floraCoverage, 1.0f - math.max(waterCoverage, iceCoverage)) * FloraAirSurfaceArea;
-		SurfaceAreaAirTerrain[i] = math.max(0, 1.0f - (floraCoverage + math.max(waterCoverage, iceCoverage)));
+		SurfaceAreaAirLava[i] = math.min(lavaCoverage, 1.0f - math.max(waterCoverage, iceCoverage));
+		SurfaceAreaAirTerrain[i] = math.max(0, 1.0f - (math.max(lavaCoverage, floraCoverage) + math.max(waterCoverage, iceCoverage)));
 		SurfaceAreaIceWater[i] = math.min(waterCoverage, iceCoverage);
 		SurfaceAreaIceFlora[i] = math.max(0, (floraCoverage + math.max(0, iceCoverage - waterCoverage)) - 1.0f) * FloraAirSurfaceArea;
-		SurfaceAreaIceTerrain[i] = math.max(0, iceCoverage - waterCoverage) - math.max(0, floraCoverage + iceCoverage - 1.0f);
+		SurfaceAreaIceLava[i] = math.min(math.max(0, iceCoverage - waterCoverage), lavaCoverage);
+		SurfaceAreaIceTerrain[i] = math.max(0, iceCoverage - waterCoverage) - math.max(0, math.max(lavaCoverage, floraCoverage) + iceCoverage - 1.0f);
 		SurfaceAreaWaterFlora[i] = math.max(0, (floraCoverage + waterCoverage) - 1.0f) * FloraAirSurfaceArea;
+		SurfaceAreaWaterLava[i] = math.min(lavaCoverage, waterCoverage);
 		SurfaceAreaWaterTerrain[i] = waterCoverage - math.max(0, (floraCoverage + waterCoverage) - 1.0f);
+		SurfaceAreaFloraLava[i] = math.min(lavaCoverage, floraCoverage);
 		SurfaceAreaFloraTerrain[i] = floraCoverage;
+		SurfaceAreaLavaTerrain[i] = lavaCoverage;
 	}
 
 }

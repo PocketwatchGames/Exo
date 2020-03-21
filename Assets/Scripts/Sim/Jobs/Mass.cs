@@ -5,9 +5,7 @@ using Unity.Mathematics;
 
 
 
-#if !UpdateMassWaterJobDebug
 [BurstCompile]
-#endif
 public struct UpdateMassWaterJob : IJobParallelFor {
 	public NativeArray<float> WaterMass;
 	public NativeArray<float> SaltMass;
@@ -28,9 +26,7 @@ public struct UpdateMassWaterJob : IJobParallelFor {
 		}
 	}
 }
-#if !UpdateMassWaterSurfaceJobDebug
 [BurstCompile]
-#endif
 public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	public NativeArray<float> WaterTemperature;
 	public NativeArray<float> WaterMass;
@@ -76,9 +72,7 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 }
 
 
-#if !UpdateMassAirJobDebug
 [BurstCompile]
-#endif
 public struct UpdateMassCondensationGroundJob : IJobParallelFor {
 	public NativeArray<float> SurfaceWaterMass;
 	public NativeArray<float> SurfaceWaterTemperature;
@@ -106,9 +100,7 @@ public struct UpdateMassCondensationGroundJob : IJobParallelFor {
 	}
 }
 
-#if !UpdateMassCloudJobDebug
 [BurstCompile]
-#endif
 public struct UpdateMassCloudJob : IJobParallelFor {
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> CloudDropletMass;
@@ -124,9 +116,7 @@ public struct UpdateMassCloudJob : IJobParallelFor {
 }
 
 
-#if !UpdateMassAirJobDebug
 [BurstCompile]
-#endif
 public struct UpdateMassAirJob : IJobParallelFor {
 	public NativeArray<float> VaporMass;
 	public NativeArray<float> DustMass;
@@ -181,9 +171,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 	}
 }
 
-#if !UpdateMassEvaporationJobDebug
 [BurstCompile]
-#endif
 public struct UpdateMassEvaporationJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
 	public NativeArray<float> VaporMass;
@@ -207,9 +195,7 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 	}
 }
 
-#if !UpdateMassIceJobDebug
 [BurstCompile]
-#endif
 public struct UpdateMassIceJob : IJobParallelFor {
 	public NativeArray<float> IceMass;
 	public NativeArray<float> IceTemperature;
@@ -241,9 +227,7 @@ public struct UpdateMassIceJob : IJobParallelFor {
 }
 
 
-#if !ApplyLatentHeatIceJobDebug
 [BurstCompile]
-#endif
 public struct ApplyLatentHeatIceJob : IJobParallelFor {
 	public NativeArray<float> IceTemperature;
 	[ReadOnly] public NativeArray<float> IceMass;
@@ -257,9 +241,7 @@ public struct ApplyLatentHeatIceJob : IJobParallelFor {
 	}
 }
 
-#if !ApplyLatentHeatAirJobDebug
 [BurstCompile]
-#endif
 public struct ApplyLatentHeatAirJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirMass;
@@ -271,9 +253,7 @@ public struct ApplyLatentHeatAirJob : IJobParallelFor {
 	}
 }
 
-#if !ApplyLatentHeatAirJobDebug
 [BurstCompile]
-#endif
 public struct ApplyLatentHeatWaterJob : IJobParallelFor {
 	public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> WaterMass;

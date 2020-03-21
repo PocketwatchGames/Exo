@@ -10,10 +10,9 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
+using UnityEngine;
 
-#if !FluxWaterJobDebug
 [BurstCompile]
-#endif
 public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> EvaporatedWaterTemperaturePotential;
@@ -89,7 +88,6 @@ public struct FluxWaterJob : IJobParallelFor {
 			}
 #endif
 		}
-
 
 		EvaporatedWaterTemperaturePotential[i] = evapTemperaturePotential;
 		EvaporatedWaterMass[i] = evapMass;
@@ -410,3 +408,29 @@ public struct FluxFloraJob : IJobParallelFor {
 	}
 }
 
+#if !FluxLavaJobDebug
+[BurstCompile]
+#endif
+public struct FluxLavaJob : IJobParallelFor {
+	public NativeArray<float> LatentHeat;
+	public NativeArray<float> CrystalizedMass;
+	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public float LavaCrystalizationTemperature;
+	public void Execute(int i)
+	{
+		float crystalizedMass = 0;
+		float latentHeat = 0;
+		float mass = Mass[i];
+		float temperature = Temperature[i];
+		float crystalizationTempDelta = LavaCrystalizationTemperature - temperature;
+
+		if (crystalizationTempDelta > 0)
+		{
+			//			float crystalized = math.min(mass, (crystalizationTempDelta * mass * WorldData.SpecificHeatLava) / WorldData.LatentHeatLava);
+			crystalizedMass = mass;
+		}
+		CrystalizedMass[i] = crystalizedMass;
+		LatentHeat[i] = latentHeat;
+	}
+}

@@ -1,6 +1,6 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
 //#define DISABLE_AIR_ADVECTION
-//#define DISABLE_WATER_ADVECTION
+#define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
 //#define AdvectionAirJobDebug
 
@@ -481,9 +481,7 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	}
 }
 
-#if !AdvectionWaterJobDebug
 [BurstCompile]
-#endif
 public struct AdvectionWaterJob : IJobParallelFor {
 	public NativeArray<DiffusionWater> Delta;
 	[ReadOnly] public NativeArray<BarycentricValueVertical> Destination;
@@ -529,7 +527,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		newTemperature = 0;
 		newVelocity = 0;
 
-
 		float valueRemaining = 0;
 		int destIndexA = Destination[i].indexA;
 		if (destIndexA == i || destIndexA < 0 || Mass[destIndexA] == 0)
@@ -564,7 +561,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		newTemperature += Temperature[i] * newMass;
 		newVelocity += Velocity[i] * newMass;
 
-
 		for (int j = 0; j < 6; j++)
 		{
 			int n = Neighbors[i * 6 + j];
@@ -586,6 +582,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					{
 						incoming = Destination[n].valueC;
 					}
+
 					float massIncoming = nMass * incoming;
 					newMass += massIncoming;
 					newSaltMass += Salt[n] * incoming;
@@ -643,7 +640,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		}
 
 #endif
-
 
 		Delta[i] = new DiffusionWater()
 		{

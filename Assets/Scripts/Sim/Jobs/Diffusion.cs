@@ -9,9 +9,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-#if !DiffusionAirJobDebug
 [BurstCompile]
-#endif
 public struct DiffusionAirJob : IJobParallelFor {
 	public NativeArray<DiffusionAir> Delta;
 	[ReadOnly] public NativeArray<float> LastTemperature;
@@ -126,9 +124,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 }
 
 
-#if !DiffusionCloudJobDebug
 [BurstCompile]
-#endif
 public struct DiffusionCloudJob : IJobParallelFor {
 	public NativeArray<DiffusionCloud> Delta;
 	[ReadOnly] public NativeArray<float> LastMass;
@@ -181,9 +177,7 @@ public struct DiffusionCloudJob : IJobParallelFor {
 	}
 }
 
-#if !DiffusionWaterJobDebug
 [BurstCompile]
-#endif
 public struct DiffusionWaterJob : IJobParallelFor {
 	public NativeArray<DiffusionWater> Delta;
 	[ReadOnly] public NativeArray<float> LastMass;
@@ -207,68 +201,81 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public float DiffusionCoefficientVertical;
 	public void Execute(int i)
 	{
-		float newSaltMass = LastSalt[i];
-		float newTemperature = LastTemperature[i];
-		float3 newVelocity = LastCurrent[i];
-		float waterMass = LastMass[i];
 		float layerHeight = LayerHeight[i];
 
+		float neighborTemperature = 0;
+		float neighborSaltMass = 0;
+		float3 neighborVelocity = 0;
+		float totalNeighborDiffusion = 0;
+		int neighborCount = 0;
+		float diffusionAmount = 0;
+
+
 #if !DISABLE_WATER_DIFFUSION
-		if (waterMass > 0)
+		if (layerHeight > 0)
 		{
-			float salinity = LastSalt[i] / waterMass;
+
 			for (int j = 0; j < 6; j++)
 			{
 				int nIndex = i * 6 + j;
 				int n = Neighbors[nIndex];
 				if (n >= 0)
 				{
-					float nMass = LastMass[n];
-					if (nMass > 0)
-					{
-						float diffusionAmount = Atmosphere.GetDiffusionAmount(waterMass, nMass, DiffusionCoefficientHoriztonal, layerHeight, LayerHeight[n], NeighborDistInverse[nIndex]);
-						float neighborSalinity = LastSalt[n] / nMass;
+					float diffusion = DiffusionCoefficientHoriztonal * LayerHeight[n] * NeighborDistInverse[nIndex];
+					totalNeighborDiffusion += diffusion;
 
-						newSaltMass += (neighborSalinity - salinity) * waterMass * diffusionAmount;
-						newTemperature += (LastTemperature[n] - LastTemperature[i]) * diffusionAmount;
-						newVelocity += (LastCurrent[n] - LastCurrent[i]) * diffusionAmount;
-					}
+					neighborSaltMass += LastSalt[n] * diffusion;
+					neighborTemperature += LastTemperature[n] * diffusion;
+					neighborVelocity += LastCurrent[n] * diffusion;
+					neighborCount++;
 				}
 			}
+
+			float heightInverse = 1.0f / layerHeight;
 
 			// NOTE: we don't diffuse velocity vertically
 			// NOTE: we are ignoring adibatic processes in the water -- at 10km, the total lapse is less than 1.5 degrees celsius
 			float upMass = UpMass[i];
 			if (upMass > 0)
 			{
-				// TODO: shouldn't shorter water columns diffuse faster?
-				// If so we should divide (again) by total mass (which is proportional to height) of the shared cells...
-				// ...clamp it to 1/6th (or so) of the total, and clamp the height to the diffusion range (10 meters?)
-				float heightDiff = (LayerHeight[i] + UpLayerHeight[i]) / 2;
-				float diffusionAmount = Atmosphere.GetDiffusionAmount(waterMass, upMass, DiffusionCoefficientVertical, heightDiff);
-				float neighborSalinity = UpSalt[i] / upMass;
-				newSaltMass += (neighborSalinity - salinity) * waterMass * diffusionAmount;
-				newTemperature += (UpTemperature[i] - LastTemperature[i]) * diffusionAmount;
+				float diffusion = DiffusionCoefficientVertical * heightInverse;
+				totalNeighborDiffusion += diffusion;
+
+				neighborSaltMass += UpSalt[i] * diffusion;
+				neighborTemperature += UpTemperature[i] * diffusion;
+				neighborVelocity += UpCurrent[i] * diffusion;
+				neighborCount++;
 			}
+
 			float downMass = DownMass[i];
 			if (downMass > 0)
 			{
-				float heightDiff = (LayerHeight[i] + DownLayerHeight[i]) / 2;
-				float diffusionAmount = Atmosphere.GetDiffusionAmount(waterMass, downMass, DiffusionCoefficientVertical, heightDiff);
-				float neighborSalinity = DownSalt[i] / downMass;
+				float diffusion = DiffusionCoefficientVertical * heightInverse;
+				totalNeighborDiffusion += diffusion;
 
-				newSaltMass += (neighborSalinity - salinity) * waterMass * diffusionAmount;
-				newTemperature += (DownTemperature[i] - LastTemperature[i]) * diffusionAmount;
+				neighborSaltMass += DownSalt[i] * diffusion;
+				neighborTemperature += DownTemperature[i] * diffusion;
+				neighborVelocity += DownCurrent[i] * diffusion;
+				neighborCount++;
 			}
 
+			if (totalNeighborDiffusion > 0)
+			{
+				float inverseNeighborDiffusion = 1.0f / totalNeighborDiffusion;
+				neighborTemperature *= inverseNeighborDiffusion;
+				neighborVelocity *= inverseNeighborDiffusion;
+				neighborSaltMass *= inverseNeighborDiffusion;
+			}
+
+			diffusionAmount = totalNeighborDiffusion / (totalNeighborDiffusion + neighborCount);
 		}
 #endif
 
 		Delta[i] = new DiffusionWater()
 		{
-			Temperature = newTemperature,
-			SaltMass = newSaltMass,
-			Velocity = newVelocity,
+			Temperature = LastTemperature[i] + diffusionAmount * (neighborTemperature - LastTemperature[i]),
+			SaltMass = LastSalt[i] + diffusionAmount * (neighborSaltMass - LastSalt[i]),
+			Velocity = LastCurrent[i] + diffusionAmount * (neighborVelocity - LastCurrent[i]),
 		};
 	}
 

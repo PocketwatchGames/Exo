@@ -18,7 +18,7 @@ public class WorldSim {
 
 	private int _cellCount;
 	private int _batchCount = 100;
-	private const int _terrainLayers = 4;
+	private const int _terrainLayers = 5;
 
 	private int _airLayers;
 	private int _waterLayers;
@@ -27,6 +27,7 @@ public class WorldSim {
 	private int _cloudLayer;
 	private int _waterLayer0;
 	private int _floraLayer;
+	private int _lavaLayer;
 	private int _iceLayer;
 	private int _airLayer0;
 	private int _surfaceWaterLayer;
@@ -57,13 +58,16 @@ public class WorldSim {
 	private NativeArray<float> conductionAirIce;
 	private NativeArray<float> conductionAirWater;
 	private NativeArray<float> conductionAirFlora;
+	private NativeArray<float> conductionAirLava;
 	private NativeArray<float> conductionAirTerrain;
 	private NativeArray<float> conductionIceWater;
 	private NativeArray<float> conductionIceFlora;
+	private NativeArray<float> conductionIceLava;
 	private NativeArray<float> conductionIceTerrain;
 	private NativeArray<float> conductionFloraTerrain;
+	private NativeArray<float> conductionLavaTerrain;
 	private NativeArray<float>[] conductionWaterTerrain;
-	private NativeArray<float>[] conductionWaterFlora;
+	private NativeArray<float>[] conductionWaterLava;
 	private NativeArray<float> frozenTemperature;
 	private NativeArray<float> frozenMass;
 	private NativeArray<float> saltPlume;
@@ -78,6 +82,8 @@ public class WorldSim {
 	private NativeArray<float> groundWaterFlowTemperature;
 	private NativeArray<float>[] dustUp;
 	private NativeArray<float>[] dustDown;
+	private NativeArray<float> iceMeltedMass;
+	private NativeArray<float> lavaCrystalizedMass;
 
 	private NativeArray<float> displaySolarRadiation;
 
@@ -88,7 +94,8 @@ public class WorldSim {
 		_waterLayers = waterLayers;
 		_layerCount = _airLayers + _waterLayers + _terrainLayers;
 		_terrainLayer = 0;
-		_floraLayer = _terrainLayer + 1;
+		_lavaLayer = _terrainLayer + 1;
+		_floraLayer = _lavaLayer + 1;
 		_waterLayer0 = _floraLayer + 1;
 		_iceLayer = _waterLayer0 + _waterLayers;
 		_airLayer0 = _iceLayer + 1;
@@ -132,7 +139,7 @@ public class WorldSim {
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		destinationWater = new NativeArray<BarycentricValueVertical>[_waterLayers];
-		conductionWaterFlora = new NativeArray<float>[_waterLayers];
+		conductionWaterLava = new NativeArray<float>[_waterLayers];
 		conductionWaterTerrain = new NativeArray<float>[_waterLayers];
 		waterVelocityDeflected = new NativeArray<float3>[_waterLayers];
 		for (int i = 0; i < _waterLayers; i++)
@@ -140,7 +147,7 @@ public class WorldSim {
 			diffusionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			advectionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			destinationWater[i] = new NativeArray<BarycentricValueVertical>(_cellCount, Allocator.Persistent);
-			conductionWaterFlora[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
+			conductionWaterLava[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			conductionWaterTerrain[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			waterVelocityDeflected[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		}
@@ -162,16 +169,21 @@ public class WorldSim {
 		conductionAirIce = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionAirWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionAirFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionAirLava = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionAirTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionIceWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionIceFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionIceLava = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionIceTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		conductionFloraTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		conductionLavaTerrain = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		displaySolarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		geothermalRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		terrainGradient = new NativeArray<float>(_cellCount * 6, Allocator.Persistent);
 		groundWaterFlowMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		groundWaterFlowTemperature = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		lavaCrystalizedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 
 	}
 
@@ -202,7 +214,7 @@ public class WorldSim {
 			diffusionWater[i].Dispose();
 			advectionWater[i].Dispose();
 			destinationWater[i].Dispose();
-			conductionWaterFlora[i].Dispose();
+			conductionWaterLava[i].Dispose();
 			conductionWaterTerrain[i].Dispose();
 			waterVelocityDeflected[i].Dispose();
 		}
@@ -224,17 +236,20 @@ public class WorldSim {
 		conductionAirIce.Dispose();
 		conductionAirWater.Dispose();
 		conductionAirFlora.Dispose();
+		conductionAirLava.Dispose();
 		conductionAirTerrain.Dispose();
 		conductionIceWater.Dispose();
 		conductionIceFlora.Dispose();
+		conductionIceLava.Dispose();
 		conductionIceTerrain.Dispose();
 		conductionFloraTerrain.Dispose();
+		conductionLavaTerrain.Dispose();
 		geothermalRadiation.Dispose();
 		terrainGradient.Dispose();
 		groundWaterFlowMass.Dispose();
 		groundWaterFlowTemperature.Dispose();
-
-
+		iceMeltedMass.Dispose();
+		lavaCrystalizedMass.Dispose();
 
 		displaySolarRadiation.Dispose();
 
@@ -266,12 +281,11 @@ public class WorldSim {
 			var solarReflected = new NativeArray<float>[_layerCount];
 			var latentHeat = new NativeArray<float>[_layerCount];
 			var conductionWaterTerrainTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var conductionWaterFloraTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			var conductionWaterLavaTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var cloudEvaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var dropletDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var precipitationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			var precipitationTemperature = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var iceMeltedMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 			for (int i = 0; i < _layerCount; i++)
 			{
 				latentHeat[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
@@ -399,6 +413,23 @@ public class WorldSim {
 				Energy = dependent.FloraEnergy,
 				Temperature = lastState.FloraTemperature,
 				SurfaceArea = dependent.FloraCoverage,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, lastJobHandle);
+
+			// LAVA
+			thermalOutJobHandles[_lavaLayer] = SimJob.Schedule(new ThermalEnergyRadiatedConstantEmissivityJob()
+			{
+				ThermalRadiationDelta = thermalRadiationDelta[_lavaLayer],
+				ThermalRadiationTransmittedUp = thermalRadiationTransmittedUp[_lavaLayer],
+				ThermalRadiationTransmittedDown = thermalRadiationTransmittedDown[_lavaLayer],
+				WindowRadiationTransmittedUp = windowRadiationTransmittedUp[_lavaLayer],
+				WindowRadiationTransmittedDown = windowRadiationTransmittedDown[_lavaLayer],
+
+				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
+				Emissivity = worldData.ThermalEmissivityLava,
+				Energy = dependent.LavaEnergy,
+				Temperature = lastState.LavaTemperature,
+				SurfaceArea = dependent.LavaCoverage,
 				SecondsPerTick = worldData.SecondsPerTick
 			}, lastJobHandle);
 
@@ -569,6 +600,7 @@ public class WorldSim {
 				Coverage = dependent.FloraCoverage
 			}, solarInJobHandle);
 
+			// NOTE: we don't bother with solar radiation in lava
 
 			solarInJobHandles[_terrainLayer] = solarInJobHandle =SimJob.Schedule(new SolarRadiationAbsorbedTerrainJob()
 			{
@@ -629,7 +661,7 @@ public class WorldSim {
 				}
 				else if (j == _floraLayer)
 				{
-					int downIndex = _terrainLayer;
+					int downIndex = _lavaLayer;
 					thermalInUpJobHandles[j] = SimJob.Schedule(new ThermalEnergyAbsorbedPartialCoverageJob()
 					{
 						ThermalRadiationDelta = thermalRadiationDelta[j],
@@ -639,6 +671,21 @@ public class WorldSim {
 						WindowRadiationIncoming = windowRadiationTransmittedUp[downIndex],
 						ThermalRadiationIncoming = thermalRadiationTransmittedUp[downIndex],
 						Coverage = dependent.FloraCoverage,
+
+					}, JobHandle.CombineDependencies(thermalOutJobHandles[j], thermalInUpJobHandles[downIndex], thermalOutJobHandles[downIndex]));
+				}
+				else if (j == _lavaLayer)
+				{
+					int downIndex = _terrainLayer;
+					thermalInUpJobHandles[j] = SimJob.Schedule(new ThermalEnergyAbsorbedPartialCoverageJob()
+					{
+						ThermalRadiationDelta = thermalRadiationDelta[j],
+						ThermalRadiationTransmitted = thermalRadiationTransmittedUp[j],
+						WindowRadiationTransmitted = windowRadiationTransmittedUp[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedUp[downIndex],
+						ThermalRadiationIncoming = thermalRadiationTransmittedUp[downIndex],
+						Coverage = dependent.LavaCoverage,
 
 					}, JobHandle.CombineDependencies(thermalOutJobHandles[j], thermalInUpJobHandles[downIndex], thermalOutJobHandles[downIndex]));
 				}
@@ -677,7 +724,7 @@ public class WorldSim {
 				if (j == _terrainLayer)
 				{
 					// TERRAIN
-					int upIndex = _floraLayer;
+					int upIndex = _lavaLayer;
 					var thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalInDownJobHandles[upIndex], thermalInUpJobHandlesCombined);
 					thermalInDownJobHandles[j] =SimJob.Schedule(new ThermalEnergyAbsorbedTerrainJob()
 					{
@@ -685,6 +732,22 @@ public class WorldSim {
 
 						WindowRadiationIncoming = windowRadiationTransmittedDown[upIndex],
 						ThermalRadiationIncoming = thermalRadiationTransmittedDown[upIndex],
+					}, thermalInDependenciesHandle);
+				}
+				else if (j == _lavaLayer)
+				{
+					// LAVA
+					int upIndex = _floraLayer;
+					var thermalInDependenciesHandle = JobHandle.CombineDependencies(thermalInDownJobHandles[upIndex], thermalInUpJobHandlesCombined);
+					thermalInDownJobHandles[j] = SimJob.Schedule(new ThermalEnergyAbsorbedPartialCoverageJob()
+					{
+						ThermalRadiationDelta = thermalRadiationDelta[j],
+						ThermalRadiationTransmitted = thermalRadiationTransmittedDown[j],
+						WindowRadiationTransmitted = windowRadiationTransmittedDown[j],
+
+						WindowRadiationIncoming = windowRadiationTransmittedDown[upIndex],
+						ThermalRadiationIncoming = thermalRadiationTransmittedDown[upIndex],
+						Coverage = dependent.LavaCoverage,
 					}, thermalInDependenciesHandle);
 				}
 				else if (j == _floraLayer)
@@ -798,6 +861,18 @@ public class WorldSim {
 				SecondsPerTick = worldData.SecondsPerTick
 			}, lastJobHandle);
 
+			// air to lava
+			var conductionAirLavaJobHandle = SimJob.Schedule(new ConductionBJob()
+			{
+				EnergyDelta = conductionAirLava,
+				TemperatureA = dependent.SurfaceAirTemperatureAbsolute,
+				TemperatureB = lastState.LavaTemperature,
+				ConductionCoefficient = WorldData.ConductivityAirLava,
+				SurfaceArea = dependent.SurfaceAreaAirLava,
+				EnergyB = dependent.LavaEnergy,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, lastJobHandle);
+
 			// air to terrain
 			var conductionAirTerrainJobHandle = SimJob.Schedule(new ConductionJob()
 			{
@@ -835,6 +910,19 @@ public class WorldSim {
 				SecondsPerTick = worldData.SecondsPerTick
 			}, lastJobHandle);
 
+			// ice to lava
+			var conductionIceLavaJobHandle = SimJob.Schedule(new ConductionABJob()
+			{
+				EnergyDelta = conductionIceLava,
+				TemperatureA = lastState.IceTemperature,
+				TemperatureB = lastState.LavaTemperature,
+				EnergyA = dependent.IceEnergy,
+				EnergyB = dependent.LavaEnergy,
+				ConductionCoefficient = WorldData.ConductivityIceLava,
+				SurfaceArea = dependent.SurfaceAreaIceLava,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, lastJobHandle);
+
 			// ice to terrain
 			var conductionIceTerrainJobHandle =SimJob.Schedule(new ConductionAJob()
 			{
@@ -859,25 +947,37 @@ public class WorldSim {
 				SecondsPerTick = worldData.SecondsPerTick
 			}, lastJobHandle);
 
+			// lava to terrain
+			var conductionLavaTerrainJobHandle = SimJob.Schedule(new ConductionBJob()
+			{
+				EnergyDelta = conductionLavaTerrain,
+				TemperatureA = lastState.LavaTemperature,
+				TemperatureB = lastState.TerrainTemperature,
+				EnergyB = dependent.LavaEnergy,
+				ConductionCoefficient = WorldData.ConductivityLavaTerrain,
+				SurfaceArea = dependent.SurfaceAreaLavaTerrain,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, lastJobHandle);
+
 
 			// water to terrain
 			JobHandle conductionWaterTerrainJobHandle = default(JobHandle);
-			JobHandle conductionWaterFloraJobHandle = default(JobHandle);
+			JobHandle conductionWaterLavaJobHandle = default(JobHandle);
 			for (int i = 1; i < _waterLayers-1; i++) {
-				conductionWaterFloraJobHandle = JobHandle.CombineDependencies(conductionWaterTerrainJobHandle, SimJob.Schedule(new ConductionWaterBottomABJob()
+				conductionWaterLavaJobHandle = JobHandle.CombineDependencies(conductionWaterTerrainJobHandle, SimJob.Schedule(new ConductionWaterBottomABJob()
 				{
-					EnergyDelta = conductionWaterFlora[i],
-					EnergyDeltaTotal = conductionWaterFloraTotal,
+					EnergyDelta = conductionWaterLava[i],
+					EnergyDeltaTotal = conductionWaterLavaTotal,
 					TemperatureA = lastState.WaterTemperature[i],
-					TemperatureB = lastState.FloraTemperature,
+					TemperatureB = lastState.LavaTemperature,
 					EnergyA = dependent.WaterPotentialEnergy[i],
-					EnergyB = dependent.FloraEnergy,
-					ConductionCoefficient = WorldData.ConductivityWaterFlora,
-					SurfaceArea = dependent.SurfaceAreaWaterFlora,
+					EnergyB = dependent.LavaEnergy,
+					ConductionCoefficient = WorldData.ConductivityWaterLava,
+					SurfaceArea = dependent.SurfaceAreaWaterLava,
 					Coverage = dependent.WaterCoverage[i],
 					CoverageBelow = dependent.WaterCoverage[i - 1],
 					SecondsPerTick = worldData.SecondsPerTick
-				}, conductionWaterFloraJobHandle));
+				}, conductionWaterLavaJobHandle));
 				conductionWaterTerrainJobHandle = JobHandle.CombineDependencies(conductionWaterTerrainJobHandle, SimJob.Schedule(new ConductionWaterBottomAJob()
 				{
 					EnergyDelta = conductionWaterTerrain[i],
@@ -909,6 +1009,7 @@ public class WorldSim {
 				conductionIceTerrainJobHandle,
 				conductionWaterTerrainJobHandle,
 				conductionFloraTerrainJobHandle,
+				conductionLavaTerrainJobHandle,
 			};
 			jobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
 			energyJobHandles[_terrainLayer] =SimJob.Schedule(new EnergyTerrainJob()
@@ -921,6 +1022,7 @@ public class WorldSim {
 				ConductionEnergyAir = conductionAirTerrain,
 				ConductionEnergyIce = conductionIceTerrain,
 				ConductionEnergyFlora = conductionFloraTerrain,
+				ConductionEnergyLava = conductionLavaTerrain,
 				ConductionEnergyWater = conductionWaterTerrainTotal,
 				GeothermalEnergy = geothermalRadiation,
 				HeatingDepth = worldData.SoilHeatDepth,
@@ -958,7 +1060,6 @@ public class WorldSim {
 				thermalInDownJobHandles[_floraLayer],
 				thermalInUpJobHandles[_floraLayer],
 				conductionAirFloraJobHandle,
-				conductionWaterFloraJobHandle,
 				conductionIceFloraJobHandle,
 				conductionFloraTerrainJobHandle,
 			};
@@ -973,9 +1074,32 @@ public class WorldSim {
 				ThermalRadiationDelta = thermalRadiationDelta[_floraLayer],
 				ConductionEnergyAir = conductionAirFlora,
 				ConductionEnergyTerrain = conductionFloraTerrain,
-				ConductionEnergyWater = conductionWaterFloraTotal,
 				ConductionEnergyIce = conductionIceFlora,
 			}, JobHandle.CombineDependencies(energyFloraJobHandleDependencies));
+
+			var energyLavaJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			{
+				thermalOutJobHandles[_lavaLayer],
+				thermalInDownJobHandles[_lavaLayer],
+				thermalInUpJobHandles[_lavaLayer],
+				conductionAirLavaJobHandle,
+				conductionIceLavaJobHandle,
+				conductionWaterLavaJobHandle,
+				conductionLavaTerrainJobHandle,
+			};
+			jobHandleDependencies.Add(energyLavaJobHandleDependencies);
+			energyJobHandles[_lavaLayer] = SimJob.Schedule(new EnergyLavaJob()
+			{
+				LavaTemperature = nextState.LavaTemperature,
+				LastTemperature = lastState.LavaTemperature,
+				LavaMass = lastState.LavaMass,
+				SolarRadiationIn = solarRadiationIn[_lavaLayer],
+				ThermalRadiationDelta = thermalRadiationDelta[_lavaLayer],
+				ConductionEnergyAir = conductionAirLava,
+				ConductionEnergyTerrain = conductionLavaTerrain,
+				ConductionEnergyIce = conductionIceLava,
+				ConductionEnergyWater = conductionWaterLavaTotal,
+			}, JobHandle.CombineDependencies(energyLavaJobHandleDependencies));
 
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
@@ -993,6 +1117,7 @@ public class WorldSim {
 					airDependencies.Add(conductionAirIceJobHandle);
 					airDependencies.Add(conductionAirFloraJobHandle);
 					airDependencies.Add(conductionAirTerrainJobHandle);
+					airDependencies.Add(conductionAirLavaJobHandle);
 					energyJobHandles[layerIndex] = SimJob.Schedule(new EnergyAirSurfaceJob()
 					{
 						AirTemperaturePotential = nextState.AirTemperaturePotential[j],
@@ -1002,6 +1127,7 @@ public class WorldSim {
 						ConductionEnergyWater = conductionAirWater,
 						ConductionEnergyIce = conductionAirIce,
 						ConductionEnergyFlora = conductionAirFlora,
+						ConductionEnergyLava = conductionAirLava,
 						ConductionEnergyTerrain = conductionAirTerrain,
 						SolarRadiationIn = solarRadiationIn[layerIndex],
 						ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
@@ -1035,7 +1161,7 @@ public class WorldSim {
 					thermalInUpJobHandles[layerIndex],
 					conductionAirWaterJobHandle,
 					conductionIceWaterJobHandle,
-					conductionWaterFloraJobHandle,
+					conductionWaterLavaJobHandle,
 					conductionWaterTerrainJobHandle,
 				};
 				jobHandleDependencies.Add(waterDependencies);
@@ -1052,7 +1178,7 @@ public class WorldSim {
 					CoverageDown = dependent.WaterCoverage[j - 1],
 					ConductionEnergyAir = conductionAirWater,
 					ConductionEnergyIce = conductionIceWater,
-					ConductionEnergyFlora = conductionWaterFlora[j],
+					ConductionEnergyLava = conductionWaterLava[j],
 					ConductionEnergyTerrain = conductionWaterTerrain[j],
 				}, JobHandle.CombineDependencies(waterDependencies));
 			}
@@ -1199,6 +1325,16 @@ public class WorldSim {
 
 			}, fluxJobHandles[_floraLayer]);
 
+			fluxJobHandles[_lavaLayer] = SimJob.Schedule(new FluxLavaJob()
+			{
+				LatentHeat = latentHeat[_lavaLayer],
+				CrystalizedMass = lavaCrystalizedMass,
+
+				Temperature = nextState.LavaTemperature,
+				Mass = lastState.LavaMass,
+				LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature
+			}, fluxJobHandles[_lavaLayer]);
+
 			JobHandle fluxJobHandle = JobHandle.CombineDependencies(fluxCloudJobHandle, JobHandle.CombineDependencies(fluxJobHandles));
 			fluxJobHandle.Complete();
 
@@ -1331,7 +1467,6 @@ public class WorldSim {
 				GroundWater = nextState.GroundWater,
 				Elevation = nextState.Elevation,
 				LavaMass = nextState.LavaMass,
-				LavaTemperature = nextState.LavaTemperature,
 				CrustDepth = nextState.CrustDepth,
 				MagmaMass = nextState.MagmaMass,
 
@@ -1342,10 +1477,11 @@ public class WorldSim {
 				GroundWaterConsumed = groundWaterConsumed,
 				LastCrustDepth = lastState.CrustDepth,
 				LastLavaMass = lastState.LavaMass,
-				LastLavaTemperature = lastState.LavaTemperature,
+				LavaTemperature = nextState.LavaTemperature,
 				LastMagmaMass = lastState.MagmaMass,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				DustSettled = dustDown[1],
+				LavaCrystalized = lavaCrystalizedMass
 			}));
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateFloraJob()
@@ -1909,8 +2045,8 @@ public class WorldSim {
 				bool degen = false;
 				SortedSet<int> degenIndices = new SortedSet<int>();
 				List<string> degenVarNames = new List<string>();
-				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 400, degenVarNames);
-				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraTemperature", nextState.FloraTemperature, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 1200, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "FloraTemperature", nextState.FloraTemperature, 0, 1200, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraMass", nextState.FloraMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraWater", nextState.FloraWater, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "GroundWater", nextState.GroundWater, degenVarNames);
@@ -1919,9 +2055,9 @@ public class WorldSim {
 				degen |= CheckDegen(_cellCount, degenIndices, "CloudVelocity", nextState.CloudVelocity, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "CloudElevation", dependent.CloudElevation, -100000, 100000, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
-				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 1200, degenVarNames);
 				for (int i = 1; i < _airLayers - 1; i++) {
-					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 600, degenVarNames);
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 1200, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 10000, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "AirVelocity" + i, nextState.AirVelocity[i], degenVarNames);
 				}
@@ -1929,7 +2065,7 @@ public class WorldSim {
 				{
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterMass" + i, nextState.WaterMass[i], degenVarNames);
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "SaltMass" + i, nextState.SaltMass[i], degenVarNames);
-					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], 0, 400, degenVarNames);
+					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], 0, 1200, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "Current" + i, nextState.WaterVelocity[i], degenVarNames);
 				}
 				if (degen)
@@ -2121,7 +2257,6 @@ public class WorldSim {
 			precipitationMass.Dispose();
 			precipitationTemperature.Dispose();
 			cloudEvaporationMass.Dispose();
-			iceMeltedMass.Dispose();
 			applyAdvectionJobHandles.Dispose();
 			fluxJobHandles.Dispose();
 			energyJobHandles.Dispose();
@@ -2134,7 +2269,7 @@ public class WorldSim {
 				a.Dispose();
 			}
 			conductionWaterTerrainTotal.Dispose();
-			conductionWaterFloraTotal.Dispose();
+			conductionWaterLavaTotal.Dispose();
 			for (int i = 0; i < _layerCount; i++)
 			{
 				thermalRadiationDelta[i].Dispose();

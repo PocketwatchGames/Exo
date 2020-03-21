@@ -14,7 +14,6 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	public NativeArray<float> Elevation;
 	public NativeArray<float> GroundWater;
 	public NativeArray<float> LavaMass;
-	public NativeArray<float> LavaTemperature;
 	public NativeArray<float> MagmaMass;
 	public NativeArray<float> CrustDepth;
 
@@ -23,21 +22,21 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastElevation;
 	[ReadOnly] public NativeArray<float> LastGroundWater;
 	[ReadOnly] public NativeArray<float> LastLavaMass;
-	[ReadOnly] public NativeArray<float> LastLavaTemperature;
+	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> LastMagmaMass;
 	[ReadOnly] public NativeArray<float> LastCrustDepth;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> DustSettled;
+	[ReadOnly] public NativeArray<float> LavaCrystalized;
 	public void Execute(int i)
 	{
-		Elevation[i] = LastElevation[i];
+		Elevation[i] = LastElevation[i] + LavaCrystalized[i] / WorldData.MassLava;
 		// TODO: improve soil fertility when dust settles
 		SoilFertility[i] = LastSoilFertility[i];
 		Roughness[i] = LastRoughness[i];
 		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];
-		LavaMass[i] = LastLavaMass[i];
-		LavaTemperature[i] = LastLavaTemperature[i];
+		LavaMass[i] = LastLavaMass[i] - LavaCrystalized[i];
 		MagmaMass[i] = LastMagmaMass[i];
 		CrustDepth[i] = LastCrustDepth[i];
 	}

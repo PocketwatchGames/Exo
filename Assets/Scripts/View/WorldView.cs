@@ -427,7 +427,7 @@ public class WorldView : MonoBehaviour {
 			GroundWaterMax = worldData.GroundWaterMax,
 			InverseCloudMass = 1.0f / DisplayCloudMassMax,
 			DustHeight = DisplayDustHeight,
-			LavaSolidificationTemperature = worldData.LavaSolidificationTemperature,
+			LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
 			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
@@ -1022,9 +1022,12 @@ public class WorldView : MonoBehaviour {
 			state.FloraMass[ActiveCellIndex],
 			state.FloraWater[ActiveCellIndex],
 			GetTemperatureString(state.FloraTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("GWATER: {0:N2} TEMP: {1:N2}\n", 
+		s.AppendFormat("GWATER: {0:N2} TEMP: {1:N2}\n",
 			state.GroundWater[ActiveCellIndex],
 			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("LAVA: {0:N2} TEMP: {1:N0}\n",
+			state.LavaMass[ActiveCellIndex],
+			GetTemperatureString(state.LavaTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		return s.ToString();
 	}
 	private string GetCellInfoWater(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
