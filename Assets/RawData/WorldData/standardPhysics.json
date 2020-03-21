@@ -53,11 +53,11 @@
 	"CloudDissapationRateWind": 0.1,
 	"CloudDissapationRateDryAir": 0.1,
 
-	"AirDiffusionCoefficientHorizontal": 0.01,
-	"AirDiffusionCoefficientVertical": 0.01,
+	"AirDiffusionCoefficientHorizontal": 1,
+	"AirDiffusionCoefficientVertical": 1,
 	"CloudDiffusionCoefficient": 0.01,
-	"WaterDiffusionCoefficientHorizontal": 0.01,
-	"WaterDiffusionCoefficientVertical": 0.01,
+	"WaterDiffusionCoefficientHorizontal": 1,
+	"WaterDiffusionCoefficientVertical": 1,
 
 	"WindWaterFriction": 0.2,
 	"WindIceFriction": 0.1,

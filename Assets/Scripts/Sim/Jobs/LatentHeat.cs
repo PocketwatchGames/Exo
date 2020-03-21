@@ -40,7 +40,7 @@ public struct ApplyLatentHeatWaterJob : IJobParallelFor {
 	{
 		if (WaterMass[i] > 0)
 		{
-//			WaterTemperature[i] += LatentHeat[i] / (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt);
+			WaterTemperature[i] = math.max(0, WaterTemperature[i] + LatentHeat[i] / (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt));
 		}
 	}
 }

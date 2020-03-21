@@ -1805,7 +1805,7 @@ public class WorldSim {
 					DownLayerHeight = dependent.LayerHeight[j - 1],
 					IsTop = j == _airLayers - 2,
 					IsBottom = j == 1,
-					DiffusionCoefficientHoriztonal = worldData.AirDiffusionCoefficientHorizontal,
+					DiffusionCoefficientHorizontal = worldData.AirDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
 				});
 			}
@@ -1833,7 +1833,7 @@ public class WorldSim {
 					DownCurrent = nextState.WaterVelocity[j - 1],
 					DownMass = nextState.WaterMass[j - 1],
 					Neighbors = staticState.Neighbors,
-					DiffusionCoefficientHoriztonal = worldData.WaterDiffusionCoefficientHorizontal,
+					DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
 				});
 			}

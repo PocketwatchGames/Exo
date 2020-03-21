@@ -7,9 +7,7 @@ using Unity.Mathematics;
 
 
 
-#if !ConductionJobDebug
 [BurstCompile]
-#endif
 public struct ConductionJob : IJobParallelFor {
 	public NativeArray<float> EnergyDelta;
 	[ReadOnly] public NativeArray<float> TemperatureA;
@@ -26,9 +24,7 @@ public struct ConductionJob : IJobParallelFor {
 	}
 }
 
-#if !ConductionJobDebug
 [BurstCompile]
-#endif
 public struct ConductionAJob : IJobParallelFor {
 	public NativeArray<float> EnergyDelta;
 	[ReadOnly] public NativeArray<float> TemperatureA;
@@ -45,9 +41,7 @@ public struct ConductionAJob : IJobParallelFor {
 #endif
 	}
 }
-#if !ConductionJobDebug
 [BurstCompile]
-#endif
 public struct ConductionBJob : IJobParallelFor {
 	public NativeArray<float> EnergyDelta;
 	[ReadOnly] public NativeArray<float> TemperatureA;
@@ -65,9 +59,7 @@ public struct ConductionBJob : IJobParallelFor {
 	}
 }
 
-#if !ConductionJobDebug
 [BurstCompile]
-#endif
 public struct ConductionABJob : IJobParallelFor {
 	public NativeArray<float> EnergyDelta;
 	[ReadOnly] public NativeArray<float> TemperatureA;
@@ -87,9 +79,7 @@ public struct ConductionABJob : IJobParallelFor {
 }
 
 
-#if !ConductionWaterJobDebug
 [BurstCompile]
-#endif
 public struct ConductionWaterBottomAJob : IJobParallelFor {
 	public NativeArray<float> EnergyDelta;
 	public NativeArray<float> EnergyDeltaTotal;
@@ -112,9 +102,7 @@ public struct ConductionWaterBottomAJob : IJobParallelFor {
 	}
 }
 
-#if !ConductionWaterJobDebug
 [BurstCompile]
-#endif
 public struct ConductionWaterBottomABJob : IJobParallelFor {
 	public NativeArray<float> EnergyDelta;
 	public NativeArray<float> EnergyDeltaTotal;

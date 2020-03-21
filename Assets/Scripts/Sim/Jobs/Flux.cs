@@ -54,7 +54,7 @@ public struct FluxWaterJob : IJobParallelFor {
 
 			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerMiddle[i]);
 
-			#if !DISABLE_EVAPORATION
+#if !DISABLE_EVAPORATION
 			// evap formula from here:
 			// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
 			// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
@@ -62,7 +62,9 @@ public struct FluxWaterJob : IJobParallelFor {
 			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
 			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], Temperature[i], AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
 			waterMass -= evapMass;
-			latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
+
+//			latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
+			energyFlux -= evapMass * WorldData.LatentHeatWaterVapor;
 			evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
 			//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
 
