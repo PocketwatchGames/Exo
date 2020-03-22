@@ -95,5 +95,5 @@
 	"DustVerticalVelocity": -0.01,
 	"MagmaTemperature": 1500,
 	"DustPerLavaEjected": 0.01,
-	"MagmaPressureCrustReductionSpeed": 0.01
+	"MagmaPressureCrustReductionSpeed": 0.00001
 }

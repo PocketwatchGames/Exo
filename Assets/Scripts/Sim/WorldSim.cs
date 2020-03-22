@@ -1021,7 +1021,7 @@ public class WorldSim {
 				conductionLavaTerrainJobHandle,
 			};
 			jobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
-			energyJobHandles[_terrainLayer] =SimJob.Run(new EnergyTerrainJob()
+			energyJobHandles[_terrainLayer] =SimJob.Schedule(new EnergyTerrainJob()
 			{
 				TerrainTemperature = nextState.TerrainTemperature,
 				LastTemperature = lastState.TerrainTemperature,
@@ -1346,10 +1346,12 @@ public class WorldSim {
 				LavaMass = lastState.LavaMass,
 				CrustDepth = lastState.CrustDepth,
 				MagmaMass = lastState.MagmaMass,
+				Elevation = lastState.Elevation,
+				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 				CrustEruptionDepth = worldData.CrustDepthForEruption,
 				DustPerLavaEjected = worldData.DustPerLavaEjected,
-				MagmaPressureCrustReductionSpeedInverse = 1.0f / worldData.MagmaPressureCrustReductionSpeed,
+				MagmaPressureCrustReductionSpeed = worldData.MagmaPressureCrustReductionSpeed,
 				SecondsPerTick = worldData.SecondsPerTick
 			}, fluxJobHandles[_lavaLayer]);
 
@@ -1778,7 +1780,7 @@ public class WorldSim {
 			{
 				int layer = _airLayer0 + j;
 				// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
-				diffusionJobHandles[layer] = SimJob.Run(new DiffusionAirJob()
+				diffusionJobHandles[layer] = SimJob.Schedule(new DiffusionAirJob()
 				{
 					Delta = diffusionAir[j],
 
@@ -1815,7 +1817,7 @@ public class WorldSim {
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
 				int layer = _waterLayer0 + j;
-				diffusionJobHandles[layer] =SimJob.Run(new DiffusionWaterJob()
+				diffusionJobHandles[layer] =SimJob.Schedule(new DiffusionWaterJob()
 				{
 					Delta = diffusionWater[j],
 
@@ -2187,7 +2189,7 @@ public class WorldSim {
 					
 					SolarRadiationInTerrain = solarRadiationIn[_terrainLayer],
 					SolarRadiationInIce = solarRadiationIn[_iceLayer],
-					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _waterLayers - 2],
+					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _surfaceWaterLayer],
 					Evaporation = evaporationMassWater,
 					Precipitation = precipitationMass,
 					SoilFertility = nextState.SoilFertility,
@@ -2218,7 +2220,7 @@ public class WorldSim {
 						display.GeothermalRadiation += geothermalRadiation[i];
 						display.GlobalCloudMass += curState.CloudMass[i];
 						display.GlobalIceMass += curState.IceMass[i];
-						display.GlobalOceanCoverage += dependent.WaterCoverage[_waterLayers - 2][i];
+						display.GlobalOceanCoverage += dependent.WaterCoverage[_surfaceWaterLayer][i];
 						display.GlobalSurfaceTemperature += dependent.SurfaceAirTemperatureAbsolute[i];
 						display.GlobalOceanVolume += dependent.WaterLayerDepth[1][i];
 						display.GlobalSeaLevel += dependent.LayerElevation[1][i];
@@ -2256,7 +2258,7 @@ public class WorldSim {
 						display.EnergyOceanConduction += conductionAirWater[i];
 						display.EnergyEvapotranspiration += (evaporationMassWater[i] + evaporationMassFlora[i]) * WorldData.LatentHeatWaterVapor;
 						display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0 + 1][i] + thermalRadiationTransmittedDown[_airLayer0 + 1][i];
-						display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _waterLayers - 2][i] + thermalRadiationTransmittedUp[_waterLayer0 + _surfaceWaterLayer][i]) * dependent.WaterCoverage[_waterLayers - 2][i];
+						display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _surfaceWaterLayer][i] + thermalRadiationTransmittedUp[_waterLayer0 + _surfaceWaterLayer][i]) * dependent.WaterCoverage[_surfaceWaterLayer][i];
 
 						float surfaceRadiation = windowRadiationTransmittedUp[_iceLayer][i] + thermalRadiationTransmittedUp[_iceLayer][i];
 						float surfaceRadiationOutWindow = windowRadiationTransmittedUp[_iceLayer][i];

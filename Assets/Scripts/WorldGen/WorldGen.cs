@@ -42,7 +42,6 @@ public static class WorldGen {
 		public NativeArray<float> potentialTemperature;
 		public NativeArray<float> CloudMass;
 		public NativeArray<float> GroundWater;
-		public NativeArray<float> GroundWaterTemperature;
 		public NativeArray<float> Roughness;
 		public NativeArray<float> SoilFertility;
 		public NativeArray<float> LayerElevationBase;
@@ -138,13 +137,12 @@ public static class WorldGen {
 					0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 692);
 			}
 			GroundWater[i] = groundWater;
-			GroundWaterTemperature[i] = (airTemperatureSurface + WorldData.FreezingTemperature) / 2;
 
 			CrustDepth[i] = CrustMin + (CrustMax - CrustMin) * ((elevation - MinElevation) / (MaxElevation - MinElevation)) *
 				(0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 4570) +
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1430));
 
-			MagmaMass[i] = MagmaMin + (MagmaMax - MagmaMin) * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630);
+			MagmaMass[i] = (Elevation[i] - CrustDepth[i] + 20000 + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 1630, -1000, 1000)) * WorldData.MassLava;
 
 			//LavaMass[i] = 10000 * math.max(0, (GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630) - 0.75f));
 			//LavaMass[i] = 10000;
@@ -175,6 +173,7 @@ public static class WorldGen {
 		public NativeArray<float> TerrainTemperature;
 		public NativeArray<float> WaterTemperatureSurface;
 		public NativeArray<float> WaterTemperatureBottom;
+		public NativeArray<float> GroundWaterTemperature;
 
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 		[ReadOnly] public NativeArray<float> Elevation;
@@ -211,7 +210,7 @@ public static class WorldGen {
 
 			CloudVelocity[i] = float3.zero;
 			TerrainTemperature[i] = terrainTemperature;
-
+			GroundWaterTemperature[i] = terrainTemperature;
 		}
 	}
 
@@ -334,7 +333,6 @@ public static class WorldGen {
 			relativeHumidity = RelativeHumidity,
 			LayerElevationBase = dependent.LayerHeight[0],
 			GroundWater = state.GroundWater,
-			GroundWaterTemperature = state.GroundWaterTemperature,
 			Elevation = state.Elevation,
 			Flora = state.FloraMass,
 			FloraWater = state.FloraWater,
@@ -375,6 +373,7 @@ public static class WorldGen {
 			IceTemperature = state.IceTemperature,
 			WaterTemperatureBottom = WaterTemperatureBottom,
 			WaterTemperatureSurface = WaterTemperatureTop,
+			GroundWaterTemperature = state.GroundWaterTemperature,
 
 			TemperaturePotential = temperaturePotential,
 			FullWaterCoverage = worldData.FullCoverageWater,

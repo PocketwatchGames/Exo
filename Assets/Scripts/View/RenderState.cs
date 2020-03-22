@@ -343,7 +343,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 
 	private Color32 GetDustColor(float dustCoverage, float dustMaxInverse)
 	{
-		return Color32.Lerp(new Color32(0, 0, 0, 0), new Color32(0, 0, 0, 150), dustCoverage*dustMaxInverse);
+		return Color32.Lerp(new Color32(0, 0, 0, 0), new Color32(0, 0, 0, 255), dustCoverage*dustMaxInverse);
 	}
 
 	private Color32 GetLavaColor(float temperature, float minTemp, float inverseTempRange)

@@ -46,6 +46,7 @@ public static class SimJobs {
 				WaterMassTotal = waterMassTotal,
 
 				LayerHeight = dependent.WaterLayerHeight[j],
+				LayerHeightDown = dependent.WaterLayerHeight[j-1],
 				SaltMass = state.SaltMass[j],
 				WaterMass = state.WaterMass[j],
 				Temperature = state.WaterTemperature[j],
@@ -404,6 +405,7 @@ public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 	public NativeArray<float> Pressure;
 	public NativeArray<float> WaterMassTotal;
 	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerHeightDown;
 	[ReadOnly] public NativeArray<float> Roughness;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
@@ -413,7 +415,7 @@ public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 	{
 		if (WaterMass[i] > 0)
 		{
-			WaterCoverage[i] = math.min(1, LayerHeight[i] / math.max(1, Roughness[i]));
+			WaterCoverage[i] = math.min(1, (LayerHeight[i] + LayerHeightDown[i]) / math.max(1, Roughness[i]));
 			PotentialEnergy[i] = (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt) * Temperature[i];
 			float layerMass = WaterMass[i] + SaltMass[i];
 			Pressure[i] = (WaterMassTotal[i] + layerMass / 2) * Gravity;

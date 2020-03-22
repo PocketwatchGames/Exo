@@ -408,21 +408,23 @@ public struct FluxFloraJob : IJobParallelFor {
 	}
 }
 
-[BurstCompile]
+//[BurstCompile]
 public struct FluxLavaJob : IJobParallelFor {
 	public NativeArray<float> LatentHeat;
 	public NativeArray<float> CrystalizedMass;
 	public NativeArray<float> LavaEjected;
 	public NativeArray<float> DustEjected;
 	public NativeArray<float> CrustDelta;
+	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> MagmaMass;
 	[ReadOnly] public NativeArray<float> CrustDepth;
+	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public float LavaCrystalizationTemperature;
 	[ReadOnly] public float CrustEruptionDepth;
 	[ReadOnly] public float DustPerLavaEjected;
-	[ReadOnly] public float MagmaPressureCrustReductionSpeedInverse;
+	[ReadOnly] public float MagmaPressureCrustReductionSpeed;
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
@@ -441,15 +443,15 @@ public struct FluxLavaJob : IJobParallelFor {
 			crystalizedMass = mass;
 		}
 
-		float magmaPressure = 1;
+		float magmaPressure = MagmaMass[i] / (WorldData.MassLava * (Elevation[i] - CrustDepth[i] + 20000));
 		if (magmaPressure > 1)
 		{
-			crustDelta = -CrustDepth[i] * math.min(1, SecondsPerTick * (magmaPressure - 1) * MagmaPressureCrustReductionSpeedInverse);
-		}
-		if (CrustDepth[i] < CrustEruptionDepth)
-		{
-			lavaEjected = MagmaMass[i] * magmaPressure * SecondsPerTick * (1.0f - CrustDepth[i]/ CrustEruptionDepth);
-			dustEjected = lavaEjected * DustPerLavaEjected;
+			crustDelta = -CrustDepth[i] * math.min(1, SecondsPerTick * (magmaPressure - 1) * MagmaPressureCrustReductionSpeed);
+			if (CrustDepth[i] < CrustEruptionDepth)
+			{
+				lavaEjected = MagmaMass[i] * (magmaPressure - 1.0f) * (1.0f - CrustDepth[i] / CrustEruptionDepth);
+				dustEjected = lavaEjected * DustPerLavaEjected * (1.0f - WaterCoverage[i]);
+			}
 		}
 
 		CrystalizedMass[i] = crystalizedMass;
