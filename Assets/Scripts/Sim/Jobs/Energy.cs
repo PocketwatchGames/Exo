@@ -194,7 +194,7 @@ public struct EnergyLavaJob : IJobParallelFor {
 
 
 
-[BurstCompile]
+//[BurstCompile]
 public struct EnergyTerrainJob : IJobParallelFor {
 	public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> LastTemperature;

@@ -63,8 +63,14 @@ public struct FluxWaterJob : IJobParallelFor {
 			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], Temperature[i], AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
 			waterMass -= evapMass;
 
-//			latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
-			energyFlux -= evapMass * WorldData.LatentHeatWaterVapor;
+			const bool latentHeatFromAirOrWater = false;
+			if (latentHeatFromAirOrWater)
+			{
+				latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
+			} else
+			{
+				energyFlux -= evapMass * WorldData.LatentHeatWaterVapor;
+			}
 			evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
 			//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
 

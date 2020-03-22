@@ -1021,7 +1021,7 @@ public class WorldSim {
 				conductionLavaTerrainJobHandle,
 			};
 			jobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
-			energyJobHandles[_terrainLayer] =SimJob.Schedule(new EnergyTerrainJob()
+			energyJobHandles[_terrainLayer] =SimJob.Run(new EnergyTerrainJob()
 			{
 				TerrainTemperature = nextState.TerrainTemperature,
 				LastTemperature = lastState.TerrainTemperature,
@@ -1772,12 +1772,13 @@ public class WorldSim {
 			// Air, Water, Cloud
 			#region Diffusion
 
+			float cellRadius = math.sqrt(staticState.CellSurfaceArea / math.PI);
 			JobHandle[] diffusionJobHandles = new JobHandle[_layerCount];
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layer = _airLayer0 + j;
 				// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
-				diffusionJobHandles[layer] =SimJob.Schedule(new DiffusionAirJob()
+				diffusionJobHandles[layer] = SimJob.Run(new DiffusionAirJob()
 				{
 					Delta = diffusionAir[j],
 
@@ -1807,18 +1808,20 @@ public class WorldSim {
 					IsBottom = j == 1,
 					DiffusionCoefficientHorizontal = worldData.AirDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
+					CellSurfaceArea = staticState.CellSurfaceArea,
+					CellCircumference = 2 * cellRadius * math.PI
 				});
 			}
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
 				int layer = _waterLayer0 + j;
-				diffusionJobHandles[layer] =SimJob.Schedule(new DiffusionWaterJob()
+				diffusionJobHandles[layer] =SimJob.Run(new DiffusionWaterJob()
 				{
 					Delta = diffusionWater[j],
 
 					LastTemperature = nextState.WaterTemperature[j],
 					LastSalt = nextState.SaltMass[j],
-					LastCurrent = nextState.WaterVelocity[j],
+					LastVelocity = nextState.WaterVelocity[j],
 					LastMass = nextState.WaterMass[j],
 					LayerHeight = dependent.LayerHeight[j],
 					UpLayerHeight = dependent.LayerHeight[j + 1],
@@ -1835,6 +1838,8 @@ public class WorldSim {
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
+					CellSurfaceArea = staticState.CellSurfaceArea,
+					CellCircumference = 2 * cellRadius * math.PI
 				});
 			}
 
