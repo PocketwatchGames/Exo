@@ -135,6 +135,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public float LavaCrystalizationTemperature;
 	[ReadOnly] public float LavaTemperatureRangeInverse;
 	[ReadOnly] public float DustMaxInverse;
+	[ReadOnly] public float LavaDensityAdjustment;
 
 	public void Execute(int i)
 	{
@@ -196,8 +197,8 @@ public struct BuildRenderStateJob : IJobParallelFor {
 
 		dustPosition = icosphere * (((math.max(0, DustHeight - surfaceElevation)) * AtmosphereScale) + ((surfaceElevation + 100) * TerrainScale + PlanetRadius)) / PlanetRadius;
 
-		float lavaDepth = LavaMass[i] / WorldData.MassLava;
-		lavaPosition = icosphere * ((lavaDepth == 0) ? 0.95f : ((elevation + roughness + lavaDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
+		float lavaDepth = LavaMass[i] / (WorldData.MassLava * LavaDensityAdjustment);
+		lavaPosition = icosphere * ((lavaDepth == 0) ? 0.75f : ((elevation + roughness + lavaDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
 
 		if (WindOverlayActive)
 		{

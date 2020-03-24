@@ -324,12 +324,20 @@ public struct DisplayState {
 	public float EnergySurfaceConduction;
 	public double GlobalEnthalpy;
 	public double GlobalEnthalpyTerrain;
+	public double GlobalEnthalpyFlora;
+	public double GlobalEnthalpyIce;
+	public double GlobalEnthalpyCloud;
 	public double GlobalEnthalpyWater;
 	public double GlobalEnthalpyAir;
+	public double GlobalEnthalpyGroundWater;
 	public double GlobalEnthalpyDelta;
 	public double GlobalEnthalpyDeltaTerrain;
 	public double GlobalEnthalpyDeltaWater;
 	public double GlobalEnthalpyDeltaAir;
+	public double GlobalEnthalpyDeltaIce;
+	public double GlobalEnthalpyDeltaCloud;
+	public double GlobalEnthalpyDeltaFlora;
+	public double GlobalEnthalpyDeltaGroundWater;
 	public double GlobalTerrainTemperature;
 	public float GlobalIceMass;
 	public float GlobalSurfaceTemperature;
@@ -354,6 +362,10 @@ public struct DisplayState {
 	public NativeArray<float> CondensationGround;
 	public NativeArray<float> Evaporation;
 	public NativeArray<float> EnthalpyTerrain;
+	public NativeArray<float> EnthalpyFlora;
+	public NativeArray<float> EnthalpyIce;
+	public NativeArray<float> EnthalpyCloud;
+	public NativeArray<float> EnthalpyGroundWater;
 	public NativeArray<float> DustMass;
 	public NativeArray<float>[] EnthalpyWater;
 	public NativeArray<float>[] EnthalpyAir;
@@ -376,6 +388,10 @@ public struct DisplayState {
 		CondensationGround = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		EnthalpyFlora = new NativeArray<float>(count, Allocator.Persistent);
+		EnthalpyIce = new NativeArray<float>(count, Allocator.Persistent);
+		EnthalpyCloud = new NativeArray<float>(count, Allocator.Persistent);
+		EnthalpyGroundWater = new NativeArray<float>(count, Allocator.Persistent);
 		DustMass = new NativeArray<float>(count, Allocator.Persistent);
 
 		Pressure = new NativeArray<float>[airLayers];
@@ -424,6 +440,10 @@ public struct DisplayState {
 		CondensationGround.Dispose();
 		Evaporation.Dispose();
 		EnthalpyTerrain.Dispose();
+		EnthalpyCloud.Dispose();
+		EnthalpyIce.Dispose();
+		EnthalpyFlora.Dispose();
+		EnthalpyGroundWater.Dispose();
 		DustMass.Dispose();
 		for (int i = 0; i < Pressure.Length; i++)
 		{

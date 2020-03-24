@@ -13,8 +13,19 @@ public struct ApplyLatentHeatIceJob : IJobParallelFor {
 	{
 		if (IceMass[i] > 0)
 		{
-			IceTemperature[i] += LatentHeat[i] / (WorldData.SpecificHeatIce * IceMass[i]);
+			IceTemperature[i] = math.max(0, IceTemperature[i] + LatentHeat[i] / (WorldData.SpecificHeatIce * IceMass[i]));
 		}
+	}
+}
+[BurstCompile]
+public struct ApplyLatentHeatTerrainJob : IJobParallelFor {
+	public NativeArray<float> TerrainTemperature;
+	[ReadOnly] public NativeArray<float> LatentHeat;
+	[ReadOnly] public NativeArray<float> SoilFertility;
+	[ReadOnly] public float HeatingDepth;
+	public void Execute(int i)
+	{
+		TerrainTemperature[i] = math.max(0, TerrainTemperature[i] + LatentHeat[i] / Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]));
 	}
 }
 

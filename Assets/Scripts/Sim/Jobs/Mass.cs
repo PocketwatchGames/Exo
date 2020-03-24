@@ -2,7 +2,7 @@
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
-
+using UnityEngine;
 
 
 [BurstCompile]
@@ -194,6 +194,7 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 			(airMass * WorldData.SpecificHeatAtmosphere + (vaporMass + EvaporationWater[i] + EvaporationFlora[i]) * WorldData.SpecificHeatWaterVapor);
 
 		DustMass[i] = DustMass[i] + DustEjected[i];
+		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
 	}
 }
 
@@ -212,7 +213,7 @@ public struct UpdateMassIceJob : IJobParallelFor {
 		float iceMass = LastIceMass[i];
 		float precipitationTemperature = PrecipitationTemperature[i];
 		float snowMass = precipitationTemperature <= WorldData.FreezingTemperature ? Precipitation[i] : 0;
-		float newIceMass = iceMass + snowMass - IceMelted[i] + WaterFrozen[i];
+		float newIceMass = math.max(0, iceMass + snowMass - IceMelted[i] + WaterFrozen[i]);
 		if (newIceMass > 0)
 		{
 			IceTemperature[i] = (
@@ -254,6 +255,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LavaEjected;
 	[ReadOnly] public NativeArray<float> CrustDelta;
 	[ReadOnly] public float MagmaTemperature;
+	[ReadOnly] public float LavaDensityAdjustment;
 	public void Execute(int i)
 	{
 		float lavaCrystalized = LavaCrystalized[i];
@@ -261,7 +263,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 		float lavaMass = LastLavaMass[i];
 		float newLavaMass = lavaMass - lavaCrystalized + lavaEjected;
 
-		float lavaCrystalizedDepth = lavaCrystalized / WorldData.MassLava;
+		float lavaCrystalizedDepth = lavaCrystalized / (WorldData.MassLava * LavaDensityAdjustment);
 		Elevation[i] = LastElevation[i] + lavaCrystalizedDepth;
 		// TODO: improve soil fertility when dust settles
 		SoilFertility[i] = LastSoilFertility[i];

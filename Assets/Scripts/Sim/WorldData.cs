@@ -133,6 +133,8 @@ public struct WorldData {
 	public float DustVerticalVelocity;
 	public float DustPerLavaEjected;
 	public float MagmaPressureCrustReductionSpeed;
+	public float LavaDensityAdjustment;
+	public float LavaEruptionSpeed;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;

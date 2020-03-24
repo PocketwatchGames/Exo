@@ -431,6 +431,7 @@ public class WorldView : MonoBehaviour {
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
 			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
+			LavaDensityAdjustment = worldData.LavaDensityAdjustment
 		};
 
 		var buildRenderStateJobHandle = buildRenderStateJob.Schedule(Sim.CellCount, 100);
@@ -904,6 +905,11 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Water: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaWater * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Air: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaAir * Sim.InverseCellCount)));
+		s.AppendFormat("\nEnthalpy Delta Ice: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaIce * Sim.InverseCellCount)));
+		s.AppendFormat("\nEnthalpy Delta Cloud: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaCloud * Sim.InverseCellCount)));
+		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * Sim.InverseCellCount)));
+		s.AppendFormat("\nEnthalpy Delta Flora: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaFlora * Sim.InverseCellCount)));
+		s.AppendFormat("\nEnthalpy Delta Ground Water: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaGroundWater * Sim.InverseCellCount)));
 		s.AppendFormat("\nS Incoming: {0:N1}", ConvertTileEnergyToWatts(display.SolarRadiation * Sim.InverseCellCount));
 		s.AppendFormat("\nS Reflected: {0:N1}", ConvertTileEnergyToWatts((totalReflected) * Sim.InverseCellCount));
 		s.AppendFormat("\nS Reflected Atmos: {0:N1}", ConvertTileEnergyToWatts(display.EnergySolarReflectedAtmosphere * Sim.InverseCellCount));
@@ -1039,14 +1045,16 @@ public class WorldView : MonoBehaviour {
 
 		if (state.IceMass[ActiveCellIndex] > 0)
 		{
-			s.AppendFormat("ICE: {0:N3} m TEMP: {1}\n", 
-				(state.IceMass[ActiveCellIndex] / WorldData.MassIce), 
+			s.AppendFormat("ICE: {0:N3} m TEMP: {1}\n",
+				(state.IceMass[ActiveCellIndex] / WorldData.MassIce),
 				GetTemperatureString(state.IceTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		} else
 		{
 			s.AppendFormat("ICE: 0 m\n");
 		}
-		s.AppendFormat("DEPTH: {0:N3} m\n", dependent.WaterLayerDepth[1][ActiveCellIndex]);
+		float depth = dependent.WaterLayerDepth[1][ActiveCellIndex];
+		var nfi = new NumberFormatInfo() { NumberDecimalDigits = (depth >= 1) ? 0 : 3 };
+		s.AppendFormat(nfi, "DEPTH: {0:N} m\n", depth);
 		s.AppendLine();
 
 		for (int i = Sim.WorldData.WaterLayers - 2; i >= 1; i--) {
@@ -1062,7 +1070,7 @@ public class WorldView : MonoBehaviour {
 					current.x, current.y, current.z,
 					dependent.WaterPressure[i][ActiveCellIndex],
 					Atmosphere.GetWaterDensity(display.Salinity[i][ActiveCellIndex], state.WaterTemperature[i][ActiveCellIndex]));
-				s.AppendFormat("DEPTH: {0:N0} m HEIGHT: {1:N0} m\n",
+				s.AppendFormat(nfi, "DEPTH: {0:N} m HEIGHT: {1:N} m\n",
 					dependent.WaterLayerDepth[i][ActiveCellIndex],
 					dependent.WaterLayerHeight[i][ActiveCellIndex]
 					);

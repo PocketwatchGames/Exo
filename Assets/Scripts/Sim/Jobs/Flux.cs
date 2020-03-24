@@ -1,10 +1,13 @@
 ﻿//#define DISABLE_FREEZE_TOP
+//#define DISABLE_FREEZE_BOTTOM
 //#define DISABLE_EVAPORATION
 //#define DISABLE_CONDENSATION
 //#define DISABLE_CLOUD_DISSAPATION
 //#define DISABLE_RAINFALL
 //#define DISABLE_MELTING_TOP
 //#define DISABLE_MELTING_BOTTOM
+#define DISABLE_ERUPTION
+//#define DISABLE_FLORA_WATER_ABSORPTION
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -60,7 +63,8 @@ public struct FluxWaterJob : IJobParallelFor {
 			// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
 			// so i'm using the air temperature instead of the water temperature, which means the the formula just reduces to (1-RH)*WindCoefficient
 			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
-			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], Temperature[i], AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
+			float evapTemperature = Temperature[i];
+			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
 			waterMass -= evapMass;
 
 			const bool latentHeatFromAirOrWater = false;
@@ -276,21 +280,35 @@ public struct FluxAirJob : IJobParallelFor {
 public struct FluxIceJob : IJobParallelFor {
 	public NativeArray<float> LatentHeatAir;
 	public NativeArray<float> LatentHeatWater;
+	public NativeArray<float> LatentHeatTerrain;
+	public NativeArray<float> LatentHeatIce;
 	public NativeArray<float> MeltedMass;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> WaterIceSurfaceArea;
 	[ReadOnly] public NativeArray<float> WaterTemperature;
+	[ReadOnly] public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public float IceHeatingDepth;
 	public void Execute(int i)
 	{
-		float meltedTopMass = 0;
-		float meltedBottomMass = 0;
+		float meltedMass = 0;
 		float iceMass = LastMass[i];
 		float iceTemperature = Temperature[i];
 
 #if !DISABLE_MELTING_TOP
+		if (iceMass > 0)
+		{
+			if (iceTemperature > WorldData.FreezingTemperature)
+			{
+				float energyToAbsorb = (iceTemperature - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * iceMass;
+				float melted = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
+				LatentHeatIce[i] -= melted * WorldData.LatentHeatWaterLiquid;
+				iceMass -= melted;
+				meltedMass += melted;
+			}
+		}
 		if (iceMass > 0)
 		{
 			float iceDepth = iceMass / WorldData.MassIce;
@@ -300,15 +318,17 @@ public struct FluxIceJob : IJobParallelFor {
 			if (airTemperatureAbsolute > WorldData.FreezingTemperature)
 			{
 				float energyToAbsorb = (airTemperatureAbsolute - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
-				meltedTopMass = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
-				LatentHeatAir[i] -= meltedTopMass * WorldData.LatentHeatWaterLiquid;
-				iceMass -= meltedTopMass;
+				float melted = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
+				LatentHeatAir[i] -= melted * WorldData.LatentHeatWaterLiquid;
+				iceMass -= melted;
+				meltedMass += melted;
 			}
 		}
 #endif
 
 #if !DISABLE_MELTING_BOTTOM
-		if (iceMass > 0)
+		float waterCoverage = WaterIceSurfaceArea[i];
+		if (iceMass > 0 && waterCoverage > 0)
 		{
 			float iceDepth = iceMass / WorldData.MassIce;
 			float heatingDepth = math.min(IceHeatingDepth, iceDepth);
@@ -316,16 +336,34 @@ public struct FluxIceJob : IJobParallelFor {
 			float waterTemperature = WaterTemperature[i];
 			if (waterTemperature > WorldData.FreezingTemperature)
 			{
-				float energyToAbsorb = (WaterTemperature[i] - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass;
-				meltedBottomMass = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
-				float latentEnergy = meltedBottomMass * WorldData.LatentHeatWaterLiquid;
+				float energyToAbsorb = (waterTemperature - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass * waterCoverage;
+				float melted = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
+				float latentEnergy = melted * WorldData.LatentHeatWaterLiquid;
 				LatentHeatWater[i] -= latentEnergy;
-				iceMass -= meltedBottomMass;
+				iceMass -= melted;
+				meltedMass += melted;
+			}
+		}
+		float terrainCoverage = (1.0f - waterCoverage); // This ignores foliage and lava and conducts directly with the terrain for simplicity
+		if (iceMass > 0 && waterCoverage < 1)
+		{
+			float iceDepth = iceMass / WorldData.MassIce;
+			float heatingDepth = math.min(IceHeatingDepth, iceDepth);
+			float heatingMass = heatingDepth * WorldData.MassIce;
+			float terrainTemperature = TerrainTemperature[i];
+			if (terrainTemperature > WorldData.FreezingTemperature)
+			{
+				float energyToAbsorb = (terrainTemperature - WorldData.FreezingTemperature) * WorldData.SpecificHeatIce * heatingMass * (1.0f - waterCoverage);
+				float melted = math.min(iceMass, energyToAbsorb / WorldData.LatentHeatWaterLiquid);
+				float latentEnergy = melted * WorldData.LatentHeatWaterLiquid;
+				LatentHeatTerrain[i] -= latentEnergy;
+				iceMass -= melted;
+				meltedMass += melted;
 			}
 		}
 #endif
 
-		MeltedMass[i] = meltedTopMass + meltedBottomMass;
+		MeltedMass[i] = meltedMass;
 	}
 }
 
@@ -389,7 +427,9 @@ public struct FluxFloraJob : IJobParallelFor {
 			}
 
 			float waterSaturationNormalized = math.min(1, waterSaturation);
+#if !DISABLE_FLORA_WATER_ABSORPTION
 			groundWaterConsumed = math.min(GroundWater[i], mass * (GroundWater[i] / GroundWaterMax) * (1.0f - waterSaturationNormalized) * FloraWaterConsumptionRate);
+#endif
 
 			float floraSaturation = mass / (SoilFertility[i] * FloraMax);
 			floraMassDelta = mass * math.max(-1,
@@ -408,7 +448,7 @@ public struct FluxFloraJob : IJobParallelFor {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct FluxLavaJob : IJobParallelFor {
 	public NativeArray<float> LatentHeat;
 	public NativeArray<float> CrystalizedMass;
@@ -424,6 +464,7 @@ public struct FluxLavaJob : IJobParallelFor {
 	[ReadOnly] public float LavaCrystalizationTemperature;
 	[ReadOnly] public float CrustEruptionDepth;
 	[ReadOnly] public float DustPerLavaEjected;
+	[ReadOnly] public float LavaEruptionSpeed;
 	[ReadOnly] public float MagmaPressureCrustReductionSpeed;
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
@@ -443,16 +484,18 @@ public struct FluxLavaJob : IJobParallelFor {
 			crystalizedMass = mass;
 		}
 
+#if !DISABLE_ERUPTION
 		float magmaPressure = MagmaMass[i] / (WorldData.MassLava * (Elevation[i] - CrustDepth[i] + 20000));
 		if (magmaPressure > 1)
 		{
 			crustDelta = -CrustDepth[i] * math.min(1, SecondsPerTick * (magmaPressure - 1) * MagmaPressureCrustReductionSpeed);
 			if (CrustDepth[i] < CrustEruptionDepth)
 			{
-				lavaEjected = MagmaMass[i] * (magmaPressure - 1.0f) * (1.0f - CrustDepth[i] / CrustEruptionDepth);
+				lavaEjected = math.min(MagmaMass[i], (magmaPressure - 1.0f) * (1.0f - CrustDepth[i] / CrustEruptionDepth) * LavaEruptionSpeed * SecondsPerTick);
 				dustEjected = lavaEjected * DustPerLavaEjected * (1.0f - WaterCoverage[i]);
 			}
 		}
+#endif
 
 		CrystalizedMass[i] = crystalizedMass;
 		LatentHeat[i] = latentHeat;

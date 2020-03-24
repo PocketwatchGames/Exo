@@ -106,16 +106,18 @@ public struct EnergyIceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyFlora;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+	[ReadOnly] public NativeArray<float> ConductionEnergyLava;
 
 	public void Execute(int i)
 	{
 		if (LastMass[i] > 0)
 		{
 			float energy =
-				//- ConductionEnergyAir[i] 
-				//+ ConductionEnergyWater[i]
-				//+ ConductionEnergyFlora[i]
-				//+ ConductionEnergyTerrain[i]
+				-ConductionEnergyAir[i]
+				+ ConductionEnergyWater[i]
+				+ ConductionEnergyFlora[i]
+				+ ConductionEnergyLava[i]
+				+ ConductionEnergyTerrain[i]
 				+ SolarRadiationIn[i]
 				+ ThermalRadiationDelta[i];
 			Temperature[i] = LastTemperature[i] + energy / (LastMass[i] * WorldData.SpecificHeatIce);
@@ -214,7 +216,8 @@ public struct EnergyTerrainJob : IJobParallelFor {
 			-ConductionEnergyAir[i]
 			- ConductionEnergyWater[i]
 			- ConductionEnergyIce[i]
-			- ConductionEnergyFlora[i];
+			- ConductionEnergyFlora[i]
+			- ConductionEnergyLava[i];
 
 		float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]);
 

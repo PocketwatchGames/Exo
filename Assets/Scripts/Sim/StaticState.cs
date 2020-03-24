@@ -11,6 +11,8 @@ public struct StaticState {
 	public int Count;
 	public float PlanetRadius;
 	public float CellSurfaceArea;
+	public float CellRadius;
+	public float CellCircumference;
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
@@ -35,6 +37,8 @@ public struct StaticState {
 		NeighborDist = new NativeArray<float>(Count * 6, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
+		CellRadius = math.sqrt(CellSurfaceArea / math.PI);
+		CellCircumference = math.PI * 2 * CellRadius;
 
 		var neighborList = new List<Tuple<int, float3>>[Count];
 		for (int i = 0; i < Count; i++)

@@ -9,7 +9,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-//[BurstCompile]
+[BurstCompile]
 public struct DiffusionAirJob : IJobParallelFor {
 	public NativeArray<DiffusionAir> Delta;
 	[ReadOnly] public NativeArray<float> LastTemperature;
@@ -73,8 +73,8 @@ public struct DiffusionAirJob : IJobParallelFor {
 					float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientHorizontal;
 					neighborTemperature += (LastTemperature[n] - temperature) * diffusion;
 					neighborVelocity += (LastVelocity[n] - velocity) * diffusion;
-					neighborVapor += (LastVapor[n] / nMass - vaporPercent) * diffusion * mass;
-					neighborDust += (LastDust[n] / nMass - dustPercent) * diffusion * mass;
+					neighborVapor += (LastVapor[n] / nMass - vaporPercent) * diffusion * math.min(nMass, mass); // TODO: does this actually have conservation of mass?
+					neighborDust += (LastDust[n] / nMass - dustPercent) * diffusion * math.min(nMass, mass);
 				}
 			}
 		}
@@ -90,8 +90,8 @@ public struct DiffusionAirJob : IJobParallelFor {
 			float inverseTotalMass = 1.0f / (nMass + mass);
 			float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
 			neighborTemperature += (UpTemperature[i] - temperature) * diffusion;
-			neighborVapor += (UpVapor[i] / nMass - vaporPercent) * diffusion * nMass;
-			neighborDust += (UpDust[i] / nMass - dustPercent) * diffusion * nMass;
+			neighborVapor += (UpVapor[i] / nMass - vaporPercent) * diffusion * math.min(nMass, mass);
+			neighborDust += (UpDust[i] / nMass - dustPercent) * diffusion * math.min(nMass, mass);
 		}
 		if (!IsBottom)
 		{
@@ -100,8 +100,8 @@ public struct DiffusionAirJob : IJobParallelFor {
 			float inverseTotalMass = 1.0f / (nMass + mass);
 			float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
 			neighborTemperature += (DownTemperature[i] - temperature) * diffusion;
-			neighborVapor += (DownVapor[i] / nMass - vaporPercent) * diffusion * nMass;
-			neighborDust += (DownDust[i] / nMass - dustPercent) * diffusion * nMass;
+			neighborVapor += (DownVapor[i] / nMass - vaporPercent) * diffusion * math.min(nMass, mass);
+			neighborDust += (DownDust[i] / nMass - dustPercent) * diffusion * math.min(nMass, mass);
 		}
 
 #endif
@@ -166,14 +166,14 @@ public struct DiffusionCloudJob : IJobParallelFor {
 		{
 			Mass = newMass * DiffusionCoefficient + mass,
 			Temperature = newTemperature * DiffusionCoefficient + temperature,
-			DropletMass = newDropletMass * DiffusionCoefficient + LastDropletMass[i],
+			DropletMass = newDropletMass * DiffusionCoefficient + dropletMass,
 			Velocity = newVelocity * DiffusionCoefficient + velocity,
 		};
 
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct DiffusionWaterJob : IJobParallelFor {
 	public NativeArray<DiffusionWater> Delta;
 	[ReadOnly] public NativeArray<float> LastMass;
@@ -199,21 +199,21 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public float CellCircumference;
 	public void Execute(int i)
 	{
-		float layerHeight = LayerHeight[i];
 		float mass = LastMass[i];
-		float temperature = LastTemperature[i];
-		float saltMass = LastSalt[i];
-		float3 velocity = LastVelocity[i];
-		float saltPercent = saltMass / mass;
-
 		float neighborTemperature = LastTemperature[i];
 		float neighborSaltMass = LastSalt[i];
 		float3 neighborVelocity = LastVelocity[i];
 
 
 #if !DISABLE_WATER_DIFFUSION
-		if (layerHeight > 0)
+		if (mass > 0)
 		{
+			float layerHeight = LayerHeight[i];
+			float temperature = LastTemperature[i];
+			float saltMass = LastSalt[i];
+			float3 velocity = LastVelocity[i];
+			float saltPercent = saltMass / mass;
+
 
 			for (int j = 0; j < 6; j++)
 			{
@@ -221,41 +221,57 @@ public struct DiffusionWaterJob : IJobParallelFor {
 				int n = Neighbors[nIndex];
 				if (n >= 0)
 				{
-					float nMass = LastMass[n];
-					if (nMass > 0)
+					float nHeight = LayerHeight[n];
+					if (nHeight > 0)
 					{
-						float saToVolume = math.min(layerHeight, LayerHeight[n]) * CellCircumference / (6 * LayerHeight[n] * CellSurfaceArea);
-						float inverseTotalMass = 1.0f / (nMass + mass);
-						float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientHorizontal;
-						neighborTemperature += (LastTemperature[n] - temperature) * diffusion;
-						neighborVelocity += (LastVelocity[n] - velocity) * diffusion;
-						neighborSaltMass += (LastSalt[n] / nMass - saltPercent) * diffusion * mass;
+						float nMass = LastMass[n];
+						if (nMass > 0)
+						{
+							float saToVolume = math.min(layerHeight, nHeight) * CellCircumference / (6 * nHeight * CellSurfaceArea);
+							float inverseTotalMass = 1.0f / (nMass + mass);
+							float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientHorizontal;
+							neighborTemperature += (LastTemperature[n] - temperature) * diffusion;
+							neighborVelocity += (LastVelocity[n] - velocity) * diffusion;
+							neighborSaltMass += (LastSalt[n] / nMass - saltPercent) * diffusion * math.min(nMass, mass);
+						}
 					}
 				}
 			}
 
 
-			//// NOTE: we don't diffuse velocity vertically
-			//// NOTE: we are ignoring adibatic processes in the water -- at 10km, the total lapse is less than 1.5 degrees celsius
-			//float upMass = UpMass[i];
-			//if (upMass > 0)
-			//{
-			//	float saToVolume = 1.0f / UpLayerHeight[i];
-			//	float inverseTotalMass = 1.0f / (upMass + mass);
-			//	float diffusion = saToVolume * upMass * inverseTotalMass * DiffusionCoefficientVertical;
-			//	neighborTemperature += (UpTemperature[i] - temperature) * diffusion;
-			//	neighborSaltMass += (UpSalt[i] / upMass - saltPercent) * diffusion * upMass;
-			//}
+			// NOTE: we don't diffuse velocity vertically
+			// NOTE: we are ignoring adibatic processes in the water -- at 10km, the total lapse is less than 1.5 degrees celsius
+			{
+				float nMass = UpMass[i];
+				if (nMass > 0)
+				{
+					float nLayerHeight = UpLayerHeight[i];
+					if (nLayerHeight > 0)
+					{
+						float saToVolume = 1.0f / nLayerHeight;
+						float inverseTotalMass = 1.0f / (nMass + mass);
+						float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
+						neighborTemperature += (UpTemperature[i] - temperature) * diffusion;
+						neighborSaltMass += (UpSalt[i] / nMass - saltPercent) * diffusion * math.min(nMass, mass);
+					}
+				}
+			}
 
-			//float downMass = DownMass[i];
-			//if (downMass > 0)
-			//{
-			//	float saToVolume = 1.0f / DownLayerHeight[i];
-			//	float inverseTotalMass = 1.0f / (downMass + mass);
-			//	float diffusion = saToVolume * downMass * inverseTotalMass * DiffusionCoefficientVertical;
-			//	neighborTemperature += (DownTemperature[i] - temperature) * diffusion;
-			//	neighborSaltMass += (DownSalt[i] / downMass - saltPercent) * diffusion * downMass;
-			//}
+			{
+				float nMass = DownMass[i];
+				if (nMass > 0)
+				{
+					float nLayerHeight = DownLayerHeight[i];
+					if (nLayerHeight > 0)
+					{
+						float saToVolume = 1.0f / nLayerHeight;
+						float inverseTotalMass = 1.0f / (nMass + mass);
+						float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
+						neighborTemperature += (DownTemperature[i] - temperature) * diffusion;
+						neighborSaltMass += (DownSalt[i] / nMass - saltPercent) * diffusion * math.min(nMass, mass);
+					}
+				}
+			}
 
 		}
 #endif

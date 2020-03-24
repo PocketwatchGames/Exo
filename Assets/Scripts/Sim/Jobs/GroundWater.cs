@@ -1,4 +1,6 @@
-﻿using Unity.Burst;
+﻿//#define DISABLE_GROUND_WATER_ABSORPTION
+
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -150,6 +152,7 @@ public struct GroundWaterAbsorptionJob : IJobParallelFor {
 		float newGroundWaterTemperature = LastGroundWaterTemperature[i];
 		float newWaterMass = WaterMass[i];
 
+#if !DISABLE_GROUND_WATER_ABSORPTION
 		// Check if we are the floor layer
 		// TODO: if we put all water layers into one large array, we can access any layer at any time (but may sacrifice ability to process different layers in parallel?)
 		// TODO: we can probably find a way to shortcut all of this if a large number of our cells are fully saturated
@@ -161,9 +164,10 @@ public struct GroundWaterAbsorptionJob : IJobParallelFor {
 			{
 				newGroundWaterTemperature = (lastGroundWater * newGroundWaterTemperature + groundWaterAbsorbed * WaterTemperature[i]) / (lastGroundWater + groundWaterAbsorbed);
 				newGroundWater += groundWaterAbsorbed;
-				waterMass -= groundWaterAbsorbed;
+				newWaterMass -= groundWaterAbsorbed;
 			}
 		}
+#endif
 
 		GroundWater[i] = newGroundWater;
 		GroundWaterTemperature[i] = newGroundWaterTemperature;

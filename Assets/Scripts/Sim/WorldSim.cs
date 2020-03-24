@@ -264,8 +264,9 @@ public class WorldSim {
 
 	}
 
-	public void Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex, bool checkForDegeneracy, bool logState, int logStateIndex, bool displayGlobals)
+	public bool Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex, bool checkForDegeneracy, bool logState, int logStateIndex, bool displayGlobals)
 	{
+		bool degenerate = false;
 		JobHandle lastJobHandle = default(JobHandle);
 		for (int tick = 0; tick < ticksToAdvance; tick++)
 		{
@@ -1047,6 +1048,7 @@ public class WorldSim {
 				conductionIceWaterJobHandle,
 				conductionIceFloraJobHandle,
 				conductionIceTerrainJobHandle,
+				conductionIceLavaJobHandle,
 			};
 			jobHandleDependencies.Add(energyIceJobHandleDependencies);
 			energyJobHandles[_iceLayer] = SimJob.Schedule(new EnergyIceJob()
@@ -1059,6 +1061,7 @@ public class WorldSim {
 				ConductionEnergyAir = conductionAirIce,
 				ConductionEnergyTerrain = conductionIceTerrain,
 				ConductionEnergyWater = conductionIceWater,
+				ConductionEnergyLava = conductionIceLava,
 				ConductionEnergyFlora = conductionIceFlora,
 			}, JobHandle.CombineDependencies(energyIceJobHandleDependencies));
 
@@ -1323,13 +1326,17 @@ public class WorldSim {
 			{
 				LatentHeatAir = latentHeat[_airLayer0 + 1],
 				LatentHeatWater = latentHeat[_waterLayer0 + _surfaceWaterLayer],
+				LatentHeatTerrain = latentHeat[_terrainLayer],
+				LatentHeatIce = latentHeat[_iceLayer],
 				MeltedMass = iceMeltedMass,
 
 				Temperature = nextState.IceTemperature,
 				LastMass = lastState.IceMass,
 				IceHeatingDepth = worldData.IceHeatingDepth,
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
+				WaterIceSurfaceArea = dependent.SurfaceAreaIceWater,
 				WaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
+				TerrainTemperature = nextState.TerrainTemperature,
 				LayerElevation = dependent.LayerElevation[1],
 
 			}, fluxJobHandles[_floraLayer]);
@@ -1352,6 +1359,7 @@ public class WorldSim {
 				CrustEruptionDepth = worldData.CrustDepthForEruption,
 				DustPerLavaEjected = worldData.DustPerLavaEjected,
 				MagmaPressureCrustReductionSpeed = worldData.MagmaPressureCrustReductionSpeed,
+				LavaEruptionSpeed = worldData.LavaEruptionSpeed,
 				SecondsPerTick = worldData.SecondsPerTick
 			}, fluxJobHandles[_lavaLayer]);
 
@@ -1494,6 +1502,7 @@ public class WorldSim {
 				LavaTemperature = nextState.LavaTemperature,
 
 
+				CrustDelta = crustDelta,
 				LastElevation = lastState.Elevation,
 				LastRoughness = lastState.Roughness,
 				LastSoilFertility = lastState.SoilFertility,
@@ -1507,7 +1516,7 @@ public class WorldSim {
 				LavaCrystalized = lavaCrystalizedMass,
 				LavaEjected = lavaEjected,
 				MagmaTemperature = worldData.MagmaTemperature,
-				CrustDelta = crustDelta
+				LavaDensityAdjustment = worldData.LavaDensityAdjustment,
 			}));
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateFloraJob()
@@ -1529,13 +1538,23 @@ public class WorldSim {
 			#endregion
 
 			#region Apply Latent Heat
+			var latentHeatJobHandle = default(JobHandle);
 
-			var latentHeatJobHandle =SimJob.Schedule(new ApplyLatentHeatIceJob()
+			latentHeatJobHandle = JobHandle.CombineDependencies(latentHeatJobHandle, SimJob.Schedule(new ApplyLatentHeatIceJob()
 			{
 				IceTemperature = nextState.IceTemperature,
 				IceMass = nextState.IceMass,
 				LatentHeat = latentHeat[_iceLayer]
-			});
+			}));
+
+			latentHeatJobHandle = JobHandle.CombineDependencies(latentHeatJobHandle, SimJob.Schedule(new ApplyLatentHeatTerrainJob()
+			{
+				TerrainTemperature = nextState.TerrainTemperature,
+
+				LatentHeat = latentHeat[_terrainLayer],
+				SoilFertility = nextState.SoilFertility,
+				HeatingDepth = worldData.SoilHeatDepth
+			}));
 
 			for (int i = 1; i < _airLayers - 1; i++)
 			{
@@ -1768,139 +1787,6 @@ public class WorldSim {
 			#endregion
 
 
-
-
-			// Diffuse from last time step
-			// Air, Water, Cloud
-			#region Diffusion
-
-			float cellRadius = math.sqrt(staticState.CellSurfaceArea / math.PI);
-			JobHandle[] diffusionJobHandles = new JobHandle[_layerCount];
-			for (int j = 1; j < _airLayers - 1; j++)
-			{
-				int layer = _airLayer0 + j;
-				// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
-				diffusionJobHandles[layer] = SimJob.Schedule(new DiffusionAirJob()
-				{
-					Delta = diffusionAir[j],
-
-					LastTemperature = nextState.AirTemperaturePotential[j],
-					LastVapor = nextState.AirVapor[j],
-					LastDust = nextState.Dust[j],
-					LastVelocity = nextState.AirVelocity[j],
-					Neighbors = staticState.Neighbors,
-					LayerHeight = dependent.LayerHeight[j],
-					NeighborDistInverse = staticState.NeighborDistInverse,
-					AirMass = dependent.AirMass[j],
-					UpTemperature = nextState.AirTemperaturePotential[j + 1],
-					UpVapor = nextState.AirVapor[j + 1],
-					UpDust = nextState.Dust[j + 1],
-					UpAirVelocity = nextState.AirVelocity[j + 1],
-					UpAirMass = dependent.AirMass[j + 1],
-					UpLayerElevation = dependent.LayerElevation[j + 1],
-					UpLayerHeight = dependent.LayerHeight[j + 1],
-					DownTemperature = nextState.AirTemperaturePotential[j - 1],
-					DownVapor = nextState.AirVapor[j - 1],
-					DownDust = nextState.Dust[j - 1],
-					DownAirVelocity = nextState.AirVelocity[j - 1],
-					DownAirMass = dependent.AirMass[j - 1],
-					DownLayerElevation = dependent.LayerElevation[j - 1],
-					DownLayerHeight = dependent.LayerHeight[j - 1],
-					IsTop = j == _airLayers - 2,
-					IsBottom = j == 1,
-					DiffusionCoefficientHorizontal = worldData.AirDiffusionCoefficientHorizontal,
-					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
-					CellSurfaceArea = staticState.CellSurfaceArea,
-					CellCircumference = 2 * cellRadius * math.PI
-				});
-			}
-			for (int j = 1; j < _waterLayers - 1; j++)
-			{
-				int layer = _waterLayer0 + j;
-				diffusionJobHandles[layer] =SimJob.Schedule(new DiffusionWaterJob()
-				{
-					Delta = diffusionWater[j],
-
-					LastTemperature = nextState.WaterTemperature[j],
-					LastSalt = nextState.SaltMass[j],
-					LastVelocity = nextState.WaterVelocity[j],
-					LastMass = nextState.WaterMass[j],
-					LayerHeight = dependent.LayerHeight[j],
-					UpLayerHeight = dependent.LayerHeight[j + 1],
-					DownLayerHeight = dependent.LayerHeight[j - 1],
-					NeighborDistInverse = staticState.NeighborDistInverse,
-					UpTemperature = nextState.WaterTemperature[j + 1],
-					UpSalt = nextState.SaltMass[j + 1],
-					UpCurrent = nextState.WaterVelocity[j + 1],
-					UpMass = nextState.WaterMass[j + 1],
-					DownTemperature = nextState.WaterTemperature[j - 1],
-					DownSalt = nextState.SaltMass[j - 1],
-					DownCurrent = nextState.WaterVelocity[j - 1],
-					DownMass = nextState.WaterMass[j - 1],
-					Neighbors = staticState.Neighbors,
-					DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
-					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
-					CellSurfaceArea = staticState.CellSurfaceArea,
-					CellCircumference = 2 * cellRadius * math.PI
-				});
-			}
-
-			var diffusionCloudHandle =SimJob.Schedule(new DiffusionCloudJob()
-			{
-				Delta = diffusionCloud,
-
-				LastMass = nextState.CloudMass,
-				LastTemperature = nextState.CloudTemperature,
-				LastDropletMass = nextState.CloudDropletMass,
-				LastVelocity = nextState.CloudVelocity,
-				Neighbors = staticState.Neighbors,
-				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
-			});
-
-			#endregion
-
-			#region Apply Diffusion
-
-			JobHandle diffusionJobHandle = default(JobHandle);
-			diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle,SimJob.Schedule(new ApplyAdvectionCloudJob()
-			{
-				Advection = diffusionCloud,
-				CloudMass = nextState.CloudMass,
-				Temperature = nextState.CloudTemperature,
-				DropletMass = nextState.CloudDropletMass,
-				Velocity = nextState.CloudVelocity
-			}, diffusionCloudHandle));
-
-			for (int i = 1; i < _waterLayers - 1; i++)
-			{
-				diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle,SimJob.Schedule(new ApplyAdvectionWaterJob()
-				{
-					Advection = diffusionWater[i],
-					SaltMass = nextState.SaltMass[i],
-					Temperature = nextState.WaterTemperature[i],
-					Velocity = nextState.WaterVelocity[i],
-					Mass = nextState.WaterMass[i]
-				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _waterLayer0], diffusionJobHandles[i + _waterLayer0 - 1], diffusionJobHandles[i + _waterLayer0 + 1])));
-			}
-
-			for (int i = 1; i < _airLayers - 1; i++)
-			{
-				diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle,SimJob.Schedule(new ApplyAdvectionAirJob()
-				{
-					Advection = diffusionAir[i],
-					Vapor = nextState.AirVapor[i],
-					Dust = nextState.Dust[i],
-					Temperature = nextState.AirTemperaturePotential[i],
-					AirVelocity = nextState.AirVelocity[i],
-				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
-			}
-
-			diffusionJobHandle.Complete();
-
-			#endregion
-
-
-
 			// Wind and currents move temperature and trace elements horizontally
 			// Air, Water, Cloud
 			// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
@@ -1924,7 +1810,7 @@ public class WorldSim {
 					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick
-				}, JobHandle.CombineDependencies(diffusionJobHandle, airAccelerationJobHandles[j])));
+				}, airAccelerationJobHandles[j]));
 			}
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
@@ -1969,7 +1855,7 @@ public class WorldSim {
 					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick
-				}, JobHandle.CombineDependencies(diffusionJobHandle, waterAccelerationJobHandles[j])));
+				}, waterAccelerationJobHandles[j]));
 			}
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
@@ -2009,7 +1895,7 @@ public class WorldSim {
 				CoriolisTerm = coriolisTerm,
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick
-			}, JobHandle.CombineDependencies(diffusionJobHandle, updateCloudVelocityJobHandle));
+			}, updateCloudVelocityJobHandle);
 			var advectionJobHandleCloud =SimJob.Schedule(new AdvectionCloudJob()
 			{
 				Delta = advectionCloud,
@@ -2064,6 +1950,137 @@ public class WorldSim {
 
 			#endregion
 
+			// Diffuse from last time step
+			// Air, Water, Cloud
+			#region Diffusion
+
+			JobHandle[] diffusionJobHandles = new JobHandle[_layerCount];
+			for (int j = 1; j < _airLayers - 1; j++)
+			{
+				int layer = _airLayer0 + j;
+				// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
+				diffusionJobHandles[layer] = SimJob.Schedule(new DiffusionAirJob()
+				{
+					Delta = diffusionAir[j],
+
+					LastTemperature = nextState.AirTemperaturePotential[j],
+					LastVapor = nextState.AirVapor[j],
+					LastDust = nextState.Dust[j],
+					LastVelocity = nextState.AirVelocity[j],
+					Neighbors = staticState.Neighbors,
+					LayerHeight = dependent.LayerHeight[j],
+					NeighborDistInverse = staticState.NeighborDistInverse,
+					AirMass = dependent.AirMass[j],
+					UpTemperature = nextState.AirTemperaturePotential[j + 1],
+					UpVapor = nextState.AirVapor[j + 1],
+					UpDust = nextState.Dust[j + 1],
+					UpAirVelocity = nextState.AirVelocity[j + 1],
+					UpAirMass = dependent.AirMass[j + 1],
+					UpLayerElevation = dependent.LayerElevation[j + 1],
+					UpLayerHeight = dependent.LayerHeight[j + 1],
+					DownTemperature = nextState.AirTemperaturePotential[j - 1],
+					DownVapor = nextState.AirVapor[j - 1],
+					DownDust = nextState.Dust[j - 1],
+					DownAirVelocity = nextState.AirVelocity[j - 1],
+					DownAirMass = dependent.AirMass[j - 1],
+					DownLayerElevation = dependent.LayerElevation[j - 1],
+					DownLayerHeight = dependent.LayerHeight[j - 1],
+					IsTop = j == _airLayers - 2,
+					IsBottom = j == 1,
+					DiffusionCoefficientHorizontal = worldData.AirDiffusionCoefficientHorizontal,
+					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
+					CellSurfaceArea = staticState.CellSurfaceArea,
+					CellCircumference = staticState.CellCircumference
+				});
+			}
+			for (int j = 1; j < _waterLayers - 1; j++)
+			{
+				int layer = _waterLayer0 + j;
+				diffusionJobHandles[layer] = SimJob.Schedule(new DiffusionWaterJob()
+				{
+					Delta = diffusionWater[j],
+
+					LastTemperature = nextState.WaterTemperature[j],
+					LastSalt = nextState.SaltMass[j],
+					LastVelocity = nextState.WaterVelocity[j],
+					LastMass = nextState.WaterMass[j],
+					LayerHeight = dependent.LayerHeight[j],
+					UpLayerHeight = dependent.LayerHeight[j + 1],
+					DownLayerHeight = dependent.LayerHeight[j - 1],
+					NeighborDistInverse = staticState.NeighborDistInverse,
+					UpTemperature = nextState.WaterTemperature[j + 1],
+					UpSalt = nextState.SaltMass[j + 1],
+					UpCurrent = nextState.WaterVelocity[j + 1],
+					UpMass = nextState.WaterMass[j + 1],
+					DownTemperature = nextState.WaterTemperature[j - 1],
+					DownSalt = nextState.SaltMass[j - 1],
+					DownCurrent = nextState.WaterVelocity[j - 1],
+					DownMass = nextState.WaterMass[j - 1],
+					Neighbors = staticState.Neighbors,
+					DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
+					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
+					CellSurfaceArea = staticState.CellSurfaceArea,
+					CellCircumference = staticState.CellCircumference
+				});
+			}
+
+			var diffusionCloudHandle = SimJob.Schedule(new DiffusionCloudJob()
+			{
+				Delta = diffusionCloud,
+
+				LastMass = nextState.CloudMass,
+				LastTemperature = nextState.CloudTemperature,
+				LastDropletMass = nextState.CloudDropletMass,
+				LastVelocity = nextState.CloudVelocity,
+				Neighbors = staticState.Neighbors,
+				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
+			});
+
+			#endregion
+
+			#region Apply Diffusion
+
+			JobHandle diffusionJobHandle = default(JobHandle);
+			diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, SimJob.Schedule(new ApplyAdvectionCloudJob()
+			{
+				Advection = diffusionCloud,
+				CloudMass = nextState.CloudMass,
+				Temperature = nextState.CloudTemperature,
+				DropletMass = nextState.CloudDropletMass,
+				Velocity = nextState.CloudVelocity
+			}, diffusionCloudHandle));
+
+			for (int i = 1; i < _waterLayers - 1; i++)
+			{
+				diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, SimJob.Schedule(new ApplyAdvectionWaterJob()
+				{
+					Advection = diffusionWater[i],
+					SaltMass = nextState.SaltMass[i],
+					Temperature = nextState.WaterTemperature[i],
+					Velocity = nextState.WaterVelocity[i],
+					Mass = nextState.WaterMass[i]
+				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _waterLayer0], diffusionJobHandles[i + _waterLayer0 - 1], diffusionJobHandles[i + _waterLayer0 + 1])));
+			}
+
+			for (int i = 1; i < _airLayers - 1; i++)
+			{
+				diffusionJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, SimJob.Schedule(new ApplyAdvectionAirJob()
+				{
+					Advection = diffusionAir[i],
+					Vapor = nextState.AirVapor[i],
+					Dust = nextState.Dust[i],
+					Temperature = nextState.AirTemperaturePotential[i],
+					AirVelocity = nextState.AirVelocity[i],
+				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
+			}
+
+			diffusionJobHandle.Complete();
+
+			#endregion
+
+
+
+
 			#region Update dependent variables
 
 			SimJobs.UpdateDependentVariables(SimJob, ref nextState, ref dependent, ref worldData, default(JobHandle), tempArrays).Complete();
@@ -2111,6 +2128,7 @@ public class WorldSim {
 						PrintDependentState("Dependent Vars", i, dependent);
 						PrintState("Last State", i, staticState, lastState, new List<string>());
 					}
+					degenerate = true;
 					Debug.Break();
 				}
 			}
@@ -2185,21 +2203,29 @@ public class WorldSim {
 					SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
 					DisplayEvaporation = display.Evaporation,
 					DisplayPrecipitation = display.Rainfall,
-					Enthalpy = display.EnthalpyTerrain,
-					
+					EnthalpyTerrain = display.EnthalpyTerrain,
+					EnthalpyCloud = display.EnthalpyCloud,
+					EnthalpyFlora = display.EnthalpyFlora,
+					EnthalpyIce = display.EnthalpyIce,
+					EnthalpyGroundWater = display.EnthalpyGroundWater,
+
 					SolarRadiationInTerrain = solarRadiationIn[_terrainLayer],
 					SolarRadiationInIce = solarRadiationIn[_iceLayer],
 					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _surfaceWaterLayer],
-					Evaporation = evaporationMassWater,
+					EvaporationWater = evaporationMassWater,
+					EvaporationFlora = evaporationMassFlora,
 					Precipitation = precipitationMass,
 					SoilFertility = nextState.SoilFertility,
 					TerrainTemperature = nextState.TerrainTemperature,
 					Flora = nextState.FloraMass,
 					FloraWater = nextState.FloraWater,
+					FloraTemperature = nextState.FloraTemperature,
 					HeatingDepth = worldData.SoilHeatDepth,
 					CloudMass = nextState.CloudMass,
 					IceMass = nextState.IceMass,
-					IceTemperature = nextState.IceTemperature,
+					IceTemperature = nextState.IceTemperature, 
+					GroundWaterMass = nextState.GroundWater,
+					GroundWaterTemperature = nextState.GroundWaterTemperature
 				};
 				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
 				var displayHandles = JobHandle.CombineDependencies(initDisplayAirHandle, initDisplayWaterHandle, updateDisplayJobHandle);
@@ -2229,6 +2255,10 @@ public class WorldSim {
 						display.GlobalCondensationCloud += display.CondensationCloud[i];
 						display.GlobalCondensationGround += display.CondensationGround[i];
 						display.GlobalEnthalpyTerrain += display.EnthalpyTerrain[i];
+						display.GlobalEnthalpyFlora += display.EnthalpyFlora[i];
+						display.GlobalEnthalpyIce += display.EnthalpyIce[i];
+						display.GlobalEnthalpyCloud += display.EnthalpyCloud[i];
+						display.GlobalEnthalpyGroundWater += display.EnthalpyGroundWater[i];
 						display.GlobalTerrainTemperature += curState.TerrainTemperature[i];
 						for (int j = 1; j < _airLayers - 1; j++)
 						{
@@ -2273,11 +2303,15 @@ public class WorldSim {
 					display.GlobalOceanSurfaceTemperature /= globalWaterSurfaceMass;
 					display.GlobalOceanTemperature /= globalWaterMass;
 					display.GlobalTerrainTemperature /= _cellCount;
-					display.GlobalEnthalpy = display.GlobalEnthalpyTerrain + display.GlobalEnthalpyAir + display.GlobalEnthalpyWater;
+					display.GlobalEnthalpy = display.GlobalEnthalpyTerrain + display.GlobalEnthalpyAir + display.GlobalEnthalpyWater + display.GlobalEnthalpyCloud + display.GlobalEnthalpyDeltaFlora + display.GlobalEnthalpyDeltaTerrain + display.GlobalEnthalpyDeltaIce;
 					display.GlobalEnthalpyDelta = display.GlobalEnthalpy - lastDisplay.GlobalEnthalpy;
 					display.GlobalEnthalpyDeltaTerrain = display.GlobalEnthalpyTerrain - lastDisplay.GlobalEnthalpyTerrain;
 					display.GlobalEnthalpyDeltaAir = display.GlobalEnthalpyAir - lastDisplay.GlobalEnthalpyAir;
 					display.GlobalEnthalpyDeltaWater = display.GlobalEnthalpyWater - lastDisplay.GlobalEnthalpyWater;
+					display.GlobalEnthalpyDeltaFlora = display.GlobalEnthalpyFlora - lastDisplay.GlobalEnthalpyFlora;
+					display.GlobalEnthalpyDeltaCloud = display.GlobalEnthalpyCloud - lastDisplay.GlobalEnthalpyCloud;
+					display.GlobalEnthalpyDeltaIce = display.GlobalEnthalpyIce - lastDisplay.GlobalEnthalpyIce;
+					display.GlobalEnthalpyDeltaGroundWater = display.GlobalEnthalpyGroundWater - lastDisplay.GlobalEnthalpyGroundWater;
 				}
 				lastDisplay.Dispose();
 
@@ -2321,7 +2355,7 @@ public class WorldSim {
 
 
 		}
-
+		return degenerate;
 
 	}
 
