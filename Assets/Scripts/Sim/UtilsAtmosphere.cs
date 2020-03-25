@@ -193,8 +193,11 @@ public static class Atmosphere {
 		// https://www.engineeringtoolbox.com/water-vapor-saturation-pressure-air-d_689.html
 		float saturationPressureOfWaterVapor = math.exp(77.345f + 0.0057f * temperatureAbsolute - 7235 / temperatureAbsolute) / math.pow(temperatureAbsolute, 8.2f);
 
+
+		// TODO: guard against divide by zero (or negative)
 		//https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
 		return airMass * 0.62198f * saturationPressureOfWaterVapor / (pressure - saturationPressureOfWaterVapor);
+
 	}
 
 	//	[BurstCompile]

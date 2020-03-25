@@ -7,6 +7,7 @@
 //#define DISABLE_MELTING_TOP
 //#define DISABLE_MELTING_BOTTOM
 #define DISABLE_ERUPTION
+//#define DISABLE_EVAPORATION_LATENT_HEAT
 //#define DISABLE_FLORA_WATER_ABSORPTION
 
 using Unity.Burst;
@@ -67,6 +68,7 @@ public struct FluxWaterJob : IJobParallelFor {
 			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
 			waterMass -= evapMass;
 
+#if !DISABLE_EVAPORATION_LATENT_HEAT
 			const bool latentHeatFromAirOrWater = false;
 			if (latentHeatFromAirOrWater)
 			{
@@ -77,6 +79,7 @@ public struct FluxWaterJob : IJobParallelFor {
 			}
 			evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
 			//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
+#endif
 
 #endif
 
@@ -270,7 +273,6 @@ public struct FluxAirJob : IJobParallelFor {
 		LatentHeat[i] = energyFlux;
 		CondensationGroundMass[i] = condensationGroundMass;
 		CondensationCloudMass[i] = condensationCloudMass;
-
 	}
 }
 

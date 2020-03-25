@@ -1954,7 +1954,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Seed: 6
   Subdivisions: 5
-  CheckForDegeneracy: 0
+  CheckForDegeneracy: 1
   CollectGlobals: 0
   LogState: 0
   LogStateIndex: 0
@@ -2045,6 +2045,8 @@ MonoBehaviour:
     DustVerticalVelocity: 0
     DustPerLavaEjected: 0
     MagmaPressureCrustReductionSpeed: 0
+    LavaDensityAdjustment: 0
+    LavaEruptionSpeed: 0
   TimeScale: 0
 --- !u!4 &365555217
 Transform:
@@ -6162,7 +6164,7 @@ MonoBehaviour:
   DisplayCloudMassMax: 0.5
   DisplayCrustDepthMax: 10000
   DisplayMagmaMassMax: 1000000
-  DisplayDustHeight: 1000
+  DisplayDustHeight: 10
   DisplayDustMax: 100
   DisplayLavaTemperatureMax: 1200
   Sim: {fileID: 365555216}

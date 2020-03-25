@@ -808,13 +808,13 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(0, Sim.WorldData.FullCoverageFlora, _normalizedRainbow, simState.FloraWater);
 				return true;
 			case MeshOverlay.VerticalWind0:
-				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, display.WindVertical[1]);
+				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[1]);
 				return true;
 			case MeshOverlay.VerticalWind1:
-				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, display.WindVertical[2]);
+				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[2]);
 				return true;
 			case MeshOverlay.VerticalWind2:
-				overlay = new MeshOverlayData(-DisplayVerticalWindSpeedMax, DisplayVerticalWindSpeedMax, _normalizedBlueBlackRed, display.WindVertical[3]);
+				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[3]);
 				return true;
 			case MeshOverlay.CrustDepth:
 				overlay = new MeshOverlayData(DisplayCrustDepthMax, 0, _normalizedRainbow, simState.CrustDepth);

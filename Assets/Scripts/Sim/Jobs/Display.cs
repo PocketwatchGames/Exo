@@ -67,8 +67,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> DustMass;
-	[ReadOnly] public NativeArray<float3> Wind;
-	[ReadOnly] public NativeArray<float3> SphericalPosition;
+	[ReadOnly] public NativeArray<BarycentricValueVertical> AdvectionDestination;
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
 	{
@@ -81,7 +80,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 		{
 			Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]) + VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);
 		}
-		WindVertical[i] = math.dot(SphericalPosition[i], Wind[i]);
+		WindVertical[i] = AdvectionDestination[i].moveVertical;
 	}
 }
 #if !InitDisplayJobDebug

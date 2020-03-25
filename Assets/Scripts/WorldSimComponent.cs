@@ -71,6 +71,9 @@ public class WorldSimComponent : MonoBehaviour
 		const int totalLayersHack = 15;
 		_displayState.Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers, totalLayersHack);
 
+		var tempAdvectionDestination = new NativeArray<BarycentricValueVertical>(CellCount, Allocator.TempJob);
+		var tempVelocity = new NativeArray<float3>(CellCount, Allocator.TempJob);
+		var tempCloudMass = new NativeArray<float>(CellCount, Allocator.TempJob);
 		JobHandle initDisplayHandle = default(JobHandle);
 		for (int i = 1; i < WorldData.AirLayers - 1; i++)
 		{
@@ -88,18 +91,20 @@ public class WorldSimComponent : MonoBehaviour
 				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],
 				AirPressure = DependentState.AirPressure[i],
 				LayerMiddle = DependentState.LayerMiddle[i],
-				PressureGradientForce = ActiveSimState.AirVelocity[i], // TODO: using wind as placeholder, this is broken
-				CondensationCloud = ActiveSimState.CloudMass, // TODO: using wind as placeholder, this is broken
-				CondensationGround = ActiveSimState.CloudDropletMass, // TODO: using wind as placeholder, this is broken
+				PressureGradientForce = tempVelocity,
+				CondensationCloud = tempCloudMass, 
+				CondensationGround = tempCloudMass, 
 				AirMass = _dependentState.AirMass[i],
 				VaporMass = ActiveSimState.AirVapor[i],
 				DustMass = ActiveSimState.Dust[i],
-				Wind = ActiveSimState.AirVelocity[i],
-				SphericalPosition = StaticState.SphericalPosition,
+				AdvectionDestination = tempAdvectionDestination,
 			};
 			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(CellCount, 1, initDisplayHandle));
 		}
 		initDisplayHandle.Complete();
+		tempAdvectionDestination.Dispose();
+		tempVelocity.Dispose();
+		tempCloudMass.Dispose();
 
 	}
 

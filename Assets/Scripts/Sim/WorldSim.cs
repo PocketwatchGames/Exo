@@ -87,7 +87,8 @@ public class WorldSim {
 	private NativeArray<float> lavaEjected;
 	private NativeArray<float> dustEjected;
 	private NativeArray<float> crustDelta;
-	
+	private NativeArray<float>[] divergenceAir;
+
 	private NativeArray<float> displaySolarRadiation;
 
 	public WorldSim(int cellCount, int airLayers, int waterLayers)
@@ -127,6 +128,7 @@ public class WorldSim {
 		airVelocityDeflected = new NativeArray<float3>[_airLayers];
 		dustUp = new NativeArray<float>[_airLayers];
 		dustDown = new NativeArray<float>[_airLayers];
+		divergenceAir = new NativeArray<float>[_airLayers];
 		for (int i = 0; i < _airLayers; i++)
 		{
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
@@ -138,6 +140,7 @@ public class WorldSim {
 			airVelocityDeflected[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 			dustUp[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			dustDown[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
+			divergenceAir[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		}
 		diffusionWater = new NativeArray<DiffusionWater>[_waterLayers];
 		advectionWater = new NativeArray<DiffusionWater>[_waterLayers];
@@ -214,6 +217,7 @@ public class WorldSim {
 			airVelocityDeflected[i].Dispose();
 			dustUp[i].Dispose();
 			dustDown[i].Dispose();
+			divergenceAir[i].Dispose();
 		}
 		for (int i = 0; i < _waterLayers; i++)
 		{
@@ -1812,6 +1816,41 @@ public class WorldSim {
 					SecondsPerTick = worldData.SecondsPerTick
 				}, airAccelerationJobHandles[j]));
 			}
+			JobHandle divergenceJobHandle = default(JobHandle);
+			JobHandle divergenceFreeFieldAirJob = default(JobHandle);
+			for (int j = 1; j < _airLayers - 1; j++)
+			{
+				int layer = _airLayer0 + j;
+				divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, SimJob.Schedule(new GetDivergenceJob()
+				{
+					Divergence = divergenceAir[j],
+					Destination = destinationAir[j],
+					DestinationAbove = destinationAir[j + 1],
+					DestinationBelow = destinationAir[j - 1],
+					Neighbors = staticState.Neighbors,
+					Mass = dependent.AirMass[j],
+					MassAbove = dependent.AirMass[j + 1],
+					MassBelow = dependent.AirMass[j - 1],
+					IsBottom = j == 1,
+					IsTop = j == _airLayers - 2,
+				}, airDestJob));
+			}
+			for (int j = 1; j < _airLayers - 1; j++)
+			{
+				int layer = _airLayer0 + j;
+				divergenceFreeFieldAirJob = JobHandle.CombineDependencies(divergenceFreeFieldAirJob, SimJob.Run(new GetDivergenceFreeFieldJob()
+				{
+					Destination = destinationAir[j],
+					Divergence = divergenceAir[j],
+					DivergenceAbove = divergenceAir[j + 1],
+					DivergenceBelow = divergenceAir[j - 1],
+					Neighbors = staticState.Neighbors,
+					AirMass = dependent.AirMass[j],
+					IsBottom = j == 1,
+					IsTop = j == _airLayers - 2,
+				}, divergenceJobHandle));
+			}
+
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layer = _airLayer0 + j;
@@ -1821,6 +1860,9 @@ public class WorldSim {
 					Temperature = nextState.AirTemperaturePotential[j],
 					TemperatureAbove = nextState.AirTemperaturePotential[j + 1],
 					TemperatureBelow = nextState.AirTemperaturePotential[j - 1],
+					AirMass = dependent.AirMass[j],
+					AirMassAbove = dependent.AirMass[j+1],
+					AirMassBelow = dependent.AirMass[j-1],
 					Vapor = nextState.AirVapor[j],
 					VaporAbove = nextState.AirVapor[j + 1],
 					VaporBelow = nextState.AirVapor[j - 1],
@@ -1836,8 +1878,10 @@ public class WorldSim {
 					DestinationAbove = destinationAir[j + 1],
 					DestinationBelow = destinationAir[j - 1],
 					Positions = staticState.SphericalPosition,
-				}, airDestJob);
+				}, divergenceFreeFieldAirJob);
 			}
+
+
 
 			var waterDestJob = default(JobHandle);
 			for (int j = 1; j < _waterLayers - 1; j++)
@@ -1857,6 +1901,9 @@ public class WorldSim {
 					SecondsPerTick = worldData.SecondsPerTick
 				}, waterAccelerationJobHandles[j]));
 			}
+
+
+
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
 				int layer = _waterLayer0 + j;
@@ -2175,8 +2222,7 @@ public class WorldSim {
 						AirMass = dependent.AirMass[i],
 						VaporMass = nextState.AirVapor[i],
 						DustMass = nextState.Dust[i],
-						Wind = nextState.AirVelocity[i],
-						SphericalPosition = staticState.SphericalPosition,
+						AdvectionDestination = destinationAir[i],
 					}).Schedule(_cellCount, _batchCount, initDisplayAirHandle));
 				}
 
