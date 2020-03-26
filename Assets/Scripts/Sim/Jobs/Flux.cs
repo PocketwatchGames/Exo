@@ -374,6 +374,7 @@ public struct FluxFloraJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> EvaporatedWaterTemperaturePotential;
 	public NativeArray<float> LatentHeatAir;
+	public NativeArray<float> LatentHeatFlora;
 	public NativeArray<float> GroundWaterConsumed;
 	public NativeArray<float> FloraMassDelta;
 	[ReadOnly] public NativeArray<float> FloraTemperature;
@@ -401,6 +402,7 @@ public struct FluxFloraJob : IJobParallelFor {
 		float mass = FloraMass[i];
 
 		float latentHeatFromAir = 0;
+		float latentHeatFromFlora = 0;
 		float evapMass = 0;
 		float evapTemperaturePotential = 0;
 		float groundWaterConsumed = 0;
@@ -422,7 +424,7 @@ public struct FluxFloraJob : IJobParallelFor {
 				float evaporationCoefficient = waterSaturation * FloraEvaporationRate * (25 + 19 * math.length(SurfaceWind[i]));
 				evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], FloraTemperature[i], AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
 				waterMass -= evapMass;
-				latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
+				latentHeatFromFlora = evapMass * WorldData.LatentHeatWaterVapor;
 				evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
 				//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
 #endif
@@ -445,6 +447,7 @@ public struct FluxFloraJob : IJobParallelFor {
 		EvaporatedWaterTemperaturePotential[i] = evapTemperaturePotential;
 		EvaporatedWaterMass[i] = evapMass;
 		LatentHeatAir[i] += -latentHeatFromAir;
+		LatentHeatFlora[i] += -latentHeatFromFlora;
 		GroundWaterConsumed[i] = groundWaterConsumed;
 		FloraMassDelta[i] = floraMassDelta;
 	}

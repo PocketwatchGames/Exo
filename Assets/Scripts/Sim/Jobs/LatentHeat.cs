@@ -28,6 +28,18 @@ public struct ApplyLatentHeatTerrainJob : IJobParallelFor {
 		TerrainTemperature[i] = math.max(0, TerrainTemperature[i] + LatentHeat[i] / Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]));
 	}
 }
+[BurstCompile]
+public struct ApplyLatentHeatFloraJob : IJobParallelFor {
+	public NativeArray<float> FloraTemperature;
+	[ReadOnly] public NativeArray<float> LatentHeat;
+	[ReadOnly] public NativeArray<float> FloraWater;
+	[ReadOnly] public NativeArray<float> FloraMass;
+	public void Execute(int i)
+	{
+		float specificHeat = (FloraMass[i] * WorldData.SpecificHeatFlora + FloraWater[i] * WorldData.SpecificHeatWater);
+		FloraTemperature[i] = math.max(0, FloraTemperature[i] + LatentHeat[i] / specificHeat);
+	}
+}
 
 [BurstCompile]
 public struct ApplyLatentHeatAirJob : IJobParallelFor {

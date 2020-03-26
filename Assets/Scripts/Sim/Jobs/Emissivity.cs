@@ -58,6 +58,7 @@ public struct EmissivityTerrainJob : IJobParallelFor {
 #endif
 public struct CloudAlbedoJob : IJobParallelFor {
 	public NativeArray<float> CloudAlbedo;
+	public NativeArray<float> CloudAbsorptivity;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> DewPoint;
@@ -69,6 +70,7 @@ public struct CloudAlbedoJob : IJobParallelFor {
 	[ReadOnly] public float RainDropSizeAlbedoMin;
 	[ReadOnly] public float RainDropSizeAlbedoMax;
 	[ReadOnly] public float CloudSlopeAlbedoMax;
+	[ReadOnly] public float SolarAbsorptivityCloud;
 	public void Execute(int i)
 	{
 		float cloudIceContent = math.saturate((DewPoint[i] - CloudFreezingTemperatureMin) / (CloudFreezingTemperatureMax - CloudFreezingTemperatureMin));
@@ -76,6 +78,7 @@ public struct CloudAlbedoJob : IJobParallelFor {
 		float rainDropSizeAlbedo = math.saturate(1.0f - CloudDropletMass[i] / CloudMass[i]) * (RainDropSizeAlbedoMax - RainDropSizeAlbedoMin) + RainDropSizeAlbedoMin;
 
 		CloudAlbedo[i] = math.min(1.0f, AlbedoCloud * cloudTemperatureAlbedo * rainDropSizeAlbedo / math.max(CloudSlopeAlbedoMax, 1.0f - WaterSlopeAlbedo[i]));
+		CloudAbsorptivity[i] = math.saturate(1.0f - math.exp10(-SolarAbsorptivityCloud * CloudMass[i]));
 	}
 }
 
@@ -97,6 +100,7 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudAlbedo;
+	[ReadOnly] public NativeArray<float> CloudAbsorptivity;
 	[ReadOnly] public float CarbonDioxide;
 	[ReadOnly] public float AlbedoAir;
 	[ReadOnly] public float AlbedoWaterVapor;
@@ -104,11 +108,10 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 	[ReadOnly] public float SolarAbsorptivityAir;
 	[ReadOnly] public float SolarAbsorptivityWaterVapor;
 	[ReadOnly] public float SolarAbsorptivityDust;
-	[ReadOnly] public float SolarAbsorptivityCloud;
+	[ReadOnly] public float ThermalAbsorptivityCloud;
 	[ReadOnly] public float ThermalAbsorptivityAir;
 	[ReadOnly] public float ThermalAbsorptivityWaterVapor;
 	[ReadOnly] public float ThermalAbsorptivityDust;
-	[ReadOnly] public float ThermalAbsorptivityCloud;
 	[ReadOnly] public float EmissivityCloud;
 	public void Execute(int i)
 	{
@@ -124,8 +127,8 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 		{
 			if (cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight)
 			{
-				solarAbsorptivityCloud = math.saturate(1.0f - math.exp10(-SolarAbsorptivityCloud * cloudMass));
 				thermalAbsorptivityCloud = EmissivityCloud * math.saturate(1.0f - math.exp10(-ThermalAbsorptivityCloud * cloudMass));
+				solarAbsorptivityCloud = CloudAbsorptivity[i];
 			}
 		}
 

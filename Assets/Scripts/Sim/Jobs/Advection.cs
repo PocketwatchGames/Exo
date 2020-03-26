@@ -405,27 +405,27 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 		// from top coming down
 		{
-			var vertMove = DestinationAbove[i];
-			if (vertMove.moveVertical < 0)
+			var vertMove = DestinationAbove[i].moveVertical;
+			float massIncoming = -(MassAbove[i] * vertMove);
+			if (massIncoming < 0)
 			{
-				float massIncoming = -(MassAbove[i] * vertMove.moveVertical);
 				newMass += massIncoming;
 				newTemperature += TemperatureAbove[i] * massIncoming;
 				newVelocity += VelocityAbove[i] * massIncoming;
-				newSaltMass += SaltAbove[i] * vertMove.moveVertical;
+				newSaltMass += SaltAbove[i] * vertMove;
 			}
 		}
 
 		// from bottom going up
 		{
-			var vertMove = DestinationBelow[i];
-			if (vertMove.moveVertical > 0)
+			var vertMove = DestinationBelow[i].moveVertical;
+			float massIncoming = MassBelow[i] * vertMove;
+			if (massIncoming > 0)
 			{
-				float massIncoming = MassBelow[i] * vertMove.moveVertical;
 				newMass += massIncoming;
 				newTemperature += TemperatureBelow[i] * massIncoming;
 				newVelocity += VelocityBelow[i] * massIncoming;
-				newSaltMass += SaltBelow[i] * vertMove.moveVertical;
+				newSaltMass += SaltBelow[i] * vertMove;
 			}
 		}
 

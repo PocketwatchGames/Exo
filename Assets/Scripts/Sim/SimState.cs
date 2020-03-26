@@ -179,6 +179,7 @@ public struct DependentState {
 	public NativeArray<float>[] LayerHeight;
 	public NativeArray<float>[] LayerElevation;
 	public NativeArray<float>[] LayerMiddle;
+	public NativeArray<float> CloudAbsorptivity;
 	public NativeArray<float> CloudElevation;
 	public NativeArray<float> DewPoint;
 	public NativeArray<float> AirDensityCloud;
@@ -195,6 +196,7 @@ public struct DependentState {
 		DewPoint = new NativeArray<float>(count, Allocator.Persistent);
 		WindVerticalCloud = new NativeArray<float>(count, Allocator.Persistent);
 		AirDensityCloud = new NativeArray<float>(count, Allocator.Persistent);
+		CloudAbsorptivity = new NativeArray<float>(count, Allocator.Persistent);
 		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAreaAirIce = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAreaAirWater = new NativeArray<float>(count, Allocator.Persistent);
@@ -263,6 +265,7 @@ public struct DependentState {
 		WindVerticalCloud.Dispose();
 		AirDensityCloud.Dispose();
 		CloudElevation.Dispose();
+		CloudAbsorptivity.Dispose();
 		SurfaceAreaAirIce.Dispose();
 		SurfaceAreaAirWater.Dispose();
 		SurfaceAreaAirFlora.Dispose();
@@ -343,7 +346,7 @@ public struct DisplayState {
 	public float GlobalSurfaceTemperature;
 	public double GlobalAirTemperaturePotential;
 	public float GlobalOceanCoverage;
-	public float GlobalOceanVolume;
+	public double GlobalOceanMass;
 	public float GlobalOceanTemperature;
 	public float GlobalOceanSurfaceTemperature;
 	public float GlobalSeaLevel;

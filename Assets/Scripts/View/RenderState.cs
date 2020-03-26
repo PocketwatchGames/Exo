@@ -103,7 +103,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
-	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> CloudAbsorption;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> GroundWater;
 	[ReadOnly] public NativeArray<float> FloraCoverage;
@@ -129,7 +129,6 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float CloudDropletSizeMin;
 	[ReadOnly] public float InverseCloudDropletSizeRange;
-	[ReadOnly] public float InverseCloudMass;
 	[ReadOnly] public float GroundWaterMax;
 	[ReadOnly] public float DustHeight;
 	[ReadOnly] public float LavaCrystalizationTemperature;
@@ -159,7 +158,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 
 
 		float waterDepth = WaterDepth[i];
-		float cloudCoverage = CloudMass[i]* InverseCloudMass;
+		float cloudCoverage = CloudAbsorption[i];
 		float waterCoverage = WaterCoverage[i];
 		float iceCoverage = IceCoverage[i];
 		float floraCoverage = FloraCoverage[i];
@@ -337,8 +336,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	private Color32 GetCloudColor(float dropletSize, float cloudCoverage)
 	{
 		var c = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0, 0, 0, 255), dropletSize);
-		float opacity = -math.cos(cloudCoverage * math.PI) / 2 + 0.5f;
-		c.a = (byte)(150 * opacity);
+		c.a = (byte)(255 * cloudCoverage);
 		return c;
 	}
 

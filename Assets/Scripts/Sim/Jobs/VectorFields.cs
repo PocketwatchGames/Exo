@@ -256,7 +256,7 @@ public struct GetDivergenceJob : IJobParallelFor {
 }
 
 
-//[BurstCompile]
+[BurstCompile]
 public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 	public NativeArray<BarycentricValueVertical> Destination;
 	[ReadOnly] public NativeArray<float> Divergence;

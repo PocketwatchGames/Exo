@@ -511,6 +511,7 @@ public class WorldSim {
 			var cloudAlbedoJobHandle =SimJob.Schedule(new CloudAlbedoJob()
 			{
 				CloudAlbedo = cloudAlbedo,
+				CloudAbsorptivity = dependent.CloudAbsorptivity,
 				CloudMass = lastState.CloudMass,
 				CloudDropletMass = lastState.CloudDropletMass,
 				DewPoint = dependent.DewPoint,
@@ -522,6 +523,7 @@ public class WorldSim {
 				CloudSlopeAlbedoMax = worldData.maxCloudSlopeAlbedo,
 				RainDropSizeAlbedoMax = worldData.rainDropSizeAlbedoMax,
 				RainDropSizeAlbedoMin = worldData.rainDropSizeAlbedoMin,
+				SolarAbsorptivityCloud = worldData.SolarAbsorptivityCloud,
 			}, solarInJobHandle);
 
 			var absorptivityAirJobHandles = new JobHandle[_airLayers];
@@ -537,6 +539,7 @@ public class WorldSim {
 					Dust = lastState.Dust[j],
 					CloudMass = lastState.CloudMass,
 					CloudAlbedo = cloudAlbedo,
+					CloudAbsorptivity = dependent.CloudAbsorptivity,
 					CloudElevation = dependent.CloudElevation,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
@@ -545,7 +548,6 @@ public class WorldSim {
 					AlbedoWaterVapor = worldData.AlbedoWaterVapor,
 					AlbedoDust = worldData.AlbedoDust,
 					SolarAbsorptivityAir = worldData.SolarAbsorptivityAir,
-					SolarAbsorptivityCloud = worldData.SolarAbsorptivityCloud,
 					SolarAbsorptivityWaterVapor = worldData.SolarAbsorptivityWaterVapor,
 					SolarAbsorptivityDust = worldData.SolarAbsorptivityDust,
 					ThermalAbsorptivityAir = worldData.ThermalAbsorptivityAir,
@@ -1299,6 +1301,7 @@ public class WorldSim {
 			fluxJobHandles[_floraLayer] = SimJob.Schedule(new FluxFloraJob()
 			{
 				LatentHeatAir = latentHeat[_airLayer0 + 1],
+				LatentHeatFlora = latentHeat[_floraLayer],
 				EvaporatedWaterMass = evaporationMassFlora,
 				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotentialFlora,
 				GroundWaterConsumed = groundWaterConsumed,
@@ -1838,7 +1841,7 @@ public class WorldSim {
 			for (int j = 1; j < _airLayers - 1; j++)
 			{
 				int layer = _airLayer0 + j;
-				divergenceFreeFieldAirJob = JobHandle.CombineDependencies(divergenceFreeFieldAirJob, SimJob.Run(new GetDivergenceFreeFieldJob()
+				divergenceFreeFieldAirJob = JobHandle.CombineDependencies(divergenceFreeFieldAirJob, SimJob.Schedule(new GetDivergenceFreeFieldJob()
 				{
 					Destination = destinationAir[j],
 					Divergence = divergenceAir[j],
@@ -2294,7 +2297,6 @@ public class WorldSim {
 						display.GlobalIceMass += curState.IceMass[i];
 						display.GlobalOceanCoverage += dependent.WaterCoverage[_surfaceWaterLayer][i];
 						display.GlobalSurfaceTemperature += dependent.SurfaceAirTemperatureAbsolute[i];
-						display.GlobalOceanVolume += dependent.WaterLayerDepth[1][i];
 						display.GlobalSeaLevel += dependent.LayerElevation[1][i];
 						display.GlobalEvaporation += display.Evaporation[i];
 						display.GlobalRainfall += display.Rainfall[i];
@@ -2314,7 +2316,7 @@ public class WorldSim {
 							display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
 							display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
 							display.GlobalEnthalpyAir += display.EnthalpyAir[j][i];
-							display.GlobalCloudCoverage += absorptivitySolar[j][i].AbsorptivityCloud;
+							display.GlobalCloudCoverage += math.min(1, absorptivitySolar[j][i].AbsorptivityCloud * 100);
 						}
 						display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
 						display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
@@ -2329,6 +2331,7 @@ public class WorldSim {
 							display.EnergySolarAbsorbedSurface += absorbed;
 							display.EnergySolarReflectedSurface += solarReflected[j + _waterLayer0][i];
 							display.GlobalEnthalpyWater += display.EnthalpyWater[j][i];
+							display.GlobalOceanMass += curState.WaterMass[j][i];
 						}
 						display.EnergySurfaceConduction += conductionAirIce[i] + conductionAirTerrain[i] + conductionAirWater[i];
 						display.EnergyOceanConduction += conductionAirWater[i];

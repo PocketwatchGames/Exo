@@ -115,7 +115,6 @@ public class WorldView : MonoBehaviour {
 	public float DisplayAirPressureMin = 97000;
 	public float DisplayAirPressureMax = 110000;
 	public float DisplayHeatAbsorbedMax = 1000;
-	public float DisplayCloudMassMax = 10;
 	public float DisplayCrustDepthMax = 10000;
 	public float DisplayMagmaMassMax = 1000000;
 	public float DisplayDustHeight = 1000;
@@ -335,7 +334,7 @@ public class WorldView : MonoBehaviour {
 			_tickLerpTime -= Time.deltaTime * 20;
 		} else
 		{
-			_tickLerpTime -= Time.deltaTime * Sim.TimeScale;
+			_tickLerpTime -= Time.deltaTime;
 		}
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
@@ -411,7 +410,7 @@ public class WorldView : MonoBehaviour {
 			Roughness = from.Roughness,
 			Elevation = from.Elevation,
 			CloudDropletMass = from.CloudDropletMass,
-			CloudMass = from.CloudMass,
+			CloudAbsorption = dependent.CloudAbsorptivity,
 			IceCoverage = dependent.IceCoverage,
 			FloraCoverage = dependent.FloraCoverage,
 			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers - 2],
@@ -425,7 +424,6 @@ public class WorldView : MonoBehaviour {
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
 			WindOverlayData = windOverlayData.Values,
 			GroundWaterMax = worldData.GroundWaterMax,
-			InverseCloudMass = 1.0f / DisplayCloudMassMax,
 			DustHeight = DisplayDustHeight,
 			LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
@@ -887,7 +885,7 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("\nCloud Mass: {0:N2}", display.GlobalCloudMass);
 		s.AppendFormat("\nGlobal Sea Level: {0:N2}", display.GlobalSeaLevel * Sim.InverseCellCount);
 		s.AppendFormat("\nOcean Coverage: {0:N1}%", display.GlobalOceanCoverage * 100 * Sim.InverseCellCount);
-		s.AppendFormat("\nOcean Volume: {0:N2} B", display.GlobalOceanVolume / 1000000000 * Sim.InverseCellCount);
+		s.AppendFormat("\nOcean Mass: {0:N} M", display.GlobalOceanMass / 1000000);
 
 		return s.ToString();
 	}
