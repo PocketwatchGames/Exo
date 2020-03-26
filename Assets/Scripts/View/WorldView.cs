@@ -331,10 +331,10 @@ public class WorldView : MonoBehaviour {
 	{
 		if (Sim.TimeScale == 0)
 		{
-			_tickLerpTime -= Time.deltaTime * 20;
+			_tickLerpTime -= Time.deltaTime * 0.5f;
 		} else
 		{
-			_tickLerpTime -= Time.deltaTime;
+			_tickLerpTime -= Time.deltaTime * 0.5f;
 		}
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
@@ -1004,7 +1004,7 @@ public class WorldView : MonoBehaviour {
 				display.Pressure[i][ActiveCellIndex],
 				wind.x, wind.y, wind.z);
 			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex]);
-			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirAbove + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirAbove) * display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow);
+			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow) * display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow);
 			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityCloud, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityCloud);
 			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityCloud);
 			s.AppendLine();

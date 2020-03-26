@@ -1597,7 +1597,7 @@ public class WorldSim {
 
 				LastGroundWater = lastState.GroundWater,
 				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
-				Elevation = nextState.Elevation,
+				SurfaceElevation = dependent.LayerElevation[1],
 				Neighbors = staticState.Neighbors,
 				NeighborDistInverse = staticState.NeighborDistInverse,
 				FlowSpeed = worldData.GroundWaterFlowSpeed,
@@ -1623,14 +1623,17 @@ public class WorldSim {
 				{
 					GroundWater = nextState.GroundWater,
 					GroundWaterTemperature = nextState.GroundWaterTemperature,
+					WaterMass = nextState.WaterMass[i],
+					WaterTemperature = nextState.WaterTemperature[i],
 
 					LastGroundWater = groundWaterFlowMass,
 					LastGroundWaterTemperature = groundWaterFlowTemperature,
-					WaterMass = nextState.WaterMass[i],
-					WaterTemperature = nextState.WaterTemperature[i],
+					SaltMass = nextState.SaltMass[i],
 					WaterBelow = nextState.WaterMass[i - 1],
 					GroundWaterAbsorptionRate = worldData.GroundWaterAbsorptionRate * worldData.SecondsPerTick,
 					GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
+					GroundWaterMax = worldData.GroundWaterMax,
+					IsTop = i == _surfaceWaterLayer
 				}, groundWaterJob);
 			}
 
