@@ -11,16 +11,14 @@
 
 	"SolarAbsorptivityAir": 0.00001,
 	"SolarAbsorptivityWaterVapor": 0.001,
-	"SolarAbsorptivityDust": 1,
-	"SolarAbsorptivityCloud": 1,
+	"SolarAbsorptivityDust": 10,
+	"SolarAbsorptivityCloud": 10,
 	"AlbedoAir": 0.001,
 	"AlbedoWaterVapor": 0.01,
 	"AlbedoDust": 0.9,
-	"AlbedoCloud": 0.75,
 	"AlbedoReductionSoilQuality": 0.15,
 	"minCloudFreezingTemperature": 243,
 	"maxCloudFreezingTemperature": 303,
-	"maxCloudSlopeAlbedo": 0.1,
 	"rainDropSizeAlbedoMin": 0.5,
 	"rainDropSizeAlbedoMax": 1.0,
 

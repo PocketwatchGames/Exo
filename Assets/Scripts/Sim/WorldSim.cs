@@ -33,7 +33,7 @@ public class WorldSim {
 	private int _surfaceWaterLayer;
 
 	private NativeArray<float> solarRadiation;
-	private NativeArray<float> waterSlopeAlbedo;
+	private NativeArray<float> albedoSlope;
 	private NativeArray<float> cloudAlbedo;
 	private NativeArray<SolarAbsorptivity>[] absorptivitySolar;
 	private NativeArray<ThermalAbsorptivity>[] absorptivityThermal;
@@ -110,7 +110,7 @@ public class WorldSim {
 		NeighborJob = new JobHelper(_cellCount * 6);
 
 		solarRadiation = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		waterSlopeAlbedo = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		albedoSlope = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		cloudAlbedo = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		emissivity = new NativeArray<float>[_layerCount];
 		solarRadiationIn = new NativeArray<float>[_layerCount];
@@ -199,7 +199,7 @@ public class WorldSim {
 	public void Dispose()
 	{
 		solarRadiation.Dispose();
-		waterSlopeAlbedo.Dispose();
+		albedoSlope.Dispose();
 		cloudAlbedo.Dispose();
 		for (int i=0;i<_layerCount;i++)
 		{
@@ -335,7 +335,7 @@ public class WorldSim {
 				SolarRadiation = solarRadiation,
 				GeothermalRadiation = geothermalRadiation,
 				DisplaySolarRadiation = displaySolarRadiation,
-				WaterSlopeAlbedo = waterSlopeAlbedo,
+				AlbedoSlope = albedoSlope,
 
 				SphericalPosition = staticState.SphericalPosition,
 				IncomingSolarRadiation = lastState.PlanetState.SolarRadiation * worldData.SecondsPerTick,
@@ -516,11 +516,9 @@ public class WorldSim {
 				CloudDropletMass = lastState.CloudDropletMass,
 				DewPoint = dependent.DewPoint,
 				CloudElevation = dependent.CloudElevation,
-				WaterSlopeAlbedo = waterSlopeAlbedo,
-				AlbedoCloud = worldData.AlbedoCloud,
+				AlbedoSlope = albedoSlope,
 				CloudFreezingTemperatureMax = worldData.maxCloudFreezingTemperature,
 				CloudFreezingTemperatureMin = worldData.minCloudFreezingTemperature,
-				CloudSlopeAlbedoMax = worldData.maxCloudSlopeAlbedo,
 				RainDropSizeAlbedoMax = worldData.rainDropSizeAlbedoMax,
 				RainDropSizeAlbedoMin = worldData.rainDropSizeAlbedoMin,
 				SolarAbsorptivityCloud = worldData.SolarAbsorptivityCloud,
@@ -589,20 +587,23 @@ public class WorldSim {
 				SolarRadiationAbsorbed = solarRadiationIn[_iceLayer],
 				SolarRadiationIncoming = solarRadiation,
 				SolarRadiationReflected = solarReflected[_iceLayer],
-				Albedo = WorldData.AlbedoIce,
+				AlbedoSlope = albedoSlope,
+				AlbedoMin = WorldData.AlbedoIce,
+				AlbedoRange = 1.0f - WorldData.AlbedoIce,
 				Coverage = dependent.IceCoverage
 			}, solarInJobHandle);
 
 			for (int j = _surfaceWaterLayer; j >= 1; j--)
 			{
 				int layerIndex = _waterLayer0 + j;
-				solarInJobHandles[layerIndex] = solarInJobHandle =SimJob.Schedule(new SolarRadiationAbsorbedPartialCoverageJob()
+				solarInJobHandles[layerIndex] = solarInJobHandle =SimJob.Schedule(new SolarRadiationAbsorbedSlopeJob()
 				{
 					SolarRadiationAbsorbed = solarRadiationIn[layerIndex],
 					SolarRadiationIncoming = solarRadiation,
 					SolarRadiationReflected = solarReflected[layerIndex],
 					Coverage = dependent.WaterCoverage[layerIndex - _waterLayer0],
-					Albedo = waterSlopeAlbedo,
+					AlbedoSlope = albedoSlope,
+					AlbedoMin = WorldData.AlbedoWater,
 				}, solarInJobHandle);
 			}
 
@@ -612,7 +613,9 @@ public class WorldSim {
 				SolarRadiationAbsorbed = solarRadiationIn[_floraLayer],
 				SolarRadiationIncoming = solarRadiation,
 				SolarRadiationReflected = solarReflected[_floraLayer],
-				Albedo = WorldData.AlbedoFlora,
+				AlbedoSlope = albedoSlope,
+				AlbedoMin = WorldData.AlbedoFloraMin,
+				AlbedoRange = WorldData.AlbedoFloraRange,
 				Coverage = dependent.FloraCoverage
 			}, solarInJobHandle);
 

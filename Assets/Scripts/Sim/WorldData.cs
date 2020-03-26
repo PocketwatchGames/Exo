@@ -25,11 +25,9 @@ public struct WorldData {
 	public float AlbedoAir; // 7% is reflected due to atmospheric scattering 
 	public float AlbedoWaterVapor;
 	public float AlbedoDust;
-	public float AlbedoCloud;
 	public float AlbedoReductionSoilQuality;
 	public float minCloudFreezingTemperature;
 	public float maxCloudFreezingTemperature;
-	public float maxCloudSlopeAlbedo;
 	public float rainDropSizeAlbedoMin;
 	public float rainDropSizeAlbedoMax;
 
@@ -149,10 +147,11 @@ public struct WorldData {
 	public const float FreezingTemperature = 273.15f;
 	public const float StefanBoltzmannConstant = 0.00000005670373f;
 	// specific heat is joules to raise one degree (kJ/kgK)
-	public const float AlbedoWater = 0.06f; // How much heat is reflected back by the water
+	public const float AlbedoWater = 0.03f; // How much heat is reflected back by the water
 	public const float AlbedoIce = 0.5f; // How much heat is reflected back by the water
 	public const float AlbedoLand = 0.4f;
-	public const float AlbedoFlora = 0.1f;
+	public const float AlbedoFloraMin = 0.15f;
+	public const float AlbedoFloraRange = 0.1f;
 	//public const float AlbedoCloud = 0.05f; // 24% incoming  reflected back to space by clouds (avg, globally)
 	public const float SpecificHeatIce = 2.108f;
 	public const float SpecificHeatFlora = 1.76f;

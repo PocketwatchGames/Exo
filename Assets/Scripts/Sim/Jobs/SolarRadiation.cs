@@ -25,7 +25,7 @@ public struct SolarRadiationJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiation;
 	public NativeArray<float> GeothermalRadiation;
 	public NativeArray<float> DisplaySolarRadiation;
-	public NativeArray<float> WaterSlopeAlbedo;
+	public NativeArray<float> AlbedoSlope;
 	[ReadOnly] public NativeArray<float3> SphericalPosition;
 	[ReadOnly] public float3 SunToPlanetDir;
 	[ReadOnly] public quaternion PlanetRotation;
@@ -34,7 +34,7 @@ public struct SolarRadiationJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float sunDotSurface = math.max(0, math.dot(SunToPlanetDir, math.rotate(PlanetRotation, -SphericalPosition[i])));
-		WaterSlopeAlbedo[i] = math.pow(1.0f - math.max(0, sunDotSurface), 9);
+		AlbedoSlope[i] = math.pow(1.0f - math.max(0, sunDotSurface), 9);
 		float r = IncomingSolarRadiation * sunDotSurface;
 		GeothermalRadiation[i] = IncomingGeothermalRadiation;
 		SolarRadiation[i] = r;
@@ -44,9 +44,7 @@ public struct SolarRadiationJob : IJobParallelFor {
 
 
 
-#if !SolarRadiationAbsorbedAirJobDebug
 [BurstCompile]
-#endif
 public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
@@ -62,19 +60,16 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 		float reflectedCloud = 0;
 
 		float reflectedAirAbove = incomingRadiation * AbsorptivitySolar[i].ReflectivityAirAbove;
-		incomingRadiation -= reflectedAirAbove;
 		float absorbedAirAbove = incomingRadiation * AbsorptivitySolar[i].AbsorptivityAirAbove;
-		incomingRadiation -= absorbedAirAbove;
+		incomingRadiation -= absorbedAirAbove + reflectedAirAbove;
 
 		reflectedCloud = incomingRadiation * AbsorptivitySolar[i].ReflectivityCloud;
-		incomingRadiation -= reflectedCloud;
 		absorbedCloud = incomingRadiation * AbsorptivitySolar[i].AbsorptivityCloud;
-		incomingRadiation -= absorbedCloud;
+		incomingRadiation -= absorbedCloud + reflectedCloud;
 
 		float reflectedAirBelow = incomingRadiation * AbsorptivitySolar[i].ReflectivityAirBelow;
-		incomingRadiation -= reflectedAirBelow;
 		float absorbedAirBelow = incomingRadiation * AbsorptivitySolar[i].AbsorptivityAirBelow;
-		incomingRadiation -= absorbedAirBelow;
+		incomingRadiation -= absorbedAirBelow + reflectedAirBelow;
 
 		SolarRadiationAbsorbed[i] = absorbedAirAbove + absorbedAirBelow + absorbedCloud;
 		SolarRadiationIncoming[i] = incomingRadiation;
@@ -91,13 +86,15 @@ public struct SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob : IJobParal
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
 	public NativeArray<float> SolarRadiationReflected;
-	[ReadOnly] public float Albedo;
+	[ReadOnly] public NativeArray<float> AlbedoSlope;
 	[ReadOnly] public NativeArray<float> Coverage;
+	[ReadOnly] public float AlbedoMin;
+	[ReadOnly] public float AlbedoRange;
 	public void Execute(int i)
 	{
 		float incoming = SolarRadiationIncoming[i];
 		float coverage = Coverage[i];
-		float reflected = incoming * (Albedo * coverage);
+		float reflected = incoming * coverage * (AlbedoMin + AlbedoRange * AlbedoSlope[i]);
 		incoming -= reflected;
 		float absorbed = incoming * coverage;
 		SolarRadiationAbsorbed[i] = absorbed;
@@ -109,17 +106,19 @@ public struct SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob : IJobParal
 #if !SolarRadiationAbsorbedPartialCoverageJobDebug
 [BurstCompile]
 #endif
-public struct SolarRadiationAbsorbedPartialCoverageJob : IJobParallelFor {
+public struct SolarRadiationAbsorbedSlopeJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
 	public NativeArray<float> SolarRadiationIncoming;
 	public NativeArray<float> SolarRadiationReflected;
-	[ReadOnly] public NativeArray<float> Albedo;
+	[ReadOnly] public float AlbedoMin;
+	[ReadOnly] public float AlbedoRange;
+	[ReadOnly] public NativeArray<float> AlbedoSlope;
 	[ReadOnly] public NativeArray<float> Coverage;
 	public void Execute(int i)
 	{
 		float incoming = SolarRadiationIncoming[i];
 		float coverage = Coverage[i];
-		float reflected = incoming * (Albedo[i] * coverage);
+		float reflected = incoming * coverage * (AlbedoMin + AlbedoRange * AlbedoSlope[i]);
 		incoming -= reflected;
 		float absorbed = incoming * coverage;
 		SolarRadiationAbsorbed[i] = absorbed;

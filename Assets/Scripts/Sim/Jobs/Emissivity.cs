@@ -63,22 +63,22 @@ public struct CloudAlbedoJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> DewPoint;
 	[ReadOnly] public NativeArray<float> CloudDropletMass;
-	[ReadOnly] public NativeArray<float> WaterSlopeAlbedo;
-	[ReadOnly] public float AlbedoCloud;
+	[ReadOnly] public NativeArray<float> AlbedoSlope;
 	[ReadOnly] public float CloudFreezingTemperatureMin;
 	[ReadOnly] public float CloudFreezingTemperatureMax;
 	[ReadOnly] public float RainDropSizeAlbedoMin;
 	[ReadOnly] public float RainDropSizeAlbedoMax;
-	[ReadOnly] public float CloudSlopeAlbedoMax;
 	[ReadOnly] public float SolarAbsorptivityCloud;
 	public void Execute(int i)
 	{
 		float cloudIceContent = math.saturate((DewPoint[i] - CloudFreezingTemperatureMin) / (CloudFreezingTemperatureMax - CloudFreezingTemperatureMin));
-		float cloudTemperatureAlbedo = WorldData.AlbedoIce + (WorldData.AlbedoWater - WorldData.AlbedoIce) * cloudIceContent;
+		float cloudTemperatureAlbedo = WorldData.AlbedoIce * cloudIceContent + WorldData.AlbedoWater * (1.0f - cloudIceContent);
 		float rainDropSizeAlbedo = math.saturate(1.0f - CloudDropletMass[i] / CloudMass[i]) * (RainDropSizeAlbedoMax - RainDropSizeAlbedoMin) + RainDropSizeAlbedoMin;
 
-		CloudAlbedo[i] = math.min(1.0f, AlbedoCloud * cloudTemperatureAlbedo * rainDropSizeAlbedo / math.max(CloudSlopeAlbedoMax, 1.0f - WaterSlopeAlbedo[i]));
-		CloudAbsorptivity[i] = math.saturate(1.0f - math.exp10(-SolarAbsorptivityCloud * CloudMass[i]));
+		float cloudCollision = math.saturate(1.0f - math.exp10(-SolarAbsorptivityCloud * CloudMass[i]));
+		float albedo = cloudTemperatureAlbedo * rainDropSizeAlbedo * (1.0f - AlbedoSlope[i]) + AlbedoSlope[i];
+		CloudAlbedo[i] = albedo;
+		CloudAbsorptivity[i] = cloudCollision;
 	}
 }
 
@@ -122,13 +122,15 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 
 		float belowCloud = math.saturate((cloudElevation - layerElevation) / layerHeight);
 		float solarAbsorptivityCloud = 0;
+		float albedoCloud = 0;
 		float thermalAbsorptivityCloud = 0;
 		if (cloudMass > 0)
 		{
 			if (cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight)
 			{
 				thermalAbsorptivityCloud = EmissivityCloud * math.saturate(1.0f - math.exp10(-ThermalAbsorptivityCloud * cloudMass));
-				solarAbsorptivityCloud = CloudAbsorptivity[i];
+				solarAbsorptivityCloud = CloudAbsorptivity[i] * (1.0f - CloudAlbedo[i]);
+				albedoCloud = CloudAbsorptivity[i] * CloudAlbedo[i];
 			}
 		}
 
@@ -146,8 +148,8 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 			ReflectivityAirAbove = solarAbsorptivityAbove * AlbedoAir,
 			AbsorptivityAirBelow = solarAbsorptivityBelow * (1.0f - AlbedoAir),
 			ReflectivityAirBelow = solarAbsorptivityBelow * AlbedoAir,
-			AbsorptivityCloud = solarAbsorptivityCloud * (1.0f - CloudAlbedo[i]),
-			ReflectivityCloud = solarAbsorptivityCloud * CloudAlbedo[i],			
+			AbsorptivityCloud = solarAbsorptivityCloud,
+			ReflectivityCloud = albedoCloud,			
 		};
 
 		AbsorptivityThermal[i] = new ThermalAbsorptivity() {

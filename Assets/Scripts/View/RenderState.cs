@@ -158,7 +158,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 
 
 		float waterDepth = WaterDepth[i];
-		float cloudCoverage = CloudAbsorption[i];
+		float cloudCoverage = Utils.Sqr(CloudAbsorption[i]) * 0.25f;
 		float waterCoverage = WaterCoverage[i];
 		float iceCoverage = IceCoverage[i];
 		float floraCoverage = FloraCoverage[i];
@@ -180,7 +180,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth);
 			lavaColor = GetLavaColor(LavaTemperature[i], LavaCrystalizationTemperature, LavaTemperatureRangeInverse);
 		}
-		cloudColor = GetCloudColor(math.saturate((CloudDropletMass[i] - CloudDropletSizeMin) * InverseCloudDropletSizeRange), cloudCoverage);
+		cloudColor = GetCloudColor(cloudCoverage);
 		dustColor = GetDustColor(DustCoverage[i], DustMaxInverse);
 
 		terrainNormal = icosphere;
@@ -333,11 +333,9 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		return new Color32(red, green, blue, 255);
 	}
 
-	private Color32 GetCloudColor(float dropletSize, float cloudCoverage)
+	private Color32 GetCloudColor(float cloudCoverage)
 	{
-		var c = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0, 0, 0, 255), dropletSize);
-		c.a = (byte)(255 * cloudCoverage);
-		return c;
+		return new Color32(255, 255, 255, (byte)(255 * cloudCoverage));
 	}
 
 	private Color32 GetDustColor(float dustCoverage, float dustMaxInverse)
