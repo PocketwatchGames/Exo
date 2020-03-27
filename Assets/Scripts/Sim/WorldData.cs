@@ -47,6 +47,7 @@ public struct WorldData {
 	public float ThermalAbsorptivityAir;
 	public float ThermalAbsorptivityWaterVapor;
 	public float ThermalAbsorptivityCarbonDioxide;
+	public float ThermalAbsorptivityOxygen;
 	public float ThermalAbsorptivityDust;
 	public float ThermalAbsorptivityCloud;
 
@@ -56,6 +57,7 @@ public struct WorldData {
 	public float ThermalEmissivitySalt;
 	public float ThermalEmissivityIce;
 	public float ThermalEmissivityAir;
+	public float ThermalEmissivityOxygen;
 	public float ThermalEmissivityCarbonDioxide;
 	public float ThermalEmissivityWaterVapor;
 	public float ThermalEmissivityDust;

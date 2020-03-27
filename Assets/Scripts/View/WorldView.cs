@@ -19,6 +19,7 @@ public class WorldView : MonoBehaviour {
 		Rainfall,
 		Condensation,
 		HeatAbsorbed,
+		Oxygen,
 		CarbonDioxide,
 		GroundTemperature,
 		GroundWater,
@@ -123,6 +124,7 @@ public class WorldView : MonoBehaviour {
 	public float DisplayDustMax = 100;
 	public float DisplayLavaTemperatureMax = 1200;
 	public float DisplayCarbonDioxideMax = 0.002f;
+	public float DisplayOxygenMax = 0.35f;
 
 	[Header("References")]
 	public WorldSimComponent Sim;
@@ -789,6 +791,9 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
 				return true;
+			case MeshOverlay.Oxygen:
+				overlay = new MeshOverlayData(0, DisplayOxygenMax, _normalizedRainbow, display.OxygenPercent[1]);
+				return true;
 			case MeshOverlay.CarbonDioxide:
 				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[1]);
 				return true;
@@ -878,7 +883,7 @@ public class WorldView : MonoBehaviour {
 		StringBuilder s = new StringBuilder();
 		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
 		NumberFormatInfo nfi2 = new NumberFormatInfo() { NumberDecimalDigits = 2 };
-		s.AppendFormat("CO2: {0:N0} ppm", display.GlobalCarbonDioxide * 1000000 / display.GlobalAirMass);
+		s.AppendFormat("CO2: {0:N0} ppm O2: {1:N0} ppm", display.GlobalCarbonDioxide * 1000000 / display.GlobalAirMass, display.GlobalOxygen * 1000000 / display.GlobalAirMass);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * Sim.InverseCellCount);
 		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
 		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
@@ -1017,7 +1022,7 @@ public class WorldView : MonoBehaviour {
 				dependent.LayerElevation[i][ActiveCellIndex],
 				display.Pressure[i][ActiveCellIndex],
 				wind.x, wind.y, wind.z);
-			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex], display.CarbonDioxidePercent[1][ActiveCellIndex]*1000000);
+			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm O2: {3:N0} ppm", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex], display.CarbonDioxidePercent[1][ActiveCellIndex] * 1000000, display.OxygenPercent[1][ActiveCellIndex] * 1000000);
 			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow) * display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow);
 			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityCloud, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityCloud);
 			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityCloud);

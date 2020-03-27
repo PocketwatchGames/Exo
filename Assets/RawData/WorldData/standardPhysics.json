@@ -5,7 +5,6 @@
 
 	"FullCoverageIce": 3.0,
 	"FullCoverageWater": 50.0,
-	"FullCoverageFlora": 2000,
 	"TropopauseElevation": 11000,
 	"BoundaryZoneElevation": 1000,
 
@@ -24,6 +23,7 @@
 
 	"EnergyLostThroughAtmosphereWindow": 0.1007,
 	"ThermalAbsorptivityAir": 0.00025,
+	"ThermalAbsorptivityOxygen": 0.05,
 	"ThermalAbsorptivityCarbonDioxide": 0.05,
 	"ThermalAbsorptivityWaterVapor": 0.01,
 	"ThermalAbsorptivityDust": 0.25,
@@ -32,6 +32,7 @@
 	"ThermalEmissivitySalt": 0.34,
 	"ThermalEmissivityIce": 0.98,
 	"ThermalEmissivityAir": 0.65,
+	"ThermalEmissivityOxygen": 0.65,
 	"ThermalEmissivityCarbonDioxide": 0.65,
 	"ThermalEmissivityWaterVapor": 0.96,
 	"ThermalEmissivityDust": 0.95,
@@ -73,7 +74,8 @@
 
 	"FloraEvaporationRate": 0.1,
 	"FloraWaterConsumptionRate": 0.1,
-	"FloraMax": 10000,
+	"FullCoverageFlora": 1000,
+	"FloraMax": 1000,
 	"FloraGrowthRate": 0.01,
 	"FloraDeathRate": 0.001,
 	"FloraDeathRateWater": 0.01,

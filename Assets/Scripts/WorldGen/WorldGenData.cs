@@ -19,6 +19,7 @@ public class WorldGenData {
 	public float MaxTemperature;
 	public float Gravity;
 	public float CarbonDioxide;
+	public float Oxygen;
 	public float SolarRadiation; // extraterrestrial solar radiation // https://en.wikipedia.org/wiki/Sunlight (1367 w/m^2)
 	public float TiltAngle;
 	public float SpinAngle;

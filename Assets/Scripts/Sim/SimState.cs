@@ -19,7 +19,7 @@ public struct SimState {
 	public NativeArray<float> FloraMass;
 	public NativeArray<float> FloraWater;
 	public NativeArray<float> FloraTemperature;
-	public NativeArray<float> FloraCarbonDioxide;
+	public NativeArray<float> FloraGlucose;
 	public NativeArray<float> GroundWater;
 	public NativeArray<float> GroundWaterTemperature;
 	public NativeArray<float> IceTemperature;
@@ -54,7 +54,7 @@ public struct SimState {
 		FloraMass = new NativeArray<float>(count, Allocator.Persistent);
 		FloraWater = new NativeArray<float>(count, Allocator.Persistent);
 		FloraTemperature = new NativeArray<float>(count, Allocator.Persistent);
-		FloraCarbonDioxide = new NativeArray<float>(count, Allocator.Persistent);
+		FloraGlucose = new NativeArray<float>(count, Allocator.Persistent);
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -67,6 +67,7 @@ public struct SimState {
 		MagmaMass = new NativeArray<float>(count, Allocator.Persistent);
 		AirTemperaturePotential = new NativeArray<float>[airLayers];
 		AirVapor = new NativeArray<float>[airLayers];
+		AirOxygen = new NativeArray<float>[airLayers];
 		AirCarbonDioxide = new NativeArray<float>[airLayers];
 		AirVelocity = new NativeArray<float3>[airLayers];
 		Dust = new NativeArray<float>[airLayers];
@@ -74,6 +75,7 @@ public struct SimState {
 		{
 			AirTemperaturePotential[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVapor[i] = new NativeArray<float>(count, Allocator.Persistent);
+			AirOxygen[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirCarbonDioxide[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVelocity[i] = new NativeArray<float3>(count, Allocator.Persistent);
 			Dust[i] = new NativeArray<float>(count, Allocator.Persistent);
@@ -100,7 +102,7 @@ public struct SimState {
 		TerrainTemperature.Dispose();
 		FloraMass.Dispose();
 		FloraWater.Dispose();
-		FloraCarbonDioxide.Dispose();
+		FloraGlucose.Dispose();
 		FloraTemperature.Dispose();
 		GroundWater.Dispose();
 		GroundWaterTemperature.Dispose();
@@ -118,6 +120,7 @@ public struct SimState {
 		{
 			AirTemperaturePotential[i].Dispose();
 			AirVapor[i].Dispose();
+			AirOxygen[i].Dispose();
 			AirCarbonDioxide[i].Dispose();
 			AirVelocity[i].Dispose();
 			Dust[i].Dispose();
@@ -358,6 +361,7 @@ public struct DisplayState {
 	public float GlobalOceanSurfaceTemperature;
 	public float GlobalSeaLevel;
 	public float GlobalCarbonDioxide;
+	public float GlobalOxygen;
 	public float GlobalCloudCoverage;
 	public float GlobalEvaporation;
 	public float GlobalRainfall;
@@ -379,6 +383,7 @@ public struct DisplayState {
 	public NativeArray<float> EnthalpyGroundWater;
 	public NativeArray<float> DustMass;
 	public NativeArray<float>[] CarbonDioxidePercent;
+	public NativeArray<float>[] OxygenPercent;
 	public NativeArray<float>[] EnthalpyWater;
 	public NativeArray<float>[] EnthalpyAir;
 	public NativeArray<float>[] Salinity;
@@ -408,6 +413,7 @@ public struct DisplayState {
 
 		Pressure = new NativeArray<float>[airLayers];
 		PressureGradientForce = new NativeArray<float3>[airLayers];
+		OxygenPercent = new NativeArray<float>[airLayers];
 		CarbonDioxidePercent = new NativeArray<float>[airLayers];
 		EnthalpyAir = new NativeArray<float>[airLayers];
 		WindVertical = new NativeArray<float>[airLayers];
@@ -421,6 +427,7 @@ public struct DisplayState {
 			WindVertical[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AbsorptionSolar[i] = new NativeArray<SolarAbsorptivity>(count, Allocator.Persistent);
 			AbsorptionThermal[i] = new NativeArray<ThermalAbsorptivity>(count, Allocator.Persistent);
+			OxygenPercent[i] = new NativeArray<float>(count, Allocator.Persistent);
 			CarbonDioxidePercent[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 
@@ -467,6 +474,7 @@ public struct DisplayState {
 			WindVertical[i].Dispose();
 			AbsorptionSolar[i].Dispose();
 			AbsorptionThermal[i].Dispose();
+			OxygenPercent[i].Dispose();
 			CarbonDioxidePercent[i].Dispose();
 		}
 		for (int i=0;i<Salinity.Length;i++)

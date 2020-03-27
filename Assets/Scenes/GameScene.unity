@@ -1982,12 +1982,14 @@ MonoBehaviour:
     ThermalAbsorptivityAir: 0
     ThermalAbsorptivityWaterVapor: 0
     ThermalAbsorptivityCarbonDioxide: 0
+    ThermalAbsorptivityOxygen: 0
     ThermalAbsorptivityDust: 0
     ThermalAbsorptivityCloud: 0
     ThermalEmissivityWater: 0
     ThermalEmissivitySalt: 0
     ThermalEmissivityIce: 0
     ThermalEmissivityAir: 0
+    ThermalEmissivityOxygen: 0
     ThermalEmissivityCarbonDioxide: 0
     ThermalEmissivityWaterVapor: 0
     ThermalEmissivityDust: 0
@@ -6381,6 +6383,7 @@ MonoBehaviour:
   DisplayDustMax: 100
   DisplayLavaTemperatureMax: 1200
   DisplayCarbonDioxideMax: 0.002
+  DisplayOxygenMax: 0.35
   Sim: {fileID: 365555216}
   Planet: {fileID: 1921819011}
   Sun: {fileID: 575991941}
