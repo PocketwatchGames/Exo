@@ -132,11 +132,10 @@ public struct EnergyIceJob : IJobParallelFor {
 [BurstCompile]
 public struct EnergyFloraJob : IJobParallelFor {
 	public NativeArray<float> FloraTemperature;
+	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> FloraMass;
-	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
@@ -150,7 +149,7 @@ public struct EnergyFloraJob : IJobParallelFor {
 				+ ConductionEnergyTerrain[i];
 
 
-			float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta;
+			float energy = ThermalRadiationDelta[i] + conductionDelta;
 			FloraTemperature[i] = LastTemperature[i] + energy / (FloraMass[i] * WorldData.SpecificHeatFlora + FloraWater[i] * WorldData.SpecificHeatWater);
 		}
 		else

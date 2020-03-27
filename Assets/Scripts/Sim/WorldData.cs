@@ -123,10 +123,11 @@ public struct WorldData {
 	public float FloraDeathRateCrowding;
 	public float FloraDeathRateTemperature;
 	public float FloraDeathRateAge;
-	public float FloraEvaporationRate;
 	public float FloraWaterConsumptionRate;
 	public float FloraGrowthTemperatureRangeInverse;
 	public float FloraAirSurfaceArea;
+	public float SolarRadiationConsumedByPhotosynthesis;
+	public float FloraEnergyForPhotosynthesis;
 
 	[Header("Lava")]
 	public float LavaCrystalizationTemperature;

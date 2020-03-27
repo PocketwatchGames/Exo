@@ -72,7 +72,6 @@
 	"WaterDensityPerDegree": -0.1,
 	"WaterDensityCurrentSpeed": 0.5,
 
-	"FloraEvaporationRate": 0.1,
 	"FloraWaterConsumptionRate": 0.1,
 	"FullCoverageFlora": 1000,
 	"FloraMax": 1000,
@@ -84,6 +83,8 @@
 	"FloraDeathRateAge": 0.0001,
 	"FloraGrowthTemperatureRangeInverse": 0.02,
 	"FloraAirSurfaceArea": 10,
+	"SolarRadiationConsumedByPhotosynthesis": 0.01,
+	"FloraEnergyForPhotosynthesis": 1,
 
 	"GroundWaterMax": 10000,
 	"GroundWaterMaxDepth": 100,

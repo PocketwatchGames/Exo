@@ -59,13 +59,7 @@ public struct FluxWaterJob : IJobParallelFor {
 			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerMiddle[i]);
 
 #if !DISABLE_EVAPORATION
-			// evap formula from here:
-			// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
-			// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
-			// so i'm using the air temperature instead of the water temperature, which means the the formula just reduces to (1-RH)*WindCoefficient
-			float evaporationCoefficient = 25 + 19 * math.length(SurfaceWind[i]);
-			float evapTemperature = Temperature[i];
-			evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
+			evapMass = Atmosphere.GetEvaporationMass(AirMass[i], AirPressure[i], AirVapor[i], SurfaceWind[i], temperature, waterMass);
 			waterMass -= evapMass;
 
 #if !DISABLE_EVAPORATION_LATENT_HEAT
@@ -372,13 +366,20 @@ public struct FluxIceJob : IJobParallelFor {
 [BurstCompile]
 public struct FluxFloraJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
-	public NativeArray<float> EvaporatedWaterTemperaturePotential;
+	public NativeArray<float> TemperaturePotential;
 	public NativeArray<float> LatentHeatAir;
 	public NativeArray<float> LatentHeatFlora;
 	public NativeArray<float> GroundWaterConsumed;
+	public NativeArray<float> CarbonDioxideDelta;
+	public NativeArray<float> OxygenDelta;
 	public NativeArray<float> FloraMassDelta;
+	public NativeArray<float> FloraWaterDelta;
+	public NativeArray<float> FloraGlucoseDelta;
+	public NativeArray<float> SurfaceWaterDelta;
 	[ReadOnly] public NativeArray<float> FloraTemperature;
+	[ReadOnly] public NativeArray<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> FloraMass;
+	[ReadOnly] public NativeArray<float> FloraGlucose;
 	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public NativeArray<float> GroundWater;
 	[ReadOnly] public NativeArray<float> SoilFertility;
@@ -387,7 +388,6 @@ public struct FluxFloraJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float3> SurfaceWind;
-	[ReadOnly] public float FloraEvaporationRate;
 	[ReadOnly] public float GroundWaterMax;
 	[ReadOnly] public float FloraWaterConsumptionRate;
 	[ReadOnly] public float FloraMax;
@@ -397,6 +397,7 @@ public struct FluxFloraJob : IJobParallelFor {
 	[ReadOnly] public float FloraDeathRateCrowding;
 	[ReadOnly] public float FloraDeathRateTemperature;
 	[ReadOnly] public float FloraDeathRateWater;
+	[ReadOnly] public float FloraEnergyForPhotosynthesis;
 	public void Execute(int i)
 	{
 		float mass = FloraMass[i];
@@ -407,49 +408,100 @@ public struct FluxFloraJob : IJobParallelFor {
 		float evapTemperaturePotential = 0;
 		float groundWaterConsumed = 0;
 		float floraMassDelta = 0;
+		float floraGlucoseDelta = 0;
+		float carbonDioxideDelta = 0;
+		float oxygenDelta = 0;
+		float glucoseDelta = 0;
+		float floraWaterDelta = 0;
+		float waterDelta = 0;
+
 		if (mass > 0)
 		{
 			float temperature = FloraTemperature[i];
 			float waterMass = FloraWater[i];
 			float waterSaturation = waterMass / mass;
+			float energy = SolarRadiationIn[i];
 
-			if (waterMass > 0)
+			if (energy > 0)
 			{
 
-#if !DISABLE_EVAPORATION
-				// evap formula from here:
-				// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
-				// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
-				// so i'm using the air temperature instead of the water temperature, which means the the formula just reduces to (1-RH)*WindCoefficient
-				float evaporationCoefficient = waterSaturation * FloraEvaporationRate * (25 + 19 * math.length(SurfaceWind[i]));
-				evapMass = math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(AirMass[i], FloraTemperature[i], AirPressure[i]) - AirVapor[i]) / AirMass[i], 0, waterMass);
-				waterMass -= evapMass;
+#if !DISABLE_PHOTOSYNTHESIS
+				float glucose = FloraGlucose[i];
+
+				// Photosynthesis: Consume solarRadiation, water, carbon dioxide, to produce glucose and oxygen
+				float photosynthesis = 0;
+				energy -= photosynthesis * FloraEnergyForPhotosynthesis;
+				floraWaterDelta -= photosynthesis;
+				carbonDioxideDelta -= photosynthesis;
+				floraGlucoseDelta += photosynthesis;
+				oxygenDelta += photosynthesis;
+
+				// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
+				float respiration = 0;
+				energy += respiration * FloraEnergyForPhotosynthesis;
+				floraGlucoseDelta -= respiration;
+				waterDelta += 2 * respiration;
+				floraWaterDelta -= respiration;
+				oxygenDelta -= respiration;
+				carbonDioxideDelta += respiration;
+
+				// Growth: Consume glucose, produce plant growth
+				float growth = 0;
+				floraGlucoseDelta -= growth;
+				floraMassDelta += growth;
+
+				// Death: Produce carbon dioxide, water
+				float death = 0;
+				float deathPercent = death / mass;
+				// convert mass back through the respiration process, and dump any stored glucose and water
+				carbonDioxideDelta += death + deathPercent * glucose;
+				oxygenDelta -= death + deathPercent * glucose;
+				waterDelta += death + deathPercent * (glucose + waterMass);
+
+				evapMass = Atmosphere.GetEvaporationMass(AirMass[i], AirPressure[i], AirVapor[i], SurfaceWind[i], FloraTemperature[i], waterDelta);
 				latentHeatFromFlora = evapMass * WorldData.LatentHeatWaterVapor;
+				waterDelta -= evapMass;
+
+				latentHeatFromFlora = -evapMass * WorldData.LatentHeatWaterVapor;
 				evapTemperaturePotential = Atmosphere.GetPotentialTemperature(temperature, LayerElevation[i]);
-				//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
+
+				//float photosyntheticPotential = math.min(1, FloraWater[i] / FloraMass[i] * FloraCoverage[i] * CarbonDioxide[i] * SolarRadiationConsumedByPhotosynthesis);
+				//float photosynthesis = photosyntheticPotential * SolarRadiationIn[i];
+
+
+				//float floraSaturation = mass / (SoilFertility[i] * FloraMax);
+				//floraMassDelta = mass * math.max(-1,
+				//	FloraGrowthRate * (1.0f - floraSaturation) * waterSaturationNormalized * math.sqrt(math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse)
+				//	- FloraDeathRateWater * math.sqrt(1.0f - waterSaturationNormalized)
+				//	- FloraDeathRateCrowding * Utils.Sqr(floraSaturation)
+				//	- FloraDeathRateTemperature * (1.0f - math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse)
+				//	- FloraDeathRateAge);
+
+
 #endif
 			}
 
 			float waterSaturationNormalized = math.min(1, waterSaturation);
 #if !DISABLE_FLORA_WATER_ABSORPTION
 			groundWaterConsumed = math.min(GroundWater[i], mass * (GroundWater[i] / GroundWaterMax) * (1.0f - waterSaturationNormalized) * FloraWaterConsumptionRate);
+			floraWaterDelta += groundWaterConsumed;
 #endif
 
-			float floraSaturation = mass / (SoilFertility[i] * FloraMax);
-			floraMassDelta = mass * math.max(-1,
-				FloraGrowthRate * (1.0f - floraSaturation) * waterSaturationNormalized * math.sqrt(math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse)
-				- FloraDeathRateWater * math.sqrt(1.0f - waterSaturationNormalized)
-				- FloraDeathRateCrowding * Utils.Sqr(floraSaturation)
-				- FloraDeathRateTemperature * (1.0f - math.max(0, FloraTemperature[i] - WorldData.FreezingTemperature) * FloraGrowthTemperatureRangeInverse)
-				- FloraDeathRateAge);
+			// Convert leftover solar radiation into heat, since we didn't do it in the energy step
+			latentHeatFromFlora += energy;
 		}
 
-		EvaporatedWaterTemperaturePotential[i] = evapTemperaturePotential;
+		TemperaturePotential[i] = evapTemperaturePotential;
 		EvaporatedWaterMass[i] = evapMass;
 		LatentHeatAir[i] += -latentHeatFromAir;
-		LatentHeatFlora[i] += -latentHeatFromFlora;
+		LatentHeatFlora[i] += latentHeatFromFlora;
 		GroundWaterConsumed[i] = groundWaterConsumed;
+		CarbonDioxideDelta[i] = carbonDioxideDelta;
+		OxygenDelta[i] = oxygenDelta;
 		FloraMassDelta[i] = floraMassDelta;
+		FloraWaterDelta[i] = floraWaterDelta;
+		SurfaceWaterDelta[i] = waterDelta;
+		FloraGlucoseDelta[i] = glucoseDelta;
 	}
 }
 

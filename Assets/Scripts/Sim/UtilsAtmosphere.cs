@@ -197,7 +197,17 @@ public static class Atmosphere {
 		// TODO: guard against divide by zero (or negative)
 		//https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
 		return airMass * 0.62198f * saturationPressureOfWaterVapor / (pressure - saturationPressureOfWaterVapor);
+	}
 
+	[BurstCompile]
+	static public float GetEvaporationMass(float airMass, float airPressure, float airVapor, float3 wind, float waterTemperature, float maxMass)
+	{
+		// evap formula from here:
+		// https://www.engineeringtoolbox.com/evaporation-water-surface-d_690.html
+		// NOTE: I've made adjustments to this because my finite differencing sometimes means that the water surface and air temperature are a bit out of sync
+		// so i'm using the air temperature instead of the water temperature, which means the the formula just reduces to (1-RH)*WindCoefficient
+		float evaporationCoefficient = (25 + 19 * math.length(wind));
+		return math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(airMass, waterTemperature, airPressure) - airVapor) / airMass, 0, maxMass);
 	}
 
 	//	[BurstCompile]

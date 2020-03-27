@@ -37,13 +37,15 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> PrecipitationTemperature;
 	[ReadOnly] public NativeArray<float> WaterFrozen;
 	[ReadOnly] public NativeArray<float> SaltPlume;
+	[ReadOnly] public NativeArray<float> FloraRespirationWater;
+	[ReadOnly] public NativeArray<float> FloraTemperature;
 	public void Execute(int i)
 	{
 		float precipitationTemperature = PrecipitationTemperature[i];
 		float rainMass = precipitationTemperature > WorldData.FreezingTemperature ? Precipitation[i] : 0;
 
 		float waterMass = WaterMass[i];
-		float newMass = waterMass + IceMelted[i] + rainMass - Evaporation[i] - WaterFrozen[i];
+		float newMass = waterMass + IceMelted[i] + rainMass - Evaporation[i] - WaterFrozen[i] + FloraRespirationWater[i];
 		WaterMass[i] = newMass;
 		SaltMass[i] -= SaltPlume[i];
 
@@ -54,12 +56,14 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		else
 		{
 			float remainingWater = waterMass - Evaporation[i] - WaterFrozen[i];
-			float newTemperature = 				
-				+ precipitationTemperature * rainMass * WorldData.SpecificHeatWater
-				+ WorldData.FreezingTemperature * IceMelted[i] * WorldData.SpecificHeatWater;
-			float divisor =
-				+ rainMass * WorldData.SpecificHeatWater
-				+ IceMelted[i] * WorldData.SpecificHeatWater;
+			float newTemperature = WorldData.SpecificHeatWater * (
+				+ precipitationTemperature * rainMass
+				+ WorldData.FreezingTemperature * IceMelted[i]
+				+ FloraTemperature[i] * FloraRespirationWater[i]);
+			float divisor = WorldData.SpecificHeatWater * (
+				+ rainMass
+				+ IceMelted[i]
+				+ FloraRespirationWater[i]);
 			if (remainingWater > 0)
 			{
 				newTemperature += WaterTemperature[i] * (SaltMass[i] * WorldData.SpecificHeatSalt + remainingWater * WorldData.SpecificHeatWater);
@@ -184,12 +188,16 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
 	public NativeArray<float> VaporMass;
 	public NativeArray<float> DustMass;
+	public NativeArray<float> CarbonDioxide;
+	public NativeArray<float> Oxygen;
 	[ReadOnly] public NativeArray<float> EvaporationWater;
 	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotentialWater;
 	[ReadOnly] public NativeArray<float> EvaporationFlora;
 	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotentialFlora;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> DustEjected;
+	[ReadOnly] public NativeArray<float> CarbonDioxideDelta;
+	[ReadOnly] public NativeArray<float> OxygenDelta;
 	public void Execute(int i)
 	{
 		float vaporMass = VaporMass[i];
@@ -203,6 +211,8 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
+		CarbonDioxide[i] += CarbonDioxideDelta[i];
+		Oxygen[i] += OxygenDelta[i];
 	}
 }
 
@@ -296,16 +306,21 @@ public struct UpdateTerrainJob : IJobParallelFor {
 public struct UpdateFloraJob : IJobParallelFor {
 	public NativeArray<float> FloraMass;
 	public NativeArray<float> FloraWater;
+	public NativeArray<float> FloraGlucose;
 
+	[ReadOnly] public NativeArray<float> FloraGlucoseDelta;
 	[ReadOnly] public NativeArray<float> FloraMassDelta;
-	[ReadOnly] public NativeArray<float> EvaporationMass;
-	[ReadOnly] public NativeArray<float> LastMass;
-	[ReadOnly] public NativeArray<float> LastWater;
+	[ReadOnly] public NativeArray<float> RespirationMassVapor;
+	[ReadOnly] public NativeArray<float> RespirationMassWater;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
+	[ReadOnly] public NativeArray<float> LastMass;
+	[ReadOnly] public NativeArray<float> LastGlucose;
+	[ReadOnly] public NativeArray<float> LastWater;
 	public void Execute(int i)
 	{
 		FloraMass[i] = math.max(0, LastMass[i] + FloraMassDelta[i]);
-		FloraWater[i] = math.max(0, LastWater[i] - EvaporationMass[i] + GroundWaterConsumed[i]);
+		FloraGlucose[i] = math.max(0, LastGlucose[i] + FloraGlucoseDelta[i]);
+		FloraWater[i] = math.max(0, LastWater[i] - RespirationMassVapor[i] - RespirationMassWater[i] + GroundWaterConsumed[i]);
 	}
 
 }

@@ -2036,10 +2036,11 @@ MonoBehaviour:
     FloraDeathRateCrowding: 0
     FloraDeathRateTemperature: 0
     FloraDeathRateAge: 0
-    FloraEvaporationRate: 0
     FloraWaterConsumptionRate: 0
     FloraGrowthTemperatureRangeInverse: 0
     FloraAirSurfaceArea: 0
+    SolarRadiationConsumedByPhotosynthesis: 0
+    FloraEnergyForPhotosynthesis: 0
     LavaCrystalizationTemperature: 0
     MagmaTemperature: 0
     CrustDepthForEruption: 0

@@ -73,10 +73,13 @@ public class WorldSim {
 	private NativeArray<float> saltPlume;
 	private NativeArray<float> evaporationMassWater;
 	private NativeArray<float> evaporationTemperaturePotentialWater;
-	private NativeArray<float> evaporationMassFlora;
-	private NativeArray<float> evaporationTemperaturePotentialFlora;
+	private NativeArray<float> floraRespirationMassVapor;
+	private NativeArray<float> floraRespirationMassWater;
+	private NativeArray<float> temperaturePotentialFlora;
 	private NativeArray<float> groundWaterConsumed;
 	private NativeArray<float> floraMassDelta;
+	private NativeArray<float> floraWaterDelta;
+	private NativeArray<float> floraGlucoseDelta;
 	private NativeArray<float> geothermalRadiation;
 	private NativeArray<float> groundWaterFlowMass;
 	private NativeArray<float> groundWaterFlowTemperature;
@@ -87,6 +90,8 @@ public class WorldSim {
 	private NativeArray<float> lavaEjected;
 	private NativeArray<float> dustEjected;
 	private NativeArray<float> crustDelta;
+	private NativeArray<float> carbonDioxideDelta;
+	private NativeArray<float> oxygenDelta;
 	private NativeArray<float>[] divergenceAir;
 
 	private NativeArray<float> displaySolarRadiation;
@@ -162,10 +167,13 @@ public class WorldSim {
 		saltPlume = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		evaporationMassWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		evaporationTemperaturePotentialWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		evaporationMassFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		evaporationTemperaturePotentialFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		floraRespirationMassVapor = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		floraRespirationMassWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		temperaturePotentialFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		groundWaterConsumed = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraMassDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		floraWaterDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		floraGlucoseDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterFriction = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		diffusionCloud = new NativeArray<DiffusionCloud>(_cellCount, Allocator.Persistent);
@@ -193,6 +201,8 @@ public class WorldSim {
 		lavaEjected = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		dustEjected = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		crustDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		carbonDioxideDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		oxygenDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
 
 	}
 
@@ -233,10 +243,13 @@ public class WorldSim {
 		saltPlume.Dispose();
 		evaporationMassWater.Dispose();
 		evaporationTemperaturePotentialWater.Dispose();
-		evaporationMassFlora.Dispose();
-		evaporationTemperaturePotentialFlora.Dispose();
+		floraRespirationMassVapor.Dispose();
+		floraRespirationMassWater.Dispose();
+		temperaturePotentialFlora.Dispose();
 		groundWaterConsumed.Dispose();
 		floraMassDelta.Dispose();
+		floraWaterDelta.Dispose();
+		floraGlucoseDelta.Dispose();
 		windFriction.Dispose();
 		waterFriction.Dispose();
 		diffusionCloud.Dispose();
@@ -263,6 +276,8 @@ public class WorldSim {
 		lavaEjected.Dispose();
 		dustEjected.Dispose();
 		crustDelta.Dispose();
+		carbonDioxideDelta.Dispose();
+		oxygenDelta.Dispose();
 
 		displaySolarRadiation.Dispose();
 
@@ -1091,10 +1106,10 @@ public class WorldSim {
 			energyJobHandles[_floraLayer] = SimJob.Schedule(new EnergyFloraJob()
 			{
 				FloraTemperature = nextState.FloraTemperature,
+
 				LastTemperature = lastState.FloraTemperature,
 				FloraMass = lastState.FloraMass,
 				FloraWater = lastState.FloraWater,
-				SolarRadiationIn = solarRadiationIn[_floraLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_floraLayer],
 				ConductionEnergyAir = conductionAirFlora,
 				ConductionEnergyTerrain = conductionFloraTerrain,
@@ -1308,13 +1323,20 @@ public class WorldSim {
 			{
 				LatentHeatAir = latentHeat[_airLayer0 + 1],
 				LatentHeatFlora = latentHeat[_floraLayer],
-				EvaporatedWaterMass = evaporationMassFlora,
-				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotentialFlora,
+				EvaporatedWaterMass = floraRespirationMassVapor,
+				SurfaceWaterDelta = floraRespirationMassWater,
+				TemperaturePotential = temperaturePotentialFlora,
 				GroundWaterConsumed = groundWaterConsumed,
 				FloraMassDelta = floraMassDelta,
+				FloraWaterDelta = floraWaterDelta,
+				FloraGlucoseDelta = floraGlucoseDelta,
+				CarbonDioxideDelta = carbonDioxideDelta,
+				OxygenDelta = oxygenDelta,
 
+				SolarRadiationIn = solarRadiationIn[_floraLayer],
 				FloraTemperature = nextState.FloraTemperature,
 				FloraMass = lastState.FloraMass,
+				FloraGlucose = lastState.FloraGlucose,
 				FloraWater = lastState.FloraWater,
 				LayerElevation = dependent.LayerElevation[1],
 				SurfaceWind = lastState.AirVelocity[1],
@@ -1324,7 +1346,6 @@ public class WorldSim {
 				SoilFertility = lastState.SoilFertility,
 				GroundWater = lastState.GroundWater,
 				GroundWaterMax = worldData.GroundWaterMax,
-				FloraEvaporationRate = worldData.FloraEvaporationRate,
 				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate,
 				FloraGrowthRate = worldData.FloraGrowthRate,
 				FloraDeathRateAge = worldData.FloraDeathRateAge,
@@ -1332,7 +1353,8 @@ public class WorldSim {
 				FloraDeathRateWater = worldData.FloraDeathRateWater,
 				FloraDeathRateCrowding = worldData.FloraDeathRateCrowding,
 				FloraMax = worldData.FloraMax,
-				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse
+				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse,
+				FloraEnergyForPhotosynthesis = worldData.FloraEnergyForPhotosynthesis
 			}, fluxJobHandles[_waterLayer0 + _surfaceWaterLayer]);
 
 			fluxJobHandles[_iceLayer] = SimJob.Schedule(new FluxIceJob()
@@ -1429,6 +1451,8 @@ public class WorldSim {
 				IceMelted = iceMeltedMass,
 				Precipitation = precipitationMass,
 				PrecipitationTemperature = precipitationTemperature,
+				FloraRespirationWater = floraRespirationMassWater,
+				FloraTemperature = lastState.FloraTemperature,
 				WaterFrozen = frozenMass,
 			}, surfaceWaterMassHandle);
 
@@ -1482,13 +1506,17 @@ public class WorldSim {
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				VaporMass = nextState.AirVapor[1],
 				DustMass = nextState.Dust[1],
+				CarbonDioxide = nextState.AirCarbonDioxide[1],
+				Oxygen = nextState.AirOxygen[1],
 
 				AirMass = dependent.AirMass[1],
 				EvaporationWater = evaporationMassWater,
 				EvaporationTemperaturePotentialWater = evaporationTemperaturePotentialWater,
-				EvaporationFlora = evaporationMassFlora,
-				EvaporationTemperaturePotentialFlora = evaporationTemperaturePotentialFlora,
+				EvaporationFlora = floraRespirationMassVapor,
+				EvaporationTemperaturePotentialFlora = temperaturePotentialFlora,
 				DustEjected = dustEjected,
+				CarbonDioxideDelta = carbonDioxideDelta,
+				OxygenDelta = oxygenDelta,
 			}, JobHandle.CombineDependencies(updateMassAirJobHandles[1], surfaceWaterMassHandle));
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateMassEvaporationHandle);
 
@@ -1540,10 +1568,14 @@ public class WorldSim {
 			{
 				FloraMass = nextState.FloraMass,
 				FloraWater = nextState.FloraWater,
-				FloraMassDelta = floraMassDelta,
+				FloraGlucose = nextState.FloraGlucose,
 
-				EvaporationMass = evaporationMassFlora,
+				FloraGlucoseDelta = floraGlucoseDelta,
+				FloraMassDelta = floraMassDelta,
+				RespirationMassVapor = floraRespirationMassVapor,
+				RespirationMassWater = floraRespirationMassWater,
 				LastMass = lastState.FloraMass,
+				LastGlucose = lastState.FloraGlucose,
 				LastWater = lastState.FloraWater,
 				GroundWaterConsumed = groundWaterConsumed
 			}));
@@ -2295,7 +2327,7 @@ public class WorldSim {
 					SolarRadiationInIce = solarRadiationIn[_iceLayer],
 					SolarRadiationInWaterSurface = solarRadiationIn[_waterLayer0 + _surfaceWaterLayer],
 					EvaporationWater = evaporationMassWater,
-					EvaporationFlora = evaporationMassFlora,
+					EvaporationFlora = floraRespirationMassVapor,
 					Precipitation = precipitationMass,
 					SoilFertility = nextState.SoilFertility,
 					TerrainTemperature = nextState.TerrainTemperature,
@@ -2369,7 +2401,7 @@ public class WorldSim {
 						}
 						display.EnergySurfaceConduction += conductionAirIce[i] + conductionAirTerrain[i] + conductionAirWater[i];
 						display.EnergyOceanConduction += conductionAirWater[i];
-						display.EnergyEvapotranspiration += (evaporationMassWater[i] + evaporationMassFlora[i]) * WorldData.LatentHeatWaterVapor;
+						display.EnergyEvapotranspiration += (evaporationMassWater[i] + floraRespirationMassVapor[i]) * WorldData.LatentHeatWaterVapor;
 						display.EnergyThermalBackRadiation += windowRadiationTransmittedDown[_airLayer0 + 1][i] + thermalRadiationTransmittedDown[_airLayer0 + 1][i];
 						display.EnergyThermalOceanRadiation += (windowRadiationTransmittedUp[_waterLayer0 + _surfaceWaterLayer][i] + thermalRadiationTransmittedUp[_waterLayer0 + _surfaceWaterLayer][i]) * dependent.WaterCoverage[_surfaceWaterLayer][i];
 
