@@ -47,9 +47,7 @@ public struct UpdateDisplayJob : IJobParallelFor {
 	}
 }
 
-#if !InitDisplayJobDebug
 [BurstCompile]
-#endif
 public struct InitDisplayAirLayerJob : IJobParallelFor {
 	public NativeArray<float> DisplayPressure;
 	public NativeArray<float3> DisplayPressureGradientForce;
@@ -58,6 +56,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	public NativeArray<float> Enthalpy;
 	public NativeArray<float> WindVertical;
 	public NativeArray<float> DustCoverage;
+	public NativeArray<float> CarbonDioxidePercent;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> LayerMiddle;
@@ -67,6 +66,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> DustMass;
+	[ReadOnly] public NativeArray<float> CarbonDioxide;
 	[ReadOnly] public NativeArray<BarycentricValueVertical> AdvectionDestination;
 	[ReadOnly] public float Gravity;
 	public void Execute(int i)
@@ -76,6 +76,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 		DisplayCondensationGround[i] += CondensationCloud[i];
 		DisplayCondensationCloud[i] += CondensationGround[i];
 		DustCoverage[i] += DustMass[i];
+		CarbonDioxidePercent[i] += CarbonDioxide[i] / AirMass[i];
 		if (AirMass[i] > 0)
 		{
 			Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]) + VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);

@@ -11,6 +11,7 @@
 	"OrbitTime": 8760,
 	"TroposphereMass": 7749,
 	"AtmosphereMass": 5260000000000000000,
+	"CarbonDioxide": 0.001,
 	"MinTemperature": 253,
 	"MaxTemperature": 308,
 	"MaxSalinity": 0.004,

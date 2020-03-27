@@ -28,7 +28,6 @@ public static class WorldGen {
 		state.PlanetState.AngularSpeed = math.PI * 2 / (worldGenData.SpinTime * 60 * 60);
 		state.PlanetState.GeothermalHeat = worldGenData.GeothermalHeat;
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
-		state.PlanetState.CarbonDioxide = worldGenData.CarbonDioxide;
 
 		dependent.Init(staticState.Count, worldData.AirLayers, worldData.WaterLayers);
 	}
@@ -238,17 +237,20 @@ public static class WorldGen {
 	private struct WorldGenWaterVaporJob : IJobParallelFor {
 
 		public NativeArray<float> AirVapor;
+		public NativeArray<float> CarbonDioxide;
 
 		[ReadOnly] public NativeArray<float> AirMass;
 		[ReadOnly] public NativeArray<float> Pressure;
 		[ReadOnly] public NativeArray<float> LayerMiddle;
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 		[ReadOnly] public NativeArray<float> RelativeHumidity;
+		[ReadOnly] public float CarbonDioxidePPM;
 		public void Execute(int i)
 		{
 			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * LayerMiddle[i];
 			float airVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, Pressure[i]) * RelativeHumidity[i];
 			AirVapor[i] = airVapor;
+			CarbonDioxide[i] = AirMass[i] * CarbonDioxidePPM;
 		}
 	}
 
@@ -449,13 +451,14 @@ public static class WorldGen {
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterVaporJob()
 			{
 				AirVapor = state.AirVapor[i],
-
+				CarbonDioxide = state.AirCarbonDioxide[i],
 
 				AirMass = dependent.AirMass[i],
 				Pressure = dependent.AirPressure[i],
 				LayerMiddle = dependent.LayerMiddle[i],
 				TemperaturePotential = temperaturePotential,
 				RelativeHumidity = RelativeHumidity,
+				CarbonDioxidePPM = worldGenData.CarbonDioxide,
 			}, worldGenJobHandle);
 		}
 

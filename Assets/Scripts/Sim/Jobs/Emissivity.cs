@@ -12,14 +12,14 @@ public struct EmissivityAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> Dust;
-	[ReadOnly] public float CarbonDioxide;
+	[ReadOnly] public NativeArray<float> CarbonDioxide;
 	[ReadOnly] public float EmissivityAir;
 	[ReadOnly] public float EmissivityWaterVapor;
 	[ReadOnly] public float EmissivityDust;
 	[ReadOnly] public float EmissivityCarbonDioxide;
 	public void Execute(int i)
 	{
-		Emissivity[i] = (AirMass[i] * ((1.0f - CarbonDioxide) * EmissivityAir + CarbonDioxide * EmissivityCarbonDioxide) + VaporMass[i] * EmissivityWaterVapor + Dust[i] * EmissivityDust) / (AirMass[i] + VaporMass[i] + Dust[i]);
+		Emissivity[i] = (AirMass[i] * EmissivityAir + CarbonDioxide[i] * EmissivityCarbonDioxide + VaporMass[i] * EmissivityWaterVapor + Dust[i] * EmissivityDust) / (AirMass[i] + CarbonDioxide[i] + VaporMass[i] + Dust[i]);
 	}
 }
 
@@ -85,23 +85,20 @@ public struct CloudAlbedoJob : IJobParallelFor {
 
 
 
-#if !SolarAbsorptivityAirJobDebug
 [BurstCompile]
-#endif
 public struct AbsorptivityAirJob : IJobParallelFor {
 	public NativeArray<SolarAbsorptivity> AbsorptivitySolar;
 	public NativeArray<ThermalAbsorptivity> AbsorptivityThermal;
-	[ReadOnly] public NativeArray<float> EmissivityAir;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> Dust;
 	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> AirCarbonDioxide;
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudAlbedo;
 	[ReadOnly] public NativeArray<float> CloudAbsorptivity;
-	[ReadOnly] public float CarbonDioxide;
 	[ReadOnly] public float AlbedoAir;
 	[ReadOnly] public float AlbedoWaterVapor;
 	[ReadOnly] public float AlbedoDust;
@@ -110,9 +107,9 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 	[ReadOnly] public float SolarAbsorptivityDust;
 	[ReadOnly] public float ThermalAbsorptivityCloud;
 	[ReadOnly] public float ThermalAbsorptivityAir;
+	[ReadOnly] public float ThermalAbsorptivityCarbonDioxide;
 	[ReadOnly] public float ThermalAbsorptivityWaterVapor;
 	[ReadOnly] public float ThermalAbsorptivityDust;
-	[ReadOnly] public float EmissivityCloud;
 	public void Execute(int i)
 	{
 		float cloudMass = CloudMass[i];
@@ -128,16 +125,16 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 		{
 			if (cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight)
 			{
-				thermalAbsorptivityCloud = EmissivityCloud * math.saturate(1.0f - math.exp10(-ThermalAbsorptivityCloud * cloudMass));
+				thermalAbsorptivityCloud = math.saturate(1.0f - math.exp10(-ThermalAbsorptivityCloud * cloudMass));
 				solarAbsorptivityCloud = CloudAbsorptivity[i] * (1.0f - CloudAlbedo[i]);
 				albedoCloud = CloudAbsorptivity[i] * CloudAlbedo[i];
 			}
 		}
 
 		// TODO: this should calculate the chance of hitting and interacting with each consituent, then combine to build an albedo/absorptivity profile
-		float fullAbsorptivity = AirMass[i] * ThermalAbsorptivityAir + VaporMass[i] * ThermalAbsorptivityWaterVapor + Dust[i] * ThermalAbsorptivityDust;
-		float thermalAbsorptivityAirAbove = EmissivityAir[i] * math.saturate(1.0f - math.exp10(-fullAbsorptivity * (1.0f - belowCloud)));
-		float thermalAbsorptivityAirBelow = EmissivityAir[i] * math.saturate(1.0f - math.exp10(-fullAbsorptivity * belowCloud));
+		float fullAbsorptivity = AirMass[i] * ThermalAbsorptivityAir + VaporMass[i] * ThermalAbsorptivityWaterVapor + Dust[i] * ThermalAbsorptivityDust + AirCarbonDioxide[i] * ThermalAbsorptivityCarbonDioxide;
+		float thermalAbsorptivityAirAbove = math.saturate(1.0f - math.exp10(-fullAbsorptivity * (1.0f - belowCloud)));
+		float thermalAbsorptivityAirBelow = math.saturate(1.0f - math.exp10(-fullAbsorptivity * belowCloud));
 		float solarAbsorptivityMass = SolarAbsorptivityAir * AirMass[i] + SolarAbsorptivityWaterVapor * VaporMass[i] + SolarAbsorptivityDust * Dust[i];
 		float solarAbsorptivityAbove = math.saturate(1.0f - math.exp10(-(solarAbsorptivityMass) * (1.0f - belowCloud)));
 		float solarAbsorptivityBelow = math.saturate(1.0f - math.exp10(-(solarAbsorptivityMass) * belowCloud));

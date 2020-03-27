@@ -37,5 +37,4 @@ public class WorldGenData {
 	public float MagmaMax;
 	public float CrustMin;
 	public float CrustMax;
-
 }

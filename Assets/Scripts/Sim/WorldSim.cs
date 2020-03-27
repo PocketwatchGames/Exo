@@ -361,7 +361,7 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					Dust = lastState.Dust[j],
-					CarbonDioxide = lastState.PlanetState.CarbonDioxide,
+					CarbonDioxide = lastState.AirCarbonDioxide[j],
 					EmissivityAir = worldData.ThermalEmissivityAir,
 					EmissivityWaterVapor = worldData.ThermalEmissivityWaterVapor,
 					EmissivityDust = worldData.ThermalEmissivityDust,
@@ -531,7 +531,6 @@ public class WorldSim {
 				{
 					AbsorptivitySolar = absorptivitySolar[j],
 					AbsorptivityThermal = absorptivityThermal[j],
-					EmissivityAir = emissivity[_airLayer0 + j],
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					Dust = lastState.Dust[j],
@@ -541,7 +540,7 @@ public class WorldSim {
 					CloudElevation = dependent.CloudElevation,
 					LayerElevation = dependent.LayerElevation[j],
 					LayerHeight = dependent.LayerHeight[j],
-					CarbonDioxide = lastState.PlanetState.CarbonDioxide,
+					AirCarbonDioxide = lastState.AirCarbonDioxide[j],
 					AlbedoAir = worldData.AlbedoAir,
 					AlbedoWaterVapor = worldData.AlbedoWaterVapor,
 					AlbedoDust = worldData.AlbedoDust,
@@ -550,10 +549,10 @@ public class WorldSim {
 					SolarAbsorptivityDust = worldData.SolarAbsorptivityDust,
 					ThermalAbsorptivityAir = worldData.ThermalAbsorptivityAir,
 					ThermalAbsorptivityWaterVapor = worldData.ThermalAbsorptivityWaterVapor,
+					ThermalAbsorptivityCarbonDioxide = worldData.ThermalAbsorptivityCarbonDioxide,
 					ThermalAbsorptivityDust = worldData.ThermalAbsorptivityDust,
 					ThermalAbsorptivityCloud = worldData.ThermalAbsorptivityCloud,
-					EmissivityCloud = worldData.ThermalEmissivityWater,
-				}, JobHandle.CombineDependencies(cloudAlbedoJobHandle, emissivityJobHandles[_airLayer0 + j]));
+				}, cloudAlbedoJobHandle);
 			}
 
 			#endregion
@@ -1449,6 +1448,7 @@ public class WorldSim {
 				{
 					VaporMass = nextState.AirVapor[j],
 					DustMass = nextState.Dust[j],
+					CarbonDioxideMass = nextState.AirCarbonDioxide[j],
 					CloudMass = nextState.CloudMass,
 					CloudDropletMass = nextState.CloudDropletMass,
 
@@ -1460,6 +1460,7 @@ public class WorldSim {
 					GroundCondensation = condensationGroundMass[j],
 					LastVaporMass = lastState.AirVapor[j],
 					LastDustMass = lastState.Dust[j],
+					LastCarbonDioxideMass = lastState.AirCarbonDioxide[j],
 					DustUp = dustUp[j],
 					DustDown = dustDown[j],
 					DustFromAbove = dustDown[j + 1],
@@ -1875,6 +1876,9 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[j],
 					VaporAbove = nextState.AirVapor[j + 1],
 					VaporBelow = nextState.AirVapor[j - 1],
+					CarbonDioxide = nextState.AirCarbonDioxide[j],
+					CarbonDioxideAbove = nextState.AirCarbonDioxide[j + 1],
+					CarbonDioxideBelow = nextState.AirCarbonDioxide[j - 1],
 					Dust = nextState.Dust[j],
 					DustAbove = nextState.Dust[j + 1],
 					DustBelow = nextState.Dust[j - 1],
@@ -1998,6 +2002,7 @@ public class WorldSim {
 					Advection = advectionAir[i],
 					Vapor = nextState.AirVapor[i],
 					Dust = nextState.Dust[i],
+					CarbonDioxide = nextState.AirCarbonDioxide[i],
 					Temperature = nextState.AirTemperaturePotential[i],
 					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies( advectionJobHandles[i+_airLayer0], advectionJobHandles[i + _airLayer0 - 1], advectionJobHandles[i + _airLayer0 + 1])));
@@ -2021,6 +2026,7 @@ public class WorldSim {
 
 					LastTemperature = nextState.AirTemperaturePotential[j],
 					LastVapor = nextState.AirVapor[j],
+					LastCarbonDioxide = nextState.AirCarbonDioxide[j],
 					LastDust = nextState.Dust[j],
 					LastVelocity = nextState.AirVelocity[j],
 					Neighbors = staticState.Neighbors,
@@ -2029,6 +2035,7 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					UpTemperature = nextState.AirTemperaturePotential[j + 1],
 					UpVapor = nextState.AirVapor[j + 1],
+					UpCarbonDioxide = nextState.AirCarbonDioxide[j + 1],
 					UpDust = nextState.Dust[j + 1],
 					UpAirVelocity = nextState.AirVelocity[j + 1],
 					UpAirMass = dependent.AirMass[j + 1],
@@ -2036,6 +2043,7 @@ public class WorldSim {
 					UpLayerHeight = dependent.LayerHeight[j + 1],
 					DownTemperature = nextState.AirTemperaturePotential[j - 1],
 					DownVapor = nextState.AirVapor[j - 1],
+					DownCarbonDioxide = nextState.AirCarbonDioxide[j - 1],
 					DownDust = nextState.Dust[j - 1],
 					DownAirVelocity = nextState.AirVelocity[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
@@ -2125,6 +2133,7 @@ public class WorldSim {
 					Advection = diffusionAir[i],
 					Vapor = nextState.AirVapor[i],
 					Dust = nextState.Dust[i],
+					CarbonDioxide = nextState.AirCarbonDioxide[i],
 					Temperature = nextState.AirTemperaturePotential[i],
 					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
@@ -2211,7 +2220,7 @@ public class WorldSim {
 					absorptivitySolar[i].CopyTo(display.AbsorptionSolar[i]);
 					absorptivityThermal[i].CopyTo(display.AbsorptionThermal[i]);
 
-					initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, (new InitDisplayAirLayerJob()
+					initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, (SimJob.Schedule(new InitDisplayAirLayerJob()
 					{
 						DisplayPressure = display.Pressure[i],
 						DisplayPressureGradientForce = display.PressureGradientForce[i],
@@ -2220,7 +2229,9 @@ public class WorldSim {
 						Enthalpy = display.EnthalpyAir[i],
 						WindVertical = display.WindVertical[i],
 						DustCoverage = display.DustMass,
+						CarbonDioxidePercent = display.CarbonDioxidePercent[i],
 
+						CarbonDioxide = curState.AirCarbonDioxide[i],
 						Gravity = curState.PlanetState.Gravity,
 						AirTemperaturePotential = curState.AirTemperaturePotential[i],
 						AirPressure = dependent.AirPressure[i],
@@ -2232,12 +2243,12 @@ public class WorldSim {
 						VaporMass = nextState.AirVapor[i],
 						DustMass = nextState.Dust[i],
 						AdvectionDestination = destinationAir[i],
-					}).Schedule(_cellCount, _batchCount, initDisplayAirHandle));
+					}, initDisplayAirHandle)));
 				}
 
 				for (int i = 1; i < _waterLayers - 1; i++)
 				{
-					initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, (new InitDisplayWaterLayerJob()
+					initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, (SimJob.Schedule(new InitDisplayWaterLayerJob()
 					{
 						Enthalpy = display.EnthalpyWater[i],
 						Salinity = display.Salinity[i],
@@ -2245,7 +2256,7 @@ public class WorldSim {
 						WaterTemperature = curState.WaterTemperature[i],
 						SaltMass = curState.SaltMass[i],
 						WaterMass = curState.WaterMass[i],
-					}).Schedule(_cellCount, _batchCount, initDisplayWaterHandle));
+					}, initDisplayWaterHandle)));
 				}
 				for (int i = 0; i < _layerCount; i++)
 				{
@@ -2253,7 +2264,7 @@ public class WorldSim {
 					thermalRadiationDelta[i].CopyTo(display.ThermalDelta[i]);
 				}
 
-				var updateDisplayJob = new UpdateDisplayJob()
+				var updateDisplayJobHandle = SimJob.Schedule(new UpdateDisplayJob()
 				{
 					SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
 					DisplayEvaporation = display.Evaporation,
@@ -2281,8 +2292,7 @@ public class WorldSim {
 					IceTemperature = nextState.IceTemperature, 
 					GroundWaterMass = nextState.GroundWater,
 					GroundWaterTemperature = nextState.GroundWaterTemperature
-				};
-				var updateDisplayJobHandle = updateDisplayJob.Schedule(_cellCount, _batchCount);
+				});
 				var displayHandles = JobHandle.CombineDependencies(initDisplayAirHandle, initDisplayWaterHandle, updateDisplayJobHandle);
 				displayHandles.Complete();
 
@@ -2323,6 +2333,7 @@ public class WorldSim {
 							display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
 							display.GlobalEnthalpyAir += display.EnthalpyAir[j][i];
 							display.GlobalCloudCoverage += math.min(1, absorptivitySolar[j][i].AbsorptivityCloud * 100);
+							display.GlobalCarbonDioxide += curState.AirCarbonDioxide[j][i];
 						}
 						display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
 						display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
@@ -2354,6 +2365,7 @@ public class WorldSim {
 						display.EnergyThermalSurfaceRadiation += surfaceRadiation;
 
 					}
+					display.GlobalAirMass += globalAirMass;
 					display.GlobalAirTemperaturePotential = globalAirTemperature / (globalAirMass + display.GlobalWaterVapor);
 					display.GlobalOceanSurfaceTemperature /= globalWaterSurfaceMass;
 					display.GlobalOceanTemperature /= globalWaterMass;
