@@ -18,7 +18,7 @@
 	"MinSalinity": 0.003,
 	"NumPlates": 12,
 	"CarbonDioxide": 0.001,
-	"Oxygen": 0.2,
+	"Oxygen": 0.21,
 	"SolarRadiation": 1.367,
 	"GeothermalHeat": 0.00006,
 	"Gravity": 9.80665,

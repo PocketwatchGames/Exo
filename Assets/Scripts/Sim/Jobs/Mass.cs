@@ -124,13 +124,11 @@ public struct UpdateMassCloudJob : IJobParallelFor {
 public struct UpdateMassAirJob : IJobParallelFor {
 	public NativeArray<float> VaporMass;
 	public NativeArray<float> CarbonDioxideMass;
-	public NativeArray<float> OxygenMass;
 	public NativeArray<float> DustMass;
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> LastVaporMass;
 	[ReadOnly] public NativeArray<float> LastCarbonDioxideMass;
-	[ReadOnly] public NativeArray<float> LastOxygenMass;
 	[ReadOnly] public NativeArray<float> LastDustMass;
 	[ReadOnly] public NativeArray<float> CloudEvaporation;
 	[ReadOnly] public NativeArray<float> CloudElevation;
@@ -157,7 +155,6 @@ public struct UpdateMassAirJob : IJobParallelFor {
 		float newCloudMass = cloudMass + CloudCondensation[i];
 		float newDustMass = LastDustMass[i] + DustFromAbove[i] + DustFromBelow[i] - DustDown[i];
 		float newCarbonDioxide = LastCarbonDioxideMass[i];
-		float newOxygen = LastOxygenMass[i];
 		if (!IsTop)
 		{
 			newDustMass -= DustUp[i];
@@ -179,7 +176,6 @@ public struct UpdateMassAirJob : IJobParallelFor {
 		VaporMass[i] = newVaporMass;
 		DustMass[i] = newDustMass;
 		CarbonDioxideMass[i] = newCarbonDioxide;
-		OxygenMass[i] = newOxygen;
 	}
 }
 
@@ -189,7 +185,6 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 	public NativeArray<float> VaporMass;
 	public NativeArray<float> DustMass;
 	public NativeArray<float> CarbonDioxide;
-	public NativeArray<float> Oxygen;
 	[ReadOnly] public NativeArray<float> EvaporationWater;
 	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotentialWater;
 	[ReadOnly] public NativeArray<float> EvaporationFlora;
@@ -197,7 +192,6 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> DustEjected;
 	[ReadOnly] public NativeArray<float> CarbonDioxideDelta;
-	[ReadOnly] public NativeArray<float> OxygenDelta;
 	public void Execute(int i)
 	{
 		float vaporMass = VaporMass[i];
@@ -212,7 +206,6 @@ public struct UpdateMassEvaporationJob : IJobParallelFor {
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
 		CarbonDioxide[i] += CarbonDioxideDelta[i];
-		Oxygen[i] += OxygenDelta[i];
 	}
 }
 
@@ -310,9 +303,7 @@ public struct UpdateFloraJob : IJobParallelFor {
 
 	[ReadOnly] public NativeArray<float> FloraGlucoseDelta;
 	[ReadOnly] public NativeArray<float> FloraMassDelta;
-	[ReadOnly] public NativeArray<float> RespirationMassVapor;
-	[ReadOnly] public NativeArray<float> RespirationMassWater;
-	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
+	[ReadOnly] public NativeArray<float> FloraWaterDelta;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastGlucose;
 	[ReadOnly] public NativeArray<float> LastWater;
@@ -320,7 +311,7 @@ public struct UpdateFloraJob : IJobParallelFor {
 	{
 		FloraMass[i] = math.max(0, LastMass[i] + FloraMassDelta[i]);
 		FloraGlucose[i] = math.max(0, LastGlucose[i] + FloraGlucoseDelta[i]);
-		FloraWater[i] = math.max(0, LastWater[i] - RespirationMassVapor[i] - RespirationMassWater[i] + GroundWaterConsumed[i]);
+		FloraWater[i] = math.max(0, LastWater[i] + FloraWaterDelta[i]);
 	}
 
 }

@@ -21,9 +21,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CarbonDioxide;
 	[ReadOnly] public NativeArray<float> CarbonDioxideAbove;
 	[ReadOnly] public NativeArray<float> CarbonDioxideBelow;
-	[ReadOnly] public NativeArray<float> Oxygen;
-	[ReadOnly] public NativeArray<float> OxygenAbove;
-	[ReadOnly] public NativeArray<float> OxygenBelow;
 	[ReadOnly] public NativeArray<float> Dust;
 	[ReadOnly] public NativeArray<float> DustAbove;
 	[ReadOnly] public NativeArray<float> DustBelow;
@@ -53,21 +50,18 @@ public struct DiffusionAirJob : IJobParallelFor {
 		float temperature = Temperature[i];
 		float vapor = Vapor[i];
 		float co2 = CarbonDioxide[i];
-		float o2 = Oxygen[i];
 		float dust = Dust[i];
 		float3 velocity = Velocity[i];
 
 		float inverseMass = 1.0f / mass;
 		float vaporPercent = vapor * inverseMass;
 		float co2Percent = co2 * inverseMass;
-		float o2Percent = o2 * inverseMass;
 		float dustPercent = dust * inverseMass;
 
 		float neighborTemperature = temperature;
 		float neighborDust = dust;
 		float neighborVapor = vapor;
 		float neighborCO2 = co2;
-		float neighborO2 = o2;
 		float3 neighborVelocity = velocity;
 
 #if !DISABLE_AIR_DIFFUSION
@@ -87,7 +81,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 					neighborVelocity += (Velocity[n] - velocity) * diffusion;
 					neighborVapor += (Vapor[n] / nMass - vaporPercent) * diffusion * math.min(nMass, mass); // TODO: does this actually have conservation of mass?
 					neighborCO2 += (CarbonDioxide[n] / nMass - co2Percent) * diffusion * math.min(nMass, mass); // TODO: does this actually have conservation of mass?
-					neighborO2 += (Oxygen[n] / nMass - o2Percent) * diffusion * math.min(nMass, mass); // TODO: does this actually have conservation of mass?
 					neighborDust += (Dust[n] / nMass - dustPercent) * diffusion * math.min(nMass, mass);
 				}
 			}
@@ -106,7 +99,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 			neighborTemperature += (TemperatureAbove[i] - temperature) * diffusion;
 			neighborVapor += (VaporAbove[i] / nMass - vaporPercent) * diffusion * math.min(nMass, mass);
 			neighborCO2 += (CarbonDioxideAbove[i] / nMass - co2Percent) * diffusion * math.min(nMass, mass);
-			neighborO2 += (OxygenAbove[i] / nMass - o2Percent) * diffusion * math.min(nMass, mass);
 			neighborDust += (DustAbove[i] / nMass - dustPercent) * diffusion * math.min(nMass, mass);
 		}
 		if (!IsBottom)
@@ -118,7 +110,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 			neighborTemperature += (TemperatureBelow[i] - temperature) * diffusion;
 			neighborVapor += (VaporBelow[i] / nMass - vaporPercent) * diffusion * math.min(nMass, mass);
 			neighborCO2 += (CarbonDioxideBelow[i] / nMass - co2Percent) * diffusion * math.min(nMass, mass);
-			neighborO2 += (OxygenBelow[i] / nMass - o2Percent) * diffusion * math.min(nMass, mass);
 			neighborDust += (DustBelow[i] / nMass - dustPercent) * diffusion * math.min(nMass, mass);
 		}
 
@@ -131,7 +122,6 @@ public struct DiffusionAirJob : IJobParallelFor {
 			Velocity = neighborVelocity,
 			WaterVapor = neighborVapor,
 			CarbonDioxide = neighborCO2,
-			Oxygen = neighborO2,
 			Dust = neighborDust,
 		};
 

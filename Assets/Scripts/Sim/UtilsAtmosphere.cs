@@ -70,9 +70,9 @@ public static class Atmosphere {
 	}
 
 	[BurstCompile]
-	static public float GetAirDensity(float absolutePressure, float temperature, float airMass, float vaporMass)
+	static public float GetAirDensity(float absolutePressure, float absoluteTemperature, float airMass, float vaporMass)
 	{
-		return absolutePressure * GetMolarMassMoistAir(airMass, vaporMass) / (WorldData.UniversalGasConstant * temperature);
+		return absolutePressure * GetMolarMassMoistAir(airMass, vaporMass) / (WorldData.UniversalGasConstant * absoluteTemperature);
 	}
 
 	[BurstCompile]

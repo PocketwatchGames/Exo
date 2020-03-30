@@ -15,7 +15,6 @@ public struct DiffusionAir {
 	public float WaterVapor;
 	public float Dust;
 	public float CarbonDioxide;
-	public float Oxygen;
 	public float3 Velocity;
 }
 public struct DiffusionCloud {
@@ -66,9 +65,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CarbonDioxide;
 	[ReadOnly] public NativeArray<float> CarbonDioxideAbove;
 	[ReadOnly] public NativeArray<float> CarbonDioxideBelow;
-	[ReadOnly] public NativeArray<float> Oxygen;
-	[ReadOnly] public NativeArray<float> OxygenAbove;
-	[ReadOnly] public NativeArray<float> OxygenBelow;
 	[ReadOnly] public NativeArray<float> Dust;
 	[ReadOnly] public NativeArray<float> DustAbove;
 	[ReadOnly] public NativeArray<float> DustBelow;
@@ -86,7 +82,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 		float newTemperature;
 		float newWaterVapor;
 		float newCO2;
-		float newO2;
 		float newDust;
 		float3 newVelocity;
 
@@ -100,7 +95,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 		newTemperature = 0;
 		newWaterVapor = 0;
 		newCO2 = 0;
-		newO2 = 0;
 		newVelocity = 0;
 		newDust = 0;
 
@@ -114,7 +108,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 			newTemperature += Temperature[i] * v;
 			newWaterVapor += Vapor[i] * v;
 			newCO2 += CarbonDioxide[i] * v;
-			newO2 += Oxygen[i] * v;
 			newDust += Dust[i] * v;
 			newVelocity += Velocity[i] * v;
 		}
@@ -144,7 +137,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newTemperature += Temperature[n] * incomingMass;
 				newWaterVapor += Vapor[n] * incoming;
 				newCO2 += CarbonDioxide[n] * incoming;
-				newO2 += Oxygen[n] * incoming;
 				newDust += Dust[n] * incoming;
 
 				// TODO: this is temp
@@ -169,7 +161,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newTemperature += TemperatureAbove[i] * incomingMass;
 				newWaterVapor += VaporAbove[i] * -vertMove.moveVertical;
 				newCO2 += CarbonDioxideAbove[i] * -vertMove.moveVertical;
-				newO2 += OxygenAbove[i] * -vertMove.moveVertical;
 				newDust += DustAbove[i] * -vertMove.moveVertical;
 	//			newVelocity += VelocityAbove[i] * -vertMove.moveVertical;
 			}
@@ -185,7 +176,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newTemperature += TemperatureBelow[i] * incomingMass;
 				newWaterVapor += VaporBelow[i] * vertMove.moveVertical;
 				newCO2 += CarbonDioxideBelow[i] * vertMove.moveVertical;
-				newO2 += OxygenBelow[i] * vertMove.moveVertical;
 				newDust += DustBelow[i] * vertMove.moveVertical;
 	//			newVelocity += VelocityBelow[i] * vertMove.moveVertical;
 			}
@@ -211,7 +201,6 @@ public struct AdvectionAirJob : IJobParallelFor {
 			Temperature = newTemperature,
 			WaterVapor = newWaterVapor,
 			CarbonDioxide = newCO2,
-			Oxygen = newO2,
 			Dust = newDust,
 			Velocity = newVelocity,
 		};
@@ -483,7 +472,6 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 	public NativeArray<float> Vapor;
 	public NativeArray<float> Dust;
 	public NativeArray<float> CarbonDioxide;
-	public NativeArray<float> Oxygen;
 	public NativeArray<float3> AirVelocity;
 	[ReadOnly] public NativeArray<DiffusionAir> Advection;
 	public void Execute(int i)
@@ -492,7 +480,6 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 		Vapor[i] = Advection[i].WaterVapor;
 		Dust[i] = Advection[i].Dust;
 		CarbonDioxide[i] = Advection[i].CarbonDioxide;
-		Oxygen[i] = Advection[i].Oxygen;
 		AirVelocity[i] = Advection[i].Velocity;
 	}
 }

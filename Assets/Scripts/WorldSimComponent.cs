@@ -87,10 +87,8 @@ public class WorldSimComponent : MonoBehaviour
 				WindVertical = _displayState.WindVertical[i],
 				DustCoverage = _displayState.DustMass,
 				CarbonDioxidePercent = _displayState.CarbonDioxidePercent[i],
-				OxygenPercent = _displayState.OxygenPercent[i],
 
 				CarbonDioxide = ActiveSimState.AirCarbonDioxide[i],
-				Oxygen = ActiveSimState.AirOxygen[i],
 				Gravity = ActiveSimState.PlanetState.Gravity,
 				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],
 				AirPressure = DependentState.AirPressure[i],

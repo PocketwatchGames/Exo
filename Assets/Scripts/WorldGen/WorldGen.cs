@@ -1,4 +1,4 @@
-﻿//#define ASYNC_WORLDGEN
+﻿#define ASYNC_WORLDGEN
 
 using System;
 using System.Collections.Generic;
@@ -28,6 +28,7 @@ public static class WorldGen {
 		state.PlanetState.AngularSpeed = math.PI * 2 / (worldGenData.SpinTime * 60 * 60);
 		state.PlanetState.GeothermalHeat = worldGenData.GeothermalHeat;
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
+		state.PlanetState.Oxygen = worldGenData.Oxygen;
 
 		dependent.Init(staticState.Count, worldData.AirLayers, worldData.WaterLayers);
 	}
@@ -48,6 +49,7 @@ public static class WorldGen {
 		public NativeArray<float> Flora;
 		public NativeArray<float> FloraWater;
 		public NativeArray<float> FloraTemperature;
+		public NativeArray<float> FloraGlucose;
 		public NativeArray<float> MagmaMass;
 		public NativeArray<float> CrustDepth;
 		public NativeArray<float> LavaMass;
@@ -115,6 +117,7 @@ public static class WorldGen {
 			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * surfaceElevation;
 			float flora = 0;
 			float floraWater = 0;
+			float floraGlucose = 0;
 			if (elevation > 0)
 			{
 				flora =
@@ -124,6 +127,7 @@ public static class WorldGen {
 					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureFlora) / (MaxTemperatureFlora - MinTemperatureFlora)));
 				floraWater =
 					flora * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 41630);
+				floraGlucose = flora;
 			}
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 2.0f);
 
@@ -152,6 +156,7 @@ public static class WorldGen {
 			Flora[i] = flora;
 			FloraTemperature[i] = airTemperatureSurface;
 			FloraWater[i] = floraWater;
+			FloraGlucose[i] = floraGlucose;
 			Roughness[i] = roughness;
 			SoilFertility[i] = soilFertility;
 
@@ -238,7 +243,6 @@ public static class WorldGen {
 
 		public NativeArray<float> AirVapor;
 		public NativeArray<float> CarbonDioxide;
-		public NativeArray<float> Oxygen;
 
 		[ReadOnly] public NativeArray<float> AirMass;
 		[ReadOnly] public NativeArray<float> Pressure;
@@ -246,14 +250,12 @@ public static class WorldGen {
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 		[ReadOnly] public NativeArray<float> RelativeHumidity;
 		[ReadOnly] public float CarbonDioxidePPM;
-		[ReadOnly] public float OxygenPPM;
 		public void Execute(int i)
 		{
 			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * LayerMiddle[i];
 			float airVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, Pressure[i]) * RelativeHumidity[i];
 			AirVapor[i] = airVapor;
 			CarbonDioxide[i] = AirMass[i] * CarbonDioxidePPM;
-			Oxygen[i] = AirMass[i] * OxygenPPM;
 		}
 	}
 
@@ -342,6 +344,7 @@ public static class WorldGen {
 			Flora = state.FloraMass,
 			FloraWater = state.FloraWater,
 			FloraTemperature = state.FloraTemperature,
+			FloraGlucose = state.FloraGlucose,
 			CrustDepth = state.CrustDepth,
 			MagmaMass = state.MagmaMass,
 			LavaMass = state.LavaMass,
@@ -455,7 +458,6 @@ public static class WorldGen {
 			{
 				AirVapor = state.AirVapor[i],
 				CarbonDioxide = state.AirCarbonDioxide[i],
-				Oxygen = state.AirOxygen[i],
 
 				AirMass = dependent.AirMass[i],
 				Pressure = dependent.AirPressure[i],
@@ -463,7 +465,6 @@ public static class WorldGen {
 				TemperaturePotential = temperaturePotential,
 				RelativeHumidity = RelativeHumidity,
 				CarbonDioxidePPM = worldGenData.CarbonDioxide,
-				OxygenPPM = worldGenData.Oxygen,
 
 			}, worldGenJobHandle);
 		}

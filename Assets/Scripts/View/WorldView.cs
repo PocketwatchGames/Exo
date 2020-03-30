@@ -19,8 +19,6 @@ public class WorldView : MonoBehaviour {
 		Rainfall,
 		Condensation,
 		HeatAbsorbed,
-		Oxygen,
-		CarbonDioxide,
 		GroundTemperature,
 		GroundWater,
 		GroundWaterTemperature,
@@ -43,6 +41,9 @@ public class WorldView : MonoBehaviour {
 		VerticalWind0,
 		VerticalWind1,
 		VerticalWind2,
+		CarbonDioxide0,
+		CarbonDioxide1,
+		CarbonDioxide2,
 		AbsoluteHumidity0,
 		AbsoluteHumidity1,
 		AbsoluteHumidity2,
@@ -791,11 +792,14 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
 				return true;
-			case MeshOverlay.Oxygen:
-				overlay = new MeshOverlayData(0, DisplayOxygenMax, _normalizedRainbow, display.OxygenPercent[1]);
-				return true;
-			case MeshOverlay.CarbonDioxide:
+			case MeshOverlay.CarbonDioxide0:
 				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[1]);
+				return true;
+			case MeshOverlay.CarbonDioxide1:
+				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[2]);
+				return true;
+			case MeshOverlay.CarbonDioxide2:
+				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[3]);
 				return true;
 			case MeshOverlay.HeatAbsorbed:
 				overlay = new MeshOverlayData(0, DisplayHeatAbsorbedMax, _normalizedRainbow, display.SolarRadiationAbsorbedSurface);
@@ -883,7 +887,7 @@ public class WorldView : MonoBehaviour {
 		StringBuilder s = new StringBuilder();
 		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
 		NumberFormatInfo nfi2 = new NumberFormatInfo() { NumberDecimalDigits = 2 };
-		s.AppendFormat("CO2: {0:N0} ppm O2: {1:N0} ppm", display.GlobalCarbonDioxide * 1000000 / display.GlobalAirMass, display.GlobalOxygen * 1000000 / display.GlobalAirMass);
+		s.AppendFormat("CO2: {0:N0} ppm", display.GlobalCarbonDioxide * 1000000 / display.GlobalAirMass);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * Sim.InverseCellCount);
 		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
 		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
@@ -905,7 +909,7 @@ public class WorldView : MonoBehaviour {
 	private string GetCellInfoEnthalpy(ref SimState state, ref DependentState dependent, ref DisplayState display)
 	{
 		StringBuilder s = new StringBuilder();
-		s.AppendFormat("\nEnthalpy Delta: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDelta * Sim.InverseCellCount)));
+		s.AppendFormat("Enthalpy Delta: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDelta * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Water: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaWater * Sim.InverseCellCount)));
 		s.AppendFormat("\nEnthalpy Delta Air: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaAir * Sim.InverseCellCount)));
@@ -958,9 +962,9 @@ public class WorldView : MonoBehaviour {
 
 		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
 		var pos = Sim.StaticState.SphericalPosition[ActiveCellIndex];
-		s.AppendFormat("INDEX: {0}\n", ActiveCellIndex);
-		s.AppendFormat("COORD: ({0:N1}, {1:N1})\n", math.degrees(coord.x), math.degrees(coord.y));
-		s.AppendFormat("POS: ({0:N2}, {1:N2}, {2:N2})\n", pos.x, pos.y, pos.z);
+		s.AppendFormat("INDEX: {0}", ActiveCellIndex);
+		s.AppendFormat("\nCOORD: ({0:N1}, {1:N1})", math.degrees(coord.x), math.degrees(coord.y));
+		s.AppendFormat("\nPOS: ({0:N2}, {1:N2}, {2:N2})", pos.x, pos.y, pos.z);
 		//s.AppendFormat("\nSolar Terrain:   {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[0][ActiveCellIndex]));
 		//s.AppendFormat("\nThermal Terrain: {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[0][ActiveCellIndex]));
 		//s.AppendFormat("\nSolar Water0:    {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[2][ActiveCellIndex]));
@@ -1022,7 +1026,7 @@ public class WorldView : MonoBehaviour {
 				dependent.LayerElevation[i][ActiveCellIndex],
 				display.Pressure[i][ActiveCellIndex],
 				wind.x, wind.y, wind.z);
-			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm O2: {3:N0} ppm", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex], display.CarbonDioxidePercent[1][ActiveCellIndex] * 1000000, display.OxygenPercent[1][ActiveCellIndex] * 1000000);
+			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex], display.CarbonDioxidePercent[1][ActiveCellIndex] * 1000000);
 			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow) * display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow);
 			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityCloud, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityCloud);
 			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityCloud);
@@ -1037,18 +1041,18 @@ public class WorldView : MonoBehaviour {
 
 		StringBuilder s = new StringBuilder();
 
-		s.AppendFormat("ELE: {0:N0} m\n", state.Elevation[ActiveCellIndex]);
-		s.AppendFormat("ROUGH: {0:N0} m\n", state.Roughness[ActiveCellIndex]);
-		s.AppendFormat("TEMP: {0}\n", GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("FERT: {0:N2}\n", state.SoilFertility[ActiveCellIndex]);
-		s.AppendFormat("FLORA: {0:N2} WATER: {1:N2} kg TEMP: {2:N2}\n", 
+		s.AppendFormat("ELE: {0:N0} m", state.Elevation[ActiveCellIndex]);
+		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
+		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("\nFERT: {0:N2}", state.SoilFertility[ActiveCellIndex]);
+		s.AppendFormat("\nFLORA: {0:N2} WATER: {1:N2} kg TEMP: {2:N2}", 
 			state.FloraMass[ActiveCellIndex],
 			state.FloraWater[ActiveCellIndex],
 			GetTemperatureString(state.FloraTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("GWATER: {0:N2} TEMP: {1:N2}\n",
+		s.AppendFormat("\nGWATER: {0:N2} TEMP: {1:N2}",
 			state.GroundWater[ActiveCellIndex],
 			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("LAVA: {0:N2} TEMP: {1:N0}\n",
+		s.AppendFormat("\nLAVA: {0:N2} TEMP: {1:N0}",
 			state.LavaMass[ActiveCellIndex],
 			GetTemperatureString(state.LavaTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		return s.ToString();
@@ -1062,16 +1066,16 @@ public class WorldView : MonoBehaviour {
 
 		if (state.IceMass[ActiveCellIndex] > 0)
 		{
-			s.AppendFormat("ICE: {0:N3} m TEMP: {1}\n",
+			s.AppendFormat("ICE: {0:N3} m TEMP: {1}",
 				(state.IceMass[ActiveCellIndex] / WorldData.MassIce),
 				GetTemperatureString(state.IceTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		} else
 		{
-			s.AppendFormat("ICE: 0 m\n");
+			s.AppendFormat("ICE: 0 m");
 		}
 		float depth = dependent.WaterLayerDepth[1][ActiveCellIndex];
 		var nfi = new NumberFormatInfo() { NumberDecimalDigits = (depth >= 1) ? 0 : 3 };
-		s.AppendFormat(nfi, "DEPTH: {0:N} m\n", depth);
+		s.AppendFormat(nfi, "\nDEPTH: {0:N} m", depth);
 		s.AppendLine();
 
 		for (int i = Sim.WorldData.WaterLayers - 2; i >= 1; i--) {
@@ -1079,15 +1083,15 @@ public class WorldView : MonoBehaviour {
 			if (state.WaterMass[i][ActiveCellIndex] > 0)
 			{
 				var current = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.WaterVelocity[i][ActiveCellIndex]);
-				s.AppendFormat("LAYER {0} | TEMP: {1} SALT: {2:P4}\n",
+				s.AppendFormat("\nLAYER {0} | TEMP: {1} SALT: {2:P4}",
 					layerIndex,
 					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 2),
 					display.Salinity[i][ActiveCellIndex]);
-				s.AppendFormat("VEL: ({0:N3}, {1:N3}, {2:N3}) P: {3} D: {4}\n",
+				s.AppendFormat("\nVEL: ({0:N3}, {1:N3}, {2:N3}) P: {3} D: {4}",
 					current.x, current.y, current.z,
 					dependent.WaterPressure[i][ActiveCellIndex],
 					Atmosphere.GetWaterDensity(display.Salinity[i][ActiveCellIndex], state.WaterTemperature[i][ActiveCellIndex]));
-				s.AppendFormat(nfi, "DEPTH: {0:N} m HEIGHT: {1:N} m\n",
+				s.AppendFormat(nfi, "\nDEPTH: {0:N} m HEIGHT: {1:N} m",
 					dependent.WaterLayerDepth[i][ActiveCellIndex],
 					dependent.WaterLayerHeight[i][ActiveCellIndex]
 					);

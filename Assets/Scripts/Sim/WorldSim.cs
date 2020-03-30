@@ -376,7 +376,6 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					Dust = lastState.Dust[j],
-					Oxygen = lastState.AirOxygen[j],
 					CarbonDioxide = lastState.AirCarbonDioxide[j],
 					EmissivityAir = worldData.ThermalEmissivityAir,
 					EmissivityWaterVapor = worldData.ThermalEmissivityWaterVapor,
@@ -551,7 +550,6 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					AirCarbonDioxide = lastState.AirCarbonDioxide[j],
-					AirOxygen = lastState.AirOxygen[j],
 					Dust = lastState.Dust[j],
 					CloudMass = lastState.CloudMass,
 					CloudAlbedo = cloudAlbedo,
@@ -1319,7 +1317,7 @@ public class WorldSim {
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
 			});
 
-			fluxJobHandles[_floraLayer] = SimJob.Schedule(new FluxFloraJob()
+			fluxJobHandles[_floraLayer] = SimJob.Run(new FluxFloraJob()
 			{
 				LatentHeatAir = latentHeat[_airLayer0 + 1],
 				LatentHeatFlora = latentHeat[_floraLayer],
@@ -1338,23 +1336,30 @@ public class WorldSim {
 				FloraMass = lastState.FloraMass,
 				FloraGlucose = lastState.FloraGlucose,
 				FloraWater = lastState.FloraWater,
+				FloraCoverage = dependent.FloraCoverage,
+				CarbonDioxide = lastState.AirCarbonDioxide[1],
 				LayerElevation = dependent.LayerElevation[1],
+				LayerHeight = dependent.LayerHeight[1],
 				SurfaceWind = lastState.AirVelocity[1],
 				AirMass = dependent.AirMass[1],
+				AirTemperaturePotential = lastState.AirTemperaturePotential[1],
 				AirPressure = dependent.AirPressure[1],
 				AirVapor = lastState.AirVapor[1],
 				SoilFertility = lastState.SoilFertility,
 				GroundWater = lastState.GroundWater,
-				GroundWaterMax = worldData.GroundWaterMax,
+				GroundWaterMax = worldData.GroundWaterMax,				
 				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate,
 				FloraGrowthRate = worldData.FloraGrowthRate,
-				FloraDeathRateAge = worldData.FloraDeathRateAge,
-				FloraDeathRateTemperature = worldData.FloraDeathRateTemperature,
-				FloraDeathRateWater = worldData.FloraDeathRateWater,
-				FloraDeathRateCrowding = worldData.FloraDeathRateCrowding,
+				FloraDeathRate = worldData.FloraDeathRate,
 				FloraMax = worldData.FloraMax,
 				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse,
-				FloraEnergyForPhotosynthesis = worldData.FloraEnergyForPhotosynthesis
+				FloraEnergyForPhotosynthesis = worldData.FloraEnergyForPhotosynthesis,
+				FloraCarbonDioxideExtractionEfficiency = worldData.FloraCarbonDioxideExtractionEfficiency,
+				FloraOxygenExtractionEfficiency = worldData.FloraOxygenExtractionEfficiency,
+				FloraPhotosynthesisSpeed = worldData.FloraPhotosynthesisSpeed,
+				FloraRespirationSpeed = worldData.FloraRespirationSpeed,
+				OxygenPercent = lastState.PlanetState.Oxygen,
+				Gravity = lastState.PlanetState.Gravity
 			}, fluxJobHandles[_waterLayer0 + _surfaceWaterLayer]);
 
 			fluxJobHandles[_iceLayer] = SimJob.Schedule(new FluxIceJob()
@@ -1476,7 +1481,6 @@ public class WorldSim {
 				{
 					VaporMass = nextState.AirVapor[j],
 					DustMass = nextState.Dust[j],
-					OxygenMass = nextState.AirOxygen[j],
 					CarbonDioxideMass = nextState.AirCarbonDioxide[j],
 					CloudMass = nextState.CloudMass,
 					CloudDropletMass = nextState.CloudDropletMass,
@@ -1490,7 +1494,6 @@ public class WorldSim {
 					LastVaporMass = lastState.AirVapor[j],
 					LastDustMass = lastState.Dust[j],
 					LastCarbonDioxideMass = lastState.AirCarbonDioxide[j],
-					LastOxygenMass = lastState.AirOxygen[j],
 					DustUp = dustUp[j],
 					DustDown = dustDown[j],
 					DustFromAbove = dustDown[j + 1],
@@ -1507,7 +1510,6 @@ public class WorldSim {
 				VaporMass = nextState.AirVapor[1],
 				DustMass = nextState.Dust[1],
 				CarbonDioxide = nextState.AirCarbonDioxide[1],
-				Oxygen = nextState.AirOxygen[1],
 
 				AirMass = dependent.AirMass[1],
 				EvaporationWater = evaporationMassWater,
@@ -1516,7 +1518,6 @@ public class WorldSim {
 				EvaporationTemperaturePotentialFlora = temperaturePotentialFlora,
 				DustEjected = dustEjected,
 				CarbonDioxideDelta = carbonDioxideDelta,
-				OxygenDelta = oxygenDelta,
 			}, JobHandle.CombineDependencies(updateMassAirJobHandles[1], surfaceWaterMassHandle));
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateMassEvaporationHandle);
 
@@ -1572,12 +1573,10 @@ public class WorldSim {
 
 				FloraGlucoseDelta = floraGlucoseDelta,
 				FloraMassDelta = floraMassDelta,
-				RespirationMassVapor = floraRespirationMassVapor,
-				RespirationMassWater = floraRespirationMassWater,
+				FloraWaterDelta = floraWaterDelta,
 				LastMass = lastState.FloraMass,
 				LastGlucose = lastState.FloraGlucose,
 				LastWater = lastState.FloraWater,
-				GroundWaterConsumed = groundWaterConsumed
 			}));
 
 
@@ -1917,9 +1916,6 @@ public class WorldSim {
 					CarbonDioxide = nextState.AirCarbonDioxide[j],
 					CarbonDioxideAbove = nextState.AirCarbonDioxide[j + 1],
 					CarbonDioxideBelow = nextState.AirCarbonDioxide[j - 1],
-					Oxygen = nextState.AirOxygen[j],
-					OxygenAbove = nextState.AirOxygen[j + 1],
-					OxygenBelow = nextState.AirOxygen[j - 1],
 					Dust = nextState.Dust[j],
 					DustAbove = nextState.Dust[j + 1],
 					DustBelow = nextState.Dust[j - 1],
@@ -2044,7 +2040,6 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[i],
 					Dust = nextState.Dust[i],
 					CarbonDioxide = nextState.AirCarbonDioxide[i],
-					Oxygen = nextState.AirOxygen[i],
 					Temperature = nextState.AirTemperaturePotential[i],
 					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies( advectionJobHandles[i+_airLayer0], advectionJobHandles[i + _airLayer0 - 1], advectionJobHandles[i + _airLayer0 + 1])));
@@ -2078,9 +2073,6 @@ public class WorldSim {
 					CarbonDioxide = nextState.AirCarbonDioxide[j],
 					CarbonDioxideAbove = nextState.AirCarbonDioxide[j + 1],
 					CarbonDioxideBelow = nextState.AirCarbonDioxide[j - 1],
-					Oxygen = nextState.AirOxygen[j],
-					OxygenAbove = nextState.AirOxygen[j + 1],
-					OxygenBelow = nextState.AirOxygen[j - 1],
 					Dust = nextState.Dust[j],
 					DustAbove = nextState.Dust[j + 1],
 					DustBelow = nextState.Dust[j - 1],
@@ -2179,7 +2171,6 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[i],
 					Dust = nextState.Dust[i],
 					CarbonDioxide = nextState.AirCarbonDioxide[i],
-					Oxygen = nextState.AirOxygen[i],
 					Temperature = nextState.AirTemperaturePotential[i],
 					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
@@ -2208,6 +2199,7 @@ public class WorldSim {
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "FloraTemperature", nextState.FloraTemperature, 0, 1200, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraMass", nextState.FloraMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraWater", nextState.FloraWater, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraGlucose", nextState.FloraGlucose, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "GroundWater", nextState.GroundWater, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
@@ -2222,6 +2214,7 @@ public class WorldSim {
 				for (int i = 1; i < _airLayers - 1; i++) {
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 1200, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 10000, degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "CarbonDioxide" + i, nextState.AirCarbonDioxide[i], degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "AirVelocity" + i, nextState.AirVelocity[i], degenVarNames);
 				}
 				for (int i=1;i<_waterLayers - 1;i++)
@@ -2276,9 +2269,7 @@ public class WorldSim {
 						WindVertical = display.WindVertical[i],
 						DustCoverage = display.DustMass,
 						CarbonDioxidePercent = display.CarbonDioxidePercent[i],
-						OxygenPercent = display.OxygenPercent[i],
 
-						Oxygen = curState.AirOxygen[i],
 						CarbonDioxide = curState.AirCarbonDioxide[i],
 						Gravity = curState.PlanetState.Gravity,
 						AirTemperaturePotential = curState.AirTemperaturePotential[i],
@@ -2382,7 +2373,6 @@ public class WorldSim {
 							display.GlobalEnthalpyAir += display.EnthalpyAir[j][i];
 							display.GlobalCloudCoverage += math.min(1, absorptivitySolar[j][i].AbsorptivityCloud * 100);
 							display.GlobalCarbonDioxide += curState.AirCarbonDioxide[j][i];
-							display.GlobalOxygen += curState.AirOxygen[j][i];
 						}
 						display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
 						display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
@@ -2544,33 +2534,44 @@ public class WorldSim {
 		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
 		s.AppendFormat("Roughness: {0}\n", state.Roughness[i]);
 		s.AppendFormat("SoilFertility: {0}\n", state.SoilFertility[i]);
-		s.AppendFormat("Flora: {0}\n", state.FloraMass[i]);
 		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
 		s.AppendFormat("TerrainTemperature: {0}\n", state.TerrainTemperature[i]);
+		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
+		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
+
+		s.AppendFormat("\nLAVA\n");
+		s.AppendFormat("Mass: {0}\n", state.LavaMass[i]);
+		s.AppendFormat("Temperature: {0}\n", state.LavaTemperature[i]);
+		s.AppendFormat("MagmaMass: {0}\n", state.MagmaMass[i]);
+		s.AppendFormat("CrustDepth: {0}\n", state.CrustDepth[i]);
+
+		s.AppendFormat("\nFLORA\n");
+		s.AppendFormat("Mass: {0}\n", state.FloraMass[i]);
+		s.AppendFormat("Glucose: {0}\n", state.FloraGlucose[i]);
+		s.AppendFormat("Water: {0}\n", state.FloraWater[i]);
+		s.AppendFormat("Temperature: {0}\n", state.FloraTemperature[i]);
+
+		s.AppendFormat("\nCLOUD\n");
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
 		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);
 		s.AppendFormat("CloudVelocity: {0}\n", state.CloudVelocity[i]);
-		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
-		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
-		s.AppendFormat("LavaMass: {0}\n", state.LavaMass[i]);
-		s.AppendFormat("LavaTemperature: {0}\n", state.LavaTemperature[i]);
-		s.AppendFormat("MagmaMass: {0}\n", state.MagmaMass[i]);
-		s.AppendFormat("CrustDepth: {0}\n", state.CrustDepth[i]);
-		s.AppendFormat("FloraMass: {0}\n", state.FloraMass[i]);
-		s.AppendFormat("FloraWater: {0}\n", state.FloraWater[i]);
-		s.AppendFormat("FloraTemperature: {0}\n", state.FloraTemperature[i]);
-		for (int j = 1; j < _waterLayers - 1; j++)
-		{
-			s.AppendFormat("WaterMass{0}: {1}\n", j, state.WaterMass[j][i]);
-			s.AppendFormat("SaltMass{0}: {1}\n", j, state.SaltMass[j][i]);
-			s.AppendFormat("WaterTemperature{0}: {1}\n", j, state.WaterTemperature[j][i]);
-			s.AppendFormat("WaterVelocity{0}: {1}\n", j, state.WaterVelocity[j][i]);
-		}
+
 		for (int j = 1; j < _airLayers - 1; j++)
 		{
-			s.AppendFormat("AirTemperature{0}: {1}\n", j, state.AirTemperaturePotential[j][i]);
-			s.AppendFormat("AirVapor{0}: {1}\n", j, state.AirVapor[j][i]);
-			s.AppendFormat("AirVelocity{0}: {1}\n", j, state.AirVelocity[j][i]);
+			s.AppendFormat("\nAIR LAYER {0}\n", j);
+			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[j][i]);
+			s.AppendFormat("Vapor: {0}\n", state.AirVapor[j][i]);
+			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbonDioxide[j][i]);
+			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[j][i]);
+		}
+
+		for (int j = 1; j < _waterLayers - 1; j++)
+		{
+			s.AppendFormat("\nWATER LAYER {0}\n", j);
+			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[j][i]);
+			s.AppendFormat("SaltMass: {0}\n", state.SaltMass[j][i]);
+			s.AppendFormat("Temperature: {0}\n", state.WaterTemperature[j][i]);
+			s.AppendFormat("Velocity: {0}\n", state.WaterVelocity[j][i]);
 		}
 		Debug.Log(s);
 	}
