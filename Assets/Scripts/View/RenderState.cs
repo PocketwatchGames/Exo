@@ -78,7 +78,7 @@ public struct RenderState {
 	}
 }
 
-[BurstCompile]
+//[BurstCompile]
 public struct BuildRenderStateJob : IJobParallelFor {
 	public NativeArray<Color32> TerrainColor;
 	public NativeArray<Vector3> TerrainPosition;
@@ -118,6 +118,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> DustCoverage;
+	[ReadOnly] public NativeArray<float> PlanktonMass;
 	[ReadOnly] public bool MeshOverlayActive;
 	[ReadOnly] public float MeshOverlayMin;
 	[ReadOnly] public float MeshOverlayInverseRange;
@@ -177,7 +178,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		else
 		{
 			terrainColor = GetTerrainColor(roughness, SoilFertility[i], waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
-			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth);
+			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth, PlanktonMass[i]);
 			lavaColor = GetLavaColor(LavaTemperature[i], LavaCrystalizationTemperature, LavaTemperatureRangeInverse);
 		}
 		cloudColor = GetCloudColor(cloudCoverage);
@@ -247,15 +248,19 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		{
 			return new Color32(0, 0, 255, 255);
 		}
-		else if (floraCoverage > 0.667f)
+		else if (floraCoverage > 0.2f)
 		{
-			return new Color32(0, 60, 10, 255);
+			return new Color32(0, 20, 0, 255);
 		}
-		else if (floraCoverage > 0.333f)
+		else if (floraCoverage > 0.02f)
 		{
-			return new Color32(20, 90, 30, 255);
+			return new Color32(20, 70, 20, 255);
 		}
-		else if (soilFertility > 0.5f)
+		else if (floraCoverage > 0.002f)
+		{
+			return new Color32(40, 120, 40, 255);
+		}
+		else if (soilFertility > 2f)
 		{
 			if (groundWaterSaturation > 0.5f)
 			{
@@ -263,7 +268,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 			}
 			return new Color32(50, 30, 20, 255);
 		}
-		else if (soilFertility > 0.25f)
+		else if (soilFertility > 0.1f)
 		{
 			if (groundWaterSaturation > 0.5f)
 			{
@@ -286,7 +291,7 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		//return floraColor;
 	}
 
-	private Color32 GetWaterColor(float iceCoverage, float waterTemperature, float depth)
+	private Color32 GetWaterColor(float iceCoverage, float waterTemperature, float depth, float plankton)
 	{
 		if (iceCoverage > 0.95f)
 		{
@@ -295,40 +300,38 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		byte blue;
 		byte red;
 		byte green;
-		if (depth > 2000)
+		if (depth > 3000)
 		{
-			blue = 210;
+			blue = 135;
 			green = 0;
 			red = 0;
-		} else if (depth > 1000) {
-			blue = 230;
-			green = 5;
-			red = 5;
-		} else
-		{
-			blue = 250;
-			green = 10;
-			red = 10;
 		}
-		if (waterTemperature > WorldData.FreezingTemperature + 30)
+		else if (depth > 1000)
+		{
+			blue = 195;
+			green = 0;
+			red = 0;
+		}
+		else
+		{
+			blue = 255;
+			green = 0;
+			red = 0;
+		}
+		if (plankton > 1)
+		{
+			green += 30;
+		} else if (plankton > 0.01f)
 		{
 			green += 10;
-		} else if (waterTemperature > WorldData.FreezingTemperature + 15)
-		{
-			green += 5;
 		} else
 		{
 			green += 0;
 		}
-		if (iceCoverage > 0.5f)
+		if (iceCoverage > 0.1f)
 		{
-			red += 50;
-			green += 50;
-		}
-		if (iceCoverage > 0.01f)
-		{
-			red += 10;
-			green += 10;
+			red += 40;
+			green += 40;
 		}
 		return new Color32(red, green, blue, 255);
 	}

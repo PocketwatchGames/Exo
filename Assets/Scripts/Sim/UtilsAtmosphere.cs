@@ -257,8 +257,8 @@ public static class Atmosphere {
 	[BurstCompile]
 	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility)
 	{
-		float landMass = (WorldData.MassSand * (1.0f - soilFertility) + WorldData.MassSoil * soilFertility) * heatingDepth;
-		return WorldData.SpecificHeatSoil * landMass;
+		float sandMass = math.max(0, heatingDepth - soilFertility / WorldData.MassSoil) * WorldData.MassSand;
+		return WorldData.SpecificHeatSoil * soilFertility + WorldData.SpecificHeatSand * sandMass;
 	}
 
 
@@ -266,14 +266,6 @@ public static class Atmosphere {
 	static public float GetRadiationRate(float temperature, float emissivity)
 	{
 		return temperature * temperature * temperature * temperature * emissivity * 0.001f * WorldData.StefanBoltzmannConstant;
-	}
-
-	[BurstCompile]
-	static public float GetTerrainTemperature(float soilHeatingDepth, float terrainEnergy, float soilFertility, float canopyCoverage)
-	{
-		float landMass = (WorldData.MassSand - WorldData.MassSoil) * soilFertility + WorldData.MassSoil;
-		float heatingDepth = soilFertility * soilHeatingDepth;
-		return math.max(0, terrainEnergy / (WorldData.SpecificHeatSoil * heatingDepth * landMass));
 	}
 
 	[BurstCompile]

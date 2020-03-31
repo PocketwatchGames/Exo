@@ -35,6 +35,9 @@ public class WorldView : MonoBehaviour {
 		WaterTemperature0,
 		WaterTemperature1,
 		WaterTemperature2,
+		WaterCarbonDioxide0,
+		WaterCarbonDioxide1,
+		WaterCarbonDioxide2,
 		Salinity0,
 		Salinity1,
 		Salinity2,
@@ -112,9 +115,10 @@ public class WorldView : MonoBehaviour {
 	public float DisplayWindSpeedDeepWaterMax = 0.5f;
 	public float DisplayVerticalWindSpeedMax = 1.0f;
 	public float DisplayEvaporationMax = 5.0f;
-	public float DisplayFloraMax = 1000;
+	public float DisplayFloraMax = 100;
 	public float DisplayTemperatureMin = 223;
 	public float DisplayTemperatureMax = 323;
+	public float DisplayWaterCarbonMax = 0.001f;
 	public float DisplayAbsoluteHumidityMax = 0.05f;
 	public float DisplayAirPressureMin = 97000;
 	public float DisplayAirPressureMax = 110000;
@@ -126,6 +130,7 @@ public class WorldView : MonoBehaviour {
 	public float DisplayLavaTemperatureMax = 1200;
 	public float DisplayCarbonDioxideMax = 0.002f;
 	public float DisplayOxygenMax = 0.35f;
+	public float DisplaySoilFertilityMax = 5.0f;
 
 	[Header("References")]
 	public WorldSimComponent Sim;
@@ -142,6 +147,7 @@ public class WorldView : MonoBehaviour {
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
 
+	private JobHelper _renderJobHelper;
 
 	private RenderState[] _renderStates;
 	private int _curRenderState;
@@ -316,6 +322,8 @@ public class WorldView : MonoBehaviour {
 		_lavaNormals = new Vector3[Sim.CellCount];
 		_lavaColors = new Color32[Sim.CellCount];
 
+		_renderJobHelper = new JobHelper(Sim.CellCount);
+
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 	}
@@ -379,7 +387,7 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJob = new BuildRenderStateJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateJob()
 		{
 			TerrainColor = to.TerrainColor,
 			TerrainNormal = to.TerrainNormal,
@@ -412,7 +420,7 @@ public class WorldView : MonoBehaviour {
 			MeshOverlayInverseRange = meshOverlay.InverseRange,
 			CloudElevation = dependent.CloudElevation,
 			Icosphere = Sim.Icosphere.Vertices,
-			SoilFertility = from.SoilFertility,
+			SoilFertility = from.GroundCarbon,
 			Roughness = from.Roughness,
 			Elevation = from.Elevation,
 			CloudDropletMass = from.CloudDropletMass,
@@ -422,6 +430,7 @@ public class WorldView : MonoBehaviour {
 			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers - 2],
 			WaterDepth = dependent.WaterLayerDepth[1],
 			WaterTemperature = from.WaterTemperature[Sim.WorldData.WaterLayers - 2],
+			PlanktonMass = from.PlanktonMass[Sim.WorldData.WaterLayers - 2],
 			LavaMass = from.LavaMass,
 			LavaTemperature = from.LavaTemperature,
 			SurfaceElevation = dependent.LayerElevation[1],
@@ -436,9 +445,7 @@ public class WorldView : MonoBehaviour {
 			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
 			LavaDensityAdjustment = worldData.LavaDensityAdjustment
-		};
-
-		var buildRenderStateJobHandle = buildRenderStateJob.Schedule(Sim.CellCount, 100);
+		});
 		buildRenderStateJobHandle.Complete();
 
 	}
@@ -780,6 +787,15 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.WaterTemperature2:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 4]);
 				return true;
+			case MeshOverlay.WaterCarbonDioxide0:
+				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[Sim.WorldData.WaterLayers - 2]);
+				return true;
+			case MeshOverlay.WaterCarbonDioxide1:
+				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[Sim.WorldData.WaterLayers - 3]);
+				return true;
+			case MeshOverlay.WaterCarbonDioxide2:
+				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[Sim.WorldData.WaterLayers - 4]);
+				return true;
 			case MeshOverlay.Salinity0:
 				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 2]);
 				return true;
@@ -790,7 +806,7 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 4]);
 				return true;
 			case MeshOverlay.GroundTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.TerrainTemperature);
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundTemperature);
 				return true;
 			case MeshOverlay.CarbonDioxide0:
 				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[1]);
@@ -887,7 +903,12 @@ public class WorldView : MonoBehaviour {
 		StringBuilder s = new StringBuilder();
 		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
 		NumberFormatInfo nfi2 = new NumberFormatInfo() { NumberDecimalDigits = 2 };
-		s.AppendFormat("CO2: {0:N0} ppm", display.GlobalCarbonDioxide * 1000000 / display.GlobalAirMass);
+		s.AppendFormat("CO2: {0:N0} ppm", display.GlobalAirCarbon * 1000000 / display.GlobalAirMass);
+		s.AppendFormat("\nCO2 Mass Air: {0:N1} kg", display.GlobalAirCarbon);
+		s.AppendFormat("\nCO2 Mass Water: {0:N1} kg", display.GlobalWaterCarbon);
+		s.AppendFormat("\nFlora: {0:N1} kg", display.GlobalFloraMass);
+		s.AppendFormat("\nPlankton: {0:N1} kg", display.GlobalPlanktonMass);
+		s.AppendFormat("\nSoil Carbon: {0:N1} kg", display.GlobalSoilFertility);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * Sim.InverseCellCount);
 		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
 		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
@@ -1043,8 +1064,8 @@ public class WorldView : MonoBehaviour {
 
 		s.AppendFormat("ELE: {0:N0} m", state.Elevation[ActiveCellIndex]);
 		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
-		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.TerrainTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nFERT: {0:N2}", state.SoilFertility[ActiveCellIndex]);
+		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.GroundTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbon[ActiveCellIndex]);
 		s.AppendFormat("\nFLORA: {0:N2} WATER: {1:N2} kg TEMP: {2:N2}", 
 			state.FloraMass[ActiveCellIndex],
 			state.FloraWater[ActiveCellIndex],
@@ -1076,7 +1097,13 @@ public class WorldView : MonoBehaviour {
 		float depth = dependent.WaterLayerDepth[1][ActiveCellIndex];
 		var nfi = new NumberFormatInfo() { NumberDecimalDigits = (depth >= 1) ? 0 : 3 };
 		s.AppendFormat(nfi, "\nDEPTH: {0:N} m", depth);
+
+		if (state.WaterMass[Sim.WorldData.WaterLayers - 2][ActiveCellIndex] > 0)
+		{
+			s.AppendFormat(nfi, "\nPLANKTON: {0:N2} kg", state.PlanktonMass[Sim.WorldData.WaterLayers-2][ActiveCellIndex]);
+		}
 		s.AppendLine();
+
 
 		for (int i = Sim.WorldData.WaterLayers - 2; i >= 1; i--) {
 			int layerIndex = (Sim.WorldData.WaterLayers - 2 - i);
@@ -1087,8 +1114,11 @@ public class WorldView : MonoBehaviour {
 					layerIndex,
 					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 2),
 					display.Salinity[i][ActiveCellIndex]);
-				s.AppendFormat("\nVEL: ({0:N3}, {1:N3}, {2:N3}) P: {3} D: {4}",
-					current.x, current.y, current.z,
+				s.AppendFormat("\nVEL: ({0:N3}, {1:N3}, {2:N3})",
+					current.x, current.y, current.z);
+				s.AppendFormat("\nCO2: {0:N3}",
+					state.WaterCarbon[i][ActiveCellIndex]);
+				s.AppendFormat("\nP: {0} D: {1}",
 					dependent.WaterPressure[i][ActiveCellIndex],
 					Atmosphere.GetWaterDensity(display.Salinity[i][ActiveCellIndex], state.WaterTemperature[i][ActiveCellIndex]));
 				s.AppendFormat(nfi, "\nDEPTH: {0:N} m HEIGHT: {1:N} m",

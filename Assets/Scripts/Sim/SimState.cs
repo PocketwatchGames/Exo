@@ -14,14 +14,14 @@ public struct SimState {
 	public PlanetState PlanetState;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> Roughness;
-	public NativeArray<float> SoilFertility;
-	public NativeArray<float> TerrainTemperature;
+	public NativeArray<float> GroundCarbon;
+	public NativeArray<float> GroundTemperature;
+	public NativeArray<float> GroundWater;
+	public NativeArray<float> GroundWaterTemperature;
 	public NativeArray<float> FloraMass;
 	public NativeArray<float> FloraWater;
 	public NativeArray<float> FloraTemperature;
 	public NativeArray<float> FloraGlucose;
-	public NativeArray<float> GroundWater;
-	public NativeArray<float> GroundWaterTemperature;
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> IceMass;
 	public NativeArray<float> CloudMass;
@@ -34,20 +34,23 @@ public struct SimState {
 	public NativeArray<float> LavaTemperature;
 	public NativeArray<float>[] AirTemperaturePotential;
 	public NativeArray<float>[] AirVapor;
-	public NativeArray<float>[] AirCarbonDioxide;
+	public NativeArray<float>[] AirCarbon;
 	public NativeArray<float3>[] AirVelocity;
 	public NativeArray<float>[] Dust;
 	public NativeArray<float>[] WaterTemperature;
 	public NativeArray<float>[] WaterMass;
-	public NativeArray<float>[] SaltMass;
+	public NativeArray<float>[] WaterCarbon;
 	public NativeArray<float3>[] WaterVelocity;
+	public NativeArray<float>[] SaltMass;
+	public NativeArray<float>[] PlanktonMass;
+	public NativeArray<float>[] PlanktonGlucose;
 
 	public void Init(int count, int airLayers, int waterLayers)
 	{
 		Roughness = new NativeArray<float>(count, Allocator.Persistent);
-		SoilFertility = new NativeArray<float>(count, Allocator.Persistent);
+		GroundCarbon = new NativeArray<float>(count, Allocator.Persistent);
 		Elevation = new NativeArray<float>(count, Allocator.Persistent);
-		TerrainTemperature = new NativeArray<float>(count, Allocator.Persistent);
+		GroundTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWater = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWaterTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		FloraMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -66,14 +69,14 @@ public struct SimState {
 		MagmaMass = new NativeArray<float>(count, Allocator.Persistent);
 		AirTemperaturePotential = new NativeArray<float>[airLayers];
 		AirVapor = new NativeArray<float>[airLayers];
-		AirCarbonDioxide = new NativeArray<float>[airLayers];
+		AirCarbon = new NativeArray<float>[airLayers];
 		AirVelocity = new NativeArray<float3>[airLayers];
 		Dust = new NativeArray<float>[airLayers];
 		for (int i = 0; i < airLayers; i++)
 		{
 			AirTemperaturePotential[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVapor[i] = new NativeArray<float>(count, Allocator.Persistent);
-			AirCarbonDioxide[i] = new NativeArray<float>(count, Allocator.Persistent);
+			AirCarbon[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVelocity[i] = new NativeArray<float3>(count, Allocator.Persistent);
 			Dust[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
@@ -81,11 +84,17 @@ public struct SimState {
 		WaterTemperature = new NativeArray<float>[waterLayers];
 		WaterMass = new NativeArray<float>[waterLayers];
 		SaltMass = new NativeArray<float>[waterLayers];
+		WaterCarbon = new NativeArray<float>[waterLayers];
+		PlanktonMass = new NativeArray<float>[waterLayers];
+		PlanktonGlucose = new NativeArray<float>[waterLayers];
 		WaterVelocity = new NativeArray<float3>[waterLayers];
 		for (int i = 0; i < waterLayers; i++)
 		{
 			WaterTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
 			WaterMass[i] = new NativeArray<float>(count, Allocator.Persistent);
+			WaterCarbon[i] = new NativeArray<float>(count, Allocator.Persistent);
+			PlanktonMass[i] = new NativeArray<float>(count, Allocator.Persistent);
+			PlanktonGlucose[i] = new NativeArray<float>(count, Allocator.Persistent);
 			SaltMass[i] = new NativeArray<float>(count, Allocator.Persistent);
 			WaterVelocity[i] = new NativeArray<float3>(count, Allocator.Persistent);
 		}
@@ -94,9 +103,9 @@ public struct SimState {
 	public void Dispose()
 	{
 		Roughness.Dispose();
-		SoilFertility.Dispose();
+		GroundCarbon.Dispose();
 		Elevation.Dispose();
-		TerrainTemperature.Dispose();
+		GroundTemperature.Dispose();
 		FloraMass.Dispose();
 		FloraWater.Dispose();
 		FloraGlucose.Dispose();
@@ -117,7 +126,7 @@ public struct SimState {
 		{
 			AirTemperaturePotential[i].Dispose();
 			AirVapor[i].Dispose();
-			AirCarbonDioxide[i].Dispose();
+			AirCarbon[i].Dispose();
 			AirVelocity[i].Dispose();
 			Dust[i].Dispose();
 		}
@@ -126,6 +135,9 @@ public struct SimState {
 		{
 			WaterTemperature[i].Dispose();
 			WaterMass[i].Dispose();
+			PlanktonMass[i].Dispose();
+			PlanktonGlucose[i].Dispose();
+			WaterCarbon[i].Dispose();
 			SaltMass[i].Dispose();
 			WaterVelocity[i].Dispose();
 		}
@@ -357,10 +369,14 @@ public struct DisplayState {
 	public float GlobalOceanTemperature;
 	public float GlobalOceanSurfaceTemperature;
 	public float GlobalSeaLevel;
-	public float GlobalCarbonDioxide;
+	public float GlobalAirCarbon;
+	public float GlobalWaterCarbon;
 	public float GlobalCloudCoverage;
 	public float GlobalEvaporation;
 	public float GlobalRainfall;
+	public float GlobalFloraMass;
+	public float GlobalPlanktonMass;
+	public float GlobalSoilFertility;
 	public float GlobalCondensationCloud;
 	public float GlobalCondensationGround;
 	public double GlobalWaterVapor;
@@ -378,6 +394,7 @@ public struct DisplayState {
 	public NativeArray<float> EnthalpyCloud;
 	public NativeArray<float> EnthalpyGroundWater;
 	public NativeArray<float> DustMass;
+	public NativeArray<float>[] WaterCarbonDioxidePercent;
 	public NativeArray<float>[] CarbonDioxidePercent;
 	public NativeArray<float>[] EnthalpyWater;
 	public NativeArray<float>[] EnthalpyAir;
@@ -424,10 +441,12 @@ public struct DisplayState {
 			CarbonDioxidePercent[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 
+		WaterCarbonDioxidePercent = new NativeArray<float>[waterLayers];
 		Salinity = new NativeArray<float>[waterLayers];
 		EnthalpyWater = new NativeArray<float>[waterLayers];
 		for (int i=0;i<waterLayers;i++)
 		{
+			WaterCarbonDioxidePercent[i] = new NativeArray<float>(count, Allocator.Persistent);
 			Salinity[i] = new NativeArray<float>(count, Allocator.Persistent);
 			EnthalpyWater[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
@@ -471,6 +490,7 @@ public struct DisplayState {
 		}
 		for (int i=0;i<Salinity.Length;i++)
 		{
+			WaterCarbonDioxidePercent[i].Dispose();
 			Salinity[i].Dispose();
 			EnthalpyWater[i].Dispose();
 		}

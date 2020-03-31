@@ -71,6 +71,7 @@ public struct WorldData {
 
 	[Header("Evaporation")] // evaporation on earth maxes out around 2.5M per year
 	public float WaterHeatingDepth;
+	public float WaterAirCarbonDiffusionCoefficient; // standard carbon/air: 407.4 ppm, carbon/water: 90 ppm
 
 	[Header("Ice")]
 	public float IceHeatingDepth;
@@ -107,6 +108,7 @@ public struct WorldData {
 
 	[Header("Terrain and Ground Water")]
 	public float SoilHeatDepth;
+	public float SoilRespirationSpeed;
 	public float GroundWaterFlowSpeed;
 	public float GroundWaterMax;
 	public float GroundWaterMaxDepth;
@@ -117,7 +119,6 @@ public struct WorldData {
 	public float FullCoverageFlora;
 
 	[Header("Flora")]
-	public float FloraMax;
 	public float FloraGrowthRate;
 	public float FloraDeathRate;
 	public float FloraWaterConsumptionRate;
@@ -128,6 +129,17 @@ public struct WorldData {
 	public float FloraOxygenExtractionEfficiency;
 	public float FloraPhotosynthesisSpeed;
 	public float FloraRespirationSpeed;
+	public float FloraRespirationPerDegree;
+
+	[Header("Plankton")]
+	public float PlanktonDensityMax;
+	public float PlanktonEnergyForPhotosynthesis;
+	public float PlanktonCarbonDioxideExtractionEfficiency;
+	public float PlanktonPhotosynthesisSpeed;
+	public float PlanktonRespirationSpeed;
+	public float PlanktonRespirationPerDegree;
+	public float PlanktonGrowthRate;
+	public float PlanktonDeathRate;
 
 	[Header("Lava")]
 	public float LavaCrystalizationTemperature;
@@ -164,12 +176,14 @@ public struct WorldData {
 	public const float SpecificHeatWaterVapor = 1.996f;
 	public const float SpecificHeatSalt = 0.85f;
 	public const float SpecificHeatAtmosphere = 1.158f;
-	public const float SpecificHeatSoil = 0.84f;
+	public const float SpecificHeatSoil = 0.80f;
+	public const float SpecificHeatSand = 0.84f;
 	public const float SpecificHeatLava = 0.84f;
 	public const float LatentHeatWaterLiquid = 334.0f;
 	public const float LatentHeatWaterVapor = 2264.705f;
 	public const float LatentHeatLava = 400000f;
 	public const float MassEarthAir = 1.29f;
+	public const float MassCarbonDioxide = 44.01f;
 	public const float MassWater = 1000f;
 	public const float MassSalt = 2170f;
 	public const float MassIce = 919f;

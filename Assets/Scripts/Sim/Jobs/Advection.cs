@@ -26,6 +26,9 @@ public struct DiffusionCloud {
 public struct DiffusionWater {
 	public float Temperature;
 	public float SaltMass;
+	public float CarbonMass;
+	public float Plankton;
+	public float PlanktonGlucose;
 	public float3 Velocity;
 }
 
@@ -315,6 +318,11 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Salt;
 	[ReadOnly] public NativeArray<float> SaltAbove;
 	[ReadOnly] public NativeArray<float> SaltBelow;
+	[ReadOnly] public NativeArray<float> Carbon;
+	[ReadOnly] public NativeArray<float> CarbonAbove;
+	[ReadOnly] public NativeArray<float> CarbonBelow;
+	[ReadOnly] public NativeArray<float> PlanktonMass;
+	[ReadOnly] public NativeArray<float> PlanktonGlucose;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	public void Execute(int i)
 	{
@@ -327,21 +335,31 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 		float newMass;
 		float newSaltMass;
+		float newPlankton;
+		float newGlucose;
+		float newCarbon;
 		float newTemperature;
 		float3 newVelocity;
 
 #if DISABLE_WATER_ADVECTION
 		newMass = waterMass;
 		newSaltMass = Salt[i];
+		newPlankton = PlanktonMass[i];
+		newGlucose = PlanktonGlucose[i];
+		newCarbon = Carbon[i];
 		newTemperature = Temperature[i];
 		newVelocity = Velocity[i];
 #else
 		newMass = 0;
 		newSaltMass = 0;
+		newCarbon = 0;
+		newPlankton = 0;
+		newGlucose = 0;
 		newTemperature = 0;
 		newVelocity = 0;
 
 		float valueRemaining = 0;
+		float valueRemainingHorizontal = 0;
 		int destIndexA = Destination[i].indexA;
 		if (destIndexA == i || destIndexA < 0 || Mass[destIndexA] == 0)
 		{
@@ -357,6 +375,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		{
 			valueRemaining += Destination[i].valueC;
 		}
+		valueRemainingHorizontal = valueRemaining + Destination[i].moveVertical;
 		if (Destination[i].moveVertical > 0)
 		{
 			if (MassAbove[i] == 0)
@@ -370,8 +389,11 @@ public struct AdvectionWaterJob : IJobParallelFor {
 				valueRemaining -= Destination[i].moveVertical;
 			}
 		}
+		newPlankton = PlanktonMass[i] * valueRemainingHorizontal;
+		newGlucose = PlanktonGlucose[i] * valueRemainingHorizontal;
 		newMass = Mass[i] * valueRemaining;
 		newSaltMass += Salt[i] * valueRemaining;
+		newCarbon += Carbon[i] * valueRemaining;
 		newTemperature += Temperature[i] * newMass;
 		newVelocity += Velocity[i] * newMass;
 
@@ -400,6 +422,9 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					float massIncoming = nMass * incoming;
 					newMass += massIncoming;
 					newSaltMass += Salt[n] * incoming;
+					newCarbon += Carbon[n] * incoming;
+					newPlankton += PlanktonMass[n] * incoming;
+					newGlucose += PlanktonGlucose[n] * incoming;
 					newTemperature += Temperature[n] * massIncoming;
 
 					// TODO: this is temp
@@ -422,6 +447,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 				newTemperature += TemperatureAbove[i] * massIncoming;
 				newVelocity += VelocityAbove[i] * massIncoming;
 				newSaltMass += SaltAbove[i] * vertMove;
+				newCarbon += CarbonAbove[i] * vertMove;
 			}
 		}
 
@@ -435,6 +461,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 				newTemperature += TemperatureBelow[i] * massIncoming;
 				newVelocity += VelocityBelow[i] * massIncoming;
 				newSaltMass += SaltBelow[i] * vertMove;
+				newCarbon += CarbonBelow[i] * vertMove;
 			}
 		}
 
@@ -459,6 +486,9 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		{
 			Temperature = newTemperature,
 			SaltMass = newSaltMass,
+			CarbonMass = newCarbon,
+			Plankton = newPlankton,
+			PlanktonGlucose = newGlucose,
 			Velocity = newVelocity
 		};
 
@@ -489,12 +519,18 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 public struct ApplyAdvectionWaterJob : IJobParallelFor {
 	public NativeArray<float> Temperature;
 	public NativeArray<float> SaltMass;
+	public NativeArray<float> CarbonMass;
+	public NativeArray<float> PlanktonMass;
+	public NativeArray<float> PlanktonGlucose;
 	public NativeArray<float3> Velocity;
 	public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<DiffusionWater> Advection;
 	public void Execute(int i)
 	{
 		SaltMass[i] = Advection[i].SaltMass;
+		CarbonMass[i] = Advection[i].CarbonMass;
+		PlanktonMass[i] = Advection[i].Plankton;
+		PlanktonGlucose[i] = Advection[i].PlanktonGlucose;
 		Temperature[i] = Advection[i].Temperature;
 		Velocity[i] = Advection[i].Velocity;
 	}

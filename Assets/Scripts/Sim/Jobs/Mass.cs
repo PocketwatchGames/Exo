@@ -9,16 +9,22 @@ using UnityEngine;
 public struct UpdateMassWaterJob : IJobParallelFor {
 	public NativeArray<float> WaterMass;
 	public NativeArray<float> SaltMass;
+	public NativeArray<float> CarbonMass;
 	public NativeArray<float> WaterTemperature;
+	[ReadOnly] public NativeArray<float> SoilRespiration;
 	[ReadOnly] public NativeArray<float> SaltPlume;
 	[ReadOnly] public NativeArray<float> SaltPlumeTemperature;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float> LastWaterMass;
+	[ReadOnly] public NativeArray<float> LastCarbonMass;
 	[ReadOnly] public NativeArray<float> DownLastWaterMass;
+	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeArray<float> WaterCoverageBelow;
 	public void Execute(int i)
 	{
 		WaterMass[i] = LastWaterMass[i];
 		SaltMass[i] = LastSaltMass[i];
+		CarbonMass[i] = LastCarbonMass[i] + SoilRespiration[i] * math.max(0, WaterCoverage[i] - WaterCoverageBelow[i]);
 		if (DownLastWaterMass[i] == 0 && LastWaterMass[i] > 0)
 		{
 			WaterTemperature[i] = (WaterTemperature[i] * (LastWaterMass[i] * WorldData.SpecificHeatWater + LastSaltMass[i] * WorldData.SpecificHeatSalt) + SaltPlumeTemperature[i] * SaltPlume[i] * WorldData.SpecificHeatSalt) / (LastWaterMass[i] * WorldData.SpecificHeatWater + (LastSaltMass[i] + SaltPlume[i]) * WorldData.SpecificHeatSalt);
@@ -31,6 +37,11 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	public NativeArray<float> WaterTemperature;
 	public NativeArray<float> WaterMass;
 	public NativeArray<float> SaltMass;
+	public NativeArray<float> PlanktonMass;
+	public NativeArray<float> PlanktonGlucose;
+	public NativeArray<float> CarbonMass;
+	[ReadOnly] public NativeArray<float> LastPlanktonMass;
+	[ReadOnly] public NativeArray<float> LastPlanktonGlucose;
 	[ReadOnly] public NativeArray<float> Evaporation;
 	[ReadOnly] public NativeArray<float> IceMelted;
 	[ReadOnly] public NativeArray<float> Precipitation;
@@ -39,6 +50,10 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> SaltPlume;
 	[ReadOnly] public NativeArray<float> FloraRespirationWater;
 	[ReadOnly] public NativeArray<float> FloraTemperature;
+	[ReadOnly] public NativeArray<float> PlanktonMassDelta;
+	[ReadOnly] public NativeArray<float> PlanktonGlucoseDelta;
+	[ReadOnly] public NativeArray<float> PlanktonWaterCarbonDelta;
+	[ReadOnly] public NativeArray<float> WaterAirCarbonDelta;
 	public void Execute(int i)
 	{
 		float precipitationTemperature = PrecipitationTemperature[i];
@@ -48,10 +63,15 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		float newMass = waterMass + IceMelted[i] + rainMass - Evaporation[i] - WaterFrozen[i] + FloraRespirationWater[i];
 		WaterMass[i] = newMass;
 		SaltMass[i] -= SaltPlume[i];
+		PlanktonMass[i] = LastPlanktonMass[i] + PlanktonMassDelta[i];
+		PlanktonGlucose[i] = LastPlanktonGlucose[i] + PlanktonGlucoseDelta[i];
+		CarbonMass[i] += PlanktonWaterCarbonDelta[i] - WaterAirCarbonDelta[i];
 
 		if (newMass <= 0)
 		{
 			WaterTemperature[i] = 0;
+			PlanktonMass[i] = 0;
+			PlanktonGlucose[i] = 0;
 		}
 		else
 		{
@@ -180,32 +200,37 @@ public struct UpdateMassAirJob : IJobParallelFor {
 }
 
 [BurstCompile]
-public struct UpdateMassEvaporationJob : IJobParallelFor {
+public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 	public NativeArray<float> AirTemperaturePotential;
 	public NativeArray<float> VaporMass;
 	public NativeArray<float> DustMass;
 	public NativeArray<float> CarbonDioxide;
 	[ReadOnly] public NativeArray<float> EvaporationWater;
-	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotentialWater;
+	[ReadOnly] public NativeArray<float> EvaporationTemperatureWater;
 	[ReadOnly] public NativeArray<float> EvaporationFlora;
-	[ReadOnly] public NativeArray<float> EvaporationTemperaturePotentialFlora;
+	[ReadOnly] public NativeArray<float> EvaporationTemperatureFlora;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> DustEjected;
-	[ReadOnly] public NativeArray<float> CarbonDioxideDelta;
+	[ReadOnly] public NativeArray<float> FloraAirCarbonDelta;
+	[ReadOnly] public NativeArray<float> WaterAirCarbonDelta;
+	[ReadOnly] public NativeArray<float> SoilRespiration;
+	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeArray<float> Elevation;
 	public void Execute(int i)
 	{
 		float vaporMass = VaporMass[i];
 		float airMass = AirMass[i];
+		float elevation = Elevation[i];
 
 		AirTemperaturePotential[i] =
 			((airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * AirTemperaturePotential[i] +
-			EvaporationWater[i] * EvaporationTemperaturePotentialWater[i] * WorldData.SpecificHeatWaterVapor +
-			EvaporationFlora[i] * EvaporationTemperaturePotentialFlora[i] * WorldData.SpecificHeatWaterVapor) /
+			EvaporationWater[i] * Atmosphere.GetPotentialTemperature(EvaporationTemperatureWater[i], elevation) * WorldData.SpecificHeatWaterVapor +
+			EvaporationFlora[i] * Atmosphere.GetPotentialTemperature(EvaporationTemperatureFlora[i], elevation) * WorldData.SpecificHeatWaterVapor) /
 			(airMass * WorldData.SpecificHeatAtmosphere + (vaporMass + EvaporationWater[i] + EvaporationFlora[i]) * WorldData.SpecificHeatWaterVapor);
 
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
-		CarbonDioxide[i] += CarbonDioxideDelta[i];
+		CarbonDioxide[i] += FloraAirCarbonDelta[i] + WaterAirCarbonDelta[i] + SoilRespiration[i] * WaterCoverage[i];
 	}
 }
 
@@ -243,7 +268,7 @@ public struct UpdateMassIceJob : IJobParallelFor {
 
 [BurstCompile]
 public struct UpdateTerrainJob : IJobParallelFor {
-	public NativeArray<float> SoilFertility;
+	public NativeArray<float> SoilCarbon;
 	public NativeArray<float> Roughness;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> GroundWater;
@@ -265,6 +290,9 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LavaCrystalized;
 	[ReadOnly] public NativeArray<float> LavaEjected;
 	[ReadOnly] public NativeArray<float> CrustDelta;
+	[ReadOnly] public NativeArray<float> SoilRespiration;
+	[ReadOnly] public NativeArray<float> FloraDeath;
+	[ReadOnly] public NativeArray<float> PlanktonDeath;
 	[ReadOnly] public float MagmaTemperature;
 	[ReadOnly] public float LavaDensityAdjustment;
 	public void Execute(int i)
@@ -277,7 +305,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 		float lavaCrystalizedDepth = lavaCrystalized / (WorldData.MassLava * LavaDensityAdjustment);
 		Elevation[i] = LastElevation[i] + lavaCrystalizedDepth;
 		// TODO: improve soil fertility when dust settles
-		SoilFertility[i] = LastSoilFertility[i];
+		SoilCarbon[i] = LastSoilFertility[i] - SoilRespiration[i] + FloraDeath[i] + PlanktonDeath[i];
 		Roughness[i] = LastRoughness[i];
 		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];
 		CrustDepth[i] = LastCrustDepth[i] + lavaCrystalizedDepth + CrustDelta[i];

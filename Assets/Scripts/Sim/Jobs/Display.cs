@@ -84,21 +84,22 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 		WindVertical[i] = AdvectionDestination[i].moveVertical;
 	}
 }
-#if !InitDisplayJobDebug
-[BurstCompile]
-#endif
+//[BurstCompile]
 public struct InitDisplayWaterLayerJob : IJobParallelFor {
 	public NativeArray<float> Enthalpy;
 	public NativeArray<float> Salinity;
+	public NativeArray<float> CarbonPercent;
 	[ReadOnly] public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
+	[ReadOnly] public NativeArray<float> WaterCarbon;
 	public void Execute(int i)
 	{
 		Salinity[i] = Atmosphere.GetWaterSalinity(WaterMass[i], SaltMass[i]);
 		if (WaterMass[i] > 0)
 		{
 			Enthalpy[i] = WaterTemperature[i] * (WorldData.SpecificHeatWater * WaterMass[i] + WorldData.SpecificHeatSalt * SaltMass[i]) + WaterMass[i] * WorldData.LatentHeatWaterLiquid;
+			CarbonPercent[i] = WaterCarbon[i] / (WaterMass[i] + SaltMass[i] + WaterCarbon[i]);
 		}
 	}
 }

@@ -62,7 +62,6 @@ public struct EnergyWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyLava;
@@ -71,9 +70,7 @@ public struct EnergyWaterJob : IJobParallelFor {
 	{
 		if (LastMass[i] > 0)
 		{
-			float energy =
-				+ SolarRadiationIn[i]
-				+ ThermalRadiationDelta[i];
+			float energy = ThermalRadiationDelta[i];
 
 			energy += (1.0f - CoverageDown[i]) * (
 				+ ConductionEnergyLava[i]

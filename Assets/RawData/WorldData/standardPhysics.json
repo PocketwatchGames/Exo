@@ -43,6 +43,7 @@
 
 	"SoilHeatDepth": 1,
 	"WaterHeatingDepth": 0.1,
+	"WaterAirCarbonDiffusionCoefficient":0.1,
 
 	"IceHeatingDepth": 0.1,
 	"FreezePointReductionPerSalinity": 56.0,
@@ -74,22 +75,33 @@
 
 	"FloraWaterConsumptionRate": 0.1,
 	"FullCoverageFlora": 1000,
-	"FloraMax": 1000,
 	"FloraGrowthRate": 0.01,
-	"FloraDeathRate": 0.01,
+	"FloraDeathRate": 0.001,
 	"FloraGrowthTemperatureRangeInverse": 0.02,
 	"FloraAirSurfaceArea": 10,
-	"FloraEnergyForPhotosynthesis": 1,
-	"FloraCarbonDioxideExtractionEfficiency": 10,
+	"FloraEnergyForPhotosynthesis": 0.01,
+	"FloraCarbonDioxideExtractionEfficiency": 1,
 	"FloraOxygenExtractionEfficiency": 10,
-	"FloraPhotosynthesisSpeed": 0.01,
-	"FloraRespirationSpeed": 0.01,
+	"FloraPhotosynthesisSpeed": 0.1,
+	"FloraRespirationSpeed": 0.0001,
+	"FloraRespirationPerDegree": 0.0001,
+
+	"PlanktonDensityMax":0.1,
+	"PlanktonEnergyForPhotosynthesis":0.01,
+	"PlanktonCarbonDioxideExtractionEfficiency":0.1,
+	"PlanktonPhotosynthesisSpeed":0.1,
+	"PlanktonRespirationSpeed":0.001,
+	"PlanktonRespirationPerDegree": 0.001,
+	"PlanktonGrowthRate":0.1,
+	"PlanktonDeathRate":0.1,
+
 
 	"GroundWaterMax": 10000,
 	"GroundWaterMaxDepth": 100,
 	"GroundWaterAbsorptionRate": 0.01,
 	"GroundWaterFlowSpeed": 0.05,
 	"GroundWaterDiffusionCoefficient": 10,
+	"SoilRespirationSpeed": 0.001,
 
 	"LavaCrystalizationTemperature": 800,
 	"CrustDepthForEruption": 10,

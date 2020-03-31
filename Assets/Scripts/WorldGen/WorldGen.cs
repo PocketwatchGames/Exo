@@ -43,7 +43,7 @@ public static class WorldGen {
 		public NativeArray<float> CloudMass;
 		public NativeArray<float> GroundWater;
 		public NativeArray<float> Roughness;
-		public NativeArray<float> SoilFertility;
+		public NativeArray<float> SoilCarbon;
 		public NativeArray<float> LayerElevationBase;
 		public NativeArray<float> Elevation;
 		public NativeArray<float> Flora;
@@ -67,6 +67,7 @@ public static class WorldGen {
 		[ReadOnly] public float MinTemperatureFlora;
 		[ReadOnly] public float MaxTemperatureFlora;
 		[ReadOnly] public float MaxGroundWater;
+		[ReadOnly] public float SoilCarbonMax;
 		[ReadOnly] public float MagmaMin;
 		[ReadOnly] public float MagmaMax;
 		[ReadOnly] public float CrustMin;
@@ -92,11 +93,6 @@ public static class WorldGen {
 				0.6f * GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 0, MinElevation, MaxElevation) +
 				0.3f * GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 0, MinElevation, MaxElevation) +
 				0.1f * GetPerlinMinMax(pos.x, pos.y, pos.z, 2.0f, 0, MinElevation, MaxElevation);
-			float soilFertility =
-				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.2f, 6630) +
-				0.3f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 435) +
-				0.2f * GetPerlinNormalized(pos.x, pos.y, pos.z, 1f, 8740);
-
 			relativeHumidity[i] = 0.5f +
 				0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 40) +
 				0.25f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 40);
@@ -114,6 +110,12 @@ public static class WorldGen {
 				regionalTemperatureVariation + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.15f, 80, -5, 5) +
 				(1.0f - coord.y * coord.y) * (MaxTemperature - MinTemperature) + MinTemperature;
 
+			float soilFertilityPercent =
+				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.2f, 6630) +
+				0.3f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 435) +
+				0.2f * GetPerlinNormalized(pos.x, pos.y, pos.z, 1f, 8740);
+			float soilFertility = soilFertilityPercent * SoilCarbonMax;
+
 			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * surfaceElevation;
 			float flora = 0;
 			float floraWater = 0;
@@ -121,14 +123,17 @@ public static class WorldGen {
 			if (elevation > 0)
 			{
 				flora =
-					FullCoverageFlora
-					* soilFertility
+					FullCoverageFlora * math.pow(
+					soilFertilityPercent
 					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
-					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureFlora) / (MaxTemperatureFlora - MinTemperatureFlora)));
+					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 61)
+					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureFlora) / (MaxTemperatureFlora - MinTemperatureFlora))),
+					2.5f);
 				floraWater =
 					flora * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 41630);
 				floraGlucose = flora;
 			}
+
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 2.0f);
 
 			float groundWater = MaxGroundWater;
@@ -158,7 +163,7 @@ public static class WorldGen {
 			FloraWater[i] = floraWater;
 			FloraGlucose[i] = floraGlucose;
 			Roughness[i] = roughness;
-			SoilFertility[i] = soilFertility;
+			SoilCarbon[i] = soilFertility;
 
 			CloudMass[i] = cloudMass;
 		}
@@ -265,7 +270,10 @@ public static class WorldGen {
 	private struct WorldGenWaterLayerJob : IJobParallelFor {
 
 		public NativeArray<float> WaterMass;
+		public NativeArray<float> CarbonMass;
 		public NativeArray<float> SaltMass;
+		public NativeArray<float> PlanktonMass;
+		public NativeArray<float> PlanktonGlucose;
 		public NativeArray<float> WaterTemperature;
 		public NativeArray<float> ElevationTop;
 
@@ -273,12 +281,14 @@ public static class WorldGen {
 		[ReadOnly] public NativeArray<float> WaterTemperatureBottom;
 		[ReadOnly] public NativeArray<float2> coord;
 		[ReadOnly] public NativeArray<float> Elevation;
+		[ReadOnly] public float CarbonPercent;
 		[ReadOnly] public float MinSalinity;
 		[ReadOnly] public float MaxSalinity;
 		[ReadOnly] public float WaterDensityPerDegree;
 		[ReadOnly] public float WaterDensityPerSalinity;
 		[ReadOnly] public float LayerDepthMax;
 		[ReadOnly] public float LayerCount;
+		[ReadOnly] public float PlanktonInLayer;
 
 
 		public void Execute(int i)
@@ -296,13 +306,17 @@ public static class WorldGen {
 				float waterAndSaltMass = layerDepth * waterDensity;
 				float waterMass = waterAndSaltMass * (1.0f - salinity);
 				float saltMass = waterAndSaltMass * salinity;
+				float waterCarbonMass = waterMass * CarbonPercent;
 
 				float density = Atmosphere.GetWaterDensity(salinity, WaterTemperature[i]);
 				float actualDepth = (waterMass + saltMass) / density;
 				
 				WaterMass[i] = waterMass;
+				CarbonMass[i] = waterCarbonMass;
 				SaltMass[i] = saltMass;
 				ElevationTop[i] -= layerDepth;
+				PlanktonMass[i] = PlanktonInLayer * layerDepth / LayerDepthMax;
+				PlanktonGlucose[i] = PlanktonMass[i] / 2;
 			}
 		}
 	}
@@ -334,7 +348,7 @@ public static class WorldGen {
 		var worldGenInitJob = new WorldGenInitJob()
 		{
 			Roughness = state.Roughness,
-			SoilFertility = state.SoilFertility,
+			SoilCarbon = state.GroundCarbon,
 			CloudMass = state.CloudMass,
 			potentialTemperature = temperaturePotential,
 			relativeHumidity = RelativeHumidity,
@@ -362,6 +376,7 @@ public static class WorldGen {
 			MinTemperature = worldGenData.MinTemperature,
 			MaxTemperature = worldGenData.MaxTemperature,
 			MaxGroundWater = worldData.GroundWaterMax,
+			SoilCarbonMax = worldGenData.SoilCarbonMass,
 			MagmaMin = worldGenData.MagmaMin,
 			MagmaMax = worldGenData.MagmaMax,
 			CrustMin = worldGenData.CrustMin,
@@ -373,7 +388,7 @@ public static class WorldGen {
 		var worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenJob()
 		{
 			Elevation = state.Elevation,
-			TerrainTemperature = state.TerrainTemperature,
+			TerrainTemperature = state.GroundTemperature,
 			CloudDropletMass = state.CloudDropletMass,
 			CloudTemperature = state.CloudTemperature,
 			CloudVelocity = state.CloudVelocity,
@@ -394,27 +409,34 @@ public static class WorldGen {
 		{
 			float layerDepthMax;
 			float layerCount;
+			float plankton;
 			if (i== worldData.WaterLayers - 2)
 			{
 				layerDepthMax = worldGenData.SurfaceWaterDepth;
 				layerCount = 1;
+				plankton = worldGenData.PlanktonMass;
 			}
 			else if (i == worldData.WaterLayers - 3)
 			{
 				layerDepthMax = worldGenData.ThermoclineDepth;
 				layerCount = 1;
+				plankton = 0;
 			}
 			else
 			{
 				layerDepthMax = float.MaxValue;
 				layerCount = i;
+				plankton = 0;
 			}
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterLayerJob()
 			{
 				WaterTemperature = state.WaterTemperature[i],
 				SaltMass = state.SaltMass[i],
 				WaterMass = state.WaterMass[i],
-				ElevationTop= WaterLayerElevation,
+				CarbonMass = state.WaterCarbon[i],
+				PlanktonMass = state.PlanktonMass[i],
+				PlanktonGlucose = state.PlanktonGlucose[i],
+				ElevationTop = WaterLayerElevation,
 
 				LayerCount = layerCount,
 				LayerDepthMax = layerDepthMax,
@@ -422,10 +444,12 @@ public static class WorldGen {
 				MaxSalinity = worldGenData.MaxSalinity,
 				MinSalinity = worldGenData.MinSalinity,
 				Elevation = state.Elevation,
+				CarbonPercent = worldGenData.WaterCarbonPercent,
 				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
 				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
 				WaterTemperatureBottom = WaterTemperatureBottom,
 				WaterTemperatureSurface = WaterTemperatureTop,
+				PlanktonInLayer = plankton
 			}, worldGenJobHandle);
 		}
 
@@ -457,14 +481,14 @@ public static class WorldGen {
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterVaporJob()
 			{
 				AirVapor = state.AirVapor[i],
-				CarbonDioxide = state.AirCarbonDioxide[i],
+				CarbonDioxide = state.AirCarbon[i],
 
 				AirMass = dependent.AirMass[i],
 				Pressure = dependent.AirPressure[i],
 				LayerMiddle = dependent.LayerMiddle[i],
 				TemperaturePotential = temperaturePotential,
 				RelativeHumidity = RelativeHumidity,
-				CarbonDioxidePPM = worldGenData.CarbonDioxide,
+				CarbonDioxidePPM = worldGenData.AirCarbonPercent,
 
 			}, worldGenJobHandle);
 		}

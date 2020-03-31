@@ -72,14 +72,19 @@ public class WorldSim {
 	private NativeArray<float> frozenMass;
 	private NativeArray<float> saltPlume;
 	private NativeArray<float> evaporationMassWater;
-	private NativeArray<float> evaporationTemperaturePotentialWater;
-	private NativeArray<float> floraRespirationMassVapor;
-	private NativeArray<float> floraRespirationMassWater;
 	private NativeArray<float> temperaturePotentialFlora;
 	private NativeArray<float> groundWaterConsumed;
+	private NativeArray<float> floraRespirationMassVapor;
+	private NativeArray<float> floraRespirationMassWater;
 	private NativeArray<float> floraMassDelta;
 	private NativeArray<float> floraWaterDelta;
 	private NativeArray<float> floraGlucoseDelta;
+	private NativeArray<float> floraDeath;
+	private NativeArray<float> planktonMassDelta;
+	private NativeArray<float> planktonGlucoseDelta;
+	private NativeArray<float> planktonDeath;
+	private NativeArray<float> planktonWaterCarbonDelta;
+	private NativeArray<float> soilRespiration;
 	private NativeArray<float> geothermalRadiation;
 	private NativeArray<float> groundWaterFlowMass;
 	private NativeArray<float> groundWaterFlowTemperature;
@@ -90,7 +95,8 @@ public class WorldSim {
 	private NativeArray<float> lavaEjected;
 	private NativeArray<float> dustEjected;
 	private NativeArray<float> crustDelta;
-	private NativeArray<float> carbonDioxideDelta;
+	private NativeArray<float> floraAirCarbonDelta;
+	private NativeArray<float> waterAirCarbonDelta;
 	private NativeArray<float> oxygenDelta;
 	private NativeArray<float>[] divergenceAir;
 
@@ -166,14 +172,16 @@ public class WorldSim {
 		frozenMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		saltPlume = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		evaporationMassWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		evaporationTemperaturePotentialWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraRespirationMassVapor = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraRespirationMassWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		temperaturePotentialFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		groundWaterConsumed = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraMassDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraWaterDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraGlucoseDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		floraDeath = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		planktonMassDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		planktonGlucoseDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		planktonDeath = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		windFriction = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		waterFriction = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		diffusionCloud = new NativeArray<DiffusionCloud>(_cellCount, Allocator.Persistent);
@@ -201,9 +209,11 @@ public class WorldSim {
 		lavaEjected = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		dustEjected = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		crustDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
-		carbonDioxideDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		floraAirCarbonDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		waterAirCarbonDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		oxygenDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
-
+		soilRespiration = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		planktonWaterCarbonDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
 	}
 
 	public void Dispose()
@@ -242,14 +252,16 @@ public class WorldSim {
 		frozenMass.Dispose();
 		saltPlume.Dispose();
 		evaporationMassWater.Dispose();
-		evaporationTemperaturePotentialWater.Dispose();
 		floraRespirationMassVapor.Dispose();
 		floraRespirationMassWater.Dispose();
-		temperaturePotentialFlora.Dispose();
 		groundWaterConsumed.Dispose();
 		floraMassDelta.Dispose();
 		floraWaterDelta.Dispose();
 		floraGlucoseDelta.Dispose();
+		floraDeath.Dispose();
+		planktonMassDelta.Dispose();
+		planktonGlucoseDelta.Dispose();
+		planktonDeath.Dispose();
 		windFriction.Dispose();
 		waterFriction.Dispose();
 		diffusionCloud.Dispose();
@@ -276,8 +288,11 @@ public class WorldSim {
 		lavaEjected.Dispose();
 		dustEjected.Dispose();
 		crustDelta.Dispose();
-		carbonDioxideDelta.Dispose();
+		floraAirCarbonDelta.Dispose();
+		waterAirCarbonDelta.Dispose();
 		oxygenDelta.Dispose();
+		soilRespiration.Dispose();
+		planktonWaterCarbonDelta.Dispose();
 
 		displaySolarRadiation.Dispose();
 
@@ -376,7 +391,7 @@ public class WorldSim {
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
 					Dust = lastState.Dust[j],
-					CarbonDioxide = lastState.AirCarbonDioxide[j],
+					CarbonDioxide = lastState.AirCarbon[j],
 					EmissivityAir = worldData.ThermalEmissivityAir,
 					EmissivityWaterVapor = worldData.ThermalEmissivityWaterVapor,
 					EmissivityDust = worldData.ThermalEmissivityDust,
@@ -400,7 +415,7 @@ public class WorldSim {
 			emissivityJobHandles[_terrainLayer] =SimJob.Schedule(new EmissivityTerrainJob()
 			{
 				Emissivity = emissivity[_terrainLayer],
-				SoilFertility = lastState.SoilFertility,
+				SoilFertility = lastState.GroundCarbon,
 				EmissivityDirt = worldData.ThermalEmissivityDirt,
 				EmissivitySand = worldData.ThermalEmissivitySand,
 			});
@@ -474,7 +489,7 @@ public class WorldSim {
 
 				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
 				Emissivity = emissivity[_terrainLayer],
-				Temperature = lastState.TerrainTemperature,
+				Temperature = lastState.GroundTemperature,
 				SecondsPerTick = worldData.SecondsPerTick
 			}, emissivityJobHandles[_terrainLayer]);
 
@@ -549,7 +564,7 @@ public class WorldSim {
 					AbsorptivityThermal = absorptivityThermal[j],
 					AirMass = dependent.AirMass[j],
 					VaporMass = lastState.AirVapor[j],
-					AirCarbonDioxide = lastState.AirCarbonDioxide[j],
+					AirCarbonDioxide = lastState.AirCarbon[j],
 					Dust = lastState.Dust[j],
 					CloudMass = lastState.CloudMass,
 					CloudAlbedo = cloudAlbedo,
@@ -643,7 +658,7 @@ public class WorldSim {
 				SolarRadiationIncoming = solarRadiation,
 				SolarRadiationReflected = solarReflected[_terrainLayer],
 				worldData = worldData,
-				SoilFertility = lastState.SoilFertility,
+				SoilFertility = lastState.GroundCarbon,
 			}, solarInJobHandle);
 			#endregion
 
@@ -913,7 +928,7 @@ public class WorldSim {
 			{
 				EnergyDelta = conductionAirTerrain,
 				TemperatureA = dependent.SurfaceAirTemperatureAbsolute,
-				TemperatureB = lastState.TerrainTemperature,
+				TemperatureB = lastState.GroundTemperature,
 				ConductionCoefficient = WorldData.ConductivityAirTerrain,
 				SurfaceArea = dependent.SurfaceAreaAirTerrain,
 				SecondsPerTick = worldData.SecondsPerTick
@@ -963,7 +978,7 @@ public class WorldSim {
 			{
 				EnergyDelta = conductionIceTerrain,
 				TemperatureA = lastState.IceTemperature,
-				TemperatureB = lastState.TerrainTemperature,
+				TemperatureB = lastState.GroundTemperature,
 				EnergyA = dependent.IceEnergy,
 				ConductionCoefficient = WorldData.ConductivityIceTerrain,
 				SurfaceArea = dependent.SurfaceAreaIceTerrain,
@@ -975,7 +990,7 @@ public class WorldSim {
 			{
 				EnergyDelta = conductionFloraTerrain,
 				TemperatureA = lastState.FloraTemperature,
-				TemperatureB = lastState.TerrainTemperature,
+				TemperatureB = lastState.GroundTemperature,
 				EnergyB = dependent.FloraEnergy,
 				ConductionCoefficient = WorldData.ConductivityFloraTerrain,
 				SurfaceArea = dependent.SurfaceAreaFloraTerrain,
@@ -987,7 +1002,7 @@ public class WorldSim {
 			{
 				EnergyDelta = conductionLavaTerrain,
 				TemperatureA = lastState.LavaTemperature,
-				TemperatureB = lastState.TerrainTemperature,
+				TemperatureB = lastState.GroundTemperature,
 				EnergyB = dependent.LavaEnergy,
 				ConductionCoefficient = WorldData.ConductivityLavaTerrain,
 				SurfaceArea = dependent.SurfaceAreaLavaTerrain,
@@ -1018,7 +1033,7 @@ public class WorldSim {
 					EnergyDelta = conductionWaterTerrain[i],
 					EnergyDeltaTotal = conductionWaterTerrainTotal,
 					TemperatureA = lastState.WaterTemperature[i],
-					TemperatureB = lastState.TerrainTemperature,
+					TemperatureB = lastState.GroundTemperature,
 					EnergyA = dependent.WaterPotentialEnergy[i],
 					ConductionCoefficient = WorldData.ConductivityWaterTerrain,
 					SurfaceArea = dependent.SurfaceAreaWaterTerrain,
@@ -1049,9 +1064,9 @@ public class WorldSim {
 			jobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
 			energyJobHandles[_terrainLayer] =SimJob.Schedule(new EnergyTerrainJob()
 			{
-				TerrainTemperature = nextState.TerrainTemperature,
-				LastTemperature = lastState.TerrainTemperature,
-				SoilFertility = lastState.SoilFertility,
+				TerrainTemperature = nextState.GroundTemperature,
+				LastTemperature = lastState.GroundTemperature,
+				SoilFertility = lastState.GroundCarbon,
 				SolarRadiationIn = solarRadiationIn[_terrainLayer],
 				ThermalRadiationDelta = thermalRadiationDelta[_terrainLayer],
 				ConductionEnergyAir = conductionAirTerrain,
@@ -1209,7 +1224,6 @@ public class WorldSim {
 					LastMass = lastState.WaterMass[j],
 					LastSaltMass = lastState.SaltMass[j],
 					LastTemperature = lastState.WaterTemperature[j],
-					SolarRadiationIn = solarRadiationIn[layerIndex],
 					ThermalRadiationDelta = thermalRadiationDelta[layerIndex],
 					CoverageUp = dependent.WaterCoverage[j + 1],
 					CoverageDown = dependent.WaterCoverage[j - 1],
@@ -1262,30 +1276,47 @@ public class WorldSim {
 			}
 
 
-			fluxJobHandles[_waterLayer0+_surfaceWaterLayer] =SimJob.Schedule(new FluxWaterJob()
+			fluxJobHandles[_waterLayer0 + _surfaceWaterLayer] = SimJob.Run(new FluxWaterJob()
 			{
 				EvaporatedWaterMass = evaporationMassWater,
-				EvaporatedWaterTemperaturePotential = evaporationTemperaturePotentialWater,
 				FrozenMass = frozenMass,
 				FrozenTemperature = frozenTemperature,
 				LatentHeatWater = latentHeat[_waterLayer0 + _surfaceWaterLayer],
 				LatentHeatAir = latentHeat[_airLayer0 + 1],
 				SaltPlume = saltPlume,
+				PlanktonMassDelta = planktonMassDelta,
+				PlanktonGlucoseDelta = planktonGlucoseDelta,
+				PlanktonDeath = planktonDeath,
+				WaterCarbonDelta = planktonWaterCarbonDelta,
+				AirCarbonDelta = waterAirCarbonDelta,
 
-				Temperature = nextState.WaterTemperature[_surfaceWaterLayer],
+				WaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
-				LastMass = lastState.WaterMass[_surfaceWaterLayer],
-				LastSaltMass = lastState.SaltMass[_surfaceWaterLayer],
+				WaterMass = lastState.WaterMass[_surfaceWaterLayer],
+				SaltMass = lastState.SaltMass[_surfaceWaterLayer],
 				IceCoverage = dependent.IceCoverage,
 				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				SurfaceWind = lastState.AirVelocity[1],
 				AirMass = dependent.AirMass[1],
 				AirPressure = dependent.AirPressure[1],
 				AirVapor = lastState.AirVapor[1],
-				LayerElevation = dependent.LayerElevation[1],
-				LayerMiddle = dependent.LayerMiddle[1],
+				AirLayerElevation = dependent.LayerElevation[1],
+				SolarRadiation = solarRadiationIn[_waterLayer0 + _surfaceWaterLayer],
+				WaterCarbon = lastState.WaterCarbon[_surfaceWaterLayer],
+				PlanktonMass = lastState.PlanktonMass[_surfaceWaterLayer],
+				PlanktonGlucoseMass = lastState.PlanktonGlucose[_surfaceWaterLayer],
+				PlanktonDensityMax = worldData.PlanktonDensityMax,
+				PlanktonEnergyForPhotosynthesis = worldData.PlanktonEnergyForPhotosynthesis,
+				PlanktonCarbonDioxideExtractionEfficiency = worldData.PlanktonCarbonDioxideExtractionEfficiency,
+				PlanktonPhotosynthesisSpeed = worldData.PlanktonPhotosynthesisSpeed,
+				PlanktonRespirationSpeed = worldData.PlanktonRespirationSpeed,
+				PlanktonRespirationPerDegree = worldData.PlanktonRespirationPerDegree,
+				PlanktonGrowthRate = worldData.PlanktonGrowthRate,
+				PlanktonDeathRate = worldData.PlanktonDeathRate,
 				WaterHeatingDepth = worldData.WaterHeatingDepth,
 				FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
+				WaterAirCarbonDiffusionCoefficient = worldData.WaterAirCarbonDiffusionCoefficient,
+				AirCarbon = lastState.AirCarbon[1],
 			}, fluxJobHandles[_airLayer0 + 1]);
 
 
@@ -1323,12 +1354,12 @@ public class WorldSim {
 				LatentHeatFlora = latentHeat[_floraLayer],
 				EvaporatedWaterMass = floraRespirationMassVapor,
 				SurfaceWaterDelta = floraRespirationMassWater,
-				TemperaturePotential = temperaturePotentialFlora,
 				GroundWaterConsumed = groundWaterConsumed,
 				FloraMassDelta = floraMassDelta,
 				FloraWaterDelta = floraWaterDelta,
 				FloraGlucoseDelta = floraGlucoseDelta,
-				CarbonDioxideDelta = carbonDioxideDelta,
+				FloraDeath = floraDeath,
+				CarbonDioxideDelta = floraAirCarbonDelta,
 				OxygenDelta = oxygenDelta,
 
 				SolarRadiationIn = solarRadiationIn[_floraLayer],
@@ -1337,7 +1368,7 @@ public class WorldSim {
 				FloraGlucose = lastState.FloraGlucose,
 				FloraWater = lastState.FloraWater,
 				FloraCoverage = dependent.FloraCoverage,
-				CarbonDioxide = lastState.AirCarbonDioxide[1],
+				CarbonDioxide = lastState.AirCarbon[1],
 				LayerElevation = dependent.LayerElevation[1],
 				LayerHeight = dependent.LayerHeight[1],
 				SurfaceWind = lastState.AirVelocity[1],
@@ -1345,19 +1376,19 @@ public class WorldSim {
 				AirTemperaturePotential = lastState.AirTemperaturePotential[1],
 				AirPressure = dependent.AirPressure[1],
 				AirVapor = lastState.AirVapor[1],
-				SoilFertility = lastState.SoilFertility,
+				SoilFertility = lastState.GroundCarbon,
 				GroundWater = lastState.GroundWater,
 				GroundWaterMax = worldData.GroundWaterMax,				
 				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate,
 				FloraGrowthRate = worldData.FloraGrowthRate,
 				FloraDeathRate = worldData.FloraDeathRate,
-				FloraMax = worldData.FloraMax,
 				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse,
 				FloraEnergyForPhotosynthesis = worldData.FloraEnergyForPhotosynthesis,
 				FloraCarbonDioxideExtractionEfficiency = worldData.FloraCarbonDioxideExtractionEfficiency,
 				FloraOxygenExtractionEfficiency = worldData.FloraOxygenExtractionEfficiency,
 				FloraPhotosynthesisSpeed = worldData.FloraPhotosynthesisSpeed,
 				FloraRespirationSpeed = worldData.FloraRespirationSpeed,
+				FloraRespirationPerDegree = worldData.FloraRespirationPerDegree,
 				OxygenPercent = lastState.PlanetState.Oxygen,
 				Gravity = lastState.PlanetState.Gravity
 			}, fluxJobHandles[_waterLayer0 + _surfaceWaterLayer]);
@@ -1376,7 +1407,7 @@ public class WorldSim {
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				WaterIceSurfaceArea = dependent.SurfaceAreaIceWater,
 				WaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
-				TerrainTemperature = nextState.TerrainTemperature,
+				TerrainTemperature = nextState.GroundTemperature,
 				LayerElevation = dependent.LayerElevation[1],
 
 			}, fluxJobHandles[_floraLayer]);
@@ -1403,6 +1434,15 @@ public class WorldSim {
 				SecondsPerTick = worldData.SecondsPerTick
 			}, fluxJobHandles[_lavaLayer]);
 
+			fluxJobHandles[_terrainLayer] = SimJob.Schedule(new FluxTerrainJob()
+			{
+				SoilRespiration = soilRespiration,
+
+				SoilCarbon = nextState.GroundCarbon,
+				SoilRespirationSpeed = worldData.SoilRespirationSpeed,
+				OxygenPercent = lastState.PlanetState.Oxygen
+			}, fluxJobHandles[_lavaLayer]);
+
 			JobHandle fluxJobHandle = JobHandle.CombineDependencies(fluxCloudJobHandle, JobHandle.CombineDependencies(fluxJobHandles));
 			fluxJobHandle.Complete();
 
@@ -1419,12 +1459,17 @@ public class WorldSim {
 				{
 					WaterMass = nextState.WaterMass[j],
 					SaltMass = nextState.SaltMass[j],
+					CarbonMass = nextState.WaterCarbon[j],
 					WaterTemperature = nextState.WaterTemperature[j],
 					SaltPlume = saltPlume,
 					SaltPlumeTemperature = frozenTemperature,
 					LastSaltMass = lastState.SaltMass[j],
+					LastCarbonMass = lastState.WaterCarbon[j],
 					LastWaterMass = lastState.WaterMass[j],
-					DownLastWaterMass = lastState.WaterMass[j-1]
+					DownLastWaterMass = lastState.WaterMass[j-1],
+					SoilRespiration = soilRespiration,
+					WaterCoverage = dependent.WaterCoverage[j],
+					WaterCoverageBelow = dependent.WaterCoverage[j-1],
 				}));
 				updateMassWaterJobHandles[j] = updateMassJobHandle;
 			}
@@ -1451,6 +1496,10 @@ public class WorldSim {
 				WaterTemperature = nextState.WaterTemperature[_surfaceWaterLayer],
 				WaterMass = nextState.WaterMass[_surfaceWaterLayer],
 				SaltMass = nextState.SaltMass[_surfaceWaterLayer],
+				PlanktonMass = nextState.PlanktonMass[_surfaceWaterLayer],
+				PlanktonGlucose = nextState.PlanktonGlucose[_surfaceWaterLayer],
+				CarbonMass = nextState.WaterCarbon[_surfaceWaterLayer],
+
 				SaltPlume = saltPlume,
 				Evaporation = evaporationMassWater,
 				IceMelted = iceMeltedMass,
@@ -1459,6 +1508,12 @@ public class WorldSim {
 				FloraRespirationWater = floraRespirationMassWater,
 				FloraTemperature = lastState.FloraTemperature,
 				WaterFrozen = frozenMass,
+				LastPlanktonMass = lastState.PlanktonMass[_surfaceWaterLayer],
+				LastPlanktonGlucose = lastState.PlanktonGlucose[_surfaceWaterLayer],
+				PlanktonMassDelta = planktonMassDelta,
+				PlanktonGlucoseDelta = planktonGlucoseDelta,
+				PlanktonWaterCarbonDelta = planktonWaterCarbonDelta, 
+				WaterAirCarbonDelta = waterAirCarbonDelta,
 			}, surfaceWaterMassHandle);
 
 			var updateCloudMassJobHandle =SimJob.Schedule(new UpdateMassCloudJob()
@@ -1481,7 +1536,7 @@ public class WorldSim {
 				{
 					VaporMass = nextState.AirVapor[j],
 					DustMass = nextState.Dust[j],
-					CarbonDioxideMass = nextState.AirCarbonDioxide[j],
+					CarbonDioxideMass = nextState.AirCarbon[j],
 					CloudMass = nextState.CloudMass,
 					CloudDropletMass = nextState.CloudDropletMass,
 
@@ -1493,7 +1548,7 @@ public class WorldSim {
 					GroundCondensation = condensationGroundMass[j],
 					LastVaporMass = lastState.AirVapor[j],
 					LastDustMass = lastState.Dust[j],
-					LastCarbonDioxideMass = lastState.AirCarbonDioxide[j],
+					LastCarbonDioxideMass = lastState.AirCarbon[j],
 					DustUp = dustUp[j],
 					DustDown = dustDown[j],
 					DustFromAbove = dustDown[j + 1],
@@ -1504,20 +1559,24 @@ public class WorldSim {
 				updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateAirMassJobHandle);
 				updateMassAirJobHandles[j] = updateMassJobHandle;
 			}
-			var updateMassEvaporationHandle =SimJob.Schedule(new UpdateMassEvaporationJob()
+			var updateMassEvaporationHandle =SimJob.Schedule(new UpdateMassAirSurfaceJob()
 			{
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				VaporMass = nextState.AirVapor[1],
 				DustMass = nextState.Dust[1],
-				CarbonDioxide = nextState.AirCarbonDioxide[1],
+				CarbonDioxide = nextState.AirCarbon[1],
 
 				AirMass = dependent.AirMass[1],
 				EvaporationWater = evaporationMassWater,
-				EvaporationTemperaturePotentialWater = evaporationTemperaturePotentialWater,
+				EvaporationTemperatureWater = lastState.WaterTemperature[_surfaceWaterLayer],
 				EvaporationFlora = floraRespirationMassVapor,
-				EvaporationTemperaturePotentialFlora = temperaturePotentialFlora,
+				EvaporationTemperatureFlora = lastState.FloraTemperature,
 				DustEjected = dustEjected,
-				CarbonDioxideDelta = carbonDioxideDelta,
+				FloraAirCarbonDelta = floraAirCarbonDelta,
+				WaterAirCarbonDelta = waterAirCarbonDelta,
+				SoilRespiration = soilRespiration,
+				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
+				Elevation = lastState.Elevation,
 			}, JobHandle.CombineDependencies(updateMassAirJobHandles[1], surfaceWaterMassHandle));
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateMassEvaporationHandle);
 
@@ -1538,7 +1597,7 @@ public class WorldSim {
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateTerrainJob()
 			{
-				SoilFertility = nextState.SoilFertility,
+				SoilCarbon = nextState.GroundCarbon,
 				Roughness = nextState.Roughness,
 				GroundWater = nextState.GroundWater,
 				Elevation = nextState.Elevation,
@@ -1547,17 +1606,19 @@ public class WorldSim {
 				MagmaMass = nextState.MagmaMass,
 				LavaTemperature = nextState.LavaTemperature,
 
-
 				CrustDelta = crustDelta,
 				LastElevation = lastState.Elevation,
 				LastRoughness = lastState.Roughness,
-				LastSoilFertility = lastState.SoilFertility,
+				LastSoilFertility = lastState.GroundCarbon,
 				LastGroundWater = lastState.GroundWater,
 				GroundWaterConsumed = groundWaterConsumed,
+				SoilRespiration = soilRespiration,
+				FloraDeath = floraDeath,
+				PlanktonDeath = planktonDeath,
+				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				LastCrustDepth = lastState.CrustDepth,
 				LastLavaMass = lastState.LavaMass,
 				LastMagmaMass = lastState.MagmaMass,
-				WaterCoverage = dependent.WaterCoverage[_surfaceWaterLayer],
 				DustSettled = dustDown[1],
 				LavaCrystalized = lavaCrystalizedMass,
 				LavaEjected = lavaEjected,
@@ -1597,10 +1658,10 @@ public class WorldSim {
 
 			latentHeatJobHandle = JobHandle.CombineDependencies(latentHeatJobHandle, SimJob.Schedule(new ApplyLatentHeatTerrainJob()
 			{
-				TerrainTemperature = nextState.TerrainTemperature,
+				TerrainTemperature = nextState.GroundTemperature,
 
 				LatentHeat = latentHeat[_terrainLayer],
-				SoilFertility = nextState.SoilFertility,
+				SoilFertility = nextState.GroundCarbon,
 				HeatingDepth = worldData.SoilHeatDepth
 			}));
 
@@ -1681,11 +1742,11 @@ public class WorldSim {
 			groundWaterJob = SimJob.Schedule(new GroundWaterConductionJob()
 			{
 				GroundWaterTemperature = groundWaterFlowTemperature,
-				TerrainTemperature = nextState.TerrainTemperature,
+				TerrainTemperature = nextState.GroundTemperature,
 
 				GroundWater = nextState.GroundWater,
 				LastGroundWaterTemperature = nextState.GroundWaterTemperature,
-				SoilFertility = nextState.SoilFertility,
+				SoilFertility = nextState.GroundCarbon,
 				GroundWaterConductionCoefficient = WorldData.ConductivityWaterTerrain,
 				HeatingDepth = worldData.SoilHeatDepth,
 				SecondsPerTick = worldData.SecondsPerTick,
@@ -1913,9 +1974,9 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[j],
 					VaporAbove = nextState.AirVapor[j + 1],
 					VaporBelow = nextState.AirVapor[j - 1],
-					CarbonDioxide = nextState.AirCarbonDioxide[j],
-					CarbonDioxideAbove = nextState.AirCarbonDioxide[j + 1],
-					CarbonDioxideBelow = nextState.AirCarbonDioxide[j - 1],
+					CarbonDioxide = nextState.AirCarbon[j],
+					CarbonDioxideAbove = nextState.AirCarbon[j + 1],
+					CarbonDioxideBelow = nextState.AirCarbon[j - 1],
 					Dust = nextState.Dust[j],
 					DustAbove = nextState.Dust[j + 1],
 					DustBelow = nextState.Dust[j - 1],
@@ -1974,8 +2035,13 @@ public class WorldSim {
 					MassAbove = nextState.WaterMass[j+1],
 					MassBelow = nextState.WaterMass[j-1],
 					Salt = nextState.SaltMass[j],
-					SaltAbove = nextState.SaltMass[j+1],
-					SaltBelow = nextState.SaltMass[j-1],
+					SaltAbove = nextState.SaltMass[j + 1],
+					SaltBelow = nextState.SaltMass[j - 1],
+					Carbon = nextState.WaterCarbon[j],
+					CarbonAbove = nextState.WaterCarbon[j + 1],
+					CarbonBelow = nextState.WaterCarbon[j - 1],
+					PlanktonMass = nextState.PlanktonMass[j],
+					PlanktonGlucose = nextState.PlanktonGlucose[j],
 					Positions = staticState.SphericalPosition,
 					Neighbors = staticState.Neighbors,
 				}, waterDestJob);
@@ -2026,6 +2092,9 @@ public class WorldSim {
 				{
 					Advection = advectionWater[i],
 					SaltMass = nextState.SaltMass[i],
+					CarbonMass = nextState.WaterCarbon[i],
+					PlanktonMass = nextState.PlanktonMass[i],
+					PlanktonGlucose = nextState.PlanktonGlucose[i],
 					Temperature = nextState.WaterTemperature[i],
 					Velocity = nextState.WaterVelocity[i],
 					Mass = nextState.WaterMass[i]
@@ -2039,7 +2108,7 @@ public class WorldSim {
 					Advection = advectionAir[i],
 					Vapor = nextState.AirVapor[i],
 					Dust = nextState.Dust[i],
-					CarbonDioxide = nextState.AirCarbonDioxide[i],
+					CarbonDioxide = nextState.AirCarbon[i],
 					Temperature = nextState.AirTemperaturePotential[i],
 					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies( advectionJobHandles[i+_airLayer0], advectionJobHandles[i + _airLayer0 - 1], advectionJobHandles[i + _airLayer0 + 1])));
@@ -2070,9 +2139,9 @@ public class WorldSim {
 					Vapor = nextState.AirVapor[j],
 					VaporAbove = nextState.AirVapor[j + 1],
 					VaporBelow = nextState.AirVapor[j - 1],
-					CarbonDioxide = nextState.AirCarbonDioxide[j],
-					CarbonDioxideAbove = nextState.AirCarbonDioxide[j + 1],
-					CarbonDioxideBelow = nextState.AirCarbonDioxide[j - 1],
+					CarbonDioxide = nextState.AirCarbon[j],
+					CarbonDioxideAbove = nextState.AirCarbon[j + 1],
+					CarbonDioxideBelow = nextState.AirCarbon[j - 1],
 					Dust = nextState.Dust[j],
 					DustAbove = nextState.Dust[j + 1],
 					DustBelow = nextState.Dust[j - 1],
@@ -2101,22 +2170,27 @@ public class WorldSim {
 				{
 					Delta = diffusionWater[j],
 
-					LastTemperature = nextState.WaterTemperature[j],
-					LastSalt = nextState.SaltMass[j],
-					LastVelocity = nextState.WaterVelocity[j],
-					LastMass = nextState.WaterMass[j],
+					Temperature = nextState.WaterTemperature[j],
+					TemperatureAbove = nextState.WaterTemperature[j + 1],
+					TemperatureBelow = nextState.WaterTemperature[j - 1],
+					SaltMass = nextState.SaltMass[j],
+					SaltMassAbove = nextState.SaltMass[j + 1],
+					SaltMassBelow = nextState.SaltMass[j - 1],
+					PlanktonMass = nextState.PlanktonMass[j],
+					PlanktonGlucose = nextState.PlanktonGlucose[j],
+					CarbonMass = nextState.WaterCarbon[j],
+					CarbonMassAbove = nextState.WaterCarbon[j + 1],
+					CarbonMassBelow = nextState.WaterCarbon[j - 1],
+					Velocity = nextState.WaterVelocity[j],
+					VelocityAbove = nextState.WaterVelocity[j + 1],
+					VelocityBelow = nextState.WaterVelocity[j - 1],
+					WaterMass = nextState.WaterMass[j],
+					WaterMassAbove = nextState.WaterMass[j + 1],
+					WaterMassBelow = nextState.WaterMass[j - 1],
 					LayerHeight = dependent.LayerHeight[j],
-					UpLayerHeight = dependent.LayerHeight[j + 1],
-					DownLayerHeight = dependent.LayerHeight[j - 1],
+					LayerHeightAbove = dependent.LayerHeight[j + 1],
+					LayerHeightBelow = dependent.LayerHeight[j - 1],
 					NeighborDistInverse = staticState.NeighborDistInverse,
-					UpTemperature = nextState.WaterTemperature[j + 1],
-					UpSalt = nextState.SaltMass[j + 1],
-					UpCurrent = nextState.WaterVelocity[j + 1],
-					UpMass = nextState.WaterMass[j + 1],
-					DownTemperature = nextState.WaterTemperature[j - 1],
-					DownSalt = nextState.SaltMass[j - 1],
-					DownCurrent = nextState.WaterVelocity[j - 1],
-					DownMass = nextState.WaterMass[j - 1],
 					Neighbors = staticState.Neighbors,
 					DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
 					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
@@ -2157,6 +2231,9 @@ public class WorldSim {
 				{
 					Advection = diffusionWater[i],
 					SaltMass = nextState.SaltMass[i],
+					CarbonMass = nextState.WaterCarbon[i],
+					PlanktonMass = nextState.PlanktonMass[i],
+					PlanktonGlucose = nextState.PlanktonGlucose[i],
 					Temperature = nextState.WaterTemperature[i],
 					Velocity = nextState.WaterVelocity[i],
 					Mass = nextState.WaterMass[i]
@@ -2170,7 +2247,7 @@ public class WorldSim {
 					Advection = diffusionAir[i],
 					Vapor = nextState.AirVapor[i],
 					Dust = nextState.Dust[i],
-					CarbonDioxide = nextState.AirCarbonDioxide[i],
+					CarbonDioxide = nextState.AirCarbon[i],
 					Temperature = nextState.AirTemperaturePotential[i],
 					AirVelocity = nextState.AirVelocity[i],
 				}, JobHandle.CombineDependencies(diffusionJobHandles[i + _airLayer0], diffusionJobHandles[i + _airLayer0 - 1], diffusionJobHandles[i + _airLayer0 + 1])));
@@ -2195,11 +2272,13 @@ public class WorldSim {
 				bool degen = false;
 				SortedSet<int> degenIndices = new SortedSet<int>();
 				List<string> degenVarNames = new List<string>();
-				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.TerrainTemperature, 0, 1200, degenVarNames);
+				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "TerrainTemperature", nextState.GroundTemperature, 0, 1200, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "FloraTemperature", nextState.FloraTemperature, 0, 1200, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraMass", nextState.FloraMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraWater", nextState.FloraWater, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "FloraGlucose", nextState.FloraGlucose, degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "PlanktonMass", nextState.PlanktonMass[_surfaceWaterLayer], degenVarNames);
+				degen |= CheckDegenPosValues(_cellCount, degenIndices, "PlanktonGlucose", nextState.PlanktonGlucose[_surfaceWaterLayer], degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "GroundWater", nextState.GroundWater, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
@@ -2214,13 +2293,15 @@ public class WorldSim {
 				for (int i = 1; i < _airLayers - 1; i++) {
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirTemperature" + i, nextState.AirTemperaturePotential[i], 0, 1200, degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "AirVapor" + i, nextState.AirVapor[i], 0, 10000, degenVarNames);
-					degen |= CheckDegenPosValues(_cellCount, degenIndices, "CarbonDioxide" + i, nextState.AirCarbonDioxide[i], degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "CarbonDioxide" + i, nextState.AirCarbon[i], degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "AirVelocity" + i, nextState.AirVelocity[i], degenVarNames);
 				}
 				for (int i=1;i<_waterLayers - 1;i++)
 				{
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "WaterMass" + i, nextState.WaterMass[i], degenVarNames);
 					degen |= CheckDegenPosValues(_cellCount, degenIndices, "SaltMass" + i, nextState.SaltMass[i], degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "CarbonMass" + i, nextState.WaterCarbon[i], degenVarNames);
+					degen |= CheckDegenPosValues(_cellCount, degenIndices, "Plankton" + i, nextState.PlanktonMass[i], degenVarNames);
 					degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "WaterTemperature" + i, nextState.WaterTemperature[i], 0, 1200, degenVarNames);
 					degen |= CheckDegen(_cellCount, degenIndices, "Current" + i, nextState.WaterVelocity[i], degenVarNames);
 				}
@@ -2270,7 +2351,7 @@ public class WorldSim {
 						DustCoverage = display.DustMass,
 						CarbonDioxidePercent = display.CarbonDioxidePercent[i],
 
-						CarbonDioxide = curState.AirCarbonDioxide[i],
+						CarbonDioxide = curState.AirCarbon[i],
 						Gravity = curState.PlanetState.Gravity,
 						AirTemperaturePotential = curState.AirTemperaturePotential[i],
 						AirPressure = dependent.AirPressure[i],
@@ -2287,14 +2368,16 @@ public class WorldSim {
 
 				for (int i = 1; i < _waterLayers - 1; i++)
 				{
-					initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, (SimJob.Schedule(new InitDisplayWaterLayerJob()
+					initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, (SimJob.Run(new InitDisplayWaterLayerJob()
 					{
 						Enthalpy = display.EnthalpyWater[i],
 						Salinity = display.Salinity[i],
+						CarbonPercent = display.WaterCarbonDioxidePercent[i],
 
 						WaterTemperature = curState.WaterTemperature[i],
 						SaltMass = curState.SaltMass[i],
 						WaterMass = curState.WaterMass[i],
+						WaterCarbon = curState.WaterCarbon[i]
 					}, initDisplayWaterHandle)));
 				}
 				for (int i = 0; i < _layerCount; i++)
@@ -2320,8 +2403,8 @@ public class WorldSim {
 					EvaporationWater = evaporationMassWater,
 					EvaporationFlora = floraRespirationMassVapor,
 					Precipitation = precipitationMass,
-					SoilFertility = nextState.SoilFertility,
-					TerrainTemperature = nextState.TerrainTemperature,
+					SoilFertility = nextState.GroundCarbon,
+					TerrainTemperature = nextState.GroundTemperature,
 					Flora = nextState.FloraMass,
 					FloraWater = nextState.FloraWater,
 					FloraTemperature = nextState.FloraTemperature,
@@ -2339,12 +2422,13 @@ public class WorldSim {
 				{
 					float globalWaterMass = 0;
 					float globalWaterSurfaceMass = 0;
-					double globalAirMass = 0;
-					double globalAirTemperature = 0;
 					for (int i = 0; i < _cellCount; i++)
 					{
 						float waterMassSurface = curState.WaterMass[_surfaceWaterLayer][i];
 						globalWaterSurfaceMass += waterMassSurface;
+						display.GlobalFloraMass += curState.FloraMass[i];
+						display.GlobalPlanktonMass += curState.PlanktonMass[_surfaceWaterLayer][i];
+						display.GlobalSoilFertility += curState.GroundCarbon[i];
 						display.GlobalOceanSurfaceTemperature += curState.WaterTemperature[_surfaceWaterLayer][i] * waterMassSurface;
 						display.SolarRadiation += displaySolarRadiation[i];
 						display.GeothermalRadiation += geothermalRadiation[i];
@@ -2362,17 +2446,17 @@ public class WorldSim {
 						display.GlobalEnthalpyIce += display.EnthalpyIce[i];
 						display.GlobalEnthalpyCloud += display.EnthalpyCloud[i];
 						display.GlobalEnthalpyGroundWater += display.EnthalpyGroundWater[i];
-						display.GlobalTerrainTemperature += curState.TerrainTemperature[i];
+						display.GlobalTerrainTemperature += curState.GroundTemperature[i];
 						for (int j = 1; j < _airLayers - 1; j++)
 						{
-							globalAirTemperature += curState.AirTemperaturePotential[j][i] * (dependent.AirMass[j][i] + curState.AirVapor[j][i]);
-							globalAirMass += dependent.AirMass[j][i];
+							display.GlobalAirTemperaturePotential += curState.AirTemperaturePotential[j][i] * dependent.AirMass[j][i];
+							display.GlobalAirMass += dependent.AirMass[j][i];
 							display.GlobalWaterVapor += curState.AirVapor[j][i];
 							display.EnergySolarReflectedAtmosphere += solarReflected[j + _airLayer0][i];
 							display.EnergySolarAbsorbedAtmosphere += solarRadiationIn[j + _airLayer0][i];
 							display.GlobalEnthalpyAir += display.EnthalpyAir[j][i];
 							display.GlobalCloudCoverage += math.min(1, absorptivitySolar[j][i].AbsorptivityCloud * 100);
-							display.GlobalCarbonDioxide += curState.AirCarbonDioxide[j][i];
+							display.GlobalAirCarbon += curState.AirCarbon[j][i];
 						}
 						display.EnergySolarAbsorbedSurface += solarRadiationIn[_terrainLayer][i] + solarRadiationIn[_iceLayer][i];
 						display.EnergySolarReflectedSurface += solarReflected[_terrainLayer][i] + solarReflected[_iceLayer][i];
@@ -2388,6 +2472,7 @@ public class WorldSim {
 							display.EnergySolarReflectedSurface += solarReflected[j + _waterLayer0][i];
 							display.GlobalEnthalpyWater += display.EnthalpyWater[j][i];
 							display.GlobalOceanMass += curState.WaterMass[j][i];
+							display.GlobalWaterCarbon += curState.WaterCarbon[j][i];
 						}
 						display.EnergySurfaceConduction += conductionAirIce[i] + conductionAirTerrain[i] + conductionAirWater[i];
 						display.EnergyOceanConduction += conductionAirWater[i];
@@ -2404,8 +2489,7 @@ public class WorldSim {
 						display.EnergyThermalSurfaceRadiation += surfaceRadiation;
 
 					}
-					display.GlobalAirMass += globalAirMass;
-					display.GlobalAirTemperaturePotential = globalAirTemperature / (globalAirMass + display.GlobalWaterVapor);
+					display.GlobalAirTemperaturePotential /= display.GlobalAirMass;
 					display.GlobalOceanSurfaceTemperature /= globalWaterSurfaceMass;
 					display.GlobalOceanTemperature /= globalWaterMass;
 					display.GlobalTerrainTemperature /= _cellCount;
@@ -2533,9 +2617,9 @@ public class WorldSim {
 		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
 		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
 		s.AppendFormat("Roughness: {0}\n", state.Roughness[i]);
-		s.AppendFormat("SoilFertility: {0}\n", state.SoilFertility[i]);
+		s.AppendFormat("SoilFertility: {0}\n", state.GroundCarbon[i]);
 		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
-		s.AppendFormat("TerrainTemperature: {0}\n", state.TerrainTemperature[i]);
+		s.AppendFormat("TerrainTemperature: {0}\n", state.GroundTemperature[i]);
 		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
 		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
 
@@ -2551,6 +2635,10 @@ public class WorldSim {
 		s.AppendFormat("Water: {0}\n", state.FloraWater[i]);
 		s.AppendFormat("Temperature: {0}\n", state.FloraTemperature[i]);
 
+		s.AppendFormat("\nPLANKTON\n");
+		s.AppendFormat("Mass: {0}\n", state.PlanktonMass[_surfaceWaterLayer][i]);
+		s.AppendFormat("Glucose: {0}\n", state.PlanktonGlucose[_surfaceWaterLayer][i]);
+
 		s.AppendFormat("\nCLOUD\n");
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
 		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);
@@ -2561,7 +2649,7 @@ public class WorldSim {
 			s.AppendFormat("\nAIR LAYER {0}\n", j);
 			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[j][i]);
 			s.AppendFormat("Vapor: {0}\n", state.AirVapor[j][i]);
-			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbonDioxide[j][i]);
+			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbon[j][i]);
 			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[j][i]);
 		}
 
@@ -2571,6 +2659,7 @@ public class WorldSim {
 			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[j][i]);
 			s.AppendFormat("SaltMass: {0}\n", state.SaltMass[j][i]);
 			s.AppendFormat("Temperature: {0}\n", state.WaterTemperature[j][i]);
+			s.AppendFormat("Carbon: {0}\n", state.WaterCarbon[j][i]);
 			s.AppendFormat("Velocity: {0}\n", state.WaterVelocity[j][i]);
 		}
 		Debug.Log(s);

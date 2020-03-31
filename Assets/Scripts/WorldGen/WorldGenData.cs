@@ -18,8 +18,11 @@ public class WorldGenData {
 	public float MinTemperature;
 	public float MaxTemperature;
 	public float Gravity;
-	public float CarbonDioxide;
 	public float Oxygen;
+	public float AirCarbonPercent; // there are 2,500 billion tons of carbon in soil, compared with 800 billion tons in the atmosphere and 560 billion tons in plant and animal life
+	public float WaterCarbonPercent;
+	public float SoilCarbonMass;
+	public float PlanktonMass;
 	public float SolarRadiation; // extraterrestrial solar radiation // https://en.wikipedia.org/wiki/Sunlight (1367 w/m^2)
 	public float TiltAngle;
 	public float SpinAngle;
