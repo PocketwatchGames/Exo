@@ -114,10 +114,11 @@ public struct UpdateMassCondensationGroundJob : IJobParallelFor {
 		else
 		{
 			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerMiddle[i]);
+			float specificHeatSalt = SurfaceSaltMass[i] * WorldData.SpecificHeatSalt;
 			SurfaceWaterTemperature[i] = 
-				((waterMass * WorldData.SpecificHeatWater + SurfaceSaltMass[i] * WorldData.SpecificHeatSalt) * SurfaceWaterTemperature[i] 
+				((waterMass * WorldData.SpecificHeatWater + specificHeatSalt) * SurfaceWaterTemperature[i] 
 				+ GroundCondensation[i] * WorldData.SpecificHeatWater * airTemperatureAbsolute) 
-				/ (newWaterMass * WorldData.SpecificHeatWater + SurfaceSaltMass[i] * WorldData.SpecificHeatSalt);
+				/ (newWaterMass * WorldData.SpecificHeatWater + specificHeatSalt);
 		}
 		SurfaceWaterMass[i] = newWaterMass;
 	}

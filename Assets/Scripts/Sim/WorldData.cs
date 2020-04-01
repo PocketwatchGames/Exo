@@ -37,7 +37,7 @@ public struct WorldData {
 	// https://eesc.columbia.edu/courses/ees/climate/lectures/o_atm.html
 
 
-	// TODO: tune these to match the science
+	// TODO: should this be a constant or should co2 and water vapor be absorbing the window radiation?
 	public float EnergyLostThroughAtmosphereWindow; // AKA Atmospheric window global average = 40 watts = 6.7% of all surface and atmospheric radiation
 
 	// https://en.wikipedia.org/wiki/Electromagnetic_absorption_by_water

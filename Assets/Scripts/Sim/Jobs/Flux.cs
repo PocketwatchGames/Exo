@@ -94,7 +94,7 @@ public struct FluxWaterJob : IJobParallelFor {
 
 #endif
 
-			float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatWater * saltMass) / (waterMass + saltMass);
+			float specificHeatSaltWater = (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass) / (waterMass + saltMass);
 			float heatingMass = math.min(waterMass, WaterHeatingDepth * WorldData.MassWater);
 			freezingTemperature = Atmosphere.GetFreezingPoint(Atmosphere.GetWaterSalinity(waterMass, saltMass), FreezePointReductionPerSalinity);
 
@@ -125,20 +125,19 @@ public struct FluxWaterJob : IJobParallelFor {
 				float waterSupply = math.min(1, waterMass * inversePlanktonMass * PlanktonDensityMax);
 
 				// Photosynthesis: Consume solarRadiation, carbon dioxide, to produce glucose (water and oxygen are ignored)
+				// TODO: carbon dioxide extraction should curve to a limit rather than cap
 				float photosynthesis =
 					PlanktonPhotosynthesisSpeed * planktonMass
 					* waterSupply// minimum water mass requirements
 					* (1.0f - math.pow(math.min(1, glucose * inversePlanktonMass), 3)) // glucose saturation
 					* math.min(1, solarRadiation / PlanktonEnergyForPhotosynthesis * inversePlanktonMass) // energy
 					* math.min(1, waterCarbon * PlanktonCarbonDioxideExtractionEfficiency * inversePlanktonMass); // carbon dioxide 
-																													// TODO: carbon dioxide extraction should curve to a limit rather than cap
 
 				energyFlux -= photosynthesis * PlanktonEnergyForPhotosynthesis;
 				waterCarbonDelta -= photosynthesis;
 				glucoseDelta += photosynthesis;
 
 				// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
-				// TODO: respiration should depend on temperature
 				float respirationExpenditure = math.min(waterCarbon, math.min(glucose,
 					PlanktonRespirationSpeed 
 					* math.max(0, 1.0f + (temperature - WorldData.FreezingTemperature) * PlanktonRespirationPerDegree) // temperature
@@ -165,7 +164,6 @@ public struct FluxWaterJob : IJobParallelFor {
 				float deathPercent = Utils.Sqr(math.max(0, planktonMass - respiration) * inversePlanktonMass) * PlanktonDeathRate;
 				float death = deathPercent * planktonMass;
 				// convert mass back through the respiration process, and dump any stored glucose and water
-				// TODO: plant matter should return to the soil, not the air
 				glucoseDelta -= deathPercent * glucose;
 				planktonMassDelta -= death;
 				planktonDeath += death + deathPercent * glucose;
@@ -532,7 +530,6 @@ public struct FluxFloraJob : IJobParallelFor {
 
 			// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
 			float oxygenExtractedMax = floraCoverage * OxygenPercent * AirMass[i] * FloraOxygenExtractionEfficiency;
-			// TODO: respiration should depend on temperature
 			float respirationExpenditure = math.min(floraWater, math.min(glucose, math.min(oxygenExtractedMax, 
 				FloraRespirationSpeed
 				* math.max(0, 1.0f + FloraRespirationPerDegree * (FloraTemperature[i] - WorldData.FreezingTemperature))
@@ -565,8 +562,7 @@ public struct FluxFloraJob : IJobParallelFor {
 			// Death: Produce carbon dioxide, water
 			float deathPercent = Utils.Sqr(math.max(0, floraMass - respiration) * inverseFloraMass) * FloraDeathRate;
 			float death = deathPercent * floraMass;
-			// convert mass back through the respiration process, and dump any stored glucose and water
-			// TODO: plant matter should return to the soil, not the air
+			// dump any stored glucose and water, put glucose in the ground
 			glucoseDelta -= deathPercent * glucose;
 			surfaceWaterDelta += death + deathPercent * (glucose + floraWater);
 			floraMassDelta -= death;

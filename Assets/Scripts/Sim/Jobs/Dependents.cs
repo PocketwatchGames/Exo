@@ -218,9 +218,7 @@ public static class SimJobs {
 
 #region Update dependents
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceElevation;
 	public NativeArray<float> IceEnergy;
@@ -250,9 +248,7 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 }
 
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateAirLayerHeightsJob : IJobParallelFor {
 	public NativeArray<float> AirMass;
 	public NativeArray<float> UpLayerElevation;
@@ -284,9 +280,7 @@ public struct UpdateAirLayerHeightsJob : IJobParallelFor {
 	}
 }
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateStratosphereJob : IJobParallelFor {
 	public NativeArray<float> StratosphereMass;
 	[ReadOnly] public NativeArray<float> TropopauseElevation;
@@ -303,9 +297,7 @@ public struct UpdateStratosphereJob : IJobParallelFor {
 }
 
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateAirPressureJob : IJobParallelFor {
 	public NativeArray<float> Pressure;
 	public NativeArray<float> PressureInverse;
@@ -331,9 +323,7 @@ public struct UpdateAirPressureJob : IJobParallelFor {
 }
 
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateDependentAirLayerJob : IJobParallelFor {
 	public NativeArray<float> AbsoluteHumidity;
 	public NativeArray<float> RelativeHumidity;
@@ -360,9 +350,7 @@ public struct UpdateDependentAirLayerJob : IJobParallelFor {
 	}
 }
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateDependentCloudJob : IJobParallelFor {
 	public NativeArray<float> AirDensityCloud;
 	public NativeArray<float> CloudElevation;
@@ -395,7 +383,6 @@ public struct UpdateDependentCloudJob : IJobParallelFor {
 		float layerElevation = LayerElevation[i];
 		float layerMiddle = LayerMiddle[i];
 
-		// TODO: this is overwriting such that it only pays attention to the top layer of the atmosphere
 		float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(airTemperaturePotential, layerMiddle);
 		float dewPoint = Atmosphere.GetDewPoint(RelativeHumidity[i], airTemperatureAbsolute);
 		float cloudElevation = Atmosphere.GetElevationAtDewPoint(dewPoint, airTemperaturePotential);
@@ -445,9 +432,7 @@ public struct UpdateDependentCloudJob : IJobParallelFor {
 
 
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 	public NativeArray<float> WaterCoverage;
 	public NativeArray<float> PotentialEnergy;
@@ -480,9 +465,7 @@ public struct UpdateDependentWaterLayerJob : IJobParallelFor {
 }
 
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateWaterDepthJob : IJobParallelFor {
 	public NativeArray<float> LayerDepth;
 	public NativeArray<float> LayerHeight;
@@ -516,9 +499,7 @@ public struct UpdateWaterDepthJob : IJobParallelFor {
 }
 
 
-#if !UpdateDependentJobDebug
 [BurstCompile]
-#endif
 public struct UpdateSurfaceDependentStateJob : IJobParallelFor {
 	public NativeArray<float> SurfaceAirTemperatureAbsolute;
 	public NativeArray<float> SurfaceAreaAirIce;

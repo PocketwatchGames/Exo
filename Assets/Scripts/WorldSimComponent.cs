@@ -68,7 +68,7 @@ public class WorldSimComponent : MonoBehaviour
 
 		_displayState = new DisplayState();
 		// TODO: get rid of this constant
-		const int totalLayersHack = 15;
+		const int totalLayersHack = 14;
 		_displayState.Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers, totalLayersHack);
 
 		var tempAdvectionDestination = new NativeArray<BarycentricValueVertical>(CellCount, Allocator.TempJob);
