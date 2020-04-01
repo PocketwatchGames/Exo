@@ -67,27 +67,13 @@ public class WorldView : MonoBehaviour {
 		WindCloud,
 
 	}
-
-	public enum TemperatureUnits {
-		Celsius,
-		Farenheit,
-		Kelvin,
-	}
-
-	public enum CellInfoType {
-		Global,
-		Enthalpy,
-		Energy,
-		Cell,
-		Atmosphere,
-		Water,
-		Ground
-	}
+	public const int VertsPerCell = 19;
+	public const int MaxNeighbors = 6;
 
 	public int ActiveCell;
 	public bool ActiveCellLocked { get; private set; }
 	public int ActiveCellIndex { get; private set; }
-	public TemperatureUnits ActiveTemperatureUnits = TemperatureUnits.Celsius;
+	public CellInfo.TemperatureUnits ActiveTemperatureUnits = CellInfo.TemperatureUnits.Celsius;
 	public bool LerpStates = true;
 
 
@@ -100,6 +86,7 @@ public class WorldView : MonoBehaviour {
 	public float MaxDepth = 11000;
 	public float maxCloudColor = 300.0f;
 	public float WaterDepthThreshold = 10;
+	public Color32 WallColor = new Color32(50,50,50,255);
 
 	public float DisplayWindMax = 100;
 	public float DisplayCurrentMax = 10;
@@ -148,12 +135,29 @@ public class WorldView : MonoBehaviour {
 	public GameObject WindArrowPrefab;
 
 	private JobHelper _renderJobHelper;
+	private JobHelper _renderJobVertsHelper;
 
 	private RenderState[] _renderStates;
 	private int _curRenderState;
 	private int _lastRenderState;
 	private int _nextRenderState;
 	private const int _renderStateCount = 3;
+
+	private NativeArray<Vector3> _terrainVerticesArray;
+	private NativeArray<Vector3> _terrainNormalsArray;
+	private NativeArray<Color32> _terrainColorsArray;
+	private NativeArray<Vector3> _waterVerticesArray;
+	private NativeArray<Vector3> _waterNormalsArray;
+	private NativeArray<Color32> _waterColorsArray;
+	private NativeArray<Vector3> _cloudVerticesArray;
+	private NativeArray<Vector3> _cloudNormalsArray;
+	private NativeArray<Color32> _cloudColorsArray;
+	private NativeArray<Vector3> _lavaVerticesArray;
+	private NativeArray<Vector3> _lavaNormalsArray;
+	private NativeArray<Color32> _lavaColorsArray;
+	private NativeArray<Vector3> _dustVerticesArray;
+	private NativeArray<Vector3> _dustNormalsArray;
+	private NativeArray<Color32> _dustColorsArray;
 
 	private Vector3[] _terrainVertices;
 	private Vector3[] _terrainNormals;
@@ -191,10 +195,12 @@ public class WorldView : MonoBehaviour {
 	private float _tickLerpTimeTotal = 1;
 
 	private bool _indicesInitialized;
-	private int[] indices;
+	private int[] _indices;
+	private int[] _indicesTerrain;
 
 	private NativeArray<CVP> _normalizedRainbow;
 	private NativeArray<CVP> _normalizedBlueBlackRed;
+	private NativeArray<float3> _hexVerts;
 
 	private int _batchCount = 128;
 
@@ -296,33 +302,24 @@ public class WorldView : MonoBehaviour {
 			_renderStates[i].Init(Sim.CellCount);
 		}
 
-		int indexCount = Sim.Icosphere.Polygons.Count * 3;
-		indices = new int[indexCount];
-		for (int i = 0; i < Sim.Icosphere.Polygons.Count; i++)
-		{
-			var poly = Sim.Icosphere.Polygons[i];
-			indices[i * 3 + 0] = poly.m_Vertices[0];
-			indices[i * 3 + 1] = poly.m_Vertices[1];
-			indices[i * 3 + 2] = poly.m_Vertices[2];
-		}
-
-		_terrainVertices = new Vector3[Sim.CellCount];
-		_terrainNormals = new Vector3[Sim.CellCount];
-		_terrainColors = new Color32[Sim.CellCount];
-		_waterVertices = new Vector3[Sim.CellCount];
-		_waterNormals = new Vector3[Sim.CellCount];
-		_waterColors = new Color32[Sim.CellCount];
-		_cloudVertices = new Vector3[Sim.CellCount];
-		_cloudNormals = new Vector3[Sim.CellCount];
-		_cloudColors = new Color32[Sim.CellCount];
-		_dustVertices = new Vector3[Sim.CellCount];
-		_dustNormals = new Vector3[Sim.CellCount];
-		_dustColors = new Color32[Sim.CellCount];
-		_lavaVertices = new Vector3[Sim.CellCount];
-		_lavaNormals = new Vector3[Sim.CellCount];
-		_lavaColors = new Color32[Sim.CellCount];
+		InitVerts(Sim.Icosphere);
 
 		_renderJobHelper = new JobHelper(Sim.CellCount);
+		_renderJobVertsHelper = new JobHelper(Sim.CellCount* VertsPerCell);
+		_terrainVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_terrainColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_waterVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_waterNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_waterColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_cloudVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_cloudNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_cloudColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_lavaVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_lavaNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_lavaColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_dustVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_dustNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_dustColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
@@ -338,6 +335,23 @@ public class WorldView : MonoBehaviour {
 		{
 			_renderStates[i].Dispose();
 		}
+
+		_hexVerts.Dispose();
+		_terrainVerticesArray.Dispose();
+		_terrainNormalsArray.Dispose();
+		_terrainColorsArray.Dispose();
+		_waterVerticesArray.Dispose();
+		_waterNormalsArray.Dispose();
+		_waterColorsArray.Dispose();
+		_cloudVerticesArray.Dispose();
+		_cloudNormalsArray.Dispose();
+		_cloudColorsArray.Dispose();
+		_lavaVerticesArray.Dispose();
+		_lavaNormalsArray.Dispose();
+		_lavaColorsArray.Dispose();
+		_dustVerticesArray.Dispose();
+		_dustNormalsArray.Dispose();
+		_dustColorsArray.Dispose();
 
 	}
 
@@ -387,23 +401,18 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateCellJob()
 		{
 			TerrainColor = to.TerrainColor,
-			TerrainNormal = to.TerrainNormal,
-			TerrainPosition = to.TerrainPosition,
+			TerrainElevation = to.TerrainElevation,
 			LavaColor = to.LavaColor,
-			LavaPosition = to.LavaPosition,
-			LavaNormal = to.LavaNormal,
+			LavaElevation = to.LavaElevation,
 			WaterColor = to.WaterColor,
-			WaterNormal = to.WaterNormal,
-			WaterPosition = to.WaterPosition,
+			WaterElevation = to.WaterElevation,
 			CloudColor = to.CloudColor,
-			CloudNormal = to.CloudNormal,
-			CloudPosition = to.CloudPosition,
+			CloudElevation = to.CloudElevation,
 			DustColor = to.DustColor,
-			DustNormal = to.DustNormal,
-			DustPosition = to.DustPosition,
+			DustElevation = to.DustElevation,
 			VelocityArrow = to.VelocityArrow,
 			SurfacePosition = to.SurfacePosition,
 
@@ -418,7 +427,7 @@ public class WorldView : MonoBehaviour {
 			WindMaskedByLand = windOverlayData.MaskLand,
 			MeshOverlayMin = meshOverlay.Min,
 			MeshOverlayInverseRange = meshOverlay.InverseRange,
-			CloudElevation = dependent.CloudElevation,
+			CloudElevationSim = dependent.CloudElevation,
 			Icosphere = Sim.Icosphere.Vertices,
 			SoilFertility = from.GroundCarbon,
 			Roughness = from.Roughness,
@@ -446,6 +455,7 @@ public class WorldView : MonoBehaviour {
 			DustMaxInverse = 1.0f / DisplayDustMax,
 			LavaDensityAdjustment = worldData.LavaDensityAdjustment
 		});
+
 		buildRenderStateJobHandle.Complete();
 
 	}
@@ -463,24 +473,19 @@ public class WorldView : MonoBehaviour {
 
 
 		NativeList<JobHandle> dependencies = new NativeList<JobHandle>(Allocator.Temp);
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.TerrainPosition, Start = lastState.TerrainPosition, End = nextState.TerrainPosition }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.TerrainNormal, Start = lastState.TerrainNormal, End = nextState.TerrainNormal }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.TerrainElevation, Start = lastState.TerrainElevation, End = nextState.TerrainElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.TerrainColor, Start = lastState.TerrainColor, End = nextState.TerrainColor }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.WaterPosition, Start = lastState.WaterPosition, End = nextState.WaterPosition }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.WaterNormal, Start = lastState.WaterNormal, End = nextState.WaterNormal }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.WaterElevation, Start = lastState.WaterElevation, End = nextState.WaterElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.WaterColor, Start = lastState.WaterColor, End = nextState.WaterColor }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.DustPosition, Start = lastState.DustPosition, End = nextState.DustPosition }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.DustNormal, Start = lastState.DustNormal, End = nextState.DustNormal }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.DustElevation, Start = lastState.DustElevation, End = nextState.DustElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.DustColor, Start = lastState.DustColor, End = nextState.DustColor }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.LavaPosition, Start = lastState.LavaPosition, End = nextState.LavaPosition }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.LavaNormal, Start = lastState.LavaNormal, End = nextState.LavaNormal }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.LavaElevation, Start = lastState.LavaElevation, End = nextState.LavaElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.LavaColor, Start = lastState.LavaColor, End = nextState.LavaColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.SurfacePosition, Start = lastState.SurfacePosition, End = nextState.SurfacePosition }).Schedule(Sim.CellCount, _batchCount));
 
 		if (true /* cloudsVisible*/)
 		{
-			dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.CloudPosition, Start = lastState.CloudPosition, End = nextState.CloudPosition }).Schedule(Sim.CellCount, _batchCount));
-			dependencies.Add((new LerpJobVector3 { Progress = t, Out = state.CloudNormal, Start = lastState.CloudNormal, End = nextState.CloudNormal }).Schedule(Sim.CellCount, _batchCount));
+			dependencies.Add((new LerpJobfloat { Progress = t, Out = state.CloudElevation, Start = lastState.CloudElevation, End = nextState.CloudElevation }).Schedule(Sim.CellCount, _batchCount));
 			dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.CloudColor, Start = lastState.CloudColor, End = nextState.CloudColor }).Schedule(Sim.CellCount, _batchCount));
 		}
 		if (ActiveWindOverlay != WindOverlay.None)
@@ -488,24 +493,56 @@ public class WorldView : MonoBehaviour {
 			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
 		}
 
-		JobHandle.CompleteAll(dependencies);
+		var getVertsHandle = _renderJobVertsHelper.Schedule(new BuildHexVertsJob()
+		{
+			VTerrainPosition = _terrainVerticesArray,
+			VTerrainColor = _terrainColorsArray,
+			VWaterPosition = _waterVerticesArray,
+			VWaterNormal = _waterNormalsArray,
+			VWaterColor = _waterColorsArray,
+			VCloudPosition = _cloudVerticesArray,
+			VCloudNormal = _cloudNormalsArray,
+			VCloudColor = _cloudColorsArray,
+			VLavaPosition = _lavaVerticesArray,
+			VLavaNormal = _lavaNormalsArray,
+			VLavaColor = _lavaColorsArray,
+			VDustPosition = _dustVerticesArray,
+			VDustNormal = _dustNormalsArray,
+			VDustColor = _dustColorsArray,
+
+			TerrainElevation = state.TerrainElevation,
+			TerrainColor = state.TerrainColor,
+			WaterElevation = state.WaterElevation,
+			WaterColor = state.WaterColor,
+			CloudElevation = state.CloudElevation,
+			CloudColor = state.CloudColor,
+			LavaElevation = state.LavaElevation,
+			LavaColor = state.LavaColor,
+			DustElevation = state.DustElevation,
+			DustColor = state.DustColor,
+			HexVerts = _hexVerts,
+			IcosphereVerts = Sim.Icosphere.Vertices,
+			WallColor = WallColor
+		}, JobHandle.CombineDependencies(dependencies));
+
+		getVertsHandle.Complete();
 		dependencies.Dispose();
 
-		state.TerrainPosition.CopyTo(_terrainVertices);
-		state.TerrainNormal.CopyTo(_terrainNormals);
-		state.TerrainColor.CopyTo(_terrainColors);
-		state.WaterPosition.CopyTo(_waterVertices);
-		state.WaterNormal.CopyTo(_waterNormals);
-		state.WaterColor.CopyTo(_waterColors);
-		state.CloudPosition.CopyTo(_cloudVertices);
-		state.CloudNormal.CopyTo(_cloudNormals);
-		state.CloudColor.CopyTo(_cloudColors);
-		state.LavaPosition.CopyTo(_lavaVertices);
-		state.LavaNormal.CopyTo(_lavaNormals);
-		state.LavaColor.CopyTo(_lavaColors);
-		state.DustPosition.CopyTo(_dustVertices);
-		state.DustNormal.CopyTo(_dustNormals);
-		state.DustColor.CopyTo(_dustColors);
+		_terrainVerticesArray.CopyTo(_terrainVertices);
+		_terrainNormalsArray.CopyTo(_terrainNormals);
+		_terrainColorsArray.CopyTo(_terrainColors);
+		_waterVerticesArray.CopyTo(_waterVertices);
+		_waterNormalsArray.CopyTo(_waterNormals);
+		_waterColorsArray.CopyTo(_waterColors);
+		_cloudVerticesArray.CopyTo(_cloudVertices);
+		_cloudNormalsArray.CopyTo(_cloudNormals);
+		_cloudColorsArray.CopyTo(_cloudColors);
+		_lavaVerticesArray.CopyTo(_lavaVertices);
+		_lavaNormalsArray.CopyTo(_lavaNormals);
+		_lavaColorsArray.CopyTo(_lavaColors);
+		_dustVerticesArray.CopyTo(_dustVertices);
+		_dustNormalsArray.CopyTo(_dustNormals);
+		_dustColorsArray.CopyTo(_dustColors);
 
 		_terrainMesh.vertices = _terrainVertices;
 		_terrainMesh.normals = _terrainNormals;
@@ -529,11 +566,11 @@ public class WorldView : MonoBehaviour {
 
 		if (!_indicesInitialized)
 		{
-			_terrainMesh.SetTriangles(indices, 0);
-			_waterMesh.SetTriangles(indices, 0);
-			_cloudMesh.SetTriangles(indices, 0);
-			_lavaMesh.SetTriangles(indices, 0);
-			_dustMesh.SetTriangles(indices, 0);
+			_terrainMesh.SetTriangles(_indicesTerrain, 0);
+			_waterMesh.SetTriangles(_indicesTerrain, 0);
+			_lavaMesh.SetTriangles(_indicesTerrain, 0);
+			_cloudMesh.SetTriangles(_indices, 0);
+			_dustMesh.SetTriangles(_indices, 0);
 			_indicesInitialized = true;
 		}
 
@@ -543,11 +580,11 @@ public class WorldView : MonoBehaviour {
 		_lavaMesh.RecalculateBounds();
 		_dustMesh.RecalculateBounds();
 
-		_terrainMesh.RecalculateNormals();
-		_waterMesh.RecalculateNormals();
-		_cloudMesh.RecalculateNormals();
-		_lavaMesh.RecalculateNormals();
-		_dustMesh.RecalculateNormals();
+		//_terrainMesh.RecalculateNormals();
+		//_waterMesh.RecalculateNormals();
+		//_cloudMesh.RecalculateNormals();
+		//_lavaMesh.RecalculateNormals();
+		//_dustMesh.RecalculateNormals();
 
 		Planet.transform.SetPositionAndRotation(state.Position, Quaternion.Euler(state.Rotation));
 
@@ -604,72 +641,34 @@ public class WorldView : MonoBehaviour {
 
 	public void OnHUDTemperatureUnitsChanged(UnityEngine.UI.Dropdown dropdown)
 	{
-		ActiveTemperatureUnits = (WorldView.TemperatureUnits)dropdown.value;
+		ActiveTemperatureUnits = (CellInfo.TemperatureUnits)dropdown.value;
 	}
 
-	public static float ConvertTemperature(float kelvin, TemperatureUnits units)
-	{
-		switch (units)
-		{
-			case TemperatureUnits.Celsius:
-				return kelvin - WorldData.FreezingTemperature;
-			case TemperatureUnits.Farenheit:
-				return (kelvin - WorldData.FreezingTemperature) * 9 / 5 + 32;
-			case TemperatureUnits.Kelvin:
-			default:
-				return kelvin;
-		}
-	}
-
-	public static string GetTemperatureString(float kelvin, TemperatureUnits units, int decimals)
-	{
-		string tFormat = "0";
-		if (decimals > 0)
-		{
-			tFormat += ".";
-		}
-		for (int i=0;i<decimals;i++)
-		{
-			tFormat += "0";
-		}
-		string t = ConvertTemperature(kelvin, units).ToString(tFormat);
-		switch (units)
-		{
-			case TemperatureUnits.Celsius:
-				return t + " C";
-			case TemperatureUnits.Farenheit:
-				return t + " F";
-			case TemperatureUnits.Kelvin:
-			default:
-				return t + " K";
-		}
-	}
-
-	public string GetCellInfo(CellInfoType cellInfoType)
+	public string GetCellInfo(CellInfo.CellInfoType cellInfoType)
 	{
 		switch (cellInfoType)
 		{
-			case CellInfoType.Global:
-				return GetCellInfoGlobal(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfoType.Enthalpy:
-				return GetCellInfoEnthalpy(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfoType.Energy:
-				return GetCellInfoEnergy(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfoType.Cell:
-				return GetCellInfoCell(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfoType.Atmosphere:
-				return GetCellInfoAtmosphere(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
-			case CellInfoType.Ground:
-				return GetCellInfoGround(ref Sim.ActiveSimState, ref Sim.DependentState);
-			case CellInfoType.Water:
-				return GetCellInfoWater(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
+			case CellInfo.CellInfoType.Global:
+				return CellInfo.GetCellInfoGlobal(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
+			case CellInfo.CellInfoType.Enthalpy:
+				return CellInfo.GetCellInfoEnthalpy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
+			case CellInfo.CellInfoType.Energy:
+				return CellInfo.GetCellInfoEnergy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
+			case CellInfo.CellInfoType.Cell:
+				return CellInfo.GetCellInfoCell(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.StaticState, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
+			case CellInfo.CellInfoType.Atmosphere:
+				return CellInfo.GetCellInfoAtmosphere(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
+			case CellInfo.CellInfoType.Ground:
+				return CellInfo.GetCellInfoGround(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.ActiveSimState, ref Sim.DependentState);
+			case CellInfo.CellInfoType.Water:
+				return CellInfo.GetCellInfoWater(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
 		}
 		return "";
 	}
 
 	public int GetClosestVert(int triangleIndex, int vIndex)
 	{
-		return indices[triangleIndex * 3 + vIndex];
+		return _indicesTerrain[triangleIndex * 3 + vIndex] / 8;
 	}
 
 	public void SetActiveCell(int index, bool locked)
@@ -700,11 +699,6 @@ public class WorldView : MonoBehaviour {
 				}
 			}
 		}
-	}
-
-	public float ConvertTileEnergyToWatts(float energy)
-	{
-		return energy * 1000 / Sim.WorldData.SecondsPerTick;
 	}
 
 
@@ -739,6 +733,76 @@ public class WorldView : MonoBehaviour {
 
 
 	#region private functions
+
+	private void InitVerts(Icosphere icosphere)
+	{
+		_terrainVertices = new Vector3[Sim.CellCount * VertsPerCell];
+		_terrainNormals = new Vector3[Sim.CellCount * VertsPerCell];
+		_terrainColors = new Color32[Sim.CellCount * VertsPerCell];
+		_waterVertices = new Vector3[Sim.CellCount * VertsPerCell];
+		_waterNormals = new Vector3[Sim.CellCount * VertsPerCell];
+		_waterColors = new Color32[Sim.CellCount * VertsPerCell];
+		_cloudVertices = new Vector3[Sim.CellCount * VertsPerCell];
+		_cloudNormals = new Vector3[Sim.CellCount * VertsPerCell];
+		_cloudColors = new Color32[Sim.CellCount * VertsPerCell];
+		_dustVertices = new Vector3[Sim.CellCount * VertsPerCell];
+		_dustNormals = new Vector3[Sim.CellCount * VertsPerCell];
+		_dustColors = new Color32[Sim.CellCount * VertsPerCell];
+		_lavaVertices = new Vector3[Sim.CellCount * VertsPerCell];
+		_lavaNormals = new Vector3[Sim.CellCount * VertsPerCell];
+		_lavaColors = new Color32[Sim.CellCount * VertsPerCell];
+
+		_hexVerts = new NativeArray<float3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_terrainNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		List<int> indices = new List<int>();
+		List<int> indicesTerrain = new List<int>();
+		for (int i=0;i< icosphere.Vertices.Length;i++)
+		{
+			float3 pos = icosphere.Vertices[i];
+			_hexVerts[i * VertsPerCell] = pos;
+			_terrainNormalsArray[i * VertsPerCell] = pos;
+			int neighborCount = (icosphere.Neighbors[(i + 1) * MaxNeighbors - 1] >= 0) ? MaxNeighbors : (MaxNeighbors - 1);
+			for (int j=0;j< neighborCount; j++)
+			{
+				int neighborIndex1 = icosphere.Neighbors[i * MaxNeighbors + j];
+				int neighborIndex2 = icosphere.Neighbors[i * MaxNeighbors + (j + 1) % neighborCount];
+
+				float3 midPoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos) / 3;
+				float midPointLength = math.length(midPoint);
+				float3 extendedMidPoint = midPoint / (midPointLength * midPointLength);
+				_hexVerts[i * VertsPerCell + 1 + j] = extendedMidPoint; // surface
+				_hexVerts[i * VertsPerCell + 1 + j + MaxNeighbors] = extendedMidPoint; // wall
+				_hexVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 2] = extendedMidPoint; // wall
+				_terrainNormalsArray[i * VertsPerCell + 1 + j] = pos; // surface
+				_terrainNormalsArray[i * VertsPerCell + 1 + j + MaxNeighbors] = math.normalize(midPoint - pos); // wall
+				_terrainNormalsArray[i * VertsPerCell + 1 + j + MaxNeighbors * 2] = math.normalize(midPoint - pos); // wall
+
+				indices.Add(i * VertsPerCell);
+				indices.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
+				indices.Add(i * VertsPerCell + 1 + j);
+
+				indicesTerrain.Add(i * VertsPerCell);
+				indicesTerrain.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
+				indicesTerrain.Add(i * VertsPerCell + 1 + j);
+
+
+				int neighborNeighborCount = (icosphere.Neighbors[(neighborIndex1 + 1) * MaxNeighbors - 1] >= 0) ? MaxNeighbors : (MaxNeighbors - 1);
+				for (int k = 0; k < neighborNeighborCount; k++)
+				{
+					if (icosphere.Neighbors[neighborIndex1 * MaxNeighbors + k] == i)
+					{
+						indicesTerrain.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
+						indicesTerrain.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
+						indicesTerrain.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
+						break;
+					}
+				}
+			}
+		}
+		_indices = indices.ToArray();
+		_indicesTerrain = indicesTerrain.ToArray();
+
+	}
 
 	private bool GetMeshOverlayData(MeshOverlay activeOverlay, ref SimState simState, ref DependentState dependentState, ref DisplayState display, out MeshOverlayData overlay)
 	{
@@ -897,241 +961,6 @@ public class WorldView : MonoBehaviour {
 		return false;
 	}
 
-
-	private string GetCellInfoGlobal(ref SimState state, ref DependentState dependent, ref DisplayState display)
-	{
-		StringBuilder s = new StringBuilder();
-		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
-		NumberFormatInfo nfi2 = new NumberFormatInfo() { NumberDecimalDigits = 2 };
-		s.AppendFormat("CO2: {0:N0} ppm", display.GlobalAirCarbon * 1000000 / display.GlobalAirMass);
-		s.AppendFormat("\nCO2 Mass Air: {0:N1} kg", display.GlobalAirCarbon);
-		s.AppendFormat("\nCO2 Mass Water: {0:N1} kg", display.GlobalWaterCarbon);
-		s.AppendFormat("\nFlora: {0:N1} kg", display.GlobalFloraMass);
-		s.AppendFormat("\nPlankton: {0:N1} kg", display.GlobalPlanktonMass);
-		s.AppendFormat("\nSoil Carbon: {0:N1} kg", display.GlobalSoilFertility);
-		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * Sim.InverseCellCount);
-		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * Sim.InverseCellCount, ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nTemperature Air: {0}", GetTemperatureString((float)(display.GlobalAirTemperaturePotential), ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nTemperature Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanTemperature, ActiveTemperatureUnits, 4));
-		s.AppendFormat("\nTemperature Terrain: {0:N0}", GetTemperatureString((float)display.GlobalTerrainTemperature, ActiveTemperatureUnits, 4));
-		s.AppendFormat("\nWater Vapor: {0:N0}", display.GlobalWaterVapor);
-		s.AppendFormat("\nRainfall: {0:N3}", display.GlobalRainfall * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
-		s.AppendFormat("\nCondensationCloud: {0:N3}", display.GlobalCondensationCloud * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
-		s.AppendFormat("\nCondensationGround: {0:N3}", display.GlobalCondensationGround * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
-		s.AppendFormat("\nEvaporation: {0:N3}", display.GlobalEvaporation * Sim.WorldData.TicksPerYear * Sim.InverseCellCount / WorldData.MassWater);
-		s.AppendFormat("\nCloud Mass: {0:N2}", display.GlobalCloudMass);
-		s.AppendFormat("\nGlobal Sea Level: {0:N2}", display.GlobalSeaLevel * Sim.InverseCellCount);
-		s.AppendFormat("\nOcean Coverage: {0:N1}%", display.GlobalOceanCoverage * 100 * Sim.InverseCellCount);
-		s.AppendFormat("\nOcean Mass: {0:N} M", display.GlobalOceanMass / 1000000);
-
-		return s.ToString();
-	}
-	private string GetCellInfoEnthalpy(ref SimState state, ref DependentState dependent, ref DisplayState display)
-	{
-		StringBuilder s = new StringBuilder();
-		s.AppendFormat("Enthalpy Delta: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDelta * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Water: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaWater * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Air: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaAir * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Ice: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaIce * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Cloud: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaCloud * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Flora: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaFlora * Sim.InverseCellCount)));
-		s.AppendFormat("\nEnthalpy Delta Ground Water: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaGroundWater * Sim.InverseCellCount)));
-
-		return s.ToString();
-	}
-	private string GetCellInfoEnergy(ref SimState state, ref DependentState dependent, ref DisplayState display)
-	{
-		StringBuilder s = new StringBuilder();
-		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
-		NumberFormatInfo nfi2 = new NumberFormatInfo() { NumberDecimalDigits = 2 };
-
-		var totalReflected = display.EnergySolarReflectedAtmosphere + display.EnergySolarReflectedSurface;
-		var totalOutgoing = display.EnergyThermalSurfaceOutAtmosphericWindow + display.EnergyThermalOutAtmosphere;
-		var emittedByAtmosphere = display.EnergyThermalOutAtmosphere - display.EnergyThermalSurfaceOutAtmosphericWindow;
-		s.AppendFormat("Delta: {0:N1}", ConvertTileEnergyToWatts((display.SolarRadiation + display.GeothermalRadiation - totalReflected - totalOutgoing) * Sim.InverseCellCount));
-		s.AppendFormat("\nS Incoming: {0:N1}", ConvertTileEnergyToWatts(display.SolarRadiation * Sim.InverseCellCount));
-		s.AppendFormat("\nS Reflected: {0:N1}", ConvertTileEnergyToWatts((totalReflected) * Sim.InverseCellCount));
-		s.AppendFormat("\nS Reflected Atmos: {0:N1}", ConvertTileEnergyToWatts(display.EnergySolarReflectedAtmosphere * Sim.InverseCellCount));
-		s.AppendFormat("\nS Reflected Surf: {0:N1}", ConvertTileEnergyToWatts(display.EnergySolarReflectedSurface * Sim.InverseCellCount));
-		s.AppendFormat("\nS Abs Atm: {0:N1}", ConvertTileEnergyToWatts(display.EnergySolarAbsorbedAtmosphere * Sim.InverseCellCount));
-		s.AppendFormat("\nS Abs Surface Total: {0:N1}", ConvertTileEnergyToWatts(display.EnergySolarAbsorbedSurface * Sim.InverseCellCount));
-		s.AppendFormat("\nS Abs Ocean: {0:N1}", ConvertTileEnergyToWatts(display.EnergySolarAbsorbedOcean * Sim.InverseCellCount));
-		s.AppendFormat("\nT Outgoing: {0:N1}", ConvertTileEnergyToWatts(totalOutgoing * Sim.InverseCellCount));
-		s.AppendFormat("\nT Out Atm Window: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalSurfaceOutAtmosphericWindow * Sim.InverseCellCount));
-		s.AppendFormat("\nT Out Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalOutAtmosphere * Sim.InverseCellCount));
-		s.AppendFormat("\nT Surface Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalSurfaceRadiation * Sim.InverseCellCount));
-		s.AppendFormat("\nT Atm Absorbed: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalAbsorbedAtmosphere * Sim.InverseCellCount));
-		s.AppendFormat("\nT Atm Emitted: {0:N1}", ConvertTileEnergyToWatts(emittedByAtmosphere * Sim.InverseCellCount));
-		s.AppendFormat("\nT Back Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalBackRadiation * Sim.InverseCellCount));
-		s.AppendFormat("\nGeothermal Incoming: {0:N1}", ConvertTileEnergyToWatts(display.GeothermalRadiation * Sim.InverseCellCount));
-		s.AppendFormat("\nEvapotranspiration: {0:N1}", ConvertTileEnergyToWatts(display.EnergyEvapotranspiration * Sim.InverseCellCount));
-		s.AppendFormat("\nSurface Conduction: {0:N1}", ConvertTileEnergyToWatts(display.EnergySurfaceConduction * Sim.InverseCellCount));
-		s.AppendFormat("\nOcean Radiation: {0:N1}", ConvertTileEnergyToWatts(display.EnergyThermalOceanRadiation * Sim.InverseCellCount / display.GlobalOceanCoverage));
-		s.AppendFormat("\nOcean Conduction: {0:N1}", ConvertTileEnergyToWatts(display.EnergyOceanConduction * Sim.InverseCellCount / display.GlobalOceanCoverage));
-
-		return s.ToString();
-	}
-	private string GetCellInfoCell(ref SimState state, ref DependentState dependent, ref DisplayState display)
-	{
-		if (ActiveCellIndex < 0)
-			return "";
-
-		StringBuilder s = new StringBuilder();
-
-		var coord = Sim.StaticState.Coordinate[ActiveCellIndex];
-		var pos = Sim.StaticState.SphericalPosition[ActiveCellIndex];
-		s.AppendFormat("INDEX: {0}", ActiveCellIndex);
-		s.AppendFormat("\nCOORD: ({0:N1}, {1:N1})", math.degrees(coord.x), math.degrees(coord.y));
-		s.AppendFormat("\nPOS: ({0:N2}, {1:N2}, {2:N2})", pos.x, pos.y, pos.z);
-		//s.AppendFormat("\nSolar Terrain:   {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[0][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Terrain: {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[0][ActiveCellIndex]));
-		//s.AppendFormat("\nSolar Water0:    {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[2][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Water0:  {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[2][ActiveCellIndex]));
-		//s.AppendFormat("\nSolar Water1:    {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[3][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Water1:  {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[3][ActiveCellIndex]));
-		//s.AppendFormat("\nSolar Water2:    {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[4][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Water2:  {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[4][ActiveCellIndex]));
-		//s.AppendFormat("\nSolar Ice:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[6][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Ice:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[6][ActiveCellIndex]));
-		//s.AppendFormat("\nSolar Air0:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[8][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Air0:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[8][ActiveCellIndex]));
-		//s.AppendFormat("\nSolar Air1:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[1][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Air1:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[1][ActiveCellIndex]));
-		//s.AppendFormat("\nSolar Air2:       {0:N1}", ConvertTileEnergyToWatts(display.SolarDelta[2][ActiveCellIndex]));
-		//s.AppendFormat("\nThermal Air2:     {0:N1}", ConvertTileEnergyToWatts(display.ThermalDelta[2][ActiveCellIndex]));
-
-		return s.ToString();
-	}
-	private string GetCellInfoAtmosphere(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
-	{
-		if (ActiveCellIndex < 0)
-			return "";
-
-		StringBuilder s = new StringBuilder();
-
-		float cloudMass = state.CloudMass[ActiveCellIndex];
-		int upperAtmosphereLayerIndex = Sim.WorldData.AirLayers - 2;
-		s.AppendFormat("RAIN: {0:N3} kg", display.Rainfall[ActiveCellIndex]);
-		s.AppendFormat("\nEVAP: {0:N3} kg", display.Evaporation[ActiveCellIndex]);
-		s.AppendFormat("\nSURFACE TEMP: {0:N3}", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nTROPOPAUSE ELE: {0:N0}m", dependent.LayerElevation[Sim.WorldData.AirLayers-1][ActiveCellIndex]);
-		s.AppendFormat("\nDUST: {0:N3} kg", display.DustMass[ActiveCellIndex]);
-
-		if (cloudMass > 0)
-		{
-			float dropletSize = 1000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
-			float3 vel = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex],dependent.CloudVelocity[ActiveCellIndex]);
-			s.AppendFormat("\nCLOUD: {0:N3} kg ELE: {1:N0} m R: {2:N3} mm VEL: ({3:N1}, {4:N1}, {5:N1})", 
-				state.CloudMass[ActiveCellIndex],
-				dependent.CloudElevation[ActiveCellIndex],
-				state.CloudDropletMass[ActiveCellIndex],
-				vel.x, vel.y, vel.z);
-		}
-		else
-		{
-			s.AppendFormat("\nCLOUD: 0 kg");
-		}
-		s.AppendLine();
-
-		for (int i = 1; i < Sim.WorldData.AirLayers - 1; i++)
-		{
-			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.AirVelocity[i][ActiveCellIndex]);
-			s.AppendFormat("\nLAYER {0} | TEMP: {1} RH: {2:P1}",
-				i, 
-				GetTemperatureString(Atmosphere.GetAbsoluteTemperature(state.AirTemperaturePotential[i][ActiveCellIndex], dependent.LayerMiddle[i][ActiveCellIndex]), ActiveTemperatureUnits, 1),
-				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
-			s.AppendFormat("\nELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N1})",
-				dependent.LayerElevation[i][ActiveCellIndex],
-				display.Pressure[i][ActiveCellIndex],
-				wind.x, wind.y, wind.z);
-			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex], display.CarbonDioxidePercent[1][ActiveCellIndex] * 1000000);
-			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow) * display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow);
-			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityCloud, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityCloud);
-			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityCloud);
-			s.AppendLine();
-		}
-		return s.ToString();
-	}
-	private string GetCellInfoGround(ref SimState state, ref DependentState dependent)
-	{
-		if (ActiveCellIndex < 0)
-			return "";
-
-		StringBuilder s = new StringBuilder();
-
-		s.AppendFormat("ELE: {0:N0} m", state.Elevation[ActiveCellIndex]);
-		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
-		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.GroundTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbon[ActiveCellIndex]);
-		s.AppendFormat("\nFLORA: {0:N2} kg TEMP: {1:N2}",
-			state.FloraMass[ActiveCellIndex],
-			GetTemperatureString(state.FloraTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nFWATER: {0:N2} kg GLUCOSE: {1:N2} kg",
-			state.FloraWater[ActiveCellIndex],
-			state.FloraGlucose[ActiveCellIndex]);
-		s.AppendFormat("\nGWATER: {0:N2} TEMP: {1:N2}",
-			state.GroundWater[ActiveCellIndex],
-			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nLAVA: {0:N2} TEMP: {1:N0}",
-			state.LavaMass[ActiveCellIndex],
-			GetTemperatureString(state.LavaTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		return s.ToString();
-	}
-	private string GetCellInfoWater(ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
-	{
-		if (ActiveCellIndex < 0)
-			return "";
-
-		StringBuilder s = new StringBuilder();
-
-		if (state.IceMass[ActiveCellIndex] > 0)
-		{
-			s.AppendFormat("ICE: {0:N3} m TEMP: {1}",
-				(state.IceMass[ActiveCellIndex] / WorldData.MassIce),
-				GetTemperatureString(state.IceTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		} else
-		{
-			s.AppendFormat("ICE: 0 m");
-		}
-		float depth = dependent.WaterLayerDepth[1][ActiveCellIndex];
-		var nfi = new NumberFormatInfo() { NumberDecimalDigits = (depth >= 1) ? 0 : 3 };
-		s.AppendFormat(nfi, "\nDEPTH: {0:N} m", depth);
-
-		if (state.WaterMass[Sim.WorldData.WaterLayers - 2][ActiveCellIndex] > 0)
-		{
-			s.AppendFormat(nfi, "\nPLANKTON: {0:N2} kg", state.PlanktonMass[Sim.WorldData.WaterLayers-2][ActiveCellIndex]);
-		}
-		s.AppendLine();
-
-
-		for (int i = Sim.WorldData.WaterLayers - 2; i >= 1; i--) {
-			int layerIndex = (Sim.WorldData.WaterLayers - 2 - i);
-			if (state.WaterMass[i][ActiveCellIndex] > 0)
-			{
-				var current = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.WaterVelocity[i][ActiveCellIndex]);
-				s.AppendFormat("\nLAYER {0} | TEMP: {1} SALT: {2:P4}",
-					layerIndex,
-					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 2),
-					display.Salinity[i][ActiveCellIndex]);
-				s.AppendFormat("\nVEL: ({0:N3}, {1:N3}, {2:N3})",
-					current.x, current.y, current.z);
-				s.AppendFormat("\nCO2: {0:N3}",
-					state.WaterCarbon[i][ActiveCellIndex]);
-				s.AppendFormat("\nP: {0} D: {1}",
-					dependent.WaterPressure[i][ActiveCellIndex],
-					Atmosphere.GetWaterDensity(display.Salinity[i][ActiveCellIndex], state.WaterTemperature[i][ActiveCellIndex]));
-				s.AppendFormat(nfi, "\nDEPTH: {0:N} m HEIGHT: {1:N} m",
-					dependent.WaterLayerDepth[i][ActiveCellIndex],
-					dependent.WaterLayerHeight[i][ActiveCellIndex]
-					);
-				s.AppendLine();
-			}
-		}
-		return s.ToString();
-	}
 
 	#endregion
 }

@@ -6,7 +6,7 @@ public class CellInfoPanel : MonoBehaviour
 {
 	public UnityEngine.UI.Text TextObject;
 	public WorldView WorldView;
-	public WorldView.CellInfoType CellInfo;
+	public CellInfo.CellInfoType CellInfo;
 
 	// Start is called before the first frame update
 	void Start()

@@ -12,6 +12,7 @@ public class Icosphere {
 
 	public List<Polygon> Polygons = new List<Polygon>();
 	public NativeArray<float3> Vertices = new NativeArray<float3>();
+	public NativeArray<int> Neighbors;
 
 	public Icosphere(int recursions)
 	{
@@ -65,11 +66,13 @@ public class Icosphere {
 		Subdivide(recursions, vertexList);
 
 		Vertices = new NativeArray<float3>(vertexList.ToArray(), Allocator.Persistent);
+		InitNeighbors();
 	}
 
 	public void Dispose()
 	{
 		Vertices.Dispose();
+		Neighbors.Dispose();
 	}
 
 	private void Subdivide(int recursions, List<float3> vertexList)
@@ -142,5 +145,56 @@ public class Icosphere {
 
 		cache.Add(key, ret);
 		return ret;
+	}
+
+	private void InitNeighbors()
+	{
+		Neighbors = new NativeArray<int>(Vertices.Length * 6, Allocator.Persistent);
+		var neighborList = new List<Tuple<int, float3>>[Vertices.Length];
+		for (int i = 0; i < Vertices.Length; i++)
+		{
+			neighborList[i] = new List<Tuple<int, float3>>();
+		}
+
+		for (int i = 0; i < Polygons.Count; i++)
+		{
+			var p = Polygons[i];
+			for (int j = 0; j < 3; j++)
+			{
+				int vertIndex = p.m_Vertices[(j + 1) % 3];
+				neighborList[p.m_Vertices[j]].Add(new Tuple<int, float3>(vertIndex, Vertices[vertIndex]));
+			}
+		}
+		for (int i = 0; i < Vertices.Length; i++)
+		{
+			var pos = Vertices[i];
+			var forward = math.normalize(neighborList[i][0].Item2 - pos);
+
+			neighborList[i].Sort(delegate (Tuple<int, float3> a, Tuple<int, float3> b)
+			{
+				float3 diffA = math.normalize(a.Item2 - pos);
+				float3 diffB = math.normalize(b.Item2 - pos);
+				float dotA = math.dot(diffA, forward);
+				float dotB = math.dot(diffB, forward);
+				float angleA = diffA.Equals(forward) ? 0 : math.acos(dotA);
+				float angleB = diffB.Equals(forward) ? 0 : math.acos(dotB);
+				angleA *= math.dot(pos, math.cross(forward, diffA)) >= 0 ? 1 : -1;
+				angleB *= math.dot(pos, math.cross(forward, diffB)) >= 0 ? 1 : -1;
+				return (int)math.sign(angleB - angleA);
+			});
+			for (int j = 0; j < 6; j++)
+			{
+				int index = i * 6 + j;
+				if (j < neighborList[i].Count)
+				{
+					int n = neighborList[i][j].Item1;
+					Neighbors[index] = n;
+				}
+				else
+				{
+					Neighbors[index] = -1;
+				}
+			}
+		}
 	}
 }

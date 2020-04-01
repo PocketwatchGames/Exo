@@ -2,4 +2,4 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DropdownTemperatureUnits : DropdownOverlay<WorldView.TemperatureUnits> { }
+public class DropdownTemperatureUnits : DropdownOverlay<CellInfo.TemperatureUnits> { }

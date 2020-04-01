@@ -1953,8 +1953,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Seed: 5
-  Subdivisions: 5
-  CheckForDegeneracy: 1
+  Subdivisions: 4
+  CheckForDegeneracy: 0
   CollectGlobals: 0
   LogState: 0
   LogStateIndex: 0
@@ -6417,6 +6417,9 @@ MonoBehaviour:
   MaxDepth: 11000
   maxCloudColor: 300
   WaterDepthThreshold: 10
+  WallColor:
+    serializedVersion: 2
+    rgba: 4279111182
   DisplayWindMax: 50
   DisplayCurrentMax: 5
   DisplayCurrentMinDepth: 50
