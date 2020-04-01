@@ -1998,7 +1998,6 @@ MonoBehaviour:
     ThermalEmissivityFlora: 0
     ThermalEmissivityLava: 0
     WaterHeatingDepth: 0
-    WaterAirCarbonBalance: 0
     WaterAirCarbonDiffusionCoefficient: 0
     IceHeatingDepth: 0
     FreezePointReductionPerSalinity: 0

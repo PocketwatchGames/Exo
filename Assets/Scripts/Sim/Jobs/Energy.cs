@@ -16,7 +16,6 @@ public struct EnergyAirSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyFlora;
-	[ReadOnly] public NativeArray<float> ConductionEnergyLava;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	public void Execute(int i)
 	{
@@ -25,7 +24,6 @@ public struct EnergyAirSurfaceJob : IJobParallelFor {
 			+ ThermalRadiationDelta[i]
 			+ ConductionEnergyIce[i]
 			+ ConductionEnergyTerrain[i]
-			+ ConductionEnergyLava[i]
 			+ ConductionEnergyFlora[i]
 			+ ConductionEnergyWater[i];
 
@@ -64,7 +62,6 @@ public struct EnergyWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
-	[ReadOnly] public NativeArray<float> ConductionEnergyLava;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	public void Execute(int i)
 	{
@@ -73,7 +70,6 @@ public struct EnergyWaterJob : IJobParallelFor {
 			float energy = ThermalRadiationDelta[i];
 
 			energy += (1.0f - CoverageDown[i]) * (
-				+ ConductionEnergyLava[i]
 				+ ConductionEnergyTerrain[i]
 				);
 			energy += (1.0f - CoverageUp[i]) * (
@@ -103,7 +99,6 @@ public struct EnergyIceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyFlora;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
-	[ReadOnly] public NativeArray<float> ConductionEnergyLava;
 
 	public void Execute(int i)
 	{
@@ -113,7 +108,6 @@ public struct EnergyIceJob : IJobParallelFor {
 				-ConductionEnergyAir[i]
 				+ ConductionEnergyWater[i]
 				+ ConductionEnergyFlora[i]
-				+ ConductionEnergyLava[i]
 				+ ConductionEnergyTerrain[i]
 				+ SolarRadiationIn[i]
 				+ ThermalRadiationDelta[i];
@@ -203,7 +197,6 @@ public struct EnergyTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyFlora;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
-	[ReadOnly] public NativeArray<float> ConductionEnergyLava;
 	[ReadOnly] public NativeArray<float> GeothermalEnergy;
 	[ReadOnly] public float HeatingDepth;
 	public void Execute(int i)
@@ -212,8 +205,7 @@ public struct EnergyTerrainJob : IJobParallelFor {
 			-ConductionEnergyAir[i]
 			- ConductionEnergyWater[i]
 			- ConductionEnergyIce[i]
-			- ConductionEnergyFlora[i]
-			- ConductionEnergyLava[i];
+			- ConductionEnergyFlora[i];
 
 		float specificHeatTerrain = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]);
 

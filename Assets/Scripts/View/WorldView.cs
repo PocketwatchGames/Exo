@@ -387,7 +387,7 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateJob()
 		{
 			TerrainColor = to.TerrainColor,
 			TerrainNormal = to.TerrainNormal,
@@ -1066,10 +1066,12 @@ public class WorldView : MonoBehaviour {
 		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
 		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.GroundTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbon[ActiveCellIndex]);
-		s.AppendFormat("\nFLORA: {0:N2} WATER: {1:N2} kg TEMP: {2:N2}", 
+		s.AppendFormat("\nFLORA: {0:N2} kg TEMP: {1:N2}",
 			state.FloraMass[ActiveCellIndex],
-			state.FloraWater[ActiveCellIndex],
 			GetTemperatureString(state.FloraTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("\nFWATER: {0:N2} kg GLUCOSE: {1:N2} kg",
+			state.FloraWater[ActiveCellIndex],
+			state.FloraGlucose[ActiveCellIndex]);
 		s.AppendFormat("\nGWATER: {0:N2} TEMP: {1:N2}",
 			state.GroundWater[ActiveCellIndex],
 			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));

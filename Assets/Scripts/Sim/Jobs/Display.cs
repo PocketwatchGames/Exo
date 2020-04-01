@@ -84,7 +84,7 @@ public struct InitDisplayAirLayerJob : IJobParallelFor {
 		WindVertical[i] = AdvectionDestination[i].moveVertical;
 	}
 }
-//[BurstCompile]
+[BurstCompile]
 public struct InitDisplayWaterLayerJob : IJobParallelFor {
 	public NativeArray<float> Enthalpy;
 	public NativeArray<float> Salinity;

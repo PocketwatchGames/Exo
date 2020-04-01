@@ -88,11 +88,13 @@ public struct AdvectionAirJob : IJobParallelFor {
 		float newDust;
 		float3 newVelocity;
 
+
 #if DISABLE_AIR_ADVECTION
 		newTemperature = Temperature[i];
 		newWaterVapor = Vapor[i];
 		newVelocity = Velocity[i];
 		newDust = Dust[i];
+		newCO2 = CarbonDioxide[i];
 #else
 
 		newTemperature = 0;
@@ -107,12 +109,13 @@ public struct AdvectionAirJob : IJobParallelFor {
 		if (Destination[i].indexA == i)
 		{
 			float v = Destination[i].valueA;
-			totalMass += v;
-			newTemperature += Temperature[i] * v;
+			float massRemaining = v * AirMass[i]; 
+			totalMass += massRemaining;
+			newTemperature += Temperature[i] * massRemaining;
+			newVelocity += Velocity[i] * massRemaining;
 			newWaterVapor += Vapor[i] * v;
 			newCO2 += CarbonDioxide[i] * v;
 			newDust += Dust[i] * v;
-			newVelocity += Velocity[i] * v;
 		}
 
 		// TODO: subtract vertical motion first before applying horizontal motion (right now it adds up to more than 1)
@@ -375,7 +378,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		{
 			valueRemaining += Destination[i].valueC;
 		}
-		valueRemainingHorizontal = valueRemaining + Destination[i].moveVertical;
+		valueRemainingHorizontal = valueRemaining + math.abs(Destination[i].moveVertical);
 		if (Destination[i].moveVertical > 0)
 		{
 			if (MassAbove[i] == 0)

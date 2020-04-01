@@ -33,9 +33,7 @@ public struct AirTerrainFrictionJob : IJobParallelFor {
 	}
 }
 
-#if !AccelerationAirJobDebug
 [BurstCompile]
-#endif
 public struct AccelerationAirJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
 	public NativeArray<float3> Force;
@@ -65,11 +63,13 @@ public struct AccelerationAirJob : IJobParallelFor {
 	[ReadOnly] public float FrictionCoefficient;
 	public void Execute(int i)
 	{
+
 		float3 gradientPressure = 0;
 		float3 position = Positions[i];
 		float pressure = Pressure[i];
 		float3 force = 0;
 		int neighborCount = 0;
+
 		for (int j = 0; j < 6; j++)
 		{
 			int neighborIndex = i * 6 + j;

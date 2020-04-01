@@ -52,8 +52,7 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> FloraTemperature;
 	[ReadOnly] public NativeArray<float> PlanktonMassDelta;
 	[ReadOnly] public NativeArray<float> PlanktonGlucoseDelta;
-	[ReadOnly] public NativeArray<float> PlanktonWaterCarbonDelta;
-	[ReadOnly] public NativeArray<float> WaterAirCarbonDelta;
+	[ReadOnly] public NativeArray<float> WaterCarbonDelta;
 	public void Execute(int i)
 	{
 		float precipitationTemperature = PrecipitationTemperature[i];
@@ -65,7 +64,7 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		SaltMass[i] -= SaltPlume[i];
 		PlanktonMass[i] = LastPlanktonMass[i] + PlanktonMassDelta[i];
 		PlanktonGlucose[i] = LastPlanktonGlucose[i] + PlanktonGlucoseDelta[i];
-		CarbonMass[i] += PlanktonWaterCarbonDelta[i] - WaterAirCarbonDelta[i];
+		CarbonMass[i] += WaterCarbonDelta[i];
 
 		if (newMass <= 0)
 		{
@@ -211,8 +210,7 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> EvaporationTemperatureFlora;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> DustEjected;
-	[ReadOnly] public NativeArray<float> FloraAirCarbonDelta;
-	[ReadOnly] public NativeArray<float> WaterAirCarbonDelta;
+	[ReadOnly] public NativeArray<float> AirCarbonDelta;
 	[ReadOnly] public NativeArray<float> SoilRespiration;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> Elevation;
@@ -230,7 +228,7 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
-		CarbonDioxide[i] += FloraAirCarbonDelta[i] + WaterAirCarbonDelta[i] + SoilRespiration[i] * WaterCoverage[i];
+		CarbonDioxide[i] += AirCarbonDelta[i] + SoilRespiration[i] * WaterCoverage[i];
 	}
 }
 
@@ -340,6 +338,38 @@ public struct UpdateFloraJob : IJobParallelFor {
 		FloraMass[i] = math.max(0, LastMass[i] + FloraMassDelta[i]);
 		FloraGlucose[i] = math.max(0, LastGlucose[i] + FloraGlucoseDelta[i]);
 		FloraWater[i] = math.max(0, LastWater[i] + FloraWaterDelta[i]);
+	}
+
+}
+
+
+
+
+[BurstCompile]
+public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
+	public NativeArray<float> AirCarbon;
+	public NativeArray<float> WaterCarbon;
+	[ReadOnly] public NativeArray<float> WaterMass;
+	[ReadOnly] public NativeArray<float> SaltMass;
+	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public float WaterAirCarbonDiffusionCoefficient;
+	public void Execute(int i)
+	{
+#if !DISABLE_WATER_AIR_CARBON_TRANSFER
+
+		float airCarbon = AirCarbon[i];
+		float waterCarbon = WaterCarbon[i];
+		if ((waterCarbon > 0 || airCarbon > 0) && WaterMass[i] > 0)
+		{
+			float waterLayerMass = WaterMass[i] + SaltMass[i] + waterCarbon;
+			float airLayerMass = AirMass[i] + airCarbon;
+			float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + airLayerMass);
+			float diffusion = (desiredCarbonDensity - waterCarbon / waterLayerMass) * math.min(1, WaterAirCarbonDiffusionCoefficient / math.min(waterLayerMass, airLayerMass));
+
+			AirCarbon[i] = airCarbon - diffusion;
+			WaterCarbon[i] = waterCarbon + diffusion;
+		}
+#endif
 	}
 
 }

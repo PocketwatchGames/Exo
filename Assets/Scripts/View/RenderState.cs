@@ -78,7 +78,7 @@ public struct RenderState {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct BuildRenderStateJob : IJobParallelFor {
 	public NativeArray<Color32> TerrainColor;
 	public NativeArray<Vector3> TerrainPosition;
@@ -248,15 +248,15 @@ public struct BuildRenderStateJob : IJobParallelFor {
 		{
 			return new Color32(0, 0, 255, 255);
 		}
-		else if (floraCoverage > 0.2f)
+		else if (floraCoverage > 0.5f)
 		{
 			return new Color32(0, 20, 0, 255);
 		}
-		else if (floraCoverage > 0.02f)
+		else if (floraCoverage > 0.05f)
 		{
 			return new Color32(20, 70, 20, 255);
 		}
-		else if (floraCoverage > 0.002f)
+		else if (floraCoverage > 0.005f)
 		{
 			return new Color32(40, 120, 40, 255);
 		}

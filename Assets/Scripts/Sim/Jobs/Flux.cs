@@ -16,7 +16,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-//[BurstCompile]
+[BurstCompile]
 public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
@@ -28,7 +28,6 @@ public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> PlanktonGlucoseDelta;
 	public NativeArray<float> PlanktonDeath;
 	public NativeArray<float> WaterCarbonDelta;
-	public NativeArray<float> AirCarbonDelta;
 	[ReadOnly] public NativeArray<float> SolarRadiation;
 	[ReadOnly] public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> WaterMass;
@@ -38,7 +37,6 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> PlanktonGlucoseMass;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> AirCarbon;
 	[ReadOnly] public NativeArray<float> AirVapor;
 	[ReadOnly] public NativeArray<float> AirPressure;
 	[ReadOnly] public NativeArray<float> AirLayerElevation;
@@ -55,7 +53,6 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public float PlanktonGrowthRate;
 	[ReadOnly] public float PlanktonDeathRate;
 	[ReadOnly] public float PlanktonRespirationPerDegree;
-	[ReadOnly] public float WaterAirCarbonDiffusionCoefficient;
 	public void Execute(int i)
 	{
 		float temperature = WaterTemperature[i];
@@ -73,7 +70,6 @@ public struct FluxWaterJob : IJobParallelFor {
 		float planktonMassDelta = 0;
 		float planktonDeath = 0;
 		float waterCarbonDelta = 0;
-		float airCarbonDelta = 0;
 
 		if (waterMass > 0)
 		{
@@ -176,20 +172,6 @@ public struct FluxWaterJob : IJobParallelFor {
 			}
 #endif
 
-#if !DISABLE_WATER_AIR_CARBON_TRANSFER
-
-			float airCarbon = AirCarbon[i];
-			waterCarbon += waterCarbonDelta;
-			if (waterMass > 0 && waterCarbon > 0 || airCarbon > 0)
-			{
-				float waterLayerMass = waterMass + saltMass + waterCarbon;
-				float airLayerMass = AirMass[i] + airCarbon;
-				float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + airLayerMass);
-				float diffusion = (desiredCarbonDensity - waterCarbon / waterLayerMass) * math.min(1, WaterAirCarbonDiffusionCoefficient / math.min(waterLayerMass, airLayerMass));
-				waterCarbonDelta += diffusion;
-				airCarbonDelta -= diffusion;
-			}
-#endif
 		}
 
 		EvaporatedWaterMass[i] = evapMass;
@@ -199,7 +181,6 @@ public struct FluxWaterJob : IJobParallelFor {
 		LatentHeatWater[i] = energyFlux;
 		LatentHeatAir[i] += -latentHeatFromAir;
 		WaterCarbonDelta[i] = waterCarbonDelta;
-		AirCarbonDelta[i] = airCarbonDelta;
 		PlanktonGlucoseDelta[i] = glucoseDelta;
 		PlanktonMassDelta[i] = planktonMassDelta;
 		PlanktonDeath[i] = planktonDeath;
@@ -460,7 +441,7 @@ public struct FluxIceJob : IJobParallelFor {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct FluxFloraJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> LatentHeatAir;
