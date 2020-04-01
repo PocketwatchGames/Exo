@@ -138,12 +138,10 @@ public struct DiffusionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastDropletMass;
-	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public float DiffusionCoefficient;
 	public void Execute(int i)
 	{
-		float3 velocity = LastVelocity[i];
 		float mass = LastMass[i];
 		float temperature = LastTemperature[i];
 		float dropletMass = LastDropletMass[i];
@@ -151,7 +149,6 @@ public struct DiffusionCloudJob : IJobParallelFor {
 		float newMass = 0;
 		float newTemperature = 0;
 		float newDropletMass = 0;
-		float3 newVelocity = float3.zero;
 
 #if !DISABLE_CLOUD_DIFFUSION
 		if (mass > 0)
@@ -169,7 +166,6 @@ public struct DiffusionCloudJob : IJobParallelFor {
 					newMass += nMass - mass;
 					newTemperature += (LastTemperature[n] - temperature) * diffusion;
 					newDropletMass += (LastDropletMass[n] - dropletMass) * diffusion;
-					newVelocity += (LastVelocity[n] - velocity) * diffusion;
 				}
 			}
 		}
@@ -180,7 +176,6 @@ public struct DiffusionCloudJob : IJobParallelFor {
 			Mass = newMass * DiffusionCoefficient + mass,
 			Temperature = newTemperature * DiffusionCoefficient + temperature,
 			DropletMass = newDropletMass * DiffusionCoefficient + dropletMass,
-			Velocity = newVelocity * DiffusionCoefficient + velocity,
 		};
 
 	}

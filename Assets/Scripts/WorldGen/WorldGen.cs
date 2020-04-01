@@ -177,7 +177,6 @@ public static class WorldGen {
 		public NativeArray<float> IceTemperature;
 		public NativeArray<float> CloudDropletMass;
 		public NativeArray<float> CloudTemperature;
-		public NativeArray<float3> CloudVelocity;
 		public NativeArray<float> IceMass;
 		public NativeArray<float> TerrainTemperature;
 		public NativeArray<float> WaterTemperatureSurface;
@@ -217,7 +216,6 @@ public static class WorldGen {
 			}
 
 
-			CloudVelocity[i] = float3.zero;
 			TerrainTemperature[i] = terrainTemperature;
 			GroundWaterTemperature[i] = terrainTemperature;
 		}
@@ -391,7 +389,6 @@ public static class WorldGen {
 			TerrainTemperature = state.GroundTemperature,
 			CloudDropletMass = state.CloudDropletMass,
 			CloudTemperature = state.CloudTemperature,
-			CloudVelocity = state.CloudVelocity,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
 			WaterTemperatureBottom = WaterTemperatureBottom,

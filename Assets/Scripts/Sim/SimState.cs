@@ -27,7 +27,6 @@ public struct SimState {
 	public NativeArray<float> CloudMass;
 	public NativeArray<float> CloudTemperature;
 	public NativeArray<float> CloudDropletMass;
-	public NativeArray<float3> CloudVelocity;
 	public NativeArray<float> CrustDepth;
 	public NativeArray<float> MagmaMass;
 	public NativeArray<float> LavaMass;
@@ -62,7 +61,6 @@ public struct SimState {
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		CloudDropletMass = new NativeArray<float>(count, Allocator.Persistent);
-		CloudVelocity = new NativeArray<float3>(count, Allocator.Persistent);
 		LavaTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		LavaMass = new NativeArray<float>(count, Allocator.Persistent);
 		CrustDepth = new NativeArray<float>(count, Allocator.Persistent);
@@ -117,7 +115,6 @@ public struct SimState {
 		CloudMass.Dispose();
 		CloudTemperature.Dispose();
 		CloudDropletMass.Dispose();
-		CloudVelocity.Dispose();
 		LavaMass.Dispose();
 		LavaTemperature.Dispose();
 		MagmaMass.Dispose();
@@ -194,6 +191,7 @@ public struct DependentState {
 	public NativeArray<float>[] LayerMiddle;
 	public NativeArray<float> CloudAbsorptivity;
 	public NativeArray<float> CloudElevation;
+	public NativeArray<float3> CloudVelocity;
 	public NativeArray<float> DewPoint;
 	public NativeArray<float> AirDensityCloud;
 
@@ -210,6 +208,7 @@ public struct DependentState {
 		AirDensityCloud = new NativeArray<float>(count, Allocator.Persistent);
 		CloudAbsorptivity = new NativeArray<float>(count, Allocator.Persistent);
 		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
+		CloudVelocity = new NativeArray<float3>(count, Allocator.Persistent);
 		SurfaceAreaAirIce = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAreaAirWater = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAreaAirFlora = new NativeArray<float>(count, Allocator.Persistent);
@@ -271,6 +270,7 @@ public struct DependentState {
 		WindVerticalCloud.Dispose();
 		AirDensityCloud.Dispose();
 		CloudElevation.Dispose();
+		CloudVelocity.Dispose();
 		CloudAbsorptivity.Dispose();
 		SurfaceAreaAirIce.Dispose();
 		SurfaceAreaAirWater.Dispose();

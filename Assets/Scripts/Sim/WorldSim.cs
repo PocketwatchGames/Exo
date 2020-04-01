@@ -1204,7 +1204,7 @@ public class WorldSim {
 				SurfaceLayerMiddle = dependent.LayerMiddle[1],
 				SurfaceSaltMass = lastState.SaltMass[_surfaceWaterLayer],
 				LastCloudMass = lastState.CloudMass,
-				LastVelocity = lastState.CloudVelocity,
+				LastVelocity = dependent.CloudVelocity,
 				LastDropletMass = lastState.CloudDropletMass,
 				CloudElevation = dependent.CloudElevation,
 				DewPoint = dependent.DewPoint,
@@ -1717,30 +1717,6 @@ public class WorldSim {
 				velocityJobHandle = JobHandle.CombineDependencies(velocityJobHandle, airAccelerationJobHandles[j]);
 			}
 
-			JobHandle updateCloudVelocityJobHandle = default(JobHandle);
-			for (int j = 1; j < _airLayers - 1; j++)
-			{
-
-				updateCloudVelocityJobHandle = JobHandle.CombineDependencies(updateCloudVelocityJobHandle,SimJob.Schedule(new UpdateVelocityCloudJob()
-				{
-					Velocity = nextState.CloudVelocity,
-
-					CloudElevation = dependent.CloudElevation,
-					LayerVelocity = airAcceleration[j],
-					LayerElevation = dependent.LayerElevation[j],
-					LayerHeight = dependent.LayerHeight[j],
-					DownVelocity = airAcceleration[j - 1],
-					DownLayerElevation = dependent.LayerElevation[j - 1],
-					UpVelocity = airAcceleration[j + 1],
-					UpLayerElevation = dependent.LayerElevation[j + 1],
-					UpLayerHeight = dependent.LayerHeight[j + 1],
-					IsTop = j == _airLayers - 2,
-					IsBottom = j == 1,
-				}, JobHandle.CombineDependencies(updateCloudVelocityJobHandle, airTerrainFrictionJobHandle, JobHandle.CombineDependencies(airAccelerationJobHandles[j], airAccelerationJobHandles[j - 1], airAccelerationJobHandles[j + 1]))));
-			}
-			velocityJobHandle = JobHandle.CombineDependencies(velocityJobHandle, updateCloudVelocityJobHandle);
-
-
 			JobHandle[] waterAccelerationJobHandles = new JobHandle[_airLayers];
 			for (int j = 1; j < _waterLayers - 1; j++)
 			{
@@ -1934,12 +1910,12 @@ public class WorldSim {
 				VelocityDeflected = cloudVelocityDeflected,
 				Neighbors = staticState.Neighbors,
 				Position = staticState.SphericalPosition,
-				Velocity = nextState.CloudVelocity,
+				Velocity = dependent.CloudVelocity,
 				CoriolisMultiplier = staticState.CoriolisMultiplier,
 				CoriolisTerm = coriolisTerm,
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick
-			}, updateCloudVelocityJobHandle);
+			});
 			var advectionJobHandleCloud =SimJob.Schedule(new AdvectionCloudJob()
 			{
 				Delta = advectionCloud,
@@ -1947,8 +1923,6 @@ public class WorldSim {
 				Mass = nextState.CloudMass,
 				Temperature = nextState.CloudTemperature,
 				DropletMass = nextState.CloudDropletMass,
-				Velocity = nextState.CloudVelocity,
-				VelocityDeflected = cloudVelocityDeflected,
 				Neighbors = staticState.Neighbors,
 			}, cloudDestJob);
 
@@ -1964,7 +1938,6 @@ public class WorldSim {
 				CloudMass = nextState.CloudMass,
 				Temperature = nextState.CloudTemperature,
 				DropletMass = nextState.CloudDropletMass,
-				Velocity = nextState.CloudVelocity
 			}, advectionJobHandleCloud));
 
 			for (int i = 1; i < _waterLayers - 1; i++)
@@ -2087,7 +2060,6 @@ public class WorldSim {
 				LastMass = nextState.CloudMass,
 				LastTemperature = nextState.CloudTemperature,
 				LastDropletMass = nextState.CloudDropletMass,
-				LastVelocity = nextState.CloudVelocity,
 				Neighbors = staticState.Neighbors,
 				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
 			});
@@ -2103,7 +2075,6 @@ public class WorldSim {
 				CloudMass = nextState.CloudMass,
 				Temperature = nextState.CloudTemperature,
 				DropletMass = nextState.CloudDropletMass,
-				Velocity = nextState.CloudVelocity
 			}, diffusionCloudHandle));
 
 			for (int i = 1; i < _waterLayers - 1; i++)
@@ -2163,7 +2134,6 @@ public class WorldSim {
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "GroundWater", nextState.GroundWater, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudMass", nextState.CloudMass, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "CloudDropletMass", nextState.CloudDropletMass, degenVarNames);
-				degen |= CheckDegen(_cellCount, degenIndices, "CloudVelocity", nextState.CloudVelocity, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "CloudElevation", dependent.CloudElevation, -100000, 100000, degenVarNames);
 				degen |= CheckDegenPosValues(_cellCount, degenIndices, "IceMass", nextState.IceMass, degenVarNames);
 				degen |= CheckDegenMinMaxValues(_cellCount, degenIndices, "IceTemperature", nextState.IceTemperature, 0, 1200, degenVarNames);
@@ -2523,7 +2493,6 @@ public class WorldSim {
 		s.AppendFormat("\nCLOUD\n");
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
 		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);
-		s.AppendFormat("CloudVelocity: {0}\n", state.CloudVelocity[i]);
 
 		for (int j = 1; j < _airLayers - 1; j++)
 		{

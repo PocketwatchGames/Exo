@@ -154,6 +154,7 @@ public static class SimJobs {
 		{
 			dependencies = jobHelper.Schedule(new UpdateDependentCloudJob()
 			{
+				CloudVelocity = dependent.CloudVelocity,
 				CloudElevation = dependent.CloudElevation,
 				AirDensityCloud = dependent.AirDensityCloud,
 				DewPoint = dependent.DewPoint,
@@ -164,9 +165,20 @@ public static class SimJobs {
 				RelativeHumidity = dependent.AirHumidityRelative[j],				
 				Pressure = dependent.AirPressure[j],
 				AirTemperaturePotential = state.AirTemperaturePotential[j],
-				LayerElevation = dependent.LayerElevation[j],
 				LayerMiddle = dependent.LayerMiddle[j],
+				LayerElevation = dependent.LayerElevation[j],
+				LayerElevationAbove = dependent.LayerElevation[j + 1],
+				LayerElevationBelow = dependent.LayerElevation[j - 1],
+				LayerHeight = dependent.LayerHeight[j],
+				LayerHeightAbove = dependent.LayerHeight[j + 1],
+				LayerHeightBelow = dependent.LayerHeight[j - 1],
+				AirVelocity = state.AirVelocity[j],
+				AirVelocityBelow = state.AirVelocity[j - 1],
+				AirVelocityAbove = state.AirVelocity[j + 1],
 				Gravity = state.PlanetState.Gravity,
+				IsTop = j == worldData.AirLayers - 2,
+				IsBottom = j == 1,
+
 			}, dependencies);
 		}
 
@@ -196,7 +208,6 @@ public static class SimJobs {
 			FloraAirSurfaceArea = worldData.FloraAirSurfaceArea,
 			Roughness = state.Roughness
 		}, dependencies);
-
 
 
 
@@ -356,40 +367,83 @@ public struct UpdateDependentCloudJob : IJobParallelFor {
 	public NativeArray<float> AirDensityCloud;
 	public NativeArray<float> CloudElevation;
 	public NativeArray<float> DewPoint;
+	public NativeArray<float3> CloudVelocity;
 
 	[ReadOnly] public NativeArray<float> RelativeHumidity;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> Pressure;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
+	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 	[ReadOnly] public NativeArray<float> LayerMiddle;
 	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
+	[ReadOnly] public NativeArray<float> LayerElevationAbove;
+	[ReadOnly] public NativeArray<float> LayerElevationBelow;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerHeightAbove;
+	[ReadOnly] public NativeArray<float> LayerHeightBelow;
+	[ReadOnly] public NativeArray<float3> AirVelocity;
+	[ReadOnly] public NativeArray<float3> AirVelocityAbove;
+	[ReadOnly] public NativeArray<float3> AirVelocityBelow;
 	[ReadOnly] public float Gravity;
+	[ReadOnly] public bool IsTop;
+	[ReadOnly] public bool IsBottom;
 
 	public void Execute(int i)
 	{
 		float airTemperaturePotential = AirTemperaturePotential[i];
 		float layerElevation = LayerElevation[i];
+		float layerMiddle = LayerMiddle[i];
 
-		// TODO: this is overwriting such that it only pays attention to the bottom layer of the atmosphere
-		float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(airTemperaturePotential, LayerMiddle[i]);
+		// TODO: this is overwriting such that it only pays attention to the top layer of the atmosphere
+		float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(airTemperaturePotential, layerMiddle);
 		float dewPoint = Atmosphere.GetDewPoint(RelativeHumidity[i], airTemperatureAbsolute);
-		DewPoint[i] = dewPoint;
-
 		float cloudElevation = Atmosphere.GetElevationAtDewPoint(dewPoint, airTemperaturePotential);
-		float cloudBaseElevation = math.max(cloudElevation, SurfaceElevation[i]);
-		if (cloudBaseElevation >= layerElevation)
-		{
-			float airMassCloud = AirMass[i];
-			float vaporMassCloud = VaporMass[i];
-			float airPressureCloud = Atmosphere.GetPressureAtElevation(cloudBaseElevation, Gravity, Pressure[i], airTemperaturePotential, LayerMiddle[i]);
-			AirDensityCloud[i] = Atmosphere.GetAirDensity(airPressureCloud, DewPoint[i], airMassCloud, vaporMassCloud);   
+
+		if ((cloudElevation >= layerElevation || IsBottom) && (cloudElevation < layerElevation + LayerHeight[i] || IsTop)) { 
+			DewPoint[i] = dewPoint;
+
+			float cloudBaseElevation = math.max(cloudElevation, SurfaceElevation[i]);
+			if (cloudBaseElevation >= layerElevation)
+			{
+				float airMassCloud = AirMass[i];
+				float vaporMassCloud = VaporMass[i];
+				float airPressureCloud = Atmosphere.GetPressureAtElevation(cloudBaseElevation, Gravity, Pressure[i], airTemperaturePotential, LayerMiddle[i]);
+				AirDensityCloud[i] = Atmosphere.GetAirDensity(airPressureCloud, DewPoint[i], airMassCloud, vaporMassCloud);   
+			}
+			CloudElevation[i] = cloudElevation;
+
+			if (cloudBaseElevation < layerMiddle)
+			{
+				if (IsBottom)
+				{
+					CloudVelocity[i] = AirVelocity[i];
+				}
+				else
+				{
+					float downLayerMidElevation = (LayerElevationBelow[i] + layerElevation) / 2;
+					float t = (cloudBaseElevation - downLayerMidElevation) / (layerMiddle - downLayerMidElevation);
+					CloudVelocity[i] = AirVelocity[i] * t + AirVelocityBelow[i] * (1.0f - t);
+				}
+			}
+			else if (IsTop)
+			{
+				CloudVelocity[i] = AirVelocity[i];
+			}
+			else
+			{
+				float upLayerMidElevation = LayerElevationAbove[i] + LayerHeightAbove[i] / 2;
+				float t = (cloudBaseElevation - layerMiddle) / (upLayerMidElevation - layerMiddle);
+				CloudVelocity[i] = AirVelocityAbove[i] * t + AirVelocity[i] * (1.0f - t);
+			}
 		}
-		CloudElevation[i] = cloudElevation;
 
 	}
 }
+
+
+
+
 
 #if !UpdateDependentJobDebug
 [BurstCompile]

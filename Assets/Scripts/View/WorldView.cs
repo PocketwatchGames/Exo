@@ -872,7 +872,7 @@ public class WorldView : MonoBehaviour {
 				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.AirVelocity[3]);
 				return true;
 			case WindOverlay.WindCloud:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.CloudVelocity);
+				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.CloudVelocity);
 				return true;
 			case WindOverlay.PGF0:
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[1]);
@@ -1023,7 +1023,7 @@ public class WorldView : MonoBehaviour {
 		if (cloudMass > 0)
 		{
 			float dropletSize = 1000 * Atmosphere.GetDropletRadius(state.CloudDropletMass[ActiveCellIndex], Atmosphere.GetWaterDensityAtElevation(dependent.DewPoint[ActiveCellIndex], dependent.CloudElevation[ActiveCellIndex]));
-			float3 vel = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex],state.CloudVelocity[ActiveCellIndex]);
+			float3 vel = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex],dependent.CloudVelocity[ActiveCellIndex]);
 			s.AppendFormat("\nCLOUD: {0:N3} kg ELE: {1:N0} m R: {2:N3} mm VEL: ({3:N1}, {4:N1}, {5:N1})", 
 				state.CloudMass[ActiveCellIndex],
 				dependent.CloudElevation[ActiveCellIndex],
