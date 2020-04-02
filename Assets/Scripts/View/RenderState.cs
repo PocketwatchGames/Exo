@@ -203,17 +203,17 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float floraCoverage, float groundWaterSaturation)
 	{
-		if (iceCoverage > 0.01f)
+		if (iceCoverage > 0.01f && waterDepth < 1)
 		{
 			return new Color32(255, 255, 255, 255);
 		//} else if (waterDepth / roughness > 0.5f)
 		//{
 		//	return new Color32(0, 0, 255, 255);
 		}
-		else if (groundWaterSaturation >= 1)
-		{
-			return new Color32(0, 0, 255, 255);
-		}
+		//else if (groundWaterSaturation >= 1)
+		//{
+		//	return new Color32(0, 0, 255, 255);
+		//}
 		else if (floraCoverage > 0.5f)
 		{
 			return new Color32(0, 20, 0, 255);
@@ -259,49 +259,36 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 	private Color32 GetWaterColor(float iceCoverage, float waterTemperature, float depth, float plankton)
 	{
-		if (iceCoverage > 0.95f)
-		{
-			return new Color32(255, 255, 255, 255);
-		}
-		byte blue;
-		byte red;
-		byte green;
-		if (depth > 3000)
-		{
-			blue = 135;
-			green = 0;
-			red = 0;
-		}
-		else if (depth > 1000)
-		{
-			blue = 195;
-			green = 0;
-			red = 0;
-		}
-		else
-		{
-			blue = 255;
-			green = 0;
-			red = 0;
-		}
+		int blue = 150;
+		int red = 0;
+		int green = 0;
+		int alpha = 200;
 		if (plankton > 1)
 		{
-			green += 30;
+			green += 80;
 		} else if (plankton > 0.01f)
 		{
-			green += 10;
+			green += 40;
 		} else
 		{
 			green += 0;
 		}
-		if (iceCoverage > 0.1f)
+		if (iceCoverage > 0.95f)
+		{
+			red += 220;
+			green += 220;
+			blue += 220;
+			alpha = 240;
+		}
+		else if (iceCoverage > 0.1f)
 		{
 			red += 40;
 			green += 40;
+			blue += 40;
+			alpha = 220;
 		}
-		return new Color32(red, green, blue, 255);
-	}
-
+		return new Color32((byte)math.min(255, red), (byte)math.min(255, green), (byte)math.min(255, blue), (byte)alpha);
+	}					   
 	private Color32 GetCloudColor(float cloudCoverage)
 	{
 		return new Color32(255, 255, 255, (byte)(255 * cloudCoverage));
@@ -329,13 +316,10 @@ public struct BuildHexVertsJob : IJobParallelFor {
 	public NativeArray<Vector3> VWaterNormal;
 	public NativeArray<Color32> VWaterColor;
 	public NativeArray<Vector3> VCloudPosition;
-	public NativeArray<Vector3> VCloudNormal;
 	public NativeArray<Color32> VCloudColor;
 	public NativeArray<Vector3> VLavaPosition;
-	public NativeArray<Vector3> VLavaNormal;
 	public NativeArray<Color32> VLavaColor;
 	public NativeArray<Vector3> VDustPosition;
-	public NativeArray<Vector3> VDustNormal;
 	public NativeArray<Color32> VDustColor;
 
 	[ReadOnly] public NativeArray<float> TerrainElevation;
@@ -356,24 +340,19 @@ public struct BuildHexVertsJob : IJobParallelFor {
 	{
 		float3 v = HexVerts[i];
 		int j = (int)(i / WorldView.VertsPerCell);
-		bool wall = i % WorldView.VertsPerCell > WorldView.MaxNeighbors;
 
 		VTerrainPosition[i] = v * TerrainElevation[j];
 		VWaterPosition[i] = v * WaterElevation[j];
 		VCloudPosition[i] = v * CloudElevation[j];
 		VLavaPosition[i] = v * LavaElevation[j];
 		VDustPosition[i] = v * DustElevation[j];
-		VTerrainColor[i] = wall ? WallColor : TerrainColor[j];
+		VTerrainColor[i] = TerrainColor[j];
 		VWaterColor[i] = WaterColor[j];
 		VCloudColor[i] = CloudColor[j];
 		VLavaColor[i] = LavaColor[j];
 		VDustColor[i] = DustColor[j];
 
-		float3 n = IcosphereVerts[j];
-		VCloudNormal[i] = n;
 		VWaterNormal[i] = v;
-		VLavaNormal[i] = n;
-		VDustNormal[i] = n;
 	}
 
 }

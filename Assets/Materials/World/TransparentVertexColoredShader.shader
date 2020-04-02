@@ -8,7 +8,7 @@
         _Alpha("Alpha", Range(0,1)) = 0.5
     }
     SubShader{
-        Tags{ "RenderType" = "Opaque"}
+        Tags{ "RenderType" = "Transparent"}
         LOD 200
         Blend SrcAlpha OneMinusSrcAlpha
 
@@ -34,12 +34,13 @@
         void surf(Input IN, inout SurfaceOutputStandard o) 
         {                        
             fixed4 c = IN.color;
-			c.a = _Alpha;
+			c.a *= _Alpha;
 
 			float  waveStrength = IN.uv_MainTex.y * (sin(_Time.y * 2.0) * 0.5f + 0.5f);
 			fixed4 waveColor    = fixed4(1.0,1.0,1.0,1.0);
 
-            o.Albedo = lerp(c, waveColor, waveStrength);
+//            o.Albedo = lerp(c, waveColor, waveStrength);
+			o.Albedo = c;
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
             o.Alpha = c.a;

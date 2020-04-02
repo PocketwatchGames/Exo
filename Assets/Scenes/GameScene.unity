@@ -6410,8 +6410,8 @@ MonoBehaviour:
   ActiveCell: 0
   ActiveTemperatureUnits: 0
   LerpStates: 1
-  TerrainScale: 100
-  AtmosphereScale: 200
+  TerrainScale: 300
+  AtmosphereScale: 600
   MinElevation: -11000
   MaxElevation: 10000
   MaxDepth: 11000
@@ -6457,7 +6457,7 @@ MonoBehaviour:
   ActiveMeshOverlay: 0
   ActiveWindOverlay: 0
   TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
-  WaterMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
+  WaterMaterial: {fileID: 2100000, guid: 297c693a57253724c881afe6c7ac126c, type: 2}
   CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
   DustMaterial: {fileID: 2100000, guid: 082c49268a5446b47badd5c14f5f69a5, type: 2}
   LavaMaterial: {fileID: 2100000, guid: 097d5a6b0c6e2454c982d85188bcef1b, type: 2}
