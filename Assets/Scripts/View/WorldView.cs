@@ -442,6 +442,7 @@ public class WorldView : MonoBehaviour {
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
 			WindOverlayData = windOverlayData.Values,
 			GroundWaterMax = worldData.GroundWaterMax,
+			SoilFertilityMax = DisplaySoilFertilityMax,
 			DustHeight = DisplayDustHeight,
 			LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,

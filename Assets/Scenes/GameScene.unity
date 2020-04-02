@@ -6410,6 +6410,7 @@ MonoBehaviour:
   ActiveCell: 0
   ActiveTemperatureUnits: 0
   LerpStates: 1
+  SlopeAmount: 1.5
   TerrainScale: 300
   AtmosphereScale: 600
   MinElevation: -11000

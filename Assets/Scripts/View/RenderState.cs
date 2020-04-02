@@ -111,6 +111,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public float CloudDropletSizeMin;
 	[ReadOnly] public float InverseCloudDropletSizeRange;
 	[ReadOnly] public float GroundWaterMax;
+	[ReadOnly] public float SoilFertilityMax;
 	[ReadOnly] public float DustHeight;
 	[ReadOnly] public float LavaCrystalizationTemperature;
 	[ReadOnly] public float LavaTemperatureRangeInverse;
@@ -152,7 +153,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		}
 		else
 		{
-			terrainColor = GetTerrainColor(roughness, SoilFertility[i], waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
+			terrainColor = GetTerrainColor(roughness, math.saturate(SoilFertility[i] / SoilFertilityMax), waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
 			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth, PlanktonMass[i]);
 			lavaColor = GetLavaColor(LavaTemperature[i], LavaCrystalizationTemperature, LavaTemperatureRangeInverse);
 		}
@@ -203,58 +204,9 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float floraCoverage, float groundWaterSaturation)
 	{
-		if (iceCoverage > 0.01f && waterDepth < 1)
-		{
-			return new Color32(255, 255, 255, 255);
-		//} else if (waterDepth / roughness > 0.5f)
-		//{
-		//	return new Color32(0, 0, 255, 255);
-		}
-		//else if (groundWaterSaturation >= 1)
-		//{
-		//	return new Color32(0, 0, 255, 255);
-		//}
-		else if (floraCoverage > 0.5f)
-		{
-			return new Color32(0, 20, 0, 255);
-		}
-		else if (floraCoverage > 0.05f)
-		{
-			return new Color32(20, 70, 20, 255);
-		}
-		else if (floraCoverage > 0.005f)
-		{
-			return new Color32(40, 120, 40, 255);
-		}
-		else if (soilFertility > 2f)
-		{
-			if (groundWaterSaturation > 0.5f)
-			{
-				return new Color32(40, 20, 20, 255);
-			}
-			return new Color32(50, 30, 20, 255);
-		}
-		else if (soilFertility > 0.1f)
-		{
-			if (groundWaterSaturation > 0.5f)
-			{
-				return new Color32(60, 50, 40, 255);
-			}
-			return new Color32(90, 80, 70, 255);
-		}
-		else
-		{
-			if (groundWaterSaturation > 0.5f)
-			{
-				return new Color32(110, 110, 100, 255);
-			}
-			return new Color32(140, 140, 130, 255);
-		}
-		//var groundColor = Color32.Lerp(new Color32(50, 50, 80, 255), new Color32(100, 60, 20, 255), soilFertility);
-		//var waterColor = Color32.Lerp(groundColor, new Color32(0, 0, 255, 255), math.saturate(math.pow(waterDepth / roughness, 2)));
-		//var iceColor = Color32.Lerp(waterColor, new Color32(255, 255, 255, 255), iceCoverage);
-		//var floraColor = Color32.Lerp(groundColor, new Color32(0, 220, 30, 255), floraCoverage);
-		//return floraColor;
+		float4 c = new float4(1 - soilFertility, 0, soilFertility, math.pow(floraCoverage,0.25f)) * (1 - (waterDepth < 1 ? iceCoverage : 0)) * 255;
+	//	float4 c = new float4(0.01f,0,0,1) * (1 - iceCoverage) * 255;
+		return new Color32((byte)c.x,(byte)c.y,(byte)c.z,(byte)c.w);
 	}
 
 	private Color32 GetWaterColor(float iceCoverage, float waterTemperature, float depth, float plankton)
