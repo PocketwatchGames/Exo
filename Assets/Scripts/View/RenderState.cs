@@ -63,7 +63,7 @@ public struct RenderState {
 	}
 }
 
-[BurstCompile]
+//[BurstCompile]
 public struct BuildRenderStateCellJob : IJobParallelFor {
 	public NativeArray<Color32> TerrainColor;
 	public NativeArray<float> TerrainElevation;
@@ -164,7 +164,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 				(1 - fertility) * DisplaySandWeight,
 				fertility * DisplaySoilWeight,
 				floraCoverage * DisplayFloraWeight));
-			t *= (1 - (waterDepth < 1 ? iceCoverage : 0));
+			t *= (1 - (waterDepth < 1 ? math.sqrt(iceCoverage) : 0));
 			t *= 255;
 			terrainColor = new Color32((byte)t.x, (byte)t.y, (byte)t.z, (byte)t.w);
 
@@ -221,15 +221,25 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	{
 		int blue = 150;
 		int red = 0;
-		int green = 0;
+		int green = 20;
 		int alpha = 200;
 		if (plankton > 1)
 		{
-			green += 80;
-		} else if (plankton > 0.01f)
+			green += 20;
+		}
+		else if (plankton > 0.25f)
 		{
-			green += 40;
-		} else
+			green += 15;
+		}
+		else if (plankton > 0.05f)
+		{
+			green += 10;
+		}
+		else if (plankton > 0.01f)
+		{
+			green += 5;
+		}
+		else
 		{
 			green += 0;
 		}
