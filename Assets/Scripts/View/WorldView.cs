@@ -77,35 +77,40 @@ public class WorldView : MonoBehaviour {
 	public bool LerpStates = true;
 
 
+	[Header("Foliage")]
+	public float TreeScale = 0.02f;
+	public float TreeScaleRange = 0.2f;
+	public float perturbCellRadius = 0.4f;
+	public float minTreeScale = 0.5f;
+	public float floraCoveragePowerForTrees = 0.1f;
+	public int MaxFoliagePerCell = 4;
+
+
 	[Header("Display")]
 	public float SlopeAmount = 1.5f;
 	public float TerrainScale = 100f;
 	public float AtmosphereScale = 1000f;
-//	public TemperatureDisplayType TemperatureDisplay;
-	public float MinElevation = -11000;
-	public float MaxElevation = 10000;
-	public float MaxDepth = 11000;
-	public float maxCloudColor = 300.0f;
-	public float WaterDepthThreshold = 10;
 	public float DisplayFloraWeight = 1;
 	public float DisplaySandWeight = 1;
 	public float DisplaySoilWeight = 1;
+	public float DisplayDustHeight = 1000;
+	public float DisplayDustMax = 100;
+	public float DisplayLavaTemperatureMax = 1200;
+	public float DisplaySoilFertilityMax = 5.0f;
 
-	public float DisplayWindMax = 100;
-	public float DisplayCurrentMax = 10;
-	public float DisplayCurrentMinDepth = 50;
-	public float DisplayEnergyAborsobedMax = 300;
-	public float DisplayRainfallMax = 5.0f;
-	public float DisplaySalinityMin = 0;
-	public float DisplaySalinityMax = 50;
+	[Header("Wind Overlay")]
 	public float DisplayWindSpeedLowerAirMax = 50;
 	public float DisplayWindSpeedUpperAirMax = 250;
 	public float DisplayPressureGradientForceMax = 0.01f;
 	public float DisplayWindSpeedSurfaceWaterMax = 5;
 	public float DisplayWindSpeedDeepWaterMax = 0.5f;
+
+	[Header("Overlays")]
+	public float DisplayRainfallMax = 5.0f;
+	public float DisplaySalinityMin = 0;
+	public float DisplaySalinityMax = 50;
 	public float DisplayVerticalWindSpeedMax = 1.0f;
 	public float DisplayEvaporationMax = 5.0f;
-	public float DisplayFloraMax = 100;
 	public float DisplayTemperatureMin = 223;
 	public float DisplayTemperatureMax = 323;
 	public float DisplayWaterCarbonMax = 0.001f;
@@ -115,18 +120,16 @@ public class WorldView : MonoBehaviour {
 	public float DisplayHeatAbsorbedMax = 1000;
 	public float DisplayCrustDepthMax = 10000;
 	public float DisplayMagmaMassMax = 1000000;
-	public float DisplayDustHeight = 1000;
-	public float DisplayDustMax = 100;
-	public float DisplayLavaTemperatureMax = 1200;
 	public float DisplayCarbonDioxideMax = 0.002f;
 	public float DisplayOxygenMax = 0.35f;
-	public float DisplaySoilFertilityMax = 5.0f;
 
 	[Header("References")]
 	public WorldSimComponent Sim;
 	public GameObject Planet;
+	public GameObject Foliage;
 	public GameObject Sun;
 	public GameObject Moon;
+	public GameObject SunLight;
 	public MeshOverlay ActiveMeshOverlay;
 	public WindOverlay ActiveWindOverlay;
 	public Material TerrainMaterial;
@@ -136,6 +139,7 @@ public class WorldView : MonoBehaviour {
 	public Material LavaMaterial;
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
+	public List<Foliage> Trees;
 
 	private JobHelper _renderJobHelper;
 	private JobHelper _renderJobVertsHelper;
@@ -197,11 +201,20 @@ public class WorldView : MonoBehaviour {
 	private NativeArray<CVP> _normalizedBlueBlackRed;
 	private NativeArray<float3> _hexVerts;
 
-	private int _batchCount = 128;
+	private const int _batchCount = 128;
+
+	private Unity.Mathematics.Random _random;
+
+	private int _maxFoliagePerCell;
+	private Foliage[] _foliage;
 
 	public void Start()
 	{
 		Sim.OnTick += OnSimTick;
+
+		_random = new Unity.Mathematics.Random(1);
+
+		_maxFoliagePerCell = MaxFoliagePerCell;
 
 		_normalizedRainbow = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.black, 0),
@@ -236,6 +249,7 @@ public class WorldView : MonoBehaviour {
 		var terrainCollider = _terrainObject.AddComponent<MeshCollider>();
 		terrainSurfaceRenderer.material = TerrainMaterial;
 		terrainFilter.mesh = terrainCollider.sharedMesh = _terrainMesh;
+		_terrainMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
 		_lavaObject = new GameObject("Lava Mesh");
 		_lavaObject.transform.SetParent(Planet.transform, false);
@@ -244,6 +258,7 @@ public class WorldView : MonoBehaviour {
 		var lavaCollider = _lavaObject.AddComponent<MeshCollider>();
 		lavaSurfaceRenderer.material = LavaMaterial;
 		lavaFilter.mesh = lavaCollider.sharedMesh = _lavaMesh;
+		_lavaMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
 
 		_waterObject = new GameObject("Water Mesh");
@@ -253,6 +268,8 @@ public class WorldView : MonoBehaviour {
 		var waterCollider = _waterObject.AddComponent<MeshCollider>();
 		waterSurfaceRenderer.material = WaterMaterial;
 		waterFilter.mesh = waterCollider.sharedMesh = _waterMesh;
+		waterSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+		_waterMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
 		_cloudObject = new GameObject("Cloud Mesh");
 		_cloudObject.transform.SetParent(Planet.transform, false);
@@ -260,6 +277,8 @@ public class WorldView : MonoBehaviour {
 		var cloudSurfaceRenderer = _cloudObject.AddComponent<MeshRenderer>();
 		cloudSurfaceRenderer.material = CloudMaterial;
 		cloudFilter.mesh = _cloudMesh;
+		cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+		_cloudMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
 		_dustObject = new GameObject("Dust Mesh");
 		_dustObject.transform.SetParent(Planet.transform, false);
@@ -267,6 +286,8 @@ public class WorldView : MonoBehaviour {
 		var dustSurfaceRenderer = _dustObject.AddComponent<MeshRenderer>();
 		dustSurfaceRenderer.material = DustMaterial;
 		dustFilter.mesh = _dustMesh;
+		dustSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+		_dustMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
 		_selectionCircle = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
 		_selectionCircle.transform.localScale *= 0.02f;
@@ -286,6 +307,8 @@ public class WorldView : MonoBehaviour {
 			_windArrows[i].SetActive(false);
 			_windArrows[i].hideFlags |= HideFlags.HideInHierarchy;
 		}
+
+		_foliage = new Foliage[Sim.CellCount * _maxFoliagePerCell];
 
 		_nextRenderState = 0;
 		_lastRenderState = 0;
@@ -362,6 +385,7 @@ public class WorldView : MonoBehaviour {
 		}
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
+		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
 
 		if (ActiveCell != -1)
 		{
@@ -593,6 +617,38 @@ public class WorldView : MonoBehaviour {
 					_windArrows[i].transform.localPosition = pos;
 					_windArrows[i].transform.localRotation = Quaternion.LookRotation(windHorizontal / windSpeed, pos);
 					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, windSpeed);
+				}
+			}
+		}
+
+		float perturbMax = math.length(Sim.StaticState.SphericalPosition[0] - Sim.StaticState.SphericalPosition[Sim.StaticState.Neighbors[0]]) * perturbCellRadius;
+		for (int i=0;i<Sim.CellCount;i++)
+		{
+			float floraCoverage = math.pow( Sim.DependentState.FloraCoverage[i], floraCoveragePowerForTrees);
+			for (int j=0;j<_maxFoliagePerCell;j++)
+			{
+				int foliageIndex = i * _maxFoliagePerCell + j;
+				float floraCutoff = floraCoverage * _maxFoliagePerCell - 1;
+				if (j <= floraCutoff)
+				{
+					if (_foliage[foliageIndex] == null)
+					{
+						_foliage[i * _maxFoliagePerCell + j] = SpawnTree(GetRandomTree(), i, j, perturbMax, TreeScaleRange);
+					}
+					else
+					{
+						_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], minTreeScale + (1.0f - minTreeScale) * math.min(2, 1.0f - j / floraCutoff)/2);
+					}
+				} else
+				{
+					if (_foliage[foliageIndex] != null)
+					{
+						if (_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], 0))
+						{
+							GameObject.Destroy(_foliage[foliageIndex]);
+							_foliage[foliageIndex] = null;
+						}
+					}
 				}
 			}
 		}
@@ -967,6 +1023,26 @@ public class WorldView : MonoBehaviour {
 		return false;
 	}
 
+	public Foliage GetRandomTree()
+	{
+		return Trees[_random.NextInt(Trees.Count)];
+	}
+
+	public Foliage SpawnTree(Foliage prefab, int cellIndex, int treeIndex, float perturbMax, float scaleRange)
+	{
+		var t = GameObject.Instantiate<Foliage>(prefab);
+		t.InitPosition(
+			Foliage, 
+			cellIndex, 
+			treeIndex, 
+			Sim.StaticState.SphericalPosition[cellIndex], 
+			_renderStates[_curRenderState].TerrainElevation[cellIndex], 
+			new float3(TreeScale * (1.0f + _random.NextFloat(scaleRange))),
+			0.01f,
+			perturbMax, 
+			_random);
+		return t;
+	}
 
 	#endregion
 }

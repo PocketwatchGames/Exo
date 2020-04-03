@@ -5243,6 +5243,36 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Active: 0
   ButtonText: {fileID: 174469894}
+--- !u!1 &1099824222
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1099824223}
+  m_Layer: 0
+  m_Name: Foliage
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1099824223
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1099824222}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1921819013}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1112811631
 GameObject:
   m_ObjectHideFlags: 0
@@ -6399,8 +6429,8 @@ MeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1309800422}
   m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
   m_DynamicOccludee: 1
   m_MotionVectors: 1
   m_LightProbeUsage: 1
@@ -6520,31 +6550,27 @@ MonoBehaviour:
   ActiveTemperatureUnits: 0
   LerpStates: 1
   SlopeAmount: 3
-  TerrainScale: 300
+  TerrainScale: 250
   AtmosphereScale: 600
-  MinElevation: -11000
-  MaxElevation: 10000
-  MaxDepth: 11000
-  maxCloudColor: 300
-  WaterDepthThreshold: 10
   DisplayFloraWeight: 200
   DisplaySandWeight: 5
   DisplaySoilWeight: 1
-  DisplayWindMax: 50
-  DisplayCurrentMax: 5
-  DisplayCurrentMinDepth: 50
-  DisplayEnergyAborsobedMax: 300
-  DisplayRainfallMax: 0.5
-  DisplaySalinityMin: 0
-  DisplaySalinityMax: 0.005
+  DisplayDustHeight: 10
+  DisplayDustMax: 100
+  DisplayLavaTemperatureMax: 1200
+  DisplaySoilFertilityMax: 5
+  TreeScale: 0.035
+  TreeScaleRange: 0.2
   DisplayWindSpeedLowerAirMax: 50
   DisplayWindSpeedUpperAirMax: 250
   DisplayPressureGradientForceMax: 0.005
   DisplayWindSpeedSurfaceWaterMax: 5
   DisplayWindSpeedDeepWaterMax: 0.5
+  DisplayRainfallMax: 0.5
+  DisplaySalinityMin: 0
+  DisplaySalinityMax: 0.005
   DisplayVerticalWindSpeedMax: 1
   DisplayEvaporationMax: 5
-  DisplayFloraMax: 10000
   DisplayTemperatureMin: 223
   DisplayTemperatureMax: 323
   DisplayWaterCarbonMax: 0.05
@@ -6554,16 +6580,14 @@ MonoBehaviour:
   DisplayHeatAbsorbedMax: 5000
   DisplayCrustDepthMax: 10000
   DisplayMagmaMassMax: 1000000
-  DisplayDustHeight: 10
-  DisplayDustMax: 100
-  DisplayLavaTemperatureMax: 1200
   DisplayCarbonDioxideMax: 0.002
   DisplayOxygenMax: 0.35
-  DisplaySoilFertilityMax: 5
   Sim: {fileID: 365555216}
   Planet: {fileID: 1921819011}
+  Foliage: {fileID: 1099824222}
   Sun: {fileID: 575991941}
   Moon: {fileID: 997923417}
+  SunLight: {fileID: 1598314394}
   ActiveMeshOverlay: 0
   ActiveWindOverlay: 0
   TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
@@ -6575,6 +6599,9 @@ MonoBehaviour:
     type: 3}
   WindArrowPrefab: {fileID: 7613255414872140438, guid: dfd7c185abe49744283f6f7f9c5ac455,
     type: 3}
+  Trees:
+  - {fileID: 73904153860913294, guid: 9641755f2c6ee58419a6c14f9fac10b8, type: 3}
+  - {fileID: 5475062546016153363, guid: 87e592750c0043845804218eb76b32a7, type: 3}
 --- !u!4 &1344899377
 Transform:
   m_ObjectHideFlags: 0
@@ -7871,7 +7898,7 @@ GameObject:
   - component: {fileID: 1598314395}
   - component: {fileID: 1598314396}
   m_Layer: 0
-  m_Name: Point Light
+  m_Name: SunToPlanetLight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7900,7 +7927,7 @@ Light:
   m_GameObject: {fileID: 1598314394}
   m_Enabled: 1
   serializedVersion: 9
-  m_Type: 2
+  m_Type: 1
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
   m_Intensity: 1.25
   m_Range: 1000
@@ -7911,7 +7938,7 @@ Light:
     m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
-    m_Strength: 1
+    m_Strength: 0.5
     m_Bias: 0.02
     m_NormalBias: 0.1
     m_NearPlane: 0.1
@@ -9474,6 +9501,7 @@ Transform:
   m_Children:
   - {fileID: 1918976209}
   - {fileID: 997923418}
+  - {fileID: 1099824223}
   m_Father: {fileID: 575991942}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
