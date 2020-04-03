@@ -87,7 +87,9 @@ public class WorldView : MonoBehaviour {
 	public float MaxDepth = 11000;
 	public float maxCloudColor = 300.0f;
 	public float WaterDepthThreshold = 10;
-	public Color32 WallColor = new Color32(50,50,50,255);
+	public float DisplayFloraWeight = 1;
+	public float DisplaySandWeight = 1;
+	public float DisplaySoilWeight = 1;
 
 	public float DisplayWindMax = 100;
 	public float DisplayCurrentMax = 10;
@@ -448,7 +450,10 @@ public class WorldView : MonoBehaviour {
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
 			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
-			LavaDensityAdjustment = worldData.LavaDensityAdjustment
+			LavaDensityAdjustment = worldData.LavaDensityAdjustment,
+			DisplayFloraWeight = DisplayFloraWeight,
+			DisplaySandWeight = DisplaySandWeight,
+			DisplaySoilWeight = DisplaySoilWeight,
 		});
 
 		buildRenderStateJobHandle.Complete();
@@ -513,8 +518,7 @@ public class WorldView : MonoBehaviour {
 			DustElevation = state.DustElevation,
 			DustColor = state.DustColor,
 			HexVerts = _hexVerts,
-			IcosphereVerts = Sim.Icosphere.Vertices,
-			WallColor = WallColor
+			IcosphereVerts = Sim.Icosphere.Vertices
 		}, JobHandle.CombineDependencies(dependencies));
 
 		getVertsHandle.Complete();
@@ -654,7 +658,7 @@ public class WorldView : MonoBehaviour {
 
 	public int GetClosestVert(int triangleIndex, int vIndex)
 	{
-		return _indicesTerrain[triangleIndex * 3 + vIndex] / 8;
+		return _indicesTerrain[triangleIndex * 3 + vIndex] / VertsPerCell;
 	}
 
 	public void SetActiveCell(int index, bool locked)
@@ -734,6 +738,8 @@ public class WorldView : MonoBehaviour {
 		_lavaVertices = new Vector3[Sim.CellCount * VertsPerCell];
 		_lavaColors = new Color32[Sim.CellCount * VertsPerCell];
 
+		Unity.Mathematics.Random random = new Unity.Mathematics.Random(1);
+
 		_hexVerts = new NativeArray<float3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		List<int> indices = new List<int>();
 		List<int> indicesTerrain = new List<int>();
@@ -747,7 +753,8 @@ public class WorldView : MonoBehaviour {
 				int neighborIndex1 = icosphere.Neighbors[i * MaxNeighbors + j];
 				int neighborIndex2 = icosphere.Neighbors[i * MaxNeighbors + (j + 1) % neighborCount];
 
-				float3 midPoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos * (1 + SlopeAmount)) / (3 + SlopeAmount);
+				float slope = random.NextFloat() * SlopeAmount;
+				float3 midPoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos * (1 + slope)) / (3 + slope);
 				float midPointLength = math.length(midPoint);
 				float3 extendedMidPoint = midPoint / (midPointLength * midPointLength);
 				_hexVerts[i * VertsPerCell + 1 + j] = extendedMidPoint; // surface

@@ -117,6 +117,9 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public float LavaTemperatureRangeInverse;
 	[ReadOnly] public float DustMaxInverse;
 	[ReadOnly] public float LavaDensityAdjustment;
+	[ReadOnly] public float DisplaySoilWeight;
+	[ReadOnly] public float DisplaySandWeight;
+	[ReadOnly] public float DisplayFloraWeight;
 
 	public void Execute(int i)
 	{
@@ -153,7 +156,18 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		}
 		else
 		{
-			terrainColor = GetTerrainColor(roughness, math.saturate(SoilFertility[i] / SoilFertilityMax), waterDepth, iceCoverage, floraCoverage, GroundWater[i] / GroundWaterMax);
+			// Terrain color
+			float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
+			var t = math.normalize(
+				new float4(
+				0,
+				(1 - fertility) * DisplaySandWeight,
+				fertility * DisplaySoilWeight,
+				floraCoverage * DisplayFloraWeight));
+			t *= (1 - (waterDepth < 1 ? iceCoverage : 0));
+			t *= 255;
+			terrainColor = new Color32((byte)t.x, (byte)t.y, (byte)t.z, (byte)t.w);
+
 			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth, PlanktonMass[i]);
 			lavaColor = GetLavaColor(LavaTemperature[i], LavaCrystalizationTemperature, LavaTemperatureRangeInverse);
 		}
@@ -202,12 +216,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		SurfacePosition[i] = surfacePosition;
 	}
 
-	private Color32 GetTerrainColor(float roughness, float soilFertility, float waterDepth, float iceCoverage, float floraCoverage, float groundWaterSaturation)
-	{
-		float4 c = new float4(1 - soilFertility, 0, soilFertility, math.pow(floraCoverage,0.25f)) * (1 - (waterDepth < 1 ? iceCoverage : 0)) * 255;
-	//	float4 c = new float4(0.01f,0,0,1) * (1 - iceCoverage) * 255;
-		return new Color32((byte)c.x,(byte)c.y,(byte)c.z,(byte)c.w);
-	}
 
 	private Color32 GetWaterColor(float iceCoverage, float waterTemperature, float depth, float plankton)
 	{
@@ -286,7 +294,6 @@ public struct BuildHexVertsJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<Color32> DustColor;
 	[ReadOnly] public NativeArray<float3> HexVerts;
 	[ReadOnly] public NativeArray<float3> IcosphereVerts;
-	[ReadOnly] public Color32 WallColor;
 
 	public void Execute(int i)
 	{

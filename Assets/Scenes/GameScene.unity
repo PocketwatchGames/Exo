@@ -6410,7 +6410,7 @@ MonoBehaviour:
   ActiveCell: 0
   ActiveTemperatureUnits: 0
   LerpStates: 1
-  SlopeAmount: 1.5
+  SlopeAmount: 3
   TerrainScale: 300
   AtmosphereScale: 600
   MinElevation: -11000
@@ -6418,9 +6418,9 @@ MonoBehaviour:
   MaxDepth: 11000
   maxCloudColor: 300
   WaterDepthThreshold: 10
-  WallColor:
-    serializedVersion: 2
-    rgba: 4279111182
+  DisplayFloraWeight: 200
+  DisplaySandWeight: 5
+  DisplaySoilWeight: 1
   DisplayWindMax: 50
   DisplayCurrentMax: 5
   DisplayCurrentMinDepth: 50
