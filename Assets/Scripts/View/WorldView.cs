@@ -639,37 +639,38 @@ public class WorldView : MonoBehaviour {
 			}
 		}
 
-		//float perturbMax = math.length(Sim.StaticState.SphericalPosition[0] - Sim.StaticState.SphericalPosition[Sim.StaticState.Neighbors[0]]) * perturbCellRadius;
-		//for (int i=0;i<Sim.CellCount;i++)
-		//{
-		//	float floraCoverage = math.pow( Sim.DependentState.FloraCoverage[i], floraCoveragePowerForTrees);
-		//	for (int j=0;j<_maxFoliagePerCell;j++)
-		//	{
-		//		int foliageIndex = i * _maxFoliagePerCell + j;
-		//		float floraCutoff = floraCoverage * _maxFoliagePerCell - 1;
-		//		if (j <= floraCutoff)
-		//		{
-		//			if (_foliage[foliageIndex] == null)
-		//			{
-		//				_foliage[i * _maxFoliagePerCell + j] = SpawnTree(GetRandomTree(), i, j, perturbMax, TreeScaleRange);
-		//			}
-		//			else
-		//			{
-		//				_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], minTreeScale + (1.0f - minTreeScale) * math.min(2, 1.0f - j / floraCutoff)/2);
-		//			}
-		//		} else
-		//		{
-		//			if (_foliage[foliageIndex] != null)
-		//			{
-		//				if (_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], 0))
-		//				{
-		//					GameObject.Destroy(_foliage[foliageIndex]);
-		//					_foliage[foliageIndex] = null;
-		//				}
-		//			}
-		//		}
-		//	}
-		//}
+		float perturbMax = math.length(Sim.StaticState.SphericalPosition[0] - Sim.StaticState.SphericalPosition[Sim.StaticState.Neighbors[0]]) * perturbCellRadius;
+		for (int i = 0; i < Sim.CellCount; i++)
+		{
+			float floraCoverage = math.pow(Sim.DependentState.FloraCoverage[i], floraCoveragePowerForTrees);
+			for (int j = 0; j < _maxFoliagePerCell; j++)
+			{
+				int foliageIndex = i * _maxFoliagePerCell + j;
+				float floraCutoff = floraCoverage * _maxFoliagePerCell - 1;
+				if (j <= floraCutoff)
+				{
+					if (_foliage[foliageIndex] == null)
+					{
+						_foliage[i * _maxFoliagePerCell + j] = SpawnTree(GetRandomTree(), i, j, perturbMax, TreeScaleRange);
+					}
+					else
+					{
+						_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], minTreeScale + (1.0f - minTreeScale) * math.min(2, 1.0f - j / floraCutoff) / 2);
+					}
+				}
+				else
+				{
+					if (_foliage[foliageIndex] != null)
+					{
+						if (_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], 0))
+						{
+							GameObject.Destroy(_foliage[foliageIndex]);
+							_foliage[foliageIndex] = null;
+						}
+					}
+				}
+			}
+		}
 
 	}
 

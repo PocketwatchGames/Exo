@@ -73,8 +73,8 @@
 			float gloss;
 			float2 uv = IN.uv_HeightMap;
 
-
-			TriplanarUV triUV = GetTriplanarUV(IN.worldPos*_UVScale);
+			float3 localPos = mul(unity_WorldToObject, IN.worldPos).xyz;
+			TriplanarUV triUV = GetTriplanarUV(localPos*_UVScale);
 			float4 heightX = tex2D(_HeightMap, triUV.x);
 			float4 heightY = tex2D(_HeightMap, triUV.y);
 			float4 heightZ = tex2D(_HeightMap, triUV.z);
