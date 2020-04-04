@@ -208,6 +208,11 @@ public class WorldView : MonoBehaviour {
 	private int _maxFoliagePerCell;
 	private Foliage[] _foliage;
 
+	private float _skyboxExposure = 1;
+	private float _skyboxExposureDest = 1;
+	private float _skyboxExposureStart = 1;
+	private float _skyboxExposureTime = 0;
+
 	public void Start()
 	{
 		Sim.OnTick += OnSimTick;
@@ -379,13 +384,35 @@ public class WorldView : MonoBehaviour {
 		if (Sim.TimeScale == 0)
 		{
 			_tickLerpTime -= Time.deltaTime * 0.5f;
-		} else
-		{
-			_tickLerpTime -= Time.deltaTime * 0.5f;
+			_tickLerpTime -= 0;
+			if (_skyboxExposureDest != 1)
+			{
+				_skyboxExposureStart = _skyboxExposure;
+				_skyboxExposureTime = 1.0f;
+			}
+			_skyboxExposureDest = 1;
+
 		}
+		else
+		{
+			_tickLerpTime -= Time.deltaTime * 0.5f * Sim.TimeScale;
+			if (_skyboxExposureDest != 0)
+			{
+				_skyboxExposureStart = _skyboxExposure;
+				_skyboxExposureTime = 1.0f;
+			}
+			_skyboxExposureDest = 0;
+		}
+		_skyboxExposureTime = math.max(0, _skyboxExposureTime - Time.deltaTime);
+		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
+		RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
+
+
+
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
 		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
+
 
 		if (ActiveCell != -1)
 		{
@@ -401,7 +428,13 @@ public class WorldView : MonoBehaviour {
 
 	private void OnSimTick()
 	{
-		StartLerp(Sim.TimeTillTick);
+		if (Sim.TimeScale == 0)
+		{
+			StartLerp(Sim.TimeTillTick);
+		} else
+		{
+			StartLerp(0.1f + Sim.TimeTillTick / Sim.TimeScale);
+		}
 		_lastRenderState = _curRenderState;
 		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
 		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
