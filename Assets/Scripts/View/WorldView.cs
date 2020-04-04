@@ -384,35 +384,17 @@ public class WorldView : MonoBehaviour {
 		if (Sim.TimeScale == 0)
 		{
 			_tickLerpTime -= Time.deltaTime * 0.5f;
-			_tickLerpTime -= 0;
-			if (_skyboxExposureDest != 1)
-			{
-				_skyboxExposureStart = _skyboxExposure;
-				_skyboxExposureTime = 1.0f;
-			}
-			_skyboxExposureDest = 1;
-
 		}
 		else
 		{
 			_tickLerpTime -= Time.deltaTime * 0.5f * Sim.TimeScale;
-			if (_skyboxExposureDest != 0)
-			{
-				_skyboxExposureStart = _skyboxExposure;
-				_skyboxExposureTime = 1.0f;
-			}
-			_skyboxExposureDest = 0;
 		}
-		_skyboxExposureTime = math.max(0, _skyboxExposureTime - Time.deltaTime);
-		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
-		RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
 
-
+		UpdateSkybox();
 
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 
 		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
-
 
 		if (ActiveCell != -1)
 		{
@@ -428,13 +410,16 @@ public class WorldView : MonoBehaviour {
 
 	private void OnSimTick()
 	{
+		float lerpTime;
 		if (Sim.TimeScale == 0)
 		{
-			StartLerp(Sim.TimeTillTick);
+			lerpTime = Sim.TimeTillTick;
 		} else
 		{
-			StartLerp(0.1f + Sim.TimeTillTick / Sim.TimeScale);
+			lerpTime = 0.1f + Sim.TimeTillTick / Sim.TimeScale;
 		}
+		StartLerp(Sim.TimeTillTick);
+
 		_lastRenderState = _curRenderState;
 		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
 		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
@@ -654,37 +639,37 @@ public class WorldView : MonoBehaviour {
 			}
 		}
 
-		float perturbMax = math.length(Sim.StaticState.SphericalPosition[0] - Sim.StaticState.SphericalPosition[Sim.StaticState.Neighbors[0]]) * perturbCellRadius;
-		for (int i=0;i<Sim.CellCount;i++)
-		{
-			float floraCoverage = math.pow( Sim.DependentState.FloraCoverage[i], floraCoveragePowerForTrees);
-			for (int j=0;j<_maxFoliagePerCell;j++)
-			{
-				int foliageIndex = i * _maxFoliagePerCell + j;
-				float floraCutoff = floraCoverage * _maxFoliagePerCell - 1;
-				if (j <= floraCutoff)
-				{
-					if (_foliage[foliageIndex] == null)
-					{
-						_foliage[i * _maxFoliagePerCell + j] = SpawnTree(GetRandomTree(), i, j, perturbMax, TreeScaleRange);
-					}
-					else
-					{
-						_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], minTreeScale + (1.0f - minTreeScale) * math.min(2, 1.0f - j / floraCutoff)/2);
-					}
-				} else
-				{
-					if (_foliage[foliageIndex] != null)
-					{
-						if (_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], 0))
-						{
-							GameObject.Destroy(_foliage[foliageIndex]);
-							_foliage[foliageIndex] = null;
-						}
-					}
-				}
-			}
-		}
+		//float perturbMax = math.length(Sim.StaticState.SphericalPosition[0] - Sim.StaticState.SphericalPosition[Sim.StaticState.Neighbors[0]]) * perturbCellRadius;
+		//for (int i=0;i<Sim.CellCount;i++)
+		//{
+		//	float floraCoverage = math.pow( Sim.DependentState.FloraCoverage[i], floraCoveragePowerForTrees);
+		//	for (int j=0;j<_maxFoliagePerCell;j++)
+		//	{
+		//		int foliageIndex = i * _maxFoliagePerCell + j;
+		//		float floraCutoff = floraCoverage * _maxFoliagePerCell - 1;
+		//		if (j <= floraCutoff)
+		//		{
+		//			if (_foliage[foliageIndex] == null)
+		//			{
+		//				_foliage[i * _maxFoliagePerCell + j] = SpawnTree(GetRandomTree(), i, j, perturbMax, TreeScaleRange);
+		//			}
+		//			else
+		//			{
+		//				_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], minTreeScale + (1.0f - minTreeScale) * math.min(2, 1.0f - j / floraCutoff)/2);
+		//			}
+		//		} else
+		//		{
+		//			if (_foliage[foliageIndex] != null)
+		//			{
+		//				if (_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], 0))
+		//				{
+		//					GameObject.Destroy(_foliage[foliageIndex]);
+		//					_foliage[foliageIndex] = null;
+		//				}
+		//			}
+		//		}
+		//	}
+		//}
 
 	}
 
@@ -1077,5 +1062,31 @@ public class WorldView : MonoBehaviour {
 		return t;
 	}
 
+
+	private void UpdateSkybox()
+	{
+		if (Sim.TimeScale == 0)
+		{
+			if (_skyboxExposureDest != 1)
+			{
+				_skyboxExposureStart = _skyboxExposure;
+				_skyboxExposureTime = 1.0f;
+			}
+			_skyboxExposureDest = 1;
+
+		}
+		else
+		{
+			if (_skyboxExposureDest != 0)
+			{
+				_skyboxExposureStart = _skyboxExposure;
+				_skyboxExposureTime = 1.0f;
+			}
+			_skyboxExposureDest = 0;
+		}
+		_skyboxExposureTime = math.max(0, _skyboxExposureTime - Time.deltaTime);
+		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
+		RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
+	}
 	#endregion
 }

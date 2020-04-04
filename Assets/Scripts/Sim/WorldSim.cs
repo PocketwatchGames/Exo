@@ -8,6 +8,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Burst;
 using UnityEngine;
+using Unity.Profiling;
 
 [Serializable]
 public class WorldSim {
@@ -93,8 +94,10 @@ public class WorldSim {
 	private NativeArray<float> airCarbonDelta;
 	private NativeArray<float> oxygenDelta;
 	private NativeArray<float>[] divergenceAir;
-
 	private NativeArray<float> displaySolarRadiation;
+
+	List<NativeList<JobHandle>> jobHandleDependencies = new List<NativeList<JobHandle>>();
+	List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
 
 	public WorldSim(int cellCount, int airLayers, int waterLayers)
 	{
@@ -280,7 +283,7 @@ public class WorldSim {
 
 	}
 
-	public bool Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex, bool checkForDegeneracy, bool logState, int logStateIndex, bool displayGlobals)
+	public bool Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex, bool checkForDegeneracy, bool logState, int logStateIndex, bool displayGlobals, bool overlayActive)
 	{
 		bool degenerate = false;
 		JobHandle lastJobHandle = default(JobHandle);
@@ -294,8 +297,8 @@ public class WorldSim {
 			curStateIndex = (curStateIndex + 1) % stateCount;
 			ref var nextState = ref states[curStateIndex];
 
-			var jobHandleDependencies = new List<NativeList<JobHandle>>();
-			var tempArrays = new List<NativeArray<float>>();
+			jobHandleDependencies.Clear();
+			tempArrays.Clear();
 
 			var thermalRadiationDelta = new NativeArray<float>[_layerCount];
 			var thermalRadiationTransmittedUp = new NativeArray<float>[_layerCount];
@@ -2177,7 +2180,7 @@ public class WorldSim {
 			#endregion
 
 			#region Update Display
-			if (tick == ticksToAdvance-1)
+			if (tick == ticksToAdvance-1 && overlayActive)
 			{
 				var curState = states[curStateIndex];
 
