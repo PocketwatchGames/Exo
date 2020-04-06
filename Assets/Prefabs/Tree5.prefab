@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 5857425887540473423}
   - component: {fileID: 8186036403949059979}
   - component: {fileID: 8688671853979017423}
-  - component: {fileID: 7404291058247633096}
   m_Layer: 0
   m_Name: Cube (2)
   m_TagString: Untagged
@@ -79,19 +78,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!65 &7404291058247633096
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 234182680641162561}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &537325852043421902
 GameObject:
   m_ObjectHideFlags: 0
@@ -103,7 +89,6 @@ GameObject:
   - component: {fileID: 2641610352517302960}
   - component: {fileID: 587152699829771607}
   - component: {fileID: 7321853621852088666}
-  - component: {fileID: 2631978736210633237}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -171,19 +156,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!65 &2631978736210633237
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 537325852043421902}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &4217359620698900352
 GameObject:
   m_ObjectHideFlags: 0
@@ -195,7 +167,6 @@ GameObject:
   - component: {fileID: 5209170372997905709}
   - component: {fileID: 6598823474663776137}
   - component: {fileID: 7711972259565046705}
-  - component: {fileID: 5730993487758438873}
   m_Layer: 0
   m_Name: Cube (3)
   m_TagString: Untagged
@@ -263,19 +234,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!65 &5730993487758438873
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4217359620698900352}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &4230439617363396638
 GameObject:
   m_ObjectHideFlags: 0
@@ -287,7 +245,6 @@ GameObject:
   - component: {fileID: 2120500733308397148}
   - component: {fileID: 881933381949196189}
   - component: {fileID: 862945239197263034}
-  - component: {fileID: 2062994948770450975}
   m_Layer: 0
   m_Name: Cube (1)
   m_TagString: Untagged
@@ -355,19 +312,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!65 &2062994948770450975
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4230439617363396638}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &9126738353149491658
 GameObject:
   m_ObjectHideFlags: 0
@@ -377,7 +321,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4178430787582300538}
-  - component: {fileID: 5475062546016153363}
   m_Layer: 0
   m_Name: Tree5
   m_TagString: Untagged
@@ -405,23 +348,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5475062546016153363
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9126738353149491658}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c25e62748167432478555dfc62d4255e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Position:
-    x: 0
-    y: 0
-    z: 0
-  CellIndex: 0
 --- !u!1001 &1831475771876032664
 PrefabInstance:
   m_ObjectHideFlags: 0

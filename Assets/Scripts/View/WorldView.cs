@@ -77,14 +77,6 @@ public class WorldView : MonoBehaviour {
 	public bool LerpStates = true;
 
 
-	[Header("Foliage")]
-	public float TreeScale = 0.02f;
-	public float TreeScaleRange = 0.2f;
-	public float perturbCellRadius = 0.4f;
-	public float minTreeScale = 0.5f;
-	public float floraCoveragePowerForTrees = 0.1f;
-	public int MaxFoliagePerCell = 4;
-
 
 	[Header("Display")]
 	public float SlopeAmount = 1.5f;
@@ -126,7 +118,6 @@ public class WorldView : MonoBehaviour {
 	[Header("References")]
 	public WorldSimComponent Sim;
 	public GameObject Planet;
-	public GameObject Foliage;
 	public GameObject Sun;
 	public GameObject Moon;
 	public GameObject SunLight;
@@ -139,7 +130,7 @@ public class WorldView : MonoBehaviour {
 	public Material LavaMaterial;
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
-	public List<Foliage> Trees;
+	public FoliageManager Foliage;
 
 	private JobHelper _renderJobHelper;
 	private JobHelper _renderJobVertsHelper;
@@ -205,9 +196,6 @@ public class WorldView : MonoBehaviour {
 
 	private Unity.Mathematics.Random _random;
 
-	private int _maxFoliagePerCell;
-	private Foliage[] _foliage;
-
 	private float _skyboxExposure = 1;
 	private float _skyboxExposureDest = 1;
 	private float _skyboxExposureStart = 1;
@@ -218,8 +206,6 @@ public class WorldView : MonoBehaviour {
 		Sim.OnTick += OnSimTick;
 
 		_random = new Unity.Mathematics.Random(1);
-
-		_maxFoliagePerCell = MaxFoliagePerCell;
 
 		_normalizedRainbow = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.black, 0),
@@ -313,7 +299,7 @@ public class WorldView : MonoBehaviour {
 			_windArrows[i].hideFlags |= HideFlags.HideInHierarchy;
 		}
 
-		_foliage = new Foliage[Sim.CellCount * _maxFoliagePerCell];
+		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
 
 		_nextRenderState = 0;
 		_lastRenderState = 0;
@@ -377,6 +363,7 @@ public class WorldView : MonoBehaviour {
 		_dustVerticesArray.Dispose();
 		_dustColorsArray.Dispose();
 
+		Foliage.Dispose();
 	}
 
 	public void Update()
@@ -393,6 +380,8 @@ public class WorldView : MonoBehaviour {
 		UpdateSkybox();
 
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
+
+		Foliage.Update(ref _renderStates[_curRenderState]);
 
 		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
 
@@ -424,6 +413,8 @@ public class WorldView : MonoBehaviour {
 		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
 		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+
+		Foliage.Tick(ref Sim.DependentState);
 	}
 
 
@@ -499,6 +490,7 @@ public class WorldView : MonoBehaviour {
 		});
 
 		buildRenderStateJobHandle.Complete();
+
 
 	}
 
@@ -638,40 +630,6 @@ public class WorldView : MonoBehaviour {
 				}
 			}
 		}
-
-		float perturbMax = math.length(Sim.StaticState.SphericalPosition[0] - Sim.StaticState.SphericalPosition[Sim.StaticState.Neighbors[0]]) * perturbCellRadius;
-		for (int i = 0; i < Sim.CellCount; i++)
-		{
-			float floraCoverage = math.pow(Sim.DependentState.FloraCoverage[i], floraCoveragePowerForTrees);
-			for (int j = 0; j < _maxFoliagePerCell; j++)
-			{
-				int foliageIndex = i * _maxFoliagePerCell + j;
-				float floraCutoff = floraCoverage * _maxFoliagePerCell - 1;
-				if (j <= floraCutoff)
-				{
-					if (_foliage[foliageIndex] == null)
-					{
-						_foliage[i * _maxFoliagePerCell + j] = SpawnTree(GetRandomTree(), i, j, perturbMax, TreeScaleRange);
-					}
-					else
-					{
-						_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], minTreeScale + (1.0f - minTreeScale) * math.min(2, 1.0f - j / floraCutoff) / 2);
-					}
-				}
-				else
-				{
-					if (_foliage[foliageIndex] != null)
-					{
-						if (_foliage[foliageIndex].UpdatePosition(_renderStates[_curRenderState].TerrainElevation[i], 0))
-						{
-							GameObject.Destroy(_foliage[foliageIndex]);
-							_foliage[foliageIndex] = null;
-						}
-					}
-				}
-			}
-		}
-
 	}
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
@@ -1042,27 +1000,6 @@ public class WorldView : MonoBehaviour {
 		return false;
 	}
 
-	public Foliage GetRandomTree()
-	{
-		return Trees[_random.NextInt(Trees.Count)];
-	}
-
-	public Foliage SpawnTree(Foliage prefab, int cellIndex, int treeIndex, float perturbMax, float scaleRange)
-	{
-		var t = GameObject.Instantiate<Foliage>(prefab);
-		t.InitPosition(
-			Foliage, 
-			cellIndex, 
-			treeIndex, 
-			Sim.StaticState.SphericalPosition[cellIndex], 
-			_renderStates[_curRenderState].TerrainElevation[cellIndex], 
-			new float3(TreeScale * (1.0f + _random.NextFloat(scaleRange))),
-			0.01f,
-			perturbMax, 
-			_random);
-		return t;
-	}
-
 
 	private void UpdateSkybox()
 	{
@@ -1089,5 +1026,6 @@ public class WorldView : MonoBehaviour {
 		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
 		RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
 	}
+
 	#endregion
 }
