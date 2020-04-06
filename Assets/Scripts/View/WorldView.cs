@@ -299,8 +299,6 @@ public class WorldView : MonoBehaviour {
 			_windArrows[i].hideFlags |= HideFlags.HideInHierarchy;
 		}
 
-		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
-
 		_nextRenderState = 0;
 		_lastRenderState = 0;
 		_curRenderState = 1;
@@ -336,6 +334,8 @@ public class WorldView : MonoBehaviour {
 		_cloudMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_dustMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_lavaMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
+
+		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
 
 	}
 	public void OnDestroy()
@@ -1010,7 +1010,7 @@ public class WorldView : MonoBehaviour {
 				_skyboxExposureStart = _skyboxExposure;
 				_skyboxExposureTime = 1.0f;
 			}
-			_skyboxExposureDest = 1;
+			_skyboxExposureDest = 1.0f;
 
 		}
 		else

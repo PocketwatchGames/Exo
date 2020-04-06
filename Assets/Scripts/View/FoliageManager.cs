@@ -12,7 +12,6 @@ using Unity.Jobs;
 public class FoliageManager
 {
 	public struct FoliageData {
-		public int TreeIndex;
 		public int CellIndex;
 		public float CoverageMin;
 		public float CoverageRangeInverse;
@@ -31,7 +30,7 @@ public class FoliageManager
 		public float3 LocalScale;
 		public float Scale;
 		public float GrowthDelay;
-		public bool RemoveFlag;
+		public bool Active;
 	}
 
 	public int MaxFoliagePerCell = 4;
@@ -72,7 +71,7 @@ public class FoliageManager
 			GrowthSpeed = TreeGrowthSpeed,
 			GrowthSpeedRange = TreeGrowthSpeedRange,
 			MaxFoliagePerCell = _maxFoliagePerCell,
-			PerturbMax = PerturbCellRadius,
+			PerturbDistance = PerturbCellRadius * math.length(staticState.SphericalPosition[0] - staticState.SphericalPosition[staticState.Neighbors[0]]),
 			RandomSeed = 3452,
 			Scale = TreeScale,
 			ScaleRange = TreeScaleRange,
@@ -89,6 +88,20 @@ public class FoliageManager
 		_foliageTransform.Dispose();
 	}
 
+	public void Tick(ref DependentState dependent)
+	{
+		var updateStateJob = new UpdateFoliageSimStateJob()
+		{
+			State = _foliageState,
+			Data = _foliageData,
+			FloraCoverage = dependent.FloraCoverage,
+			MinScale = MinTreeScale
+		};
+		var handle = updateStateJob.Schedule(_foliageState.Length, 100);
+		handle.Complete();
+	}
+
+
 	public void Update(ref RenderState renderState)
 	{
 		var updateStateJob = new UpdateFoliageRenderStateJob()
@@ -97,6 +110,7 @@ public class FoliageManager
 			SimState = _foliageState,
 			Data = _foliageData,
 			Elevation = renderState.TerrainElevation,
+			SpawnScale = SpawnScale,
 			DeltaTime = Time.deltaTime
 		};
 		var handle = updateStateJob.Schedule(_foliageTransform.Length, 100);
@@ -104,7 +118,7 @@ public class FoliageManager
 
 		for (int i = 0; i < _foliageTransform.Length; i++)
 		{
-			if (_foliageTransform[i].RemoveFlag)
+			if (!_foliageTransform[i].Active)
 			{
 				if (_foliage[i] != null)
 				{
@@ -112,13 +126,13 @@ public class FoliageManager
 					_foliage[i] = null;
 				}
 			}
-			else if (_foliageState[i].DestScale > 0 && _foliageTransform[i].GrowthDelay <= 0)
+			else
 			{
 				if (_foliage[i] == null)
 				{
 					_foliage[i] = GameObject.Instantiate(FoliagePrefabs[_foliageData[i].FoliageType]);
 					_foliage[i].transform.SetParent(FoliageParent.transform);
-					_foliage[i].transform.rotation = _foliageData[i].Rotation;
+					_foliage[i].transform.localRotation = _foliageData[i].Rotation;
 				}
 				_foliage[i].transform.localPosition = _foliageTransform[i].LocalPosition;
 				_foliage[i].transform.localScale = _foliageTransform[i].LocalScale;
@@ -126,66 +140,37 @@ public class FoliageManager
 		}
 	}
 
-	public void Tick(ref DependentState dependent)
-	{
-		var updateStateJob = new UpdateFoliageSimStateJob()
-		{
-			State = _foliageState,
-			Data = _foliageData,
-			FloraCoverage = dependent.FloraCoverage
-		};
-		var handle = updateStateJob.Schedule(_foliageState.Length, 100);
-		handle.Complete();
-	}
-
-
-	[BurstCompile]
-	public struct UpdateFoliageSimStateJob : IJobParallelFor {
-		public NativeArray<FoliageState> State;
-		[ReadOnly] public NativeArray<FoliageData> Data;
-		[ReadOnly] public NativeArray<float> FloraCoverage;
-		public void Execute(int i)
-		{
-			var data = Data[i];
-			float coverage = FloraCoverage[data.CellIndex];
-
-			State[i] = new FoliageState()
-			{
-				DestScale = math.saturate((coverage - data.CoverageMin) * data.CoverageRangeInverse),
-			};
-		}
-	}
 	[BurstCompile]
 	public struct InitFoliageJob : IJobParallelFor {
 		public NativeArray<FoliageData> Data;
 		[ReadOnly] public NativeArray<float3> SphericalPosition;
-		[ReadOnly] public float PerturbMax;
+		[ReadOnly] public float PerturbDistance;
 		[ReadOnly] public int MaxFoliagePerCell;
 		[ReadOnly] public float Scale;
 		[ReadOnly] public float ScaleRange;
 		[ReadOnly] public float GrowthSpeed;
 		[ReadOnly] public float GrowthSpeedRange;
 		[ReadOnly] public float GrowthDelayRange;
-		[ReadOnly] public uint RandomSeed;
+		[ReadOnly] public int RandomSeed;
 		[ReadOnly] public int FoliageTypes;
 		[ReadOnly] public float FloraCoveragePowerForTrees;
 		public void Execute(int i)
 		{
 			int cellIndex = i / MaxFoliagePerCell;
-			int treeIndex = i % MaxFoliagePerCell;
-			var random = new Unity.Mathematics.Random((uint)(RandomSeed + i + 1));
+			var random = new Unity.Mathematics.Random((uint)(RandomSeed ^ i + i ^ RandomSeed + i + RandomSeed) + 1);
 			float3 pos = SphericalPosition[cellIndex];
 			float3 forward = math.cross(pos, new float3(0, 1, 0));
 			float3 right = math.cross(forward, pos);
-			float2 perturb = PerturbMax * (new float2(random.NextFloat(), random.NextFloat()) * 2 - 1);
+			float2 perturb = PerturbDistance * (new float2(random.NextFloat(), random.NextFloat()) * 2 - 1);
 			float3 scale = Scale + random.NextFloat() * ScaleRange;
 			float growthSpeed = GrowthSpeed + random.NextFloat() * GrowthSpeedRange;
 			float growthDelay = random.NextFloat() * GrowthDelayRange;
 			var position = pos + perturb.x * right + perturb.y * forward;
 			var rot = Quaternion.FromToRotation(Vector3.up, pos) * Quaternion.AngleAxis(random.NextFloat(360), Vector3.up);
 			int foliageType = random.NextInt(FoliageTypes);
-			float coverageMin = math.pow(treeIndex / MaxFoliagePerCell, FloraCoveragePowerForTrees);
-			float coverageMax = math.pow(math.saturate((treeIndex + 2) / MaxFoliagePerCell), FloraCoveragePowerForTrees);
+			int treeIndex = i % MaxFoliagePerCell;
+			float coverageMin = math.pow((float)(treeIndex + 1) / (MaxFoliagePerCell + 1), FloraCoveragePowerForTrees);
+			float coverageMax = math.pow(math.saturate((float)(treeIndex + 2) / (MaxFoliagePerCell + 1)), FloraCoveragePowerForTrees);
 			Data[i] = new FoliageData()
 			{
 				BaseScale = scale,
@@ -193,11 +178,28 @@ public class FoliageManager
 				GrowthDelay = growthDelay,
 				Position = position,
 				Rotation = rot,
-				TreeIndex = treeIndex,
 				CellIndex = cellIndex,
 				FoliageType = foliageType,
 				CoverageMin = coverageMin,
 				CoverageRangeInverse = 1.0f / (coverageMax - coverageMin),
+			};
+		}
+	}
+	[BurstCompile]
+	public struct UpdateFoliageSimStateJob : IJobParallelFor {
+		public NativeArray<FoliageState> State;
+		[ReadOnly] public NativeArray<FoliageData> Data;
+		[ReadOnly] public NativeArray<float> FloraCoverage;
+		[ReadOnly] public float MinScale;
+		public void Execute(int i)
+		{
+			var data = Data[i];
+			float coverage = FloraCoverage[data.CellIndex];
+			float scale = math.saturate((coverage - data.CoverageMin) * data.CoverageRangeInverse);
+
+			State[i] = new FoliageState()
+			{
+				DestScale = scale > 0 ? (MinScale + (1.0f - MinScale) * scale) : 0,
 			};
 		}
 	}
@@ -207,26 +209,33 @@ public class FoliageManager
 		[ReadOnly] public NativeArray<FoliageState> SimState;
 		[ReadOnly] public NativeArray<FoliageData> Data;
 		[ReadOnly] public NativeArray<float> Elevation;
+		[ReadOnly] public float SpawnScale;
 		[ReadOnly] public float DeltaTime;
 		public void Execute(int i)
 		{
 			var newState = RenderState[i];
+
+			float curScale = RenderState[i].Scale;
+			float destScale = SimState[i].DestScale;
 			if (newState.GrowthDelay > 0)
 			{
 				newState.GrowthDelay -= DeltaTime;
-				newState.RemoveFlag = false;
 			}
 			else
 			{
 				var data = Data[i];
-				float curScale = RenderState[i].Scale;
-				float destScale = SimState[i].DestScale;
-				float newScale = (destScale - curScale) * math.min(1, DeltaTime * data.GrowthSpeed);
-				newState.RemoveFlag = destScale < curScale && newScale < 0.01f;
-				newState.Scale = newScale;
-				newState.LocalPosition = data.Position * Elevation[data.CellIndex];
-				newState.LocalScale = data.BaseScale * newState.Scale;
+				if (!newState.Active && destScale > 0)
+				{
+					newState.GrowthDelay = data.GrowthDelay;
+					newState.Scale = SpawnScale;
+				} else
+				{
+					newState.Scale = (destScale - curScale) * math.min(1, DeltaTime * data.GrowthSpeed) + curScale;
+					newState.LocalPosition = data.Position * Elevation[data.CellIndex];
+					newState.LocalScale = data.BaseScale * newState.Scale;
+				}
 			}
+			newState.Active = destScale > curScale || newState.Scale > 0.01f;
 			RenderState[i] = newState;
 		}
 	}

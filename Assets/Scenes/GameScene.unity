@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 1598314396}
-  m_IndirectSpecularColor: {r: 0.21215841, g: 0.21215841, b: 0.21215841, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -2014,7 +2014,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Seed: 5
-  Subdivisions: 3
+  Subdivisions: 4
   CheckForDegeneracy: 0
   CollectGlobals: 0
   LogState: 0
@@ -2935,7 +2935,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 5, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &487518319
@@ -6135,7 +6135,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 3e-45, y: 0, z: 0, w: 1e-45}
+  m_BoundingSphereOverride: {x: 6.85e-43, y: -3.996328e-32, z: 6.85e-43, w: 0}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
@@ -6597,18 +6597,27 @@ MonoBehaviour:
   WindArrowPrefab: {fileID: 7613255414872140438, guid: dfd7c185abe49744283f6f7f9c5ac455,
     type: 3}
   Foliage:
-    MaxFoliagePerCell: 4
-    TreeScale: 0.02
-    TreeScaleRange: 0.2
+    MaxFoliagePerCell: 5
+    TreeScale: 0.025
+    TreeScaleRange: 0.01
     PerturbCellRadius: 0.4
     MinTreeScale: 0.5
-    FloraCoveragePowerForTrees: 0.1
+    FloraCoveragePowerForTrees: 3
     TreeGrowthSpeed: 4
     TreeGrowthSpeedRange: 4
     TreeGrowthDelayRange: 1.5
     SpawnScale: 0.01
-    FoliageParent: {fileID: 0}
-    FoliagePrefabs: []
+    FoliageParent: {fileID: 1099824222}
+    FoliagePrefabs:
+    - {fileID: 1627021832372571356, guid: 4b19dc642a1f03e428cfb984fa82ef41, type: 3}
+    - {fileID: 2314532012129547961, guid: 0551595bf6ba4ff47ab6ecd80a57d2f2, type: 3}
+    - {fileID: 1627021832372571356, guid: 6d8799509ad7c31479fc02ec8b199f2d, type: 3}
+    - {fileID: 2314532012129547961, guid: b0ab9685b2872ec49800f6e5ff321bd8, type: 3}
+    - {fileID: 8214449997699801927, guid: 9641755f2c6ee58419a6c14f9fac10b8, type: 3}
+    - {fileID: 9126738353149491658, guid: 87e592750c0043845804218eb76b32a7, type: 3}
+    - {fileID: 8214449997699801927, guid: 97ee32d999bd51840ac7246c8c971ed4, type: 3}
+    - {fileID: 8214449997699801927, guid: 9e7abdf660b879a4bbd3fbb8a2d9def2, type: 3}
+    - {fileID: 9126738353149491658, guid: 0c05cdd761033044fad81acc4252651f, type: 3}
 --- !u!4 &1344899377
 Transform:
   m_ObjectHideFlags: 0
@@ -7981,7 +7990,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_BoundingSphereOverride: {x: 6.85e-43, y: -3.996328e-32, z: 6.85e-43, w: -2.4651903e-32}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
