@@ -6549,8 +6549,10 @@ MonoBehaviour:
   ActiveCell: 0
   ActiveTemperatureUnits: 0
   LerpStates: 1
-  SlopeAmount: 3
+  SlopeAmountTerrain: 3
+  SlopeAmountCloud: 10
   TerrainScale: 250
+  CloudHeight: 0.1
   AtmosphereScale: 600
   DisplayFloraWeight: 5
   DisplaySandWeight: 5

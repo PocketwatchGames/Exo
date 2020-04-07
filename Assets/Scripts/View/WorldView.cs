@@ -68,6 +68,7 @@ public class WorldView : MonoBehaviour {
 
 	}
 	public const int VertsPerCell = 25;
+	public const int VertsPerCloud = 25;
 	public const int MaxNeighbors = 6;
 
 	public int ActiveCell;
@@ -79,8 +80,10 @@ public class WorldView : MonoBehaviour {
 
 
 	[Header("Display")]
-	public float SlopeAmount = 1.5f;
+	public float SlopeAmountTerrain = 3;
+	public float SlopeAmountCloud = 10;
 	public float TerrainScale = 100f;
+	public float CloudHeight = 0.1f;
 	public float AtmosphereScale = 1000f;
 	public float DisplayFloraWeight = 1;
 	public float DisplaySandWeight = 1;
@@ -133,7 +136,8 @@ public class WorldView : MonoBehaviour {
 	public FoliageManager Foliage;
 
 	private JobHelper _renderJobHelper;
-	private JobHelper _renderJobVertsHelper;
+	private JobHelper _renderTerrainHelper;
+	private JobHelper _renderCloudHelper;
 
 	private RenderState[] _renderStates;
 	private int _curRenderState;
@@ -146,24 +150,28 @@ public class WorldView : MonoBehaviour {
 	private NativeArray<Vector3> _waterVerticesArray;
 	private NativeArray<Vector3> _waterNormalsArray;
 	private NativeArray<Color32> _waterColorsArray;
-	private NativeArray<Vector3> _cloudVerticesArray;
-	private NativeArray<Color32> _cloudColorsArray;
 	private NativeArray<Vector3> _lavaVerticesArray;
 	private NativeArray<Color32> _lavaColorsArray;
+	private NativeArray<Vector3> _cloudVerticesArray;
+	private NativeArray<Color32> _cloudColorsArray;
+	private NativeArray<Vector3> _cloudNormalsArray;
 	private NativeArray<Vector3> _dustVerticesArray;
 	private NativeArray<Color32> _dustColorsArray;
+	private NativeArray<Vector3> _dustNormalsArray;
 
 	private Vector3[] _terrainVertices;
 	private Color32[] _terrainColors;
+	private Vector3[] _lavaVertices;
+	private Color32[] _lavaColors;
 	private Vector3[] _waterVertices;
 	private Vector3[] _waterNormals;
 	private Color32[] _waterColors;
 	private Vector3[] _cloudVertices;
 	private Color32[] _cloudColors;
-	private Vector3[] _lavaVertices;
-	private Color32[] _lavaColors;
+	private Vector3[] _cloudNormals;
 	private Vector3[] _dustVertices;
 	private Color32[] _dustColors;
+	private Vector3[] _dustNormals;
 
 	private Mesh _terrainMesh;
 	private Mesh _waterMesh;
@@ -187,10 +195,12 @@ public class WorldView : MonoBehaviour {
 	private bool _indicesInitialized;
 	private int[] _indices;
 	private int[] _indicesTerrain;
+	private int[] _indicesCloud;
 
 	private NativeArray<CVP> _normalizedRainbow;
 	private NativeArray<CVP> _normalizedBlueBlackRed;
-	private NativeArray<float3> _hexVerts;
+	private NativeArray<float3> _terrainVerts;
+	private NativeArray<float3> _cloudVerts;
 
 	private const int _batchCount = 128;
 
@@ -312,18 +322,22 @@ public class WorldView : MonoBehaviour {
 		InitVerts(Sim.Icosphere);
 
 		_renderJobHelper = new JobHelper(Sim.CellCount);
-		_renderJobVertsHelper = new JobHelper(Sim.CellCount* VertsPerCell);
+		_renderTerrainHelper = new JobHelper(Sim.CellCount* VertsPerCell);
+		_renderCloudHelper = new JobHelper(Sim.CellCount * VertsPerCloud);
 		_terrainVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_terrainColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
-		_cloudVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
-		_cloudColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_lavaVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_lavaColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
-		_dustVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
-		_dustColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+
+		_dustVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
+		_dustColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
+		_dustNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
+		_cloudVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
+		_cloudColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
+		_cloudNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
@@ -350,7 +364,8 @@ public class WorldView : MonoBehaviour {
 			_renderStates[i].Dispose();
 		}
 
-		_hexVerts.Dispose();
+		_terrainVerts.Dispose();
+		_cloudVerts.Dispose();
 		_terrainVerticesArray.Dispose();
 		_terrainColorsArray.Dispose();
 		_waterVerticesArray.Dispose();
@@ -358,10 +373,12 @@ public class WorldView : MonoBehaviour {
 		_waterColorsArray.Dispose();
 		_cloudVerticesArray.Dispose();
 		_cloudColorsArray.Dispose();
+		_cloudNormalsArray.Dispose();
 		_lavaVerticesArray.Dispose();
 		_lavaColorsArray.Dispose();
 		_dustVerticesArray.Dispose();
 		_dustColorsArray.Dispose();
+		_dustNormalsArray.Dispose();
 
 		Foliage.Dispose();
 	}
@@ -390,6 +407,8 @@ public class WorldView : MonoBehaviour {
 			SetActiveCell(ActiveCell, true);
 			ActiveCell = -1;
 		}
+
+		CloudMaterial.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
 	}
 	public void StartLerp(float lerpTime)
 	{
@@ -439,6 +458,7 @@ public class WorldView : MonoBehaviour {
 			WaterColor = to.WaterColor,
 			WaterElevation = to.WaterElevation,
 			CloudColor = to.CloudColor,
+			CloudHeight = to.CloudHeight,
 			CloudElevation = to.CloudElevation,
 			DustColor = to.DustColor,
 			DustElevation = to.DustElevation,
@@ -461,6 +481,7 @@ public class WorldView : MonoBehaviour {
 			SoilFertility = from.GroundCarbon,
 			Roughness = from.Roughness,
 			Elevation = from.Elevation,
+			CloudMass = from.CloudMass,
 			CloudDropletMass = from.CloudDropletMass,
 			CloudAbsorption = dependent.CloudAbsorptivity,
 			IceCoverage = dependent.IceCoverage,
@@ -487,6 +508,7 @@ public class WorldView : MonoBehaviour {
 			DisplayFloraWeight = DisplayFloraWeight,
 			DisplaySandWeight = DisplaySandWeight,
 			DisplaySoilWeight = DisplaySoilWeight,
+			DisplayCloudHeight = CloudHeight
 		});
 
 		buildRenderStateJobHandle.Complete();
@@ -520,6 +542,7 @@ public class WorldView : MonoBehaviour {
 		if (true /* cloudsVisible*/)
 		{
 			dependencies.Add((new LerpJobfloat { Progress = t, Out = state.CloudElevation, Start = lastState.CloudElevation, End = nextState.CloudElevation }).Schedule(Sim.CellCount, _batchCount));
+			dependencies.Add((new LerpJobfloat { Progress = t, Out = state.CloudHeight, Start = lastState.CloudHeight, End = nextState.CloudHeight }).Schedule(Sim.CellCount, _batchCount));
 			dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.CloudColor, Start = lastState.CloudColor, End = nextState.CloudColor }).Schedule(Sim.CellCount, _batchCount));
 		}
 		if (ActiveWindOverlay != WindOverlay.None)
@@ -527,51 +550,64 @@ public class WorldView : MonoBehaviour {
 			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
 		}
 
-		var getVertsHandle = _renderJobVertsHelper.Schedule(new BuildHexVertsJob()
+		var getVertsHandle = _renderTerrainHelper.Schedule(new BuildTerrainVertsJob()
 		{
 			VTerrainPosition = _terrainVerticesArray,
 			VTerrainColor = _terrainColorsArray,
 			VWaterPosition = _waterVerticesArray,
 			VWaterNormal = _waterNormalsArray,
 			VWaterColor = _waterColorsArray,
-			VCloudPosition = _cloudVerticesArray,
-			VCloudColor = _cloudColorsArray,
 			VLavaPosition = _lavaVerticesArray,
 			VLavaColor = _lavaColorsArray,
-			VDustPosition = _dustVerticesArray,
-			VDustColor = _dustColorsArray,
 
 			TerrainElevation = state.TerrainElevation,
 			TerrainColor = state.TerrainColor,
 			WaterElevation = state.WaterElevation,
 			WaterColor = state.WaterColor,
-			CloudElevation = state.CloudElevation,
-			CloudColor = state.CloudColor,
 			LavaElevation = state.LavaElevation,
 			LavaColor = state.LavaColor,
+			StandardVerts = _terrainVerts,
+		}, JobHandle.CombineDependencies(dependencies));
+
+		getVertsHandle = JobHandle.CombineDependencies(getVertsHandle, _renderCloudHelper.Schedule(new BuildCloudVertsJob()
+		{
+			VCloudPosition = _cloudVerticesArray,
+			VCloudColor = _cloudColorsArray,
+			VDustPosition = _dustVerticesArray,
+			VDustColor = _dustColorsArray,
+			VCloudNormal = _cloudNormalsArray,
+			VDustNormal = _dustNormalsArray,
+
+			CloudElevation = state.CloudElevation,
+			CloudHeight = state.CloudHeight,
+			CloudColor = state.CloudColor,
 			DustElevation = state.DustElevation,
 			DustColor = state.DustColor,
-			HexVerts = _hexVerts,
-			IcosphereVerts = Sim.Icosphere.Vertices
-		}, JobHandle.CombineDependencies(dependencies));
+			StandardVerts = _cloudVerts,
+		}, JobHandle.CombineDependencies(dependencies)));
 
 		getVertsHandle.Complete();
 		dependencies.Dispose();
 
 		_terrainVerticesArray.CopyTo(_terrainVertices);
 		_terrainColorsArray.CopyTo(_terrainColors);
+		_lavaVerticesArray.CopyTo(_lavaVertices);
+		_lavaColorsArray.CopyTo(_lavaColors);
 		_waterVerticesArray.CopyTo(_waterVertices);
 		_waterNormalsArray.CopyTo(_waterNormals);
 		_waterColorsArray.CopyTo(_waterColors);
 		_cloudVerticesArray.CopyTo(_cloudVertices);
 		_cloudColorsArray.CopyTo(_cloudColors);
-		_lavaVerticesArray.CopyTo(_lavaVertices);
-		_lavaColorsArray.CopyTo(_lavaColors);
+		_cloudNormalsArray.CopyTo(_cloudNormals);
 		_dustVerticesArray.CopyTo(_dustVertices);
 		_dustColorsArray.CopyTo(_dustColors);
+		_dustNormalsArray.CopyTo(_dustNormals);
 
 		_terrainMesh.vertices = _terrainVertices;
 		_terrainMesh.colors32 = _terrainColors;
+
+		_lavaMesh.vertices = _lavaVertices;
+		_lavaMesh.colors32 = _lavaColors;
 
 		_waterMesh.vertices = _waterVertices;
 		_waterMesh.normals = _waterNormals;
@@ -579,20 +615,19 @@ public class WorldView : MonoBehaviour {
 
 		_cloudMesh.vertices = _cloudVertices;
 		_cloudMesh.colors32 = _cloudColors;
-
-		_lavaMesh.vertices = _lavaVertices;
-		_lavaMesh.colors32 = _lavaColors;
+		_cloudMesh.normals = _cloudNormals;
 
 		_dustMesh.vertices = _dustVertices;
 		_dustMesh.colors32 = _dustColors;
+		_dustMesh.normals = _dustNormals;
 
 		if (!_indicesInitialized)
 		{
 			_terrainMesh.SetTriangles(_indicesTerrain, 0);
 			_waterMesh.SetTriangles(_indicesTerrain, 0);
 			_lavaMesh.SetTriangles(_indicesTerrain, 0);
-			_cloudMesh.SetTriangles(_indices, 0);
-			_dustMesh.SetTriangles(_indices, 0);
+			_cloudMesh.SetTriangles(_indicesCloud, 0);
+			_dustMesh.SetTriangles(_indicesTerrain, 0);
 			_indicesInitialized = true;
 		}
 
@@ -606,9 +641,9 @@ public class WorldView : MonoBehaviour {
 
 		_terrainMesh.RecalculateNormals();
 	//	_waterMesh.RecalculateNormals();
-		_cloudMesh.RecalculateNormals();
+	//	_cloudMesh.RecalculateNormals();
 		_lavaMesh.RecalculateNormals();
-		_dustMesh.RecalculateNormals();
+	//	_dustMesh.RecalculateNormals();
 		_terrainMesh.RecalculateTangents();
 		_waterMesh.RecalculateTangents();
 
@@ -764,45 +799,70 @@ public class WorldView : MonoBehaviour {
 		_waterVertices = new Vector3[Sim.CellCount * VertsPerCell];
 		_waterNormals = new Vector3[Sim.CellCount * VertsPerCell];
 		_waterColors = new Color32[Sim.CellCount * VertsPerCell];
-		_cloudVertices = new Vector3[Sim.CellCount * VertsPerCell];
-		_cloudColors = new Color32[Sim.CellCount * VertsPerCell];
-		_dustVertices = new Vector3[Sim.CellCount * VertsPerCell];
-		_dustColors = new Color32[Sim.CellCount * VertsPerCell];
 		_lavaVertices = new Vector3[Sim.CellCount * VertsPerCell];
 		_lavaColors = new Color32[Sim.CellCount * VertsPerCell];
 
+		_dustVertices = new Vector3[Sim.CellCount * VertsPerCloud];
+		_dustColors = new Color32[Sim.CellCount * VertsPerCloud];
+		_dustNormals = new Vector3[Sim.CellCount * VertsPerCloud];
+		_cloudVertices = new Vector3[Sim.CellCount * VertsPerCloud];
+		_cloudColors = new Color32[Sim.CellCount * VertsPerCloud];
+		_cloudNormals = new Vector3[Sim.CellCount * VertsPerCloud];
+
 		Unity.Mathematics.Random random = new Unity.Mathematics.Random(1);
 
-		_hexVerts = new NativeArray<float3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_terrainVerts = new NativeArray<float3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_cloudVerts = new NativeArray<float3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		List<int> indices = new List<int>();
+		List<int> indicesCloud = new List<int>();
 		List<int> indicesTerrain = new List<int>();
 		for (int i=0;i< icosphere.Vertices.Length;i++)
 		{
 			float3 pos = icosphere.Vertices[i];
-			_hexVerts[i * VertsPerCell] = pos;
+			_terrainVerts[i * VertsPerCell] = pos;
+			_cloudVerts[i * VertsPerCloud] = pos;
 			int neighborCount = (icosphere.Neighbors[(i + 1) * MaxNeighbors - 1] >= 0) ? MaxNeighbors : (MaxNeighbors - 1);
 			for (int j=0;j< neighborCount; j++)
 			{
 				int neighborIndex1 = icosphere.Neighbors[i * MaxNeighbors + j];
 				int neighborIndex2 = icosphere.Neighbors[i * MaxNeighbors + (j + 1) % neighborCount];
 
-				float slope = random.NextFloat() * SlopeAmount;
-				float3 midPoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos * (1 + slope)) / (3 + slope);
-				float midPointLength = math.length(midPoint);
-				float3 extendedMidPoint = midPoint / (midPointLength * midPointLength);
-				_hexVerts[i * VertsPerCell + 1 + j] = extendedMidPoint; // surface
-				_hexVerts[i * VertsPerCell + 1 + j + MaxNeighbors] = extendedMidPoint; // wall
-				_hexVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 2] = extendedMidPoint; // wall
-				_hexVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 3] = extendedMidPoint; // corner
+				{
+					float slope = random.NextFloat() * SlopeAmountTerrain;
+					float3 slopePoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos * (1 + slope)) / (3 + slope);
+					float slopePointLength = math.length(slopePoint);
+					float3 extendedSlopePoint = slopePoint / (slopePointLength * slopePointLength);
+					_terrainVerts[i * VertsPerCell + 1 + j] = extendedSlopePoint; // surface
+					_terrainVerts[i * VertsPerCell + 1 + j + MaxNeighbors] = extendedSlopePoint; // wall
+					_terrainVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 2] = extendedSlopePoint; // wall
+					_terrainVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 3] = extendedSlopePoint; // corner
+				}
 
-				indices.Add(i * VertsPerCell);
-				indices.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
-				indices.Add(i * VertsPerCell + 1 + j);
+				{
+					float slope = random.NextFloat() * SlopeAmountCloud;
+					float3 slopePoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos * (1 + slope)) / (3 + slope);
+					float slopePointLength = math.length(slopePoint);
+					float3 extendedSlopePoint = slopePoint / (slopePointLength * slopePointLength);
+					_cloudVerts[i * VertsPerCell + 1 + j] = extendedSlopePoint; // surface
+					_cloudVerts[i * VertsPerCell + 1 + j + MaxNeighbors] = extendedSlopePoint; // wall
+					_cloudVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 2] = extendedSlopePoint; // wall
+					_cloudVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 3] = extendedSlopePoint; // corner
+				}
 
 				indicesTerrain.Add(i * VertsPerCell);
 				indicesTerrain.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
 				indicesTerrain.Add(i * VertsPerCell + 1 + j);
 
+				indicesCloud.Add(i * VertsPerCell);
+				indicesCloud.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
+				indicesCloud.Add(i * VertsPerCell + 1 + j);
+				indicesCloud.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
+				indicesCloud.Add(i * VertsPerCell);
+				indicesCloud.Add(i * VertsPerCell + 1 + j);
+
+				indices.Add(i * VertsPerCloud);
+				indices.Add(i * VertsPerCloud + 1 + ((j + 1) % neighborCount));
+				indices.Add(i * VertsPerCloud + 1 + j);
 
 				int neighbor1 = -1;
 				{
@@ -815,6 +875,13 @@ public class WorldView : MonoBehaviour {
 							indicesTerrain.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
 							indicesTerrain.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
 							indicesTerrain.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
+
+							indicesCloud.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
+							indicesCloud.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
+							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
+							indicesCloud.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
+							indicesCloud.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
+							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
 
 							break;
 						}
@@ -831,6 +898,13 @@ public class WorldView : MonoBehaviour {
 							indicesTerrain.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
 							indicesTerrain.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
 
+							indicesCloud.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
+							indicesCloud.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
+							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
+							indicesCloud.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
+							indicesCloud.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
+							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
+
 							break;
 						}
 					}
@@ -840,7 +914,7 @@ public class WorldView : MonoBehaviour {
 		}
 		_indices = indices.ToArray();
 		_indicesTerrain = indicesTerrain.ToArray();
-
+		_indicesCloud = indicesCloud.ToArray();
 	}
 
 	private bool GetMeshOverlayData(MeshOverlay activeOverlay, ref SimState simState, ref DependentState dependentState, ref DisplayState display, out MeshOverlayData overlay)
