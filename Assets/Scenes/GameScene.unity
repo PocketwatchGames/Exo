@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 1598314396}
-  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
+  m_IndirectSpecularColor: {r: 0.0022178374, g: 0.002123111, b: 0.0020811418, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -6591,7 +6591,8 @@ MonoBehaviour:
   ActiveWindOverlay: 0
   TerrainMaterial: {fileID: 2100000, guid: 3c28a394759614d45844ccfb3a6323da, type: 2}
   WaterMaterial: {fileID: 2100000, guid: 297c693a57253724c881afe6c7ac126c, type: 2}
-  CloudMaterial: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
+  CloudMaterialFront: {fileID: 2100000, guid: 865ae0e79a98aa6489e23eb9d025041d, type: 2}
+  CloudMaterialBack: {fileID: 2100000, guid: efb61485f5e03f04f8d55bd7b9dee284, type: 2}
   DustMaterial: {fileID: 2100000, guid: 082c49268a5446b47badd5c14f5f69a5, type: 2}
   LavaMaterial: {fileID: 2100000, guid: 097d5a6b0c6e2454c982d85188bcef1b, type: 2}
   SelectionCirclePrefab: {fileID: 3866112454082045954, guid: 3658dbd2135786c4294654eb7281919d,

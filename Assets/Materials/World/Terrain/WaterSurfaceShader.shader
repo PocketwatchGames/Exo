@@ -8,7 +8,7 @@
         _Alpha("Alpha", Range(0,1)) = 0.5
     }
     SubShader{
-        Tags{ "RenderType" = "Transparent"}
+        Tags{ "RenderType" = "Opaque"}
         LOD 200
         Blend SrcAlpha OneMinusSrcAlpha
 

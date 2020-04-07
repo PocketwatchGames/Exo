@@ -128,7 +128,7 @@ public class WorldView : MonoBehaviour {
 	public WindOverlay ActiveWindOverlay;
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
-	public Material CloudMaterial;
+	public Material CloudMaterialFront, CloudMaterialBack;
 	public Material DustMaterial;
 	public Material LavaMaterial;
 	public GameObject SelectionCirclePrefab;
@@ -276,7 +276,7 @@ public class WorldView : MonoBehaviour {
 		_cloudObject.transform.SetParent(Planet.transform, false);
 		var cloudFilter = _cloudObject.AddComponent<MeshFilter>();
 		var cloudSurfaceRenderer = _cloudObject.AddComponent<MeshRenderer>();
-		cloudSurfaceRenderer.material = CloudMaterial;
+		cloudSurfaceRenderer.materials = new Material[] { CloudMaterialBack, CloudMaterialFront };
 		cloudFilter.mesh = _cloudMesh;
 		cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 		_cloudMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -408,7 +408,8 @@ public class WorldView : MonoBehaviour {
 			ActiveCell = -1;
 		}
 
-		CloudMaterial.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
+		CloudMaterialBack.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
+		CloudMaterialFront.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
 	}
 	public void StartLerp(float lerpTime)
 	{
@@ -856,9 +857,6 @@ public class WorldView : MonoBehaviour {
 				indicesCloud.Add(i * VertsPerCell);
 				indicesCloud.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
 				indicesCloud.Add(i * VertsPerCell + 1 + j);
-				indicesCloud.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
-				indicesCloud.Add(i * VertsPerCell);
-				indicesCloud.Add(i * VertsPerCell + 1 + j);
 
 				indices.Add(i * VertsPerCloud);
 				indices.Add(i * VertsPerCloud + 1 + ((j + 1) % neighborCount));
@@ -879,9 +877,6 @@ public class WorldView : MonoBehaviour {
 							indicesCloud.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
 							indicesCloud.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
 							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
-							indicesCloud.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
-							indicesCloud.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
-							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
 
 							break;
 						}
@@ -900,9 +895,6 @@ public class WorldView : MonoBehaviour {
 
 							indicesCloud.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
 							indicesCloud.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
-							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
-							indicesCloud.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
-							indicesCloud.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
 							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
 
 							break;
