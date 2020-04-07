@@ -67,16 +67,12 @@ public class WorldView : MonoBehaviour {
 		WindCloud,
 
 	}
+
 	public const int VertsPerCell = 25;
 	public const int VertsPerCloud = 25;
 	public const int MaxNeighbors = 6;
 
-	public int ActiveCell;
-	public bool ActiveCellLocked { get; private set; }
-	public int ActiveCellIndex { get; private set; }
-	public CellInfo.TemperatureUnits ActiveTemperatureUnits = CellInfo.TemperatureUnits.Celsius;
 	public bool LerpStates = true;
-
 
 
 	[Header("Display")]
@@ -120,6 +116,7 @@ public class WorldView : MonoBehaviour {
 
 	[Header("References")]
 	public WorldSimComponent Sim;
+	public GameplayManager GameplayManager;
 	public GameObject Planet;
 	public GameObject Sun;
 	public GameObject Moon;
@@ -214,6 +211,7 @@ public class WorldView : MonoBehaviour {
 	public void Start()
 	{
 		Sim.OnTick += OnSimTick;
+		GameplayManager.OnSetActiveCell += OnSetActiveCell;
 
 		_random = new Unity.Mathematics.Random(1);
 
@@ -401,12 +399,6 @@ public class WorldView : MonoBehaviour {
 		Foliage.Update(ref _renderStates[_curRenderState]);
 
 		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
-
-		if (ActiveCell != -1)
-		{
-			SetActiveCell(ActiveCell, true);
-			ActiveCell = -1;
-		}
 
 		CloudMaterialBack.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
 		CloudMaterialFront.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
@@ -698,68 +690,11 @@ public class WorldView : MonoBehaviour {
 		}
 	}
 
-	public void OnHUDTemperatureUnitsChanged(UnityEngine.UI.Dropdown dropdown)
-	{
-		ActiveTemperatureUnits = (CellInfo.TemperatureUnits)dropdown.value;
-	}
-
-	public string GetCellInfo(CellInfo.CellInfoType cellInfoType)
-	{
-		switch (cellInfoType)
-		{
-			case CellInfo.CellInfoType.Global:
-				return CellInfo.GetCellInfoGlobal(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfo.CellInfoType.Enthalpy:
-				return CellInfo.GetCellInfoEnthalpy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfo.CellInfoType.Energy:
-				return CellInfo.GetCellInfoEnergy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfo.CellInfoType.Cell:
-				return CellInfo.GetCellInfoCell(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.StaticState, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState);
-			case CellInfo.CellInfoType.Atmosphere:
-				return CellInfo.GetCellInfoAtmosphere(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
-			case CellInfo.CellInfoType.Ground:
-				return CellInfo.GetCellInfoGround(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.ActiveSimState, ref Sim.DependentState);
-			case CellInfo.CellInfoType.Water:
-				return CellInfo.GetCellInfoWater(ActiveTemperatureUnits, ActiveCellIndex, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.StaticState, ref Sim.DisplayState);
-		}
-		return "";
-	}
 
 	public int GetClosestVert(int triangleIndex, int vIndex)
 	{
 		return _indicesTerrain[triangleIndex * 3 + vIndex] / VertsPerCell;
 	}
-
-	public void SetActiveCell(int index, bool locked)
-	{
-		ActiveCellIndex = index;
-		ActiveCellLocked = locked;
-		_selectionCircle.SetActive(index >= 0);
-		if (index >= 0)
-		{
-			//			var p = Sim.Icosphere.Vertices[index];
-			var pos = _renderStates[_curRenderState].SurfacePosition[index];
-			_selectionCircle.transform.localPosition = pos;
-			_selectionCircle.transform.localRotation = Quaternion.LookRotation(-pos);
-		}
-
-		for (int i=0;i<_selectionCircleNeighbors.Count;i++)
-		{
-			_selectionCircleNeighbors[i].SetActive(false);
-			if (index >= 0)
-			{
-				int n = Sim.StaticState.Neighbors[index * 6 + i];
-				if (n >= 0)
-				{
-					_selectionCircleNeighbors[i].SetActive(true);
-					var pos = _renderStates[_curRenderState].SurfacePosition[n];
-					_selectionCircleNeighbors[i].transform.localPosition = pos;
-					_selectionCircleNeighbors[i].transform.localRotation = Quaternion.LookRotation(-pos);
-				}
-			}
-		}
-	}
-
 
 	public struct MeshOverlayData {
 		public MeshOverlayData(float min, float max, NativeArray<CVP> colors, NativeArray<float> values)
@@ -1091,6 +1026,34 @@ public class WorldView : MonoBehaviour {
 		_skyboxExposureTime = math.max(0, _skyboxExposureTime - Time.deltaTime);
 		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
 		RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
+	}
+
+	private void OnSetActiveCell(int index)
+	{
+		_selectionCircle.SetActive(index >= 0);
+		if (index >= 0)
+		{
+			//			var p = Sim.Icosphere.Vertices[index];
+			var pos = _renderStates[_curRenderState].SurfacePosition[index];
+			_selectionCircle.transform.localPosition = pos;
+			_selectionCircle.transform.localRotation = Quaternion.LookRotation(-pos);
+		}
+
+		for (int i = 0; i < _selectionCircleNeighbors.Count; i++)
+		{
+			_selectionCircleNeighbors[i].SetActive(false);
+			if (index >= 0)
+			{
+				int n = Sim.StaticState.Neighbors[index * 6 + i];
+				if (n >= 0)
+				{
+					_selectionCircleNeighbors[i].SetActive(true);
+					var pos = _renderStates[_curRenderState].SurfacePosition[n];
+					_selectionCircleNeighbors[i].transform.localPosition = pos;
+					_selectionCircleNeighbors[i].transform.localRotation = Quaternion.LookRotation(-pos);
+				}
+			}
+		}
 	}
 
 	#endregion

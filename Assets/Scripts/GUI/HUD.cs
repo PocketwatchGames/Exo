@@ -8,6 +8,7 @@ using UnityEngine.EventSystems;
 public class HUD : MonoBehaviour
 {
 	public WorldView View;
+	public GameplayManager Gameplay;
 
 	public enum HUDMode {
 		Info,
@@ -42,9 +43,9 @@ public class HUD : MonoBehaviour
 		GetComponent<GraphicRaycaster>().Raycast(ped, results);
 		if (results.Count == 0)
 		{
-			if (!View.ActiveCellLocked)
+			if (!Gameplay.ActiveCellLocked)
 			{
-				View.SetActiveCell(GetMouseCellIndex(), false);
+				Gameplay.SetActiveCell(GetMouseCellIndex(), false);
 			}
 		}
 	}
@@ -52,7 +53,7 @@ public class HUD : MonoBehaviour
 	public void OnBackgroundClicked()
 	{
 		int cellHovered = GetMouseCellIndex();
-		View.SetActiveCell(cellHovered, cellHovered >= 0);
+		Gameplay.SetActiveCell(cellHovered, cellHovered >= 0);
 	}
 
 	private int GetMouseCellIndex()
