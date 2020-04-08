@@ -365,25 +365,25 @@ public class WorldSim {
 			tempArrays.Clear();
 
 			NativeList<JobHandle> memsetHandles = new NativeList<JobHandle>(Allocator.TempJob);
-			MemsetArray(memsetHandles, _cellCount, conductionWaterTerrainTotal, 0);
-			MemsetArray(memsetHandles, _cellCount, conductionWaterLavaTotal, 0);
-			MemsetArray(memsetHandles, _cellCount, cloudEvaporationMass, 0);
-			MemsetArray(memsetHandles, _cellCount, dropletDelta, 0);
-			MemsetArray(memsetHandles, _cellCount, precipitationMass, 0);
-			MemsetArray(memsetHandles, _cellCount, precipitationTemperature, 0);
-			MemsetArray(memsetHandles, _cellCount, atmosphericWindowUp, 0);
-			MemsetArray(memsetHandles, _cellCount, atmosphericWindowDown, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, conductionWaterTerrainTotal, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, conductionWaterLavaTotal, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, cloudEvaporationMass, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, dropletDelta, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, precipitationMass, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, precipitationTemperature, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, atmosphericWindowUp, 0);
+			Utils.MemsetArray(memsetHandles, _cellCount, atmosphericWindowDown, 0);
 			for (int i = 0; i < worldData.LayerCount; i++)
 			{
-				MemsetArray(memsetHandles, _cellCount, latentHeat[i], 0);
-				MemsetArray(memsetHandles, _cellCount, solarReflected[i], 0);
-				MemsetArray(memsetHandles, _cellCount, thermalRadiationDelta[i], 0);
-				MemsetArray(memsetHandles, _cellCount, thermalRadiationTransmittedUp[i], 0);
-				MemsetArray(memsetHandles, _cellCount, thermalRadiationTransmittedDown[i], 0);
-				MemsetArray(memsetHandles, _cellCount, windowRadiationTransmittedUp[i], 0);
-				MemsetArray(memsetHandles, _cellCount, windowRadiationTransmittedDown[i], 0);
-				MemsetArray(memsetHandles, _cellCount, condensationGroundMass[i], 0);
-				MemsetArray(memsetHandles, _cellCount, condensationCloudMass[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, latentHeat[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, solarReflected[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, thermalRadiationDelta[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, thermalRadiationTransmittedUp[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, thermalRadiationTransmittedDown[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, windowRadiationTransmittedUp[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, windowRadiationTransmittedDown[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, condensationGroundMass[i], 0);
+				Utils.MemsetArray(memsetHandles, _cellCount, condensationCloudMass[i], 0);
 			}
 			JobHandle.CompleteAll(memsetHandles);
 			memsetHandles.Dispose();
