@@ -71,7 +71,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	public void OnDestroy()
 	{
-		_worldSim.Dispose();
+		_worldSim.Dispose(ref WorldData);
 		StaticState.Dispose();
 		Icosphere.Dispose();
 		_dependentState.Dispose();

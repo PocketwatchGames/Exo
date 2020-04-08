@@ -84,6 +84,25 @@ public class WorldSim {
 	private NativeArray<float>[] divergenceAir;
 	private NativeArray<float> displaySolarRadiation;
 
+	private NativeArray<float>[] thermalRadiationDelta;
+	private NativeArray<float>[] thermalRadiationTransmittedUp;
+	private NativeArray<float>[] thermalRadiationTransmittedDown;
+	private NativeArray<float>[] windowRadiationTransmittedUp;
+	private NativeArray<float>[] windowRadiationTransmittedDown;
+	private NativeArray<float>[] condensationGroundMass;
+	private NativeArray<float>[] condensationCloudMass;
+	private NativeArray<float>[] solarReflected;
+	private NativeArray<float>[] latentHeat;
+	private NativeArray<float> conductionWaterTerrainTotal;
+	private NativeArray<float> conductionWaterLavaTotal;
+	private NativeArray<float> cloudEvaporationMass;
+	private NativeArray<float> dropletDelta;
+	private NativeArray<float> precipitationMass;
+	private NativeArray<float> precipitationTemperature;
+	private NativeArray<float> atmosphericWindowUp;
+	private NativeArray<float> atmosphericWindowDown;
+
+
 	List<NativeList<JobHandle>> jobHandleDependencies = new List<NativeList<JobHandle>>();
 	List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
 
@@ -182,9 +201,41 @@ public class WorldSim {
 		oxygenDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		soilRespiration = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		waterCarbonDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
+
+
+		thermalRadiationDelta = new NativeArray<float>[worldData.LayerCount];
+		thermalRadiationTransmittedUp = new NativeArray<float>[worldData.LayerCount];
+		thermalRadiationTransmittedDown = new NativeArray<float>[worldData.LayerCount];
+		windowRadiationTransmittedUp = new NativeArray<float>[worldData.LayerCount];
+		windowRadiationTransmittedDown = new NativeArray<float>[worldData.LayerCount];
+		condensationGroundMass = new NativeArray<float>[worldData.LayerCount];
+		condensationCloudMass = new NativeArray<float>[worldData.LayerCount];
+		solarReflected = new NativeArray<float>[worldData.LayerCount];
+		latentHeat = new NativeArray<float>[worldData.LayerCount];
+		conductionWaterTerrainTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		conductionWaterLavaTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		cloudEvaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		dropletDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		precipitationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		precipitationTemperature = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		atmosphericWindowUp = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		atmosphericWindowDown = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		for (int i = 0; i < worldData.LayerCount; i++)
+		{
+			latentHeat[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			solarReflected[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			thermalRadiationDelta[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			thermalRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			thermalRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			windowRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			windowRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			condensationGroundMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			condensationCloudMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+		}
+
 	}
 
-	public void Dispose()
+	public void Dispose(ref WorldData worldData)
 	{
 		solarRadiation.Dispose();
 		albedoSlope.Dispose();
@@ -194,7 +245,7 @@ public class WorldSim {
 			emissivity[i].Dispose();
 			solarRadiationIn[i].Dispose();
 		}
-		for (int i = 0; i < diffusionAir.Length; i++)
+		for (int i = 0; i < worldData.AirLayers; i++)
 		{
 			diffusionAir[i].Dispose();
 			advectionAir[i].Dispose();
@@ -207,7 +258,7 @@ public class WorldSim {
 			dustDown[i].Dispose();
 			divergenceAir[i].Dispose();
 		}
-		for (int i = 0; i < diffusionWater.Length; i++)
+		for (int i = 0; i < worldData.WaterLayers; i++)
 		{
 			diffusionWater[i].Dispose();
 			advectionWater[i].Dispose();
@@ -259,7 +310,29 @@ public class WorldSim {
 
 		displaySolarRadiation.Dispose();
 
+		atmosphericWindowUp.Dispose();
+		atmosphericWindowDown.Dispose();
+		dropletDelta.Dispose();
+		precipitationMass.Dispose();
+		precipitationTemperature.Dispose();
+		cloudEvaporationMass.Dispose();
+		conductionWaterTerrainTotal.Dispose();
+		conductionWaterLavaTotal.Dispose();
+		for (int i = 0; i < worldData.LayerCount; i++)
+		{
+			thermalRadiationDelta[i].Dispose();
+			thermalRadiationTransmittedUp[i].Dispose();
+			thermalRadiationTransmittedDown[i].Dispose();
+			windowRadiationTransmittedUp[i].Dispose();
+			windowRadiationTransmittedDown[i].Dispose();
+			solarReflected[i].Dispose();
+			latentHeat[i].Dispose();
+			condensationGroundMass[i].Dispose();
+			condensationCloudMass[i].Dispose();
+		}
+
 	}
+
 
 	public bool Tick(
 		SimState[] states, 
@@ -291,33 +364,29 @@ public class WorldSim {
 			jobHandleDependencies.Clear();
 			tempArrays.Clear();
 
-			var thermalRadiationDelta = new NativeArray<float>[worldData.LayerCount];
-			var thermalRadiationTransmittedUp = new NativeArray<float>[worldData.LayerCount];
-			var thermalRadiationTransmittedDown = new NativeArray<float>[worldData.LayerCount];
-			var windowRadiationTransmittedUp = new NativeArray<float>[worldData.LayerCount];
-			var windowRadiationTransmittedDown = new NativeArray<float>[worldData.LayerCount];
-			var condensationGroundMass = new NativeArray<float>[worldData.LayerCount];
-			var condensationCloudMass = new NativeArray<float>[worldData.LayerCount];
-			var solarReflected = new NativeArray<float>[worldData.LayerCount];
-			var latentHeat = new NativeArray<float>[worldData.LayerCount];
-			var conductionWaterTerrainTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var conductionWaterLavaTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var cloudEvaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var dropletDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var precipitationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			var precipitationTemperature = new NativeArray<float>(_cellCount, Allocator.TempJob);
+			NativeList<JobHandle> memsetHandles = new NativeList<JobHandle>(Allocator.TempJob);
+			MemsetArray(memsetHandles, _cellCount, conductionWaterTerrainTotal, 0);
+			MemsetArray(memsetHandles, _cellCount, conductionWaterLavaTotal, 0);
+			MemsetArray(memsetHandles, _cellCount, cloudEvaporationMass, 0);
+			MemsetArray(memsetHandles, _cellCount, dropletDelta, 0);
+			MemsetArray(memsetHandles, _cellCount, precipitationMass, 0);
+			MemsetArray(memsetHandles, _cellCount, precipitationTemperature, 0);
+			MemsetArray(memsetHandles, _cellCount, atmosphericWindowUp, 0);
+			MemsetArray(memsetHandles, _cellCount, atmosphericWindowDown, 0);
 			for (int i = 0; i < worldData.LayerCount; i++)
 			{
-				latentHeat[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				solarReflected[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				thermalRadiationDelta[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				thermalRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				thermalRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				windowRadiationTransmittedUp[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				windowRadiationTransmittedDown[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				condensationGroundMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
-				condensationCloudMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
+				MemsetArray(memsetHandles, _cellCount, latentHeat[i], 0);
+				MemsetArray(memsetHandles, _cellCount, solarReflected[i], 0);
+				MemsetArray(memsetHandles, _cellCount, thermalRadiationDelta[i], 0);
+				MemsetArray(memsetHandles, _cellCount, thermalRadiationTransmittedUp[i], 0);
+				MemsetArray(memsetHandles, _cellCount, thermalRadiationTransmittedDown[i], 0);
+				MemsetArray(memsetHandles, _cellCount, windowRadiationTransmittedUp[i], 0);
+				MemsetArray(memsetHandles, _cellCount, windowRadiationTransmittedDown[i], 0);
+				MemsetArray(memsetHandles, _cellCount, condensationGroundMass[i], 0);
+				MemsetArray(memsetHandles, _cellCount, condensationCloudMass[i], 0);
 			}
+			JobHandle.CompleteAll(memsetHandles);
+			memsetHandles.Dispose();
 			#endregion
 
 			#region Update Planetary Globals
@@ -626,8 +695,6 @@ public class WorldSim {
 			// Start at bottom water layer and go up, then go back down
 			JobHandle[] thermalInUpJobHandles = new JobHandle[worldData.LayerCount];
 			JobHandle[] thermalInDownJobHandles = new JobHandle[worldData.LayerCount];
-			NativeArray<float> atmosphericWindowUp = new NativeArray<float>(_cellCount, Allocator.TempJob);
-			NativeArray<float> atmosphericWindowDown = new NativeArray<float>(_cellCount, Allocator.TempJob);
 
 			// transmit up from land
 			for (int j = 1; j < worldData.LayerCount; j++)
@@ -2308,12 +2375,6 @@ public class WorldSim {
 			#endregion
 
 			#region Dispose Temporary Arrays
-			atmosphericWindowUp.Dispose();
-			atmosphericWindowDown.Dispose();
-			dropletDelta.Dispose();
-			precipitationMass.Dispose();
-			precipitationTemperature.Dispose();
-			cloudEvaporationMass.Dispose();
 			applyAdvectionJobHandles.Dispose();
 			fluxJobHandles.Dispose();
 			energyJobHandles.Dispose();
@@ -2324,20 +2385,6 @@ public class WorldSim {
 			foreach (var a in tempArrays)
 			{
 				a.Dispose();
-			}
-			conductionWaterTerrainTotal.Dispose();
-			conductionWaterLavaTotal.Dispose();
-			for (int i = 0; i < worldData.LayerCount; i++)
-			{
-				thermalRadiationDelta[i].Dispose();
-				thermalRadiationTransmittedUp[i].Dispose();
-				thermalRadiationTransmittedDown[i].Dispose();
-				windowRadiationTransmittedUp[i].Dispose();
-				windowRadiationTransmittedDown[i].Dispose();
-				solarReflected[i].Dispose();
-				latentHeat[i].Dispose();
-				condensationGroundMass[i].Dispose();
-				condensationCloudMass[i].Dispose();
 			}
 			#endregion
 
