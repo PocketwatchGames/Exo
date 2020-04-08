@@ -1,4 +1,4 @@
-﻿Shader "Custom/VertexColoredShader"
+﻿Shader "Custom/TerrainShader"
  {
     Properties{
 		_UVScale("UV Scale", Range(0, 100)) = 1

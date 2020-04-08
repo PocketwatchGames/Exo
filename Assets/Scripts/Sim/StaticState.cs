@@ -8,6 +8,8 @@ using Unity.Collections;
 
 public struct StaticState {
 
+	public const int MaxNeighbors = 6;
+
 	public int Count;
 	public float PlanetRadius;
 	public float CellSurfaceArea;
@@ -30,11 +32,11 @@ public struct StaticState {
 		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
 		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent);
 		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent);
-		Neighbors = new NativeArray<int>(Count * 6, Allocator.Persistent);
-		NeighborDir = new NativeArray<float3>(Count * 6, Allocator.Persistent);
-		NeighborDistInverse = new NativeArray<float>(Count * 6, Allocator.Persistent);
-		NeighborDiffInverse = new NativeArray<float3>(Count * 6, Allocator.Persistent);
-		NeighborDist = new NativeArray<float>(Count * 6, Allocator.Persistent);
+		Neighbors = new NativeArray<int>(Count * MaxNeighbors, Allocator.Persistent);
+		NeighborDir = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
+		NeighborDistInverse = new NativeArray<float>(Count * MaxNeighbors, Allocator.Persistent);
+		NeighborDiffInverse = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
+		NeighborDist = new NativeArray<float>(Count * MaxNeighbors, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
 		CellSurfaceArea = surfaceArea / Count;
 		CellRadius = math.sqrt(CellSurfaceArea / math.PI);
@@ -80,9 +82,9 @@ public struct StaticState {
 				angleB *= math.sign(math.dot(pos, math.cross(forward, diffB)));
 				return (int)math.sign(angleB - angleA);
 			});
-			for (int j = 0; j < 6; j++)
+			for (int j = 0; j < MaxNeighbors; j++)
 			{
-				int index = i * 6 + j;
+				int index = i * MaxNeighbors + j;
 				if (j < neighborList[i].Count)
 				{
 					int n = neighborList[i][j].Item1;
@@ -136,5 +138,10 @@ public struct StaticState {
 	public int GetWaterIndex(int layer, int i)
 	{
 		return Count * layer + i;
+	}
+
+	public int GetMaxNeighbors(int cell)
+	{
+		return (Neighbors[(cell + 1) * MaxNeighbors - 1] >= 0) ? MaxNeighbors : (MaxNeighbors - 1);
 	}
 }

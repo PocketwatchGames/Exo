@@ -128,6 +128,7 @@ public class WorldView : MonoBehaviour {
 	public Material CloudMaterialFront, CloudMaterialBack;
 	public Material DustMaterial;
 	public Material LavaMaterial;
+	public Material OverlayMaterial;
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
 	public FoliageManager Foliage;
@@ -673,6 +674,11 @@ public class WorldView : MonoBehaviour {
 	{
 		ActiveMeshOverlay = (WorldView.MeshOverlay)dropdown.value;
 		_tickLerpTime = 0;
+
+		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
+		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
+		_lavaObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? LavaMaterial : OverlayMaterial;
+
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
