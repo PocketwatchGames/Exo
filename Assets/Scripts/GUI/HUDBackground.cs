@@ -21,11 +21,17 @@ public class HUDBackground : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
 	public void OnPointerDown(PointerEventData ped)
 	{
-
+		if (ped.button == PointerEventData.InputButton.Left)
+		{
+			hud.OnBackgroundMouseDown();
+		}
 	}
 	public void OnPointerUp(PointerEventData ped)
 	{
-
+		if (ped.button == PointerEventData.InputButton.Left)
+		{
+			hud.OnBackgroundMouseUp();
+		}
 	}
 	public void OnPointerClick(PointerEventData ped)
 	{

@@ -5,7 +5,7 @@ using UnityEngine;
 public class CellInfoPanel : MonoBehaviour
 {
 	public UnityEngine.UI.Text TextObject;
-	public GameplayManager GameplayManager;
+	public HUD HUD;
 	public CellInfo.CellInfoType CellInfo;
 
 	// Start is called before the first frame update
@@ -16,7 +16,7 @@ public class CellInfoPanel : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-		TextObject.text = GameplayManager.GetCellInfo(CellInfo);
+		TextObject.text = HUD.GetCellInfo(CellInfo);
     }
 
 
