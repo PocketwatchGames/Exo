@@ -7,9 +7,11 @@ using Unity.Collections;
 
 public class WorldSimComponent : MonoBehaviour
 {
+	private const int _simStateCount = 2;
 
 	public int Seed;
 	public int Subdivisions = 5;
+	public float TicksPerSecond = 1;
 	public bool CheckForDegeneracy;
 	public bool CollectGlobals = false;
 	public bool LogState;
@@ -18,27 +20,25 @@ public class WorldSimComponent : MonoBehaviour
 	public TextAsset WorldDataAsset;
 	public WorldData WorldData;
 	public StaticState StaticState;
-	public Icosphere Icosphere;
-	public float TimeScale;
+
+	[HideInInspector] public Icosphere Icosphere;
+	[HideInInspector] public bool CollectOverlay = false;
+	[HideInInspector] public float TimeScale;
 
 	public int CellCount { get; private set; }
 	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
 	public ref DependentState DependentState { get { return ref _dependentState; } }
 	public ref DisplayState DisplayState { get { return ref _displayState; } }
 	public float TimeTillTick { get; private set; }
-
 	public float InverseCellCount { get; private set; }
-
-	private WorldGenData _worldGenData = new WorldGenData();
 
 	[SerializeField]
 	private WorldSim _worldSim;
-	private const int _simStateCount = 2;
+	private WorldGenData _worldGenData = new WorldGenData();
 	private SimState[] _simStates;
 	private DependentState _dependentState;
 	private DisplayState _displayState;
 	private int _activeSimState;
-	private float _ticksPerSecond = 1;
 
 	public delegate void TickEventHandler();
 	public event TickEventHandler OnTick;
@@ -93,7 +93,7 @@ public class WorldSimComponent : MonoBehaviour
 			int iterations = 0;
 			while (TimeTillTick <= 0)
 			{
-				TimeTillTick += _ticksPerSecond;
+				TimeTillTick += TicksPerSecond;
 				iterations++;
 			}
 			Tick(ref _simStates[_activeSimState], iterations);
@@ -115,8 +115,8 @@ public class WorldSimComponent : MonoBehaviour
 			CheckForDegeneracy,
 			LogState, 
 			LogStateIndex,
-			CollectGlobals, 
-			CollectGlobals);
+			CollectGlobals,
+			CollectOverlay);
 
 		OnTick?.Invoke();
 

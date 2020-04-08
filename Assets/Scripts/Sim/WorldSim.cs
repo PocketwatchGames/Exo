@@ -261,7 +261,20 @@ public class WorldSim {
 
 	}
 
-	public bool Tick(SimState[] states, int stateCount, int ticksToAdvance, ref DependentState dependent, ref DisplayState display, ref StaticState staticState, ref WorldData worldData, ref int curStateIndex, bool checkForDegeneracy, bool logState, int logStateIndex, bool displayGlobals, bool overlayActive)
+	public bool Tick(
+		SimState[] states, 
+		int stateCount, 
+		int ticksToAdvance,
+		ref DependentState dependent,
+		ref DisplayState display, 
+		ref StaticState staticState,
+		ref WorldData worldData,
+		ref int curStateIndex, 
+		bool checkForDegeneracy, 
+		bool logState, 
+		int logStateIndex,
+		bool displayGlobals, 
+		bool overlayActive)
 	{
 		bool degenerate = false;
 		JobHandle lastJobHandle = default(JobHandle);

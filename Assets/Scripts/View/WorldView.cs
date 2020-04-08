@@ -443,7 +443,7 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateCellJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateCellJob()
 		{
 			TerrainColor = to.TerrainColor,
 			TerrainElevation = to.TerrainElevation,
@@ -678,6 +678,7 @@ public class WorldView : MonoBehaviour {
 		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
 		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
 		_lavaObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? LavaMaterial : OverlayMaterial;
+		Sim.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
 
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}

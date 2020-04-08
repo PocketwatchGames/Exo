@@ -66,7 +66,7 @@ public struct RenderState {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct BuildRenderStateCellJob : IJobParallelFor {
 	public NativeArray<Color32> TerrainColor;
 	public NativeArray<float> TerrainElevation;
