@@ -98,6 +98,49 @@ public struct SimState {
 		}
 	}
 
+	public void CopyFrom(ref SimState from)
+	{
+		PlanetState = from.PlanetState;
+		Roughness.CopyFrom(from.Roughness);
+		GroundCarbon.CopyFrom(from.GroundCarbon);
+		Elevation.CopyFrom(from.Elevation);
+		GroundTemperature.CopyFrom(from.GroundTemperature);
+		GroundWater.CopyFrom(from.GroundWater);
+		GroundWaterTemperature.CopyFrom(from.GroundWaterTemperature);
+		FloraMass.CopyFrom(from.FloraMass);
+		FloraWater.CopyFrom(from.FloraWater);
+		FloraTemperature.CopyFrom(from.FloraTemperature);
+		FloraGlucose.CopyFrom(from.FloraGlucose);
+		IceTemperature.CopyFrom(from.IceTemperature);
+		IceMass.CopyFrom(from.IceMass);
+		CloudMass.CopyFrom(from.CloudMass);
+		CloudTemperature.CopyFrom(from.CloudTemperature);
+		CloudDropletMass.CopyFrom(from.CloudDropletMass);
+		LavaTemperature.CopyFrom(from.LavaTemperature);
+		LavaMass.CopyFrom(from.LavaMass);
+		CrustDepth.CopyFrom(from.CrustDepth);
+		MagmaMass.CopyFrom(from.MagmaMass);
+		for (int i = 0; i < from.AirTemperaturePotential.Length; i++)
+		{
+			AirTemperaturePotential[i].CopyFrom(from.AirTemperaturePotential[i]);
+			AirVapor[i].CopyFrom(from.AirVapor[i]);
+			AirCarbon[i].CopyFrom(from.AirCarbon[i]);
+			AirVelocity[i].CopyFrom(from.AirVelocity[i]);
+			Dust[i].CopyFrom(from.Dust[i]);
+		}
+
+		for (int i = 0; i < from.WaterTemperature.Length; i++)
+		{
+			WaterTemperature[i].CopyFrom(from.WaterTemperature[i]);
+			WaterMass[i].CopyFrom(from.WaterMass[i]);
+			WaterCarbon[i].CopyFrom(from.WaterCarbon[i]);
+			PlanktonMass[i].CopyFrom(from.PlanktonMass[i]);
+			PlanktonGlucose[i].CopyFrom(from.PlanktonGlucose[i]);
+			SaltMass[i].CopyFrom(from.SaltMass[i]);
+			WaterVelocity[i].CopyFrom(from.WaterVelocity[i]);
+		}
+	}
+
 	public void Dispose()
 	{
 		Roughness.Dispose();
@@ -391,8 +434,11 @@ public struct DisplayState {
 	public NativeArray<SolarAbsorptivity>[] AbsorptionSolar;
 	public NativeArray<ThermalAbsorptivity>[] AbsorptionThermal;
 
+	private bool _initialized;
+
 	public void Init(int count, int airLayers, int waterLayers, int totalLayers)
 	{
+		_initialized = true;
 		SolarRadiationAbsorbedSurface = new NativeArray<float>(count, Allocator.Persistent);
 		Rainfall = new NativeArray<float>(count, Allocator.Persistent);
 		CondensationCloud = new NativeArray<float>(count, Allocator.Persistent);
@@ -449,6 +495,10 @@ public struct DisplayState {
 
 	public void Dispose()
 	{
+		if (!_initialized)
+		{
+			return;
+		}
 		SolarRadiationAbsorbedSurface.Dispose();
 		Rainfall.Dispose();
 		CondensationCloud.Dispose();

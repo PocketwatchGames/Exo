@@ -7,6 +7,9 @@ using UnityEngine;
 
 [Serializable]
 public struct WorldData {
+
+	public const int TerrainLayers = 5;
+
 	public float SecondsPerTick;
 	public int AirLayers;
 	public int WaterLayers;
@@ -230,6 +233,17 @@ public struct WorldData {
 	[NonSerialized] public float declinationOfSun;
 	[NonSerialized] public float sunHitsAtmosphereBelowHorizonAmount;
 	[NonSerialized] public float inverseSunAtmosphereAmount;
+
+	[NonSerialized] public int LayerCount;
+	[NonSerialized] public int TerrainLayer;
+	[NonSerialized] public int CloudLayer;
+	[NonSerialized] public int WaterLayer0;
+	[NonSerialized] public int FloraLayer;
+	[NonSerialized] public int IceLayer;
+	[NonSerialized] public int AirLayer0;
+	[NonSerialized] public int SurfaceWaterLayer;
+
+
 	#endregion
 
 	public void Init()
@@ -244,6 +258,16 @@ public struct WorldData {
 		wattsToKJPerTick = SecondsPerTick * 1000;
 		sunHitsAtmosphereBelowHorizonAmount = 0.055f;
 		inverseSunAtmosphereAmount = 1.0f / (1.0f + sunHitsAtmosphereBelowHorizonAmount);
+
+
+		LayerCount = AirLayers + WaterLayers + TerrainLayers;
+		TerrainLayer = 0;
+		FloraLayer = TerrainLayer + 1;
+		WaterLayer0 = FloraLayer + 1;
+		IceLayer = WaterLayer0 + WaterLayers;
+		AirLayer0 = IceLayer + 1;
+		SurfaceWaterLayer = WaterLayers - 2;
+		CloudLayer = AirLayer0 + AirLayers;
 
 	}
 

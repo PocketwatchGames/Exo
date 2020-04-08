@@ -52,7 +52,7 @@ public class WorldSimComponent : MonoBehaviour
 		CellCount = Icosphere.Vertices.Length;
 		InverseCellCount = 1.0f / CellCount;
 
-		_worldSim = new WorldSim(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
+		_worldSim = new WorldSim(CellCount, ref WorldData);
 
 		TimeTillTick = 0.00001f;
 		_activeSimState = 0;
@@ -66,48 +66,7 @@ public class WorldSimComponent : MonoBehaviour
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
 
-		_displayState = new DisplayState();
-		// TODO: get rid of this constant
-		const int totalLayersHack = 14;
-		_displayState.Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers, totalLayersHack);
-
-		var tempAdvectionDestination = new NativeArray<BarycentricValueVertical>(CellCount, Allocator.TempJob);
-		var tempVelocity = new NativeArray<float3>(CellCount, Allocator.TempJob);
-		var tempCloudMass = new NativeArray<float>(CellCount, Allocator.TempJob);
-		JobHandle initDisplayHandle = default(JobHandle);
-		for (int i = 1; i < WorldData.AirLayers - 1; i++)
-		{
-			var initDisplayJob = new InitDisplayAirLayerJob()
-			{
-				DisplayPressure = _displayState.Pressure[i],
-				DisplayPressureGradientForce = _displayState.PressureGradientForce[i],
-				DisplayCondensationCloud = _displayState.CondensationCloud,
-				DisplayCondensationGround = _displayState.CondensationGround,
-				Enthalpy = _displayState.EnthalpyAir[i],
-				WindVertical = _displayState.WindVertical[i],
-				DustCoverage = _displayState.DustMass,
-				CarbonDioxidePercent = _displayState.CarbonDioxidePercent[i],
-
-				CarbonDioxide = ActiveSimState.AirCarbon[i],
-				Gravity = ActiveSimState.PlanetState.Gravity,
-				AirTemperaturePotential = ActiveSimState.AirTemperaturePotential[i],
-				AirPressure = DependentState.AirPressure[i],
-				LayerMiddle = DependentState.LayerMiddle[i],
-				PressureGradientForce = tempVelocity,
-				CondensationCloud = tempCloudMass, 
-				CondensationGround = tempCloudMass, 
-				AirMass = _dependentState.AirMass[i],
-				VaporMass = ActiveSimState.AirVapor[i],
-				DustMass = ActiveSimState.Dust[i],
-				AdvectionDestination = tempAdvectionDestination,
-			};
-			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(CellCount, 1, initDisplayHandle));
-		}
-		initDisplayHandle.Complete();
-		tempAdvectionDestination.Dispose();
-		tempVelocity.Dispose();
-		tempCloudMass.Dispose();
-
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref DependentState, ref WorldData);
 	}
 
 	public void OnDestroy()
@@ -144,7 +103,20 @@ public class WorldSimComponent : MonoBehaviour
 
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
-		bool degen = _worldSim.Tick(_simStates, _simStateCount, ticksToAdvance, ref _dependentState, ref _displayState, ref StaticState, ref WorldData, ref _activeSimState, CheckForDegeneracy, LogState, LogStateIndex, CollectGlobals, CollectGlobals);
+		bool degen = _worldSim.Tick(
+			_simStates,
+			_simStateCount,
+			ticksToAdvance, 
+			ref _dependentState, 
+			ref _displayState, 
+			ref StaticState, 
+			ref WorldData, 
+			ref _activeSimState,
+			CheckForDegeneracy,
+			LogState, 
+			LogStateIndex,
+			CollectGlobals, 
+			CollectGlobals);
 
 		OnTick?.Invoke();
 
@@ -154,6 +126,19 @@ public class WorldSimComponent : MonoBehaviour
 		}
 	}
 
+	public delegate void EditSimStateFunc(ref SimState lastState, ref SimState nextState);
+	public void Edit(EditSimStateFunc editSimState)
+	{
+		ref var lastState = ref _simStates[_activeSimState];
+		_activeSimState = (_activeSimState + 1) % _simStateCount;
+		ref var nextState = ref _simStates[_activeSimState];
+
+		editSimState(ref lastState, ref nextState);
+
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref DependentState, ref WorldData);
+
+		OnTick?.Invoke();
+	}
 
 	public void StepTime()
 	{
@@ -161,5 +146,50 @@ public class WorldSimComponent : MonoBehaviour
 		TimeTillTick = 0;
 	}
 
+
+	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref DependentState dependentState, ref WorldData worldData)
+	{
+		displayState.Dispose();
+
+		displayState = new DisplayState();
+		displayState.Init(cellCount, worldData.AirLayers, worldData.WaterLayers, worldData.LayerCount);
+
+		var tempAdvectionDestination = new NativeArray<BarycentricValueVertical>(cellCount, Allocator.TempJob);
+		var tempVelocity = new NativeArray<float3>(cellCount, Allocator.TempJob);
+		var tempCloudMass = new NativeArray<float>(cellCount, Allocator.TempJob);
+		JobHandle initDisplayHandle = default(JobHandle);
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			var initDisplayJob = new InitDisplayAirLayerJob()
+			{
+				DisplayPressure = displayState.Pressure[i],
+				DisplayPressureGradientForce = displayState.PressureGradientForce[i],
+				DisplayCondensationCloud = displayState.CondensationCloud,
+				DisplayCondensationGround = displayState.CondensationGround,
+				Enthalpy = displayState.EnthalpyAir[i],
+				WindVertical = displayState.WindVertical[i],
+				DustCoverage = displayState.DustMass,
+				CarbonDioxidePercent = displayState.CarbonDioxidePercent[i],
+
+				CarbonDioxide = activeSimState.AirCarbon[i],
+				Gravity = activeSimState.PlanetState.Gravity,
+				AirTemperaturePotential = activeSimState.AirTemperaturePotential[i],
+				AirPressure = dependentState.AirPressure[i],
+				LayerMiddle = dependentState.LayerMiddle[i],
+				PressureGradientForce = tempVelocity,
+				CondensationCloud = tempCloudMass,
+				CondensationGround = tempCloudMass,
+				AirMass = dependentState.AirMass[i],
+				VaporMass = activeSimState.AirVapor[i],
+				DustMass = activeSimState.Dust[i],
+				AdvectionDestination = tempAdvectionDestination,
+			};
+			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(cellCount, 1, initDisplayHandle));
+		}
+		initDisplayHandle.Complete();
+		tempAdvectionDestination.Dispose();
+		tempVelocity.Dispose();
+		tempCloudMass.Dispose();
+	}
 
 }
