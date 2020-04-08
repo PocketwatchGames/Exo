@@ -30,7 +30,7 @@ public class HUD : MonoBehaviour
 	public void AddToolbarButton(GameTool tool)
 	{
 		var b = GameObject.Instantiate(GameToolButtonPrefab, Toolbar.transform);
-		b.Init(tool);
+		b.Tool = tool;
 	}
 
 	void Update()
@@ -42,12 +42,12 @@ public class HUD : MonoBehaviour
 		if (results.Count == 0)
 		{
 		}
+		var p = GetMouseCellIndex();
 		if (_isDown)
 		{
-			Gameplay.OnWorldDrag(_dragStart - Input.mousePosition);
+			Gameplay.OnWorldDrag(p.Item1, p.Item2, _dragStart - Input.mousePosition);
 		} else
 		{
-			var p = GetMouseCellIndex();
 			Gameplay.OnWorldHovered(p.Item1, p.Item2);
 		}
 	}

@@ -25,10 +25,6 @@ public class GameplayManager : MonoBehaviour {
 	[HideInInspector]
 	public GameTool ActiveTool;
 
-
-
-	private float3 DragStart;
-
 	public event Action<int> OnSetActiveCell;
 
 
@@ -48,23 +44,28 @@ public class GameplayManager : MonoBehaviour {
 
 	public void OnWorldClicked(Vector3 worldPos, int cell)
 	{
+		ActiveTool?.OnClick(worldPos, cell);
 	}
 
 	public void OnWorldMouseDown(Vector3 worldPos, int cell)
 	{
+		ActiveTool?.OnPointerDown(worldPos, cell);
 	}
 
 	public void OnWorldMouseUp(Vector3 worldPos, int cell)
 	{
+		ActiveTool?.OnPointerUp(worldPos, cell);
 	}
 
 	public void OnWorldHovered(Vector3 worldPos, int cell)
 	{
+		ActiveTool?.OnUpdate(worldPos, cell);
 	}
 
-	public void OnWorldDrag(Vector3 direction)
+	public void OnWorldDrag(Vector3 worldPos, int cell, Vector3 direction)
 	{
-		
+		ActiveTool?.OnDragMove(worldPos, cell, direction);
+
 	}
 
 	public void SetActiveCell(int index, bool locked)

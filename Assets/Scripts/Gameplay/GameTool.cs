@@ -13,7 +13,7 @@ public class GameTool : MonoBehaviour {
 	protected GameplayManager Gameplay;
 	public void Start()
 	{
-		Gameplay = GetComponent<GameplayManager>();
+		Gameplay = transform.parent.GetComponent<GameplayManager>();
 	}
 	virtual public void OnSelected()
 	{
@@ -32,7 +32,7 @@ public class GameTool : MonoBehaviour {
 	virtual public void OnClick(Vector3 worldPos, int cellIndex) { }
 	virtual public void OnPointerDown(Vector3 worldPos, int cellIndex) { }
 	virtual public void OnPointerUp(Vector3 worldPos, int cellIndex) { }
-	virtual public void OnDragMove(Vector2 direction, Vector3 worldPos, int cellIndex) { }
+	virtual public void OnDragMove(Vector3 worldPos, int cellIndex, Vector2 direction) { }
 	virtual public void OnUpdate(Vector3 worldPos, int cellIndex) { }
 
 }
