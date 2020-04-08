@@ -135,6 +135,13 @@ public class WorldSimComponent : MonoBehaviour
 
 		editSimState(ref lastState, ref nextState);
 
+		List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
+		SimJobs.UpdateDependentVariables(_worldSim.SimJob, ref nextState, ref DependentState, ref WorldData, default(JobHandle), tempArrays).Complete();
+		foreach (var i in tempArrays)
+		{
+			i.Dispose();
+		}
+
 		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref DependentState, ref WorldData);
 
 		OnTick?.Invoke();

@@ -11,7 +11,7 @@ public static class SimJobs {
 	{
 		var waterMassSum = new NativeArray<float>(state.IceMass, Allocator.TempJob);
 		var airMassTotal = new NativeArray<float>(state.IceMass.Length, Allocator.TempJob);
-		var waterMassTotal = new NativeArray<float>(state.IceMass.Length, Allocator.Persistent);
+		var waterMassTotal = new NativeArray<float>(state.IceMass.Length, Allocator.TempJob);
 		arraysToDispose.Add(waterMassSum);
 		arraysToDispose.Add(airMassTotal);
 		arraysToDispose.Add(waterMassTotal);

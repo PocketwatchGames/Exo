@@ -34,11 +34,11 @@ public class ToolMoveEarth : GameTool {
 	override public void OnDragMove(Vector3 worldPos, int cellIndex, Vector2 direction) {
 		if (cellIndex != ActiveCell)
 		{
-			Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { MoveEarth(ref last, ref next, ActiveCell, cellIndex); });
+			Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, ActiveCell, cellIndex); });
 		}
 	}
 
-	private void MoveEarth(ref SimState lastState, ref SimState nextState, int from, int to)
+	private void Activate(ref SimState lastState, ref SimState nextState, int from, int to)
 	{
 		nextState.CopyFrom(ref lastState);
 
