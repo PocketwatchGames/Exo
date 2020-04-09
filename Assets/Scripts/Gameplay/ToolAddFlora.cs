@@ -10,25 +10,14 @@ public class ToolAddFlora : GameTool {
 
 	public float Speed = 1000;
 
-	public override void OnSelected()
-	{
-		base.OnSelected();
-		Gameplay.SetActiveCell(-1, false);
-	}
-	public override void OnDeselected()
-	{
-		base.OnDeselected();
-		Gameplay.SetActiveCell(-1, false);
-	}
-	override public void OnPointerDown(Vector3 worldPos, int cellIndex) {
-		Gameplay.SetActiveCell(cellIndex, false);
-	}
-	override public void OnPointerUp(Vector3 worldPos, int cellIndex) {
-		Gameplay.SetActiveCell(-1, false);
-	}
 	override public void OnDragMove(Vector3 worldPos, int cellIndex, Vector2 direction) {
 		Gameplay.SetActiveCell(cellIndex, false);
 		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.DependentState); });
+	}
+	public override void OnUpdate(Vector3 worldPos, int cellIndex)
+	{
+		base.OnUpdate(worldPos, cellIndex);
+		Gameplay.SetActiveCell(cellIndex, false);
 	}
 
 	private void Activate(ref SimState lastState, ref SimState nextState, int cell, ref WorldData worldData, ref DependentState dependent)
