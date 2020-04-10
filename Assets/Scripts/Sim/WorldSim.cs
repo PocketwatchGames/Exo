@@ -2184,7 +2184,7 @@ public void Dispose(ref WorldData worldData)
 
 			#endregion
 
-
+			// TODO: we really just want to update depths
 			#region Update dependent variables
 
 			SimJobs.UpdateDependentVariables(SimJob, ref nextState, ref dependent, ref worldData, default(JobHandle), tempArrays).Complete();

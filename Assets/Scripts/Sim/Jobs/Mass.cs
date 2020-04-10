@@ -234,7 +234,7 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
-		CarbonDioxide[i] += AirCarbonDelta[i] + SoilRespiration[i] * WaterCoverage[i];
+		CarbonDioxide[i] += AirCarbonDelta[i] + SoilRespiration[i] * (1.0f - WaterCoverage[i]);
 	}
 }
 
@@ -373,11 +373,12 @@ public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 			float airLayerMass = AirMass[i] + airCarbon;
 			float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + airLayerMass);
 			float diffusionDepth = math.min(1, WaterAirCarbonDiffusionDepth / WaterDepth[i]);
-			float diffusion = (desiredCarbonDensity - waterCarbon / waterLayerMass) * WaterAirCarbonDiffusionCoefficient;
-			diffusion *= waterLayerMass * diffusionDepth;
+			float diffusion = (desiredCarbonDensity * waterLayerMass - waterCarbon) * WaterAirCarbonDiffusionCoefficient;
+			diffusion *= diffusionDepth;
 
-			AirCarbon[i] = airCarbon - diffusion;
-			WaterCarbon[i] = waterCarbon + diffusion;
+			// TODO: do we need these guards?  i worry about floating point error leading to negative values, but we shouldn't need them
+			AirCarbon[i] = math.max(0, airCarbon - diffusion);
+			WaterCarbon[i] = math.max(0, waterCarbon + diffusion);
 		}
 #endif
 	}
