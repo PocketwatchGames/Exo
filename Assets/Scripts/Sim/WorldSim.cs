@@ -2632,7 +2632,7 @@ public void Dispose(ref WorldData worldData)
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
 		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);
 
-		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		for (int j = worldData.AirLayers - 2; j >= 1; j--)
 		{
 			s.AppendFormat("\nAIR LAYER {0}\n", j);
 			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[j][i]);
@@ -2641,7 +2641,7 @@ public void Dispose(ref WorldData worldData)
 			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[j][i]);
 		}
 
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
 			s.AppendFormat("\nWATER LAYER {0}\n", j);
 			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[j][i]);

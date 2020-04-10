@@ -1,6 +1,6 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
 //#define DISABLE_AIR_ADVECTION
-#define DISABLE_WATER_ADVECTION
+//#define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
 //#define AdvectionAirJobDebug
 
@@ -476,9 +476,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 		Delta[i] = new DiffusionWater()
 		{
-			// TODO: reenable
-		//	WaterMass = newMass,
-			WaterMass = waterMass,
+			WaterMass = newMass,
 			SaltMass = newSaltMass,
 			CarbonMass = newCarbon,
 			Plankton = newPlankton,
