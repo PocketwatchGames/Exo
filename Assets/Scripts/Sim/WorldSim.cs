@@ -2242,22 +2242,92 @@ public void Dispose(ref WorldData worldData)
 				Neighbors = staticState.Neighbors
 			}, waterFlowJobHandle));
 
-			waterFlowJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, SimJob.Schedule(new ApplyAdvectionWaterJob()
+			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, SimJob.Schedule(new ApplyAdvectionWaterJob()
 			{
-				Advection = diffusionWater[worldData.SurfaceWaterLayer],
+				WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer],
 				SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
 				CarbonMass = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
 				PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
 				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
 				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
 				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
-				WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer]
-			}, waterFlowJobHandle));
 
+				Advection = diffusionWater[worldData.SurfaceWaterLayer],
+			}, waterFlowJobHandle));
 			waterFlowJobHandle.Complete();
+
 
 			#endregion
 
+			#region Rebalance
+
+			for (int i = worldData.SurfaceWaterLayer; i >= 2; i--)
+			{
+
+				float maxDepth;
+				float minDepth;
+				// TODO: this doesn't handle more than 3 layers
+				if (i == worldData.SurfaceWaterLayer)
+				{
+					maxDepth = worldData.SurfaceWaterDepth;
+					minDepth = worldData.SurfaceWaterDepth - 10;
+				} else
+				{
+					maxDepth = worldData.ThermoclineDepth;
+					minDepth = worldData.ThermoclineDepth - 10;
+				}
+				var h = SimJob.Schedule(new RebalanceWaterLayersLimitJob()
+				{
+					Delta1 = diffusionWater[i],
+					Delta2 = diffusionWater[i - 1],
+
+					Mass1 = nextState.WaterMass[i],
+					Salt1 = nextState.SaltMass[i],
+					Carbon1 = nextState.WaterCarbon[i],
+					PlanktonMass1 = nextState.PlanktonMass[i],
+					PlanktonGlucose1 = nextState.PlanktonGlucose[i],
+					Temperature1 = nextState.WaterTemperature[i],
+					Velocity1 = nextState.WaterVelocity[i],
+
+					Mass2 = nextState.WaterMass[i - 1],
+					Salt2 = nextState.SaltMass[i - 1],
+					Carbon2 = nextState.WaterCarbon[i - 1],
+					Temperature2 = nextState.WaterTemperature[i - 1],
+					Velocity2 = nextState.WaterVelocity[i - 1],
+
+					MaxDepth1 = maxDepth,
+					MinDepth1 = minDepth,
+				});
+				var rebalanceWaterJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
+				{
+					WaterMass = nextState.WaterMass[i],
+					SaltMass = nextState.SaltMass[i],
+					CarbonMass = nextState.WaterCarbon[i],
+					PlanktonMass = nextState.PlanktonMass[i],
+					PlanktonGlucose = nextState.PlanktonGlucose[i],
+					Temperature = nextState.WaterTemperature[i],
+					Velocity = nextState.WaterVelocity[i],
+
+					Advection = diffusionWater[i],
+				}, h);
+				rebalanceWaterJobHandle = JobHandle.CombineDependencies(rebalanceWaterJobHandle, SimJob.Schedule(new ApplyAdvectionWaterJob()
+				{
+					WaterMass = nextState.WaterMass[i - 1],
+					SaltMass = nextState.SaltMass[i - 1],
+					CarbonMass = nextState.WaterCarbon[i - 1],
+					PlanktonMass = nextState.PlanktonMass[i - 1],
+					PlanktonGlucose = nextState.PlanktonGlucose[i - 1],
+					Temperature = nextState.WaterTemperature[i - 1],
+					Velocity = nextState.WaterVelocity[i - 1],
+
+					Advection = diffusionWater[i - 1],
+				}, h));
+
+				rebalanceWaterJobHandle.Complete();
+			}
+
+
+			#endregion
 
 			#region Update dependent variables
 

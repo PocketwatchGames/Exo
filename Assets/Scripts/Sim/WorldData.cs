@@ -157,6 +157,8 @@ public struct WorldData {
 
 	[Header("SurfaceWaterFlow")]
 	public float SurfaceWaterFlowDamping;
+	public float SurfaceWaterDepth;
+	public float ThermoclineDepth;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;

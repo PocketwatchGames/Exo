@@ -409,13 +409,13 @@ public static class WorldGen {
 			float plankton;
 			if (i== worldData.WaterLayers - 2)
 			{
-				layerDepthMax = worldGenData.SurfaceWaterDepth;
+				layerDepthMax = worldData.SurfaceWaterDepth;
 				layerCount = 1;
 				plankton = worldGenData.PlanktonMass;
 			}
 			else if (i == worldData.WaterLayers - 3)
 			{
-				layerDepthMax = worldGenData.ThermoclineDepth;
+				layerDepthMax = worldData.ThermoclineDepth;
 				layerCount = 1;
 				plankton = 0;
 			}

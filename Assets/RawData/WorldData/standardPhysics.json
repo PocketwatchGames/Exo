@@ -113,5 +113,7 @@
 	"LavaDensityAdjustment": 0.0001,
 	"LavaEruptionSpeed": 1000,
 
-	"SurfaceWaterFlowDamping": 0.9
+	"SurfaceWaterFlowDamping": 0.9,
+	"SurfaceWaterDepth": 200,
+	"ThermoclineDepth": 800
 }

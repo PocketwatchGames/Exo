@@ -113,13 +113,13 @@ public struct LimitOutgoingFlowJob : IJobParallelFor {
 public struct ApplyFlowJob : IJobParallelFor {
 
 	public NativeArray<DiffusionWater> Delta;
-	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Salt;
 	[ReadOnly] public NativeArray<float> Carbon;
 	[ReadOnly] public NativeArray<float> PlanktonMass;
 	[ReadOnly] public NativeArray<float> PlanktonGlucose;
+	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> FlowPercent;
 
@@ -211,4 +211,123 @@ public struct ApplyFlowJob : IJobParallelFor {
 	}
 }
 
+
+[BurstCompile]
+public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
+
+	public NativeArray<DiffusionWater> Delta1;
+	public NativeArray<DiffusionWater> Delta2;
+	[ReadOnly] public NativeArray<float> Mass1;
+	[ReadOnly] public NativeArray<float> Salt1;
+	[ReadOnly] public NativeArray<float> Carbon1;
+	[ReadOnly] public NativeArray<float> PlanktonMass1;
+	[ReadOnly] public NativeArray<float> PlanktonGlucose1;
+	[ReadOnly] public NativeArray<float> Temperature1;
+	[ReadOnly] public NativeArray<float3> Velocity1;
+	[ReadOnly] public NativeArray<float> Mass2;
+	[ReadOnly] public NativeArray<float> Salt2;
+	[ReadOnly] public NativeArray<float> Carbon2;
+	[ReadOnly] public NativeArray<float> Temperature2;
+	[ReadOnly] public NativeArray<float3> Velocity2;
+	[ReadOnly] public float MaxDepth1;
+	[ReadOnly] public float MinDepth1;
+
+	public void Execute(int i)
+	{
+		float mass1 = Mass1[i];
+		float salt1 = Salt1[i];
+		float mass2 = Mass2[i];
+		float salt2 = Salt2[i];
+		float temperature1 = Temperature1[i];
+		float temperature2 = Temperature2[i];
+		float3 velocity1 = Velocity1[i];
+		float3 velocity2 = Velocity2[i];
+
+		float density1 = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(mass1, salt1), temperature1);
+		float density2 = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(mass2, salt2), temperature2);
+		float depth1 = (mass1 + salt1) / density1;
+		float depth2 = (mass2 + salt2) / density2;
+
+		if (depth1 > MaxDepth1)
+		{
+			float move = 1.0f - MaxDepth1 / depth1;
+			float moveMass = mass1 * move;
+			float moveSalt = salt1 * move;
+			float moveCarbon = Carbon1[i] * move;
+			Delta1[i] = new DiffusionWater()
+			{
+				WaterMass = mass1 - moveMass,
+				SaltMass = salt1 - moveSalt,
+				CarbonMass = Carbon1[i] - moveCarbon,
+				Plankton = PlanktonMass1[i],
+				PlanktonGlucose = PlanktonGlucose1[i],
+				Temperature = temperature1,
+				Velocity = velocity1
+			};
+			float inverseTotalMass = 1.0f / (moveMass + moveSalt + mass2 + salt2);
+			Delta2[i] = new DiffusionWater()
+			{
+				WaterMass = mass2 + moveMass,
+				SaltMass = salt2 + moveSalt,
+				CarbonMass = Carbon2[i] + moveCarbon,
+				Plankton = 0,
+				PlanktonGlucose = 0,
+				Temperature = (temperature2 * (mass2 + salt2) + temperature1 * (moveMass + moveSalt)) * inverseTotalMass,
+				Velocity = (velocity2 * (mass2 + salt2) + velocity1 * (moveMass + moveSalt)) * inverseTotalMass,
+			};
+		}
+		else if (depth2 > 0 && depth1 < MinDepth1)
+		{
+			float move = math.min(1.0f, math.min(depth2, MinDepth1 - depth1) / depth2);
+			float moveMass = mass2 * move;
+			float moveSalt = salt2 * move;
+			float moveCarbon = Carbon2[i] * move;
+			float inverseTotalMass = 1.0f / (moveMass + moveSalt + mass1 + salt1);
+			Delta1[i] = new DiffusionWater()
+			{
+				WaterMass = mass1 + moveMass,
+				SaltMass = salt1 + moveSalt,
+				CarbonMass = Carbon1[i] + moveCarbon,
+				Plankton = PlanktonMass1[i],
+				PlanktonGlucose = PlanktonGlucose1[i],
+				Temperature = (temperature1 * (mass1 + salt1) + temperature2 * (moveMass + moveSalt)) * inverseTotalMass,
+				Velocity = (velocity1 * (mass1 + salt1) + velocity2 * (moveMass + moveSalt)) * inverseTotalMass,
+			};
+			float anyMassRemaining = move < 1 ? 1 : 0;
+			Delta2[i] = new DiffusionWater()
+			{
+				WaterMass = mass2 - moveMass,
+				SaltMass = salt2 - moveSalt,
+				CarbonMass = Carbon2[i] - moveCarbon,
+				Plankton = 0,
+				PlanktonGlucose = 0,
+				Temperature = temperature2 * anyMassRemaining,
+				Velocity = velocity2 * anyMassRemaining
+			};
+		}
+		else
+		{
+			Delta1[i] = new DiffusionWater()
+			{
+				WaterMass = mass1,
+				SaltMass = salt1,
+				CarbonMass = Carbon1[i],
+				Plankton = PlanktonMass1[i],
+				PlanktonGlucose = PlanktonGlucose1[i],
+				Temperature = temperature1,
+				Velocity = velocity1
+			};
+			Delta2[i] = new DiffusionWater()
+			{
+				WaterMass = mass2,
+				SaltMass = salt2,
+				CarbonMass = Carbon2[i],
+				Plankton = 0,
+				PlanktonGlucose = 0,
+				Temperature = temperature2,
+				Velocity = velocity2
+			};
+		}
+	}
+}
 
