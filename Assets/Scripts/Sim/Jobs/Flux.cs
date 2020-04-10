@@ -123,33 +123,39 @@ public struct FluxWaterJob : IJobParallelFor {
 			{
 				float glucose = PlanktonGlucoseMass[i];
 				float inversePlanktonMass = 1.0f / planktonMass;
-				float waterSupply = math.min(1, waterMass * inversePlanktonMass * PlanktonDensityMax);
+				float respiration = 0;
+				if (waterMass > 0)
+				{
+					float waterUsed = math.min(waterMass, planktonMass * PlanktonPhotosynthesisSpeed / PlanktonDensityMax) / waterMass;
 
-				// Photosynthesis: Consume solarRadiation, carbon dioxide, to produce glucose (water and oxygen are ignored)
-				// TODO: carbon dioxide extraction should curve to a limit rather than cap
-				float waterUsed = math.min(1, waterSupply * inversePlanktonMass * PlanktonPhotosynthesisSpeed);
-				float energyUsed = math.min(1, solarRadiation / PlanktonEnergyForPhotosynthesis * inversePlanktonMass * PlanktonPhotosynthesisSpeed);
-				float waterCarbonUsed = math.min(1, waterCarbon * inversePlanktonMass * PlanktonCarbonDioxideExtractionEfficiency * PlanktonPhotosynthesisSpeed);
-				float photosynthesis =
-					(1.0f - math.pow(math.min(1, glucose * inversePlanktonMass), 3)) // glucose saturation
-					* planktonMass * waterUsed * energyUsed * waterCarbonUsed; // carbon dioxide 
+					// Photosynthesis: Consume solarRadiation, carbon dioxide, to produce glucose (water and oxygen are ignored)
+					// TODO: carbon dioxide extraction should curve to a limit rather than cap
+					if (waterMass > 0 && solarRadiation > 0 && waterCarbon > 0)
+					{
+						float energyUsed = math.min(solarRadiation, planktonMass * PlanktonEnergyForPhotosynthesis * PlanktonPhotosynthesisSpeed) / solarRadiation;
+						float waterCarbonUsed = math.min(waterCarbon, planktonMass * PlanktonCarbonDioxideExtractionEfficiency * PlanktonPhotosynthesisSpeed) / waterCarbon;
+						float photosynthesis =
+							(1.0f - math.pow(math.min(1, glucose * inversePlanktonMass), 3)) // glucose saturation
+							* planktonMass * waterUsed * energyUsed * waterCarbonUsed; // carbon dioxide 
 
-				energyFlux -= photosynthesis * PlanktonEnergyForPhotosynthesis;
-				waterCarbonDelta -= photosynthesis;
-				glucoseDelta += photosynthesis;
+						energyFlux -= photosynthesis * PlanktonEnergyForPhotosynthesis;
+						waterCarbonDelta -= photosynthesis;
+						glucoseDelta += photosynthesis;
+					}
 
-				// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
-				float respirationExpenditure = math.min(waterCarbon, math.min(glucose,
-					PlanktonRespirationSpeed 
-					* math.max(0, 1.0f + (temperature - WorldData.FreezingTemperature) * PlanktonRespirationPerDegree) // temperature
-					* waterSupply //water
-					* glucose)); // energy (glucose)
+					// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
+					float respirationExpenditure = math.min(waterCarbon, math.min(glucose,
+						PlanktonRespirationSpeed
+						* math.max(0, 1.0f + (temperature - WorldData.FreezingTemperature) * PlanktonRespirationPerDegree) // temperature
+						* waterUsed //water
+						* glucose)); // energy (glucose)
 
-				float respiration = respirationExpenditure / PlanktonRespirationSpeed;
+					respiration = respirationExpenditure / PlanktonRespirationSpeed;
 
-				energyFlux += respiration * PlanktonEnergyForPhotosynthesis;
-				glucoseDelta -= respirationExpenditure;
-				waterCarbonDelta += respirationExpenditure;
+					energyFlux += respiration * PlanktonEnergyForPhotosynthesis;
+					glucoseDelta -= respirationExpenditure;
+					waterCarbonDelta += respirationExpenditure;
+				}
 
 				// Growth: Consume glucose, produce plant growth
 				float growth = math.min(glucose,
@@ -514,41 +520,48 @@ public struct FluxFloraJob : IJobParallelFor {
 
 			float airDensity = Atmosphere.GetAirDensity(Atmosphere.GetPressureAtElevation(LayerElevation[i],Gravity,AirPressure[i],AirTemperaturePotential[i],LayerElevation[i]+LayerHeight[i]/2), Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i]), AirMass[i], AirVapor[i]);
 
-			// Photosynthesis: Consume solarRadiation, water, carbon dioxide, to produce glucose and oxygen
-			float waterUsed = floraWater * FloraPhotosynthesisSpeed;
-			float energyUsed = math.min(1, energy * FloraPhotosynthesisSpeed * inverseFloraMass / FloraEnergyForPhotosynthesis);
-			// TODO: carbon dioxide extraction should curve to a limit rather than cap
-			float carbonUsed = math.min(1, carbonDioxide * FloraPhotosynthesisSpeed * inverseFloraMass * airDensity / AirMass[i] * FloraCarbonDioxideExtractionEfficiency);
-			float photosynthesis =
-				(1.0f - math.pow(math.min(1, glucose * inverseFloraMass), 3)) // glucose saturation
-				* floraWater * energyUsed * carbonUsed * floraMass;
+			if (energy > 0 && carbonDioxide > 0 && floraWater > 0)
+			{
+				// Photosynthesis: Consume solarRadiation, water, carbon dioxide, to produce glucose and oxygen
+				float waterUsed = math.min(floraWater, floraMass * FloraPhotosynthesisSpeed);
+				float energyUsed = math.min(energy, FloraPhotosynthesisSpeed * floraMass / FloraEnergyForPhotosynthesis) / energy;
+				// TODO: carbon dioxide extraction should curve to a limit rather than cap
+				float carbonUsed = math.min(carbonDioxide, FloraPhotosynthesisSpeed * floraMass * airDensity / AirMass[i] * FloraCarbonDioxideExtractionEfficiency) / carbonDioxide;
+				float photosynthesis =
+					(1.0f - math.pow(math.min(1, glucose * inverseFloraMass), 3)) // glucose saturation
+					* floraWater * energyUsed * carbonUsed * floraMass;
 
+				energy -= photosynthesis * FloraEnergyForPhotosynthesis;
+				floraWaterDelta -= photosynthesis;
+				carbonDioxideDelta -= photosynthesis;
+				glucoseDelta += photosynthesis;
+				oxygenDelta += photosynthesis;
 
-
-			energy -= photosynthesis * FloraEnergyForPhotosynthesis;
-			floraWaterDelta -= photosynthesis;
-			carbonDioxideDelta -= photosynthesis;
-			glucoseDelta += photosynthesis;
-			oxygenDelta += photosynthesis;
+				floraWater -= photosynthesis;
+			}
 
 			// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
-			// TODO: oxygen extraction should curve to a limit rather than cap
-			float oxygenUsed = math.min(1, floraCoverage * OxygenPercent * AirMass[i] * inverseFloraMass * FloraOxygenExtractionEfficiency);
-			float glucoseUsed = math.min(1, glucose * FloraRespirationSpeed * inverseFloraMass);
-			float groundCarbonUsed = math.min(1, soilFertility * FloraRespirationSpeed * inverseFloraMass);
-			float waterUsedForRespiration = math.min(1, floraWater * FloraRespirationSpeed);
-			float respirationExpenditure = 
-				math.max(0, 1.0f + FloraRespirationPerDegree * (FloraTemperature[i] - WorldData.FreezingTemperature))
-				* waterUsedForRespiration * groundCarbonUsed * glucoseUsed * oxygenUsed; // oxygen
+			float respiration = 0;
+			if (OxygenPercent > 0 && glucose > 0 && soilFertility > 0 && floraWater > 0)
+			{
+				// TODO: oxygen extraction should curve to a limit rather than cap
+				float oxygenUsed = math.min(1, floraCoverage * OxygenPercent * AirMass[i] * inverseFloraMass * FloraOxygenExtractionEfficiency);
+				float glucoseUsed = math.min(glucose, FloraRespirationSpeed * floraMass) / glucose;
+				float groundCarbonUsed = math.min(soilFertility, FloraRespirationSpeed * floraMass) / soilFertility;
+				float waterUsedForRespiration = math.min(floraWater, FloraRespirationSpeed * floraMass) / floraWater;
+				float respirationExpenditure =
+					math.max(0, 1.0f + FloraRespirationPerDegree * (FloraTemperature[i] - WorldData.FreezingTemperature))
+					* waterUsedForRespiration * groundCarbonUsed * glucoseUsed * oxygenUsed; // oxygen
 
-			float respiration = respirationExpenditure / FloraRespirationSpeed;
+				respiration = respirationExpenditure / FloraRespirationSpeed;
 
-			energy += respiration * FloraEnergyForPhotosynthesis;
-			glucoseDelta -= respirationExpenditure;
-			floraWaterDelta -= respirationExpenditure;
-			oxygenDelta -= respirationExpenditure;
-			surfaceWaterDelta += 2 * respirationExpenditure;
-			carbonDioxideDelta += respirationExpenditure;
+				energy += respiration * FloraEnergyForPhotosynthesis;
+				glucoseDelta -= respirationExpenditure;
+				floraWaterDelta -= respirationExpenditure;
+				oxygenDelta -= respirationExpenditure;
+				surfaceWaterDelta += 2 * respirationExpenditure;
+				carbonDioxideDelta += respirationExpenditure;
+			}
 
 			// Growth: Consume glucose, produce plant growth
 			float growth = 
