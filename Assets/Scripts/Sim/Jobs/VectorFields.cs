@@ -22,8 +22,77 @@ public struct BarycentricValueVertical {
 }
 
 
+
 [BurstCompile]
 public struct GetVectorDestCoordsJob : IJobParallelFor {
+	public NativeArray<BarycentricValue> Destination;
+	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> Position;
+	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float PlanetRadius;
+	public void Execute(int i)
+	{
+		float3 position = Position[i];
+		float3 pos = position * PlanetRadius;
+
+		float3 velocity = Velocity[i];
+
+		float3 move = velocity * SecondsPerTick;
+		float windMoveHorizontalSq = math.lengthsq(move);
+		const float maxWindMove = 200000;
+		if (windMoveHorizontalSq > maxWindMove * maxWindMove)
+		{
+			move = move / math.sqrt(windMoveHorizontalSq) * maxWindMove;
+		}
+
+		float3 movePos = pos + move;
+		for (int j = 0; j < 6; j++)
+		{
+			int indexB = Neighbors[i * 6 + j];
+			if (indexB >= 0)
+			{
+				int indexC = Neighbors[i * 6 + (j + 1) % 6];
+				if (indexC < 0)
+				{
+					indexC = Neighbors[i * 6];
+				}
+
+				float a;
+				float b;
+				float c;
+				if (Utils.GetBarycentricIntersection(movePos, pos, Position[indexB] * PlanetRadius, Position[indexC] * PlanetRadius, out a, out b, out c))
+				{
+					Destination[i] = new BarycentricValue
+					{
+						indexA = i,
+						indexB = indexB,
+						indexC = indexC,
+						valueA = a,
+						valueB = b,
+						valueC = c,
+					};
+					return;
+				}
+			}
+		}
+
+		// TODO: this means the velocity is too high and has skipped over our neighbors!
+		Destination[i] = new BarycentricValue
+		{
+			indexA = i,
+			indexB = -1,
+			indexC = -1,
+			valueA = 1,
+			valueB = 0,
+			valueC = 0,
+		};
+	}
+}
+
+
+[BurstCompile]
+public struct GetVectorDestCoordsCoriolisJob : IJobParallelFor {
 	public NativeArray<BarycentricValue> Destination;
 	public NativeArray<float3> VelocityDeflected;
 	[ReadOnly] public NativeArray<float3> Velocity;

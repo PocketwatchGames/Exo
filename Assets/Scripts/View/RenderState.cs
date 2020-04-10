@@ -151,6 +151,9 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		var icosphere = Icosphere[i];
 		var elevation = Elevation[i];
 		float roughness = math.max(1, Roughness[i]);
+		// TODO: draw roughness correctly
+		roughness = 1;
+
 		float surfaceElevation = elevation + math.max(roughness, waterDepth);
 
 		if (MeshOverlayActive)

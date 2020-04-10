@@ -43,7 +43,8 @@
 
 	"SoilHeatDepth": 1,
 	"WaterHeatingDepth": 0.1,
-	"WaterAirCarbonDiffusionCoefficient":0.1,
+	"WaterAirCarbonDiffusionCoefficient": 0.1,
+	"WaterAirCarbonDiffusionDepth": 1,
 
 	"IceHeatingDepth": 0.1,
 	"FreezePointReductionPerSalinity": 56.0,
@@ -110,5 +111,7 @@
 	"DustPerLavaEjected": 0.01,
 	"MagmaPressureCrustReductionSpeed": 0.00001,
 	"LavaDensityAdjustment": 0.0001,
-	"LavaEruptionSpeed": 1000
+	"LavaEruptionSpeed": 1000,
+
+	"SurfaceWaterFlowDamping": 0.9
 }

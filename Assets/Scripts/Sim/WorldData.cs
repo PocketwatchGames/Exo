@@ -75,6 +75,7 @@ public struct WorldData {
 	[Header("Evaporation")] // evaporation on earth maxes out around 2.5M per year
 	public float WaterHeatingDepth;
 	public float WaterAirCarbonDiffusionCoefficient; // standard carbon/air: 407.4 ppm, carbon/water: 90 ppm
+	public float WaterAirCarbonDiffusionDepth;
 
 	[Header("Ice")]
 	public float IceHeatingDepth;
@@ -153,6 +154,9 @@ public struct WorldData {
 	public float MagmaPressureCrustReductionSpeed;
 	public float LavaDensityAdjustment;
 	public float LavaEruptionSpeed;
+
+	[Header("SurfaceWaterFlow")]
+	public float SurfaceWaterFlowDamping;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;

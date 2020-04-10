@@ -1,7 +1,7 @@
 ﻿//#define DISABLE_VERTICAL_AIR_MOVEMENT
 //#define DISABLE_AIR_DIFFUSION
 //#define DISABLE_CLOUD_DIFFUSION
-//#define DISABLE_WATER_DIFFUSION
+#define DISABLE_WATER_DIFFUSION
 
 using Unity.Burst;
 using Unity.Jobs;
@@ -305,11 +305,12 @@ public struct DiffusionWaterJob : IJobParallelFor {
 
 		Delta[i] = new DiffusionWater()
 		{
-			Temperature = neighborTemperature,
+			WaterMass = mass,
 			SaltMass = neighborSaltMass,
 			CarbonMass = neighborCarbonMass,
 			Plankton = neighborPlankton,
 			PlanktonGlucose = neighborGlucose,
+			Temperature = neighborTemperature,
 			Velocity = neighborVelocity,
 		};
 	}

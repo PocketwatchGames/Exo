@@ -60,7 +60,7 @@ public class WorldSimComponent : MonoBehaviour
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i] = new SimState();
-			_simStates[i].Init(CellCount, WorldData.AirLayers, WorldData.WaterLayers);
+			_simStates[i].Init(CellCount, ref WorldData);
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);

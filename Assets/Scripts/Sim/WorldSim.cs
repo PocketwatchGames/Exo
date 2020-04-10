@@ -102,6 +102,10 @@ public class WorldSim {
 	private NativeArray<float> atmosphericWindowUp;
 	private NativeArray<float> atmosphericWindowDown;
 
+	private NativeArray<float> _outgoingFlow;
+	private NativeArray<float> _flowPercent;
+
+
 
 	List<NativeList<JobHandle>> jobHandleDependencies = new List<NativeList<JobHandle>>();
 	List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
@@ -233,9 +237,13 @@ public class WorldSim {
 			condensationCloudMass[i] = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		}
 
+
+		_outgoingFlow = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
+		_flowPercent = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
+
 	}
 
-	public void Dispose(ref WorldData worldData)
+public void Dispose(ref WorldData worldData)
 	{
 		solarRadiation.Dispose();
 		albedoSlope.Dispose();
@@ -330,6 +338,10 @@ public class WorldSim {
 			condensationGroundMass[i].Dispose();
 			condensationCloudMass[i].Dispose();
 		}
+
+
+		_outgoingFlow.Dispose();
+		_flowPercent.Dispose();
 
 	}
 
@@ -1578,7 +1590,9 @@ public class WorldSim {
 				AirMass = dependent.AirMass[1],
 				WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer],
 				SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
-				WaterAirCarbonDiffusionCoefficient = worldData.WaterAirCarbonDiffusionCoefficient
+				WaterDepth = dependent.WaterLayerHeight[worldData.SurfaceWaterLayer],
+				WaterAirCarbonDiffusionCoefficient = worldData.WaterAirCarbonDiffusionCoefficient,
+				WaterAirCarbonDiffusionDepth = worldData.WaterAirCarbonDiffusionDepth,
 			}, JobHandle.CombineDependencies(updateMassEvaporationHandle, surfaceWaterMassHandle)));
 
 
@@ -1965,7 +1979,7 @@ public class WorldSim {
 				}, waterDestJob);
 			}
 
-			var cloudDestJob =SimJob.Schedule(new GetVectorDestCoordsJob()
+			var cloudDestJob =SimJob.Schedule(new GetVectorDestCoordsCoriolisJob()
 			{
 				Destination = destinationCloud,
 				VelocityDeflected = cloudVelocityDeflected,
@@ -2012,7 +2026,7 @@ public class WorldSim {
 					PlanktonGlucose = nextState.PlanktonGlucose[i],
 					Temperature = nextState.WaterTemperature[i],
 					Velocity = nextState.WaterVelocity[i],
-					Mass = nextState.WaterMass[i]
+					WaterMass = nextState.WaterMass[i]
 				}, JobHandle.CombineDependencies(advectionJobHandles[i+worldData.WaterLayer0], advectionJobHandles[i + worldData.WaterLayer0 - 1], advectionJobHandles[i + worldData.WaterLayer0 + 1])));
 			}
 
@@ -2149,7 +2163,7 @@ public class WorldSim {
 					PlanktonGlucose = nextState.PlanktonGlucose[i],
 					Temperature = nextState.WaterTemperature[i],
 					Velocity = nextState.WaterVelocity[i],
-					Mass = nextState.WaterMass[i]
+					WaterMass = nextState.WaterMass[i]
 				}, JobHandle.CombineDependencies(diffusionJobHandles[i + worldData.WaterLayer0], diffusionJobHandles[i + worldData.WaterLayer0 - 1], diffusionJobHandles[i + worldData.WaterLayer0 + 1])));
 			}
 
@@ -2167,6 +2181,80 @@ public class WorldSim {
 			}
 
 			diffusionJobHandle.Complete();
+
+			#endregion
+
+
+			#region Update dependent variables
+
+			SimJobs.UpdateDependentVariables(SimJob, ref nextState, ref dependent, ref worldData, default(JobHandle), tempArrays).Complete();
+
+			#endregion
+
+
+			#region Flow
+			var waterFlowJobHandle = default(JobHandle);
+
+			// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
+			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, NeighborJob.Schedule(new UpdateFlowVelocityJob()
+			{
+				Flow = nextState.Flow,
+
+				LastFlow = lastState.Flow,
+				SurfaceElevation = dependent.LayerElevation[1],
+				WaterDepth = dependent.WaterLayerHeight[worldData.SurfaceWaterLayer],
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				Neighbors = staticState.Neighbors,
+				Gravity = nextState.PlanetState.Gravity,
+				SecondsPerTick = worldData.SecondsPerTick,
+				Damping = worldData.SurfaceWaterFlowDamping,
+
+			}, waterFlowJobHandle));
+
+			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, SimJob.Schedule(new SumOutgoingFlowJob()
+			{
+				OutgoingFlow = _outgoingFlow,
+				Flow = nextState.Flow
+			}, waterFlowJobHandle));
+
+			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, NeighborJob.Schedule(new LimitOutgoingFlowJob()
+			{
+				Flow = nextState.Flow,
+				FlowPercent = _flowPercent,
+
+				OutgoingFlow = _outgoingFlow,
+				Neighbors = staticState.Neighbors,
+				WaterDepth = dependent.WaterLayerHeight[worldData.SurfaceWaterLayer]
+			}, waterFlowJobHandle));
+
+			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, SimJob.Schedule(new ApplyFlowJob()
+			{
+				Delta = diffusionWater[worldData.SurfaceWaterLayer],
+
+				Mass = nextState.WaterMass[worldData.SurfaceWaterLayer],
+				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
+				Carbon = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
+				PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
+				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
+				Salt = nextState.SaltMass[worldData.SurfaceWaterLayer],
+				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				FlowPercent = _flowPercent,
+				Neighbors = staticState.Neighbors
+			}, waterFlowJobHandle));
+
+			waterFlowJobHandle = JobHandle.CombineDependencies(diffusionJobHandle, SimJob.Schedule(new ApplyAdvectionWaterJob()
+			{
+				Advection = diffusionWater[worldData.SurfaceWaterLayer],
+				SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
+				CarbonMass = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
+				PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
+				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
+				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
+				WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer]
+			}, waterFlowJobHandle));
+
+			waterFlowJobHandle.Complete();
 
 			#endregion
 
@@ -2423,7 +2511,7 @@ public class WorldSim {
 			degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonDioxide" + i, state.AirCarbon[i], degenVarNames);
 			degen |= CheckDegen(cellCount, degenIndices, "AirVelocity" + i, state.AirVelocity[i], degenVarNames);
 		}
-		for (int i = 1; i < worldData.WaterLayers - 1; i++)
+		for (int i = worldData.WaterLayers - 2; i >= 1 ; i--)
 		{
 			degen |= CheckDegenPosValues(cellCount, degenIndices, "WaterMass" + i, state.WaterMass[i], degenVarNames);
 			degen |= CheckDegenPosValues(cellCount, degenIndices, "SaltMass" + i, state.SaltMass[i], degenVarNames);
@@ -2519,6 +2607,10 @@ public class WorldSim {
 		s.AppendFormat("TerrainTemperature: {0}\n", state.GroundTemperature[i]);
 		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
 		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
+		for (int j=0;j<staticState.GetMaxNeighbors(i);j++)
+		{
+			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.Flow[i * StaticState.MaxNeighbors + j]);
+		}
 
 		s.AppendFormat("\nLAVA\n");
 		s.AppendFormat("Mass: {0}\n", state.LavaMass[i]);

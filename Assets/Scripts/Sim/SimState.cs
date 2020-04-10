@@ -31,6 +31,7 @@ public struct SimState {
 	public NativeArray<float> MagmaMass;
 	public NativeArray<float> LavaMass;
 	public NativeArray<float> LavaTemperature;
+	public NativeArray<float> Flow;
 	public NativeArray<float>[] AirTemperaturePotential;
 	public NativeArray<float>[] AirVapor;
 	public NativeArray<float>[] AirCarbon;
@@ -44,7 +45,7 @@ public struct SimState {
 	public NativeArray<float>[] PlanktonMass;
 	public NativeArray<float>[] PlanktonGlucose;
 
-	public void Init(int count, int airLayers, int waterLayers)
+	public void Init(int count, ref WorldData worldData)
 	{
 		Roughness = new NativeArray<float>(count, Allocator.Persistent);
 		GroundCarbon = new NativeArray<float>(count, Allocator.Persistent);
@@ -65,12 +66,15 @@ public struct SimState {
 		LavaMass = new NativeArray<float>(count, Allocator.Persistent);
 		CrustDepth = new NativeArray<float>(count, Allocator.Persistent);
 		MagmaMass = new NativeArray<float>(count, Allocator.Persistent);
-		AirTemperaturePotential = new NativeArray<float>[airLayers];
-		AirVapor = new NativeArray<float>[airLayers];
-		AirCarbon = new NativeArray<float>[airLayers];
-		AirVelocity = new NativeArray<float3>[airLayers];
-		Dust = new NativeArray<float>[airLayers];
-		for (int i = 0; i < airLayers; i++)
+
+		Flow = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
+
+		AirTemperaturePotential = new NativeArray<float>[worldData.AirLayers];
+		AirVapor = new NativeArray<float>[worldData.AirLayers];
+		AirCarbon = new NativeArray<float>[worldData.AirLayers];
+		AirVelocity = new NativeArray<float3>[worldData.AirLayers];
+		Dust = new NativeArray<float>[worldData.AirLayers];
+		for (int i = 0; i < worldData.AirLayers; i++)
 		{
 			AirTemperaturePotential[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirVapor[i] = new NativeArray<float>(count, Allocator.Persistent);
@@ -79,14 +83,14 @@ public struct SimState {
 			Dust[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 
-		WaterTemperature = new NativeArray<float>[waterLayers];
-		WaterMass = new NativeArray<float>[waterLayers];
-		SaltMass = new NativeArray<float>[waterLayers];
-		WaterCarbon = new NativeArray<float>[waterLayers];
-		PlanktonMass = new NativeArray<float>[waterLayers];
-		PlanktonGlucose = new NativeArray<float>[waterLayers];
-		WaterVelocity = new NativeArray<float3>[waterLayers];
-		for (int i = 0; i < waterLayers; i++)
+		WaterTemperature = new NativeArray<float>[worldData.WaterLayers];
+		WaterMass = new NativeArray<float>[worldData.WaterLayers];
+		SaltMass = new NativeArray<float>[worldData.WaterLayers];
+		WaterCarbon = new NativeArray<float>[worldData.WaterLayers];
+		PlanktonMass = new NativeArray<float>[worldData.WaterLayers];
+		PlanktonGlucose = new NativeArray<float>[worldData.WaterLayers];
+		WaterVelocity = new NativeArray<float3>[worldData.WaterLayers];
+		for (int i = 0; i < worldData.WaterLayers; i++)
 		{
 			WaterTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
 			WaterMass[i] = new NativeArray<float>(count, Allocator.Persistent);
@@ -120,6 +124,7 @@ public struct SimState {
 		LavaMass.CopyFrom(from.LavaMass);
 		CrustDepth.CopyFrom(from.CrustDepth);
 		MagmaMass.CopyFrom(from.MagmaMass);
+		Flow.CopyFrom(from.Flow);
 		for (int i = 0; i < from.AirTemperaturePotential.Length; i++)
 		{
 			AirTemperaturePotential[i].CopyFrom(from.AirTemperaturePotential[i]);
@@ -162,6 +167,7 @@ public struct SimState {
 		LavaTemperature.Dispose();
 		MagmaMass.Dispose();
 		CrustDepth.Dispose();
+		Flow.Dispose();
 		for (int i = 0; i < AirTemperaturePotential.Length; i++)
 		{
 			AirTemperaturePotential[i].Dispose();

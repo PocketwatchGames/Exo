@@ -66,6 +66,11 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		PlanktonGlucose[i] = LastPlanktonGlucose[i] + PlanktonGlucoseDelta[i];
 		CarbonMass[i] += WaterCarbonDelta[i];
 
+		if (PlanktonMass[i] < 0)
+		{
+			Debug.Break();
+		}
+
 		if (newMass <= 0)
 		{
 			WaterTemperature[i] = 0;
@@ -353,7 +358,9 @@ public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
 	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public float WaterAirCarbonDiffusionCoefficient;
+	[ReadOnly] public float WaterAirCarbonDiffusionDepth;
 	public void Execute(int i)
 	{
 #if !DISABLE_WATER_AIR_CARBON_TRANSFER
@@ -365,7 +372,9 @@ public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 			float waterLayerMass = WaterMass[i] + SaltMass[i] + waterCarbon;
 			float airLayerMass = AirMass[i] + airCarbon;
 			float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + airLayerMass);
-			float diffusion = (desiredCarbonDensity - waterCarbon / waterLayerMass) * math.min(1, WaterAirCarbonDiffusionCoefficient / math.min(waterLayerMass, airLayerMass));
+			float diffusionDepth = math.min(1, WaterAirCarbonDiffusionDepth / WaterDepth[i]);
+			float diffusion = (desiredCarbonDensity - waterCarbon / waterLayerMass) * WaterAirCarbonDiffusionCoefficient;
+			diffusion *= waterLayerMass * diffusionDepth;
 
 			AirCarbon[i] = airCarbon - diffusion;
 			WaterCarbon[i] = waterCarbon + diffusion;
