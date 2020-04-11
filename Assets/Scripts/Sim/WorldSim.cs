@@ -57,7 +57,7 @@ public class WorldSim {
 	private NativeArray<float> saltPlume;
 	private NativeArray<float> evaporationMassWater;
 	private NativeArray<float> temperaturePotentialFlora;
-	private NativeArray<float> groundWaterConsumed;
+	private NativeArray<float> waterConsumedByFlora;
 	private NativeArray<float> floraRespirationMassVapor;
 	private NativeArray<float> floraRespirationMassWater;
 	private NativeArray<float> floraMassDelta;
@@ -169,7 +169,7 @@ public class WorldSim {
 		evaporationMassWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraRespirationMassVapor = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraRespirationMassWater = new NativeArray<float>(_cellCount, Allocator.Persistent);
-		groundWaterConsumed = new NativeArray<float>(_cellCount, Allocator.Persistent);
+		waterConsumedByFlora = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraMassDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraWaterDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		floraGlucoseDelta = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -280,7 +280,7 @@ public void Dispose(ref WorldData worldData)
 		evaporationMassWater.Dispose();
 		floraRespirationMassVapor.Dispose();
 		floraRespirationMassWater.Dispose();
-		groundWaterConsumed.Dispose();
+		waterConsumedByFlora.Dispose();
 		floraMassDelta.Dispose();
 		floraWaterDelta.Dispose();
 		floraGlucoseDelta.Dispose();
@@ -1223,7 +1223,7 @@ public void Dispose(ref WorldData worldData)
 			}
 
 
-			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Schedule(new FluxWaterJob()
+			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Run(new FluxWaterJob()
 			{
 				EvaporatedWaterMass = evaporationMassWater,
 				FrozenMass = frozenMass,
@@ -1235,6 +1235,7 @@ public void Dispose(ref WorldData worldData)
 				PlanktonGlucoseDelta = planktonGlucoseDelta,
 				PlanktonDeath = planktonDeath,
 				WaterCarbonDelta = waterCarbonDelta,
+				FloraWaterConsumed = waterConsumedByFlora,
 
 				WaterTemperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
@@ -1248,6 +1249,8 @@ public void Dispose(ref WorldData worldData)
 				AirVapor = lastState.AirVapor[1],
 				AirLayerElevation = dependent.LayerElevation[1],
 				SolarRadiation = solarRadiationIn[worldData.WaterLayer0 + worldData.SurfaceWaterLayer],
+				FloraMass = lastState.FloraMass,
+				FloraWater = lastState.FloraWater,
 				WaterCarbon = lastState.WaterCarbon[worldData.SurfaceWaterLayer],
 				PlanktonMass = lastState.PlanktonMass[worldData.SurfaceWaterLayer],
 				PlanktonGlucoseMass = lastState.PlanktonGlucose[worldData.SurfaceWaterLayer],
@@ -1261,6 +1264,7 @@ public void Dispose(ref WorldData worldData)
 				PlanktonDeathRate = worldData.PlanktonDeathRate,
 				WaterHeatingDepth = worldData.WaterHeatingDepth,
 				FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
+				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate
 			}, fluxJobHandles[worldData.AirLayer0 + 1]);
 
 
@@ -1292,13 +1296,12 @@ public void Dispose(ref WorldData worldData)
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
 			});
 
-			fluxJobHandles[worldData.FloraLayer] = SimJob.Schedule(new FluxFloraJob()
+			fluxJobHandles[worldData.FloraLayer] = SimJob.Run(new FluxFloraJob()
 			{
 				LatentHeatAir = latentHeat[worldData.AirLayer0 + 1],
 				LatentHeatFlora = latentHeat[worldData.FloraLayer],
 				EvaporatedWaterMass = floraRespirationMassVapor,
 				SurfaceWaterDelta = floraRespirationMassWater,
-				GroundWaterConsumed = groundWaterConsumed,
 				FloraMassDelta = floraMassDelta,
 				FloraWaterDelta = floraWaterDelta,
 				FloraGlucoseDelta = floraGlucoseDelta,
@@ -1321,9 +1324,6 @@ public void Dispose(ref WorldData worldData)
 				AirPressure = dependent.AirPressure[1],
 				AirVapor = lastState.AirVapor[1],
 				SoilFertility = lastState.GroundCarbon,
-				GroundWater = lastState.GroundWater,
-				GroundWaterMax = worldData.GroundWaterMax,				
-				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate,
 				FloraGrowthRate = worldData.FloraGrowthRate,
 				FloraDeathRate = worldData.FloraDeathRate,
 				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse,
@@ -1553,7 +1553,7 @@ public void Dispose(ref WorldData worldData)
 				LastRoughness = lastState.Roughness,
 				LastSoilFertility = lastState.GroundCarbon,
 				LastGroundWater = lastState.GroundWater,
-				GroundWaterConsumed = groundWaterConsumed,
+				GroundWaterConsumed = waterConsumedByFlora,
 				SoilRespiration = soilRespiration,
 				FloraDeath = floraDeath,
 				PlanktonDeath = planktonDeath,
@@ -1577,6 +1577,7 @@ public void Dispose(ref WorldData worldData)
 				FloraGlucoseDelta = floraGlucoseDelta,
 				FloraMassDelta = floraMassDelta,
 				FloraWaterDelta = floraWaterDelta,
+				FloraWaterConsumed = waterConsumedByFlora,
 				LastMass = lastState.FloraMass,
 				LastGlucose = lastState.FloraGlucose,
 				LastWater = lastState.FloraWater,

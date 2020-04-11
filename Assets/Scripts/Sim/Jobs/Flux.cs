@@ -8,6 +8,7 @@
 //#define DISABLE_MELTING_BOTTOM
 #define DISABLE_ERUPTION
 //#define DISABLE_MARINE_PHOTOSYNTHESIS
+//#define DISABLE_PHOTOSYNTHESIS
 //#define DISABLE_EVAPORATION_LATENT_HEAT
 //#define DISABLE_FLORA_WATER_ABSORPTION
 
@@ -17,7 +18,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-[BurstCompile]
+//[BurstCompile]
 public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
@@ -29,6 +30,7 @@ public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> PlanktonGlucoseDelta;
 	public NativeArray<float> PlanktonDeath;
 	public NativeArray<float> WaterCarbonDelta;
+	public NativeArray<float> FloraWaterConsumed;
 	[ReadOnly] public NativeArray<float> SolarRadiation;
 	[ReadOnly] public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> WaterMass;
@@ -44,6 +46,8 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> SurfaceWind;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeArray<float> FloraMass;
+	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public float WaterHeatingDepth;
 	[ReadOnly] public float FreezePointReductionPerSalinity;
 	[ReadOnly] public float PlanktonEnergyForPhotosynthesis;
@@ -54,6 +58,7 @@ public struct FluxWaterJob : IJobParallelFor {
 	[ReadOnly] public float PlanktonGrowthRate;
 	[ReadOnly] public float PlanktonDeathRate;
 	[ReadOnly] public float PlanktonRespirationPerDegree;
+	[ReadOnly] public float FloraWaterConsumptionRate;
 	public void Execute(int i)
 	{
 		float temperature = WaterTemperature[i];
@@ -71,6 +76,7 @@ public struct FluxWaterJob : IJobParallelFor {
 		float planktonMassDelta = 0;
 		float planktonDeath = 0;
 		float waterCarbonDelta = 0;
+		float waterConsumed = 0;
 
 		if (waterMass > 0)
 		{
@@ -123,20 +129,22 @@ public struct FluxWaterJob : IJobParallelFor {
 			{
 				float glucose = PlanktonGlucoseMass[i];
 				float inversePlanktonMass = 1.0f / planktonMass;
-				float respiration = 0;
+				float respirationHealth = 0;
 				if (waterMass > 0)
 				{
-					float waterUsed = math.min(waterMass, planktonMass * PlanktonPhotosynthesisSpeed / PlanktonDensityMax) / waterMass;
 
 					// Photosynthesis: Consume solarRadiation, carbon dioxide, to produce glucose (water and oxygen are ignored)
 					// TODO: carbon dioxide extraction should curve to a limit rather than cap
-					if (waterMass > 0 && solarRadiation > 0 && waterCarbon > 0)
+					if (solarRadiation > 0 && waterCarbon > 0)
 					{
-						float energyUsed = math.min(solarRadiation, planktonMass * PlanktonEnergyForPhotosynthesis * PlanktonPhotosynthesisSpeed) / solarRadiation;
-						float waterCarbonUsed = math.min(waterCarbon, planktonMass * PlanktonCarbonDioxideExtractionEfficiency * PlanktonPhotosynthesisSpeed) / waterCarbon;
-						float photosynthesis =
-							(1.0f - math.pow(math.min(1, glucose * inversePlanktonMass), 3)) // glucose saturation
-							* planktonMass * waterUsed * energyUsed * waterCarbonUsed; // carbon dioxide 
+						float desiredPhotosynthesis = 
+							planktonMass * PlanktonPhotosynthesisSpeed
+							* (1.0f - math.pow(math.min(1, glucose * inversePlanktonMass), 3))
+							* (1.0f - math.min(1, planktonMass / (waterMass * PlanktonDensityMax)));
+						float desiredPhotosynthesisInverse = 1.0f / desiredPhotosynthesis;
+						float energyUsed = math.min(1, solarRadiation * PlanktonEnergyForPhotosynthesis * desiredPhotosynthesisInverse);
+						float waterCarbonUsed = math.min(1, waterCarbon * PlanktonCarbonDioxideExtractionEfficiency * desiredPhotosynthesisInverse);
+						float photosynthesis = desiredPhotosynthesis * energyUsed * waterCarbonUsed;
 
 						energyFlux -= photosynthesis * PlanktonEnergyForPhotosynthesis;
 						waterCarbonDelta -= photosynthesis;
@@ -144,31 +152,38 @@ public struct FluxWaterJob : IJobParallelFor {
 					}
 
 					// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
-					float respirationExpenditure = math.min(waterCarbon, math.min(glucose,
-						PlanktonRespirationSpeed
-						* math.max(0, 1.0f + (temperature - WorldData.FreezingTemperature) * PlanktonRespirationPerDegree) // temperature
-						* waterUsed //water
-						* glucose)); // energy (glucose)
+					if (glucose > 0)
+					{
+						float desiredRespiration =
+							planktonMass * PlanktonRespirationSpeed
+							* math.max(0, 1.0f + (temperature - WorldData.FreezingTemperature) * PlanktonRespirationPerDegree)
+							* (1.0f - math.min(1, planktonMass / (waterMass * PlanktonDensityMax)));
+						float desiredRespirationInverse = 1.0f / desiredRespiration;
+						float glucoseUsed = math.min(1, glucose * desiredRespirationInverse);
+						float respiration = 
+							desiredRespiration * glucoseUsed;
 
-					respiration = respirationExpenditure / PlanktonRespirationSpeed;
+						energyFlux += respiration * PlanktonEnergyForPhotosynthesis;
+						glucoseDelta -= respiration;
+						waterCarbonDelta += respiration;
 
-					energyFlux += respiration * PlanktonEnergyForPhotosynthesis;
-					glucoseDelta -= respirationExpenditure;
-					waterCarbonDelta += respirationExpenditure;
+						respirationHealth = respiration / PlanktonRespirationSpeed;
+
+					}
 				}
 
 				// Growth: Consume glucose, produce plant growth
 				float growth = math.min(glucose,
 					PlanktonGrowthRate
 					* planktonMass
-					* respiration * inversePlanktonMass
-					* Utils.Sqr(glucose * inversePlanktonMass));
+					* respirationHealth
+					* Utils.Sqr(math.min(1, glucose * inversePlanktonMass)));
 
 				glucoseDelta -= growth;
 				planktonMassDelta += growth;
 
 				// Death: Produce carbon dioxide, water
-				float deathPercent = Utils.Sqr(math.max(0, planktonMass - respiration) * inversePlanktonMass) * PlanktonDeathRate;
+				float deathPercent = Utils.Sqr(math.max(0, planktonMass - respirationHealth) * inversePlanktonMass) * PlanktonDeathRate;
 				float death = deathPercent * planktonMass;
 				// convert mass back through the respiration process, and dump any stored glucose and water
 				glucoseDelta -= deathPercent * glucose;
@@ -176,6 +191,15 @@ public struct FluxWaterJob : IJobParallelFor {
 				planktonDeath += death + deathPercent * glucose;
 			}
 #endif
+
+
+#if !DISABLE_FLORA_WATER_ABSORPTION
+			if (waterMass > 0)
+			{
+				waterConsumed = math.min(waterMass, FloraMass[i] * math.max(0, 1.0f - FloraWater[i] / FloraMass[i]) * FloraWaterConsumptionRate);
+			}
+#endif
+
 
 		}
 
@@ -446,12 +470,11 @@ public struct FluxIceJob : IJobParallelFor {
 	}
 }
 
-[BurstCompile]
+//[BurstCompile]
 public struct FluxFloraJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> LatentHeatAir;
 	public NativeArray<float> LatentHeatFlora;
-	public NativeArray<float> GroundWaterConsumed;
 	public NativeArray<float> CarbonDioxideDelta;
 	public NativeArray<float> OxygenDelta;
 	public NativeArray<float> FloraMassDelta;
@@ -466,7 +489,6 @@ public struct FluxFloraJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> FloraGlucose;
 	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public NativeArray<float> FloraCoverage;
-	[ReadOnly] public NativeArray<float> GroundWater;
 	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> AirVapor;
@@ -475,8 +497,6 @@ public struct FluxFloraJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LayerElevation;
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float3> SurfaceWind;
-	[ReadOnly] public float GroundWaterMax;
-	[ReadOnly] public float FloraWaterConsumptionRate;
 	[ReadOnly] public float FloraGrowthTemperatureRangeInverse;
 	[ReadOnly] public float FloraGrowthRate;
 	[ReadOnly] public float FloraDeathRate;
@@ -495,7 +515,6 @@ public struct FluxFloraJob : IJobParallelFor {
 		float latentHeatFromAir = 0;
 		float latentHeatFromFlora = 0;
 		float evapMass = 0;
-		float groundWaterConsumed = 0;
 		float floraMassDelta = 0;
 		float carbonDioxideDelta = 0;
 		float oxygenDelta = 0;
@@ -509,6 +528,7 @@ public struct FluxFloraJob : IJobParallelFor {
 			float temperature = FloraTemperature[i];
 			float floraWater = FloraWater[i];
 			float energy = SolarRadiationIn[i];
+			float inverseFloraMass = 1.0f / floraMass;
 
 
 #if !DISABLE_PHOTOSYNTHESIS
@@ -516,20 +536,19 @@ public struct FluxFloraJob : IJobParallelFor {
 			float carbonDioxide = CarbonDioxide[i];
 			float floraCoverage = FloraCoverage[i];
 			float soilFertility = SoilFertility[i];
-			float inverseFloraMass = 1.0f / floraMass;
 
-			float airDensity = Atmosphere.GetAirDensity(Atmosphere.GetPressureAtElevation(LayerElevation[i],Gravity,AirPressure[i],AirTemperaturePotential[i],LayerElevation[i]+LayerHeight[i]/2), Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i]), AirMass[i], AirVapor[i]);
+			//float airDensity = Atmosphere.GetAirDensity(Atmosphere.GetPressureAtElevation(LayerElevation[i],Gravity,AirPressure[i],AirTemperaturePotential[i],LayerElevation[i]+LayerHeight[i]/2), Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerElevation[i]), AirMass[i], AirVapor[i]);
 
-			if (energy > 0 && carbonDioxide > 0 && floraWater > 0)
+			if (energy > 0 && carbonDioxide > 0 && floraWater > 0 && glucose < floraMass)
 			{
 				// Photosynthesis: Consume solarRadiation, water, carbon dioxide, to produce glucose and oxygen
-				float waterUsed = math.min(floraWater, floraMass * FloraPhotosynthesisSpeed);
-				float energyUsed = math.min(energy, FloraPhotosynthesisSpeed * floraMass / FloraEnergyForPhotosynthesis) / energy;
+				float desiredPhotosynthesis = floraMass * FloraPhotosynthesisSpeed * (1.0f - math.pow(math.min(1, glucose * inverseFloraMass), 3)); // glucose saturation
+				float desiredPhotosynthesisInverse = 1.0f / desiredPhotosynthesis; // glucose saturation
+				float waterUsed = math.min(1, floraWater * desiredPhotosynthesisInverse);
+				float energyUsed = math.min(1, energy / FloraEnergyForPhotosynthesis * desiredPhotosynthesisInverse);
 				// TODO: carbon dioxide extraction should curve to a limit rather than cap
-				float carbonUsed = math.min(carbonDioxide, FloraPhotosynthesisSpeed * floraMass * airDensity / AirMass[i] * FloraCarbonDioxideExtractionEfficiency) / carbonDioxide;
-				float photosynthesis =
-					(1.0f - math.pow(math.min(1, glucose * inverseFloraMass), 3)) // glucose saturation
-					* floraWater * energyUsed * carbonUsed * floraMass;
+				float carbonUsed = math.min(1, carbonDioxide * FloraCarbonDioxideExtractionEfficiency * desiredPhotosynthesisInverse);
+				float photosynthesis = desiredPhotosynthesis * waterUsed * energyUsed * carbonUsed;
 
 				energy -= photosynthesis * FloraEnergyForPhotosynthesis;
 				floraWaterDelta -= photosynthesis;
@@ -541,41 +560,42 @@ public struct FluxFloraJob : IJobParallelFor {
 			}
 
 			// Respiration: Consume glucose, oxygen, produce water and carbon dioxide
-			float respiration = 0;
+			float respirationHealth = 0;
 			if (OxygenPercent > 0 && glucose > 0 && soilFertility > 0 && floraWater > 0)
 			{
 				// TODO: oxygen extraction should curve to a limit rather than cap
-				float oxygenUsed = math.min(1, floraCoverage * OxygenPercent * AirMass[i] * inverseFloraMass * FloraOxygenExtractionEfficiency);
-				float glucoseUsed = math.min(glucose, FloraRespirationSpeed * floraMass) / glucose;
-				float groundCarbonUsed = math.min(soilFertility, FloraRespirationSpeed * floraMass) / soilFertility;
-				float waterUsedForRespiration = math.min(floraWater, FloraRespirationSpeed * floraMass) / floraWater;
-				float respirationExpenditure =
-					math.max(0, 1.0f + FloraRespirationPerDegree * (FloraTemperature[i] - WorldData.FreezingTemperature))
-					* waterUsedForRespiration * groundCarbonUsed * glucoseUsed * oxygenUsed; // oxygen
-
-				respiration = respirationExpenditure / FloraRespirationSpeed;
+				float desiredRespiration = floraMass * FloraRespirationSpeed * math.max(0, 1.0f + FloraRespirationPerDegree * (FloraTemperature[i] - WorldData.FreezingTemperature));
+				float desiredRespirationInverse = 1.0f / desiredRespiration;
+				float oxygenUsed = math.min(1, OxygenPercent * AirMass[i] * FloraOxygenExtractionEfficiency * desiredRespirationInverse);
+				float glucoseUsed = math.min(1, glucose * desiredRespirationInverse);
+				float groundCarbonUsed = math.min(1, soilFertility * desiredRespirationInverse);
+				float waterUsedForRespiration = math.min(1, floraWater * desiredRespirationInverse);
+				float respiration = desiredRespiration * waterUsedForRespiration * groundCarbonUsed * glucoseUsed * oxygenUsed; // oxygen
 
 				energy += respiration * FloraEnergyForPhotosynthesis;
-				glucoseDelta -= respirationExpenditure;
-				floraWaterDelta -= respirationExpenditure;
-				oxygenDelta -= respirationExpenditure;
-				surfaceWaterDelta += 2 * respirationExpenditure;
-				carbonDioxideDelta += respirationExpenditure;
+				glucoseDelta -= respiration;
+				floraWaterDelta -= respiration;
+				oxygenDelta -= respiration;
+				surfaceWaterDelta += 2 * respiration;
+				carbonDioxideDelta += respiration;
+
+				respirationHealth = respiration / FloraRespirationSpeed;
+
 			}
 
 			// Growth: Consume glucose, produce plant growth
-			float growth = 
+			float growth = math.min(glucose, 
 				FloraGrowthRate
-				* soilFertility
 				* floraMass
-				* respiration * inverseFloraMass
-				* Utils.Sqr(glucose * inverseFloraMass);
+				* respirationHealth
+				* math.max(1, soilFertility * inverseFloraMass)
+				* Utils.Sqr(math.max(1, glucose * inverseFloraMass)));
 
 			glucoseDelta -= growth;
 			floraMassDelta += growth;
 
 			// Death: Produce carbon dioxide, water
-			float deathPercent = Utils.Sqr(math.max(0, floraMass - respiration) * inverseFloraMass) * FloraDeathRate;
+			float deathPercent = Utils.Sqr(math.max(0, floraMass - respirationHealth) * inverseFloraMass) * FloraDeathRate;
 			float death = deathPercent * floraMass;
 			// dump any stored glucose and water, put glucose in the ground
 			glucoseDelta -= deathPercent * glucose;
@@ -592,11 +612,6 @@ public struct FluxFloraJob : IJobParallelFor {
 
 #endif
 
-#if !DISABLE_FLORA_WATER_ABSORPTION
-			groundWaterConsumed = math.min(GroundWater[i], floraMass * (GroundWater[i] / GroundWaterMax) * math.max(0, 1.0f - floraWater * inverseFloraMass) * FloraWaterConsumptionRate);
-			floraWaterDelta += groundWaterConsumed;
-#endif
-
 			// Convert leftover solar radiation into heat, since we didn't do it in the energy step
 			latentHeatFromFlora += energy;
 
@@ -605,7 +620,6 @@ public struct FluxFloraJob : IJobParallelFor {
 		EvaporatedWaterMass[i] = evapMass;
 		LatentHeatAir[i] += -latentHeatFromAir;
 		LatentHeatFlora[i] += latentHeatFromFlora;
-		GroundWaterConsumed[i] = groundWaterConsumed;
 		CarbonDioxideDelta[i] = carbonDioxideDelta;
 		OxygenDelta[i] = oxygenDelta;
 		FloraMassDelta[i] = floraMassDelta;

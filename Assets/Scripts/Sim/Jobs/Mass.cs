@@ -336,6 +336,7 @@ public struct UpdateFloraJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> FloraGlucoseDelta;
 	[ReadOnly] public NativeArray<float> FloraMassDelta;
 	[ReadOnly] public NativeArray<float> FloraWaterDelta;
+	[ReadOnly] public NativeArray<float> FloraWaterConsumed;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastGlucose;
 	[ReadOnly] public NativeArray<float> LastWater;
@@ -343,7 +344,7 @@ public struct UpdateFloraJob : IJobParallelFor {
 	{
 		FloraMass[i] = math.max(0, LastMass[i] + FloraMassDelta[i]);
 		FloraGlucose[i] = math.max(0, LastGlucose[i] + FloraGlucoseDelta[i]);
-		FloraWater[i] = math.max(0, LastWater[i] + FloraWaterDelta[i]);
+		FloraWater[i] = math.max(0, LastWater[i] + FloraWaterDelta[i] + FloraWaterConsumed[i]);
 	}
 
 }

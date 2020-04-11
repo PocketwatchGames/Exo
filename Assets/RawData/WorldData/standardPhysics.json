@@ -87,13 +87,13 @@
 	"FloraRespirationSpeed": 0.0001,
 	"FloraRespirationPerDegree": 0.0001,
 
-	"PlanktonDensityMax":0.1,
+	"PlanktonDensityMax":0.001,
 	"PlanktonEnergyForPhotosynthesis":0.01,
 	"PlanktonCarbonDioxideExtractionEfficiency":0.1,
 	"PlanktonPhotosynthesisSpeed":0.1,
 	"PlanktonRespirationSpeed":0.001,
 	"PlanktonRespirationPerDegree": 0.001,
-	"PlanktonGrowthRate":0.1,
+	"PlanktonGrowthRate":0.01,
 	"PlanktonDeathRate":0.1,
 
 
