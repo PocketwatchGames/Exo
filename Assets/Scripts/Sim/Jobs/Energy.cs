@@ -158,22 +158,11 @@ public struct EnergyLavaJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
-	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
-	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
-	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
-	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
 	public void Execute(int i)
 	{
 		if (LavaMass[i] > 0)
 		{
-			float conductionDelta =
-				-ConductionEnergyAir[i]
-				- ConductionEnergyIce[i]
-				- ConductionEnergyWater[i]
-				+ ConductionEnergyTerrain[i];
-
-			float energy = SolarRadiationIn[i] + ThermalRadiationDelta[i] + conductionDelta;
+			float energy = ThermalRadiationDelta[i];
 			LavaTemperature[i] = LastTemperature[i] + energy / (LavaMass[i] * WorldData.SpecificHeatLava);
 		}
 		else

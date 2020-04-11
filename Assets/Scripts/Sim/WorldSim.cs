@@ -94,7 +94,6 @@ public class WorldSim {
 	private NativeArray<float>[] solarReflected;
 	private NativeArray<float>[] latentHeat;
 	private NativeArray<float> conductionWaterTerrainTotal;
-	private NativeArray<float> conductionWaterLavaTotal;
 	private NativeArray<float> cloudEvaporationMass;
 	private NativeArray<float> dropletDelta;
 	private NativeArray<float> precipitationMass;
@@ -217,7 +216,6 @@ public class WorldSim {
 		solarReflected = new NativeArray<float>[worldData.LayerCount];
 		latentHeat = new NativeArray<float>[worldData.LayerCount];
 		conductionWaterTerrainTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
-		conductionWaterLavaTotal = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		cloudEvaporationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		dropletDelta = new NativeArray<float>(_cellCount, Allocator.TempJob);
 		precipitationMass = new NativeArray<float>(_cellCount, Allocator.TempJob);
@@ -325,7 +323,6 @@ public void Dispose(ref WorldData worldData)
 		precipitationTemperature.Dispose();
 		cloudEvaporationMass.Dispose();
 		conductionWaterTerrainTotal.Dispose();
-		conductionWaterLavaTotal.Dispose();
 		for (int i = 0; i < worldData.LayerCount; i++)
 		{
 			thermalRadiationDelta[i].Dispose();
@@ -378,7 +375,6 @@ public void Dispose(ref WorldData worldData)
 
 			NativeList<JobHandle> memsetHandles = new NativeList<JobHandle>(Allocator.TempJob);
 			Utils.MemsetArray(memsetHandles, _cellCount, conductionWaterTerrainTotal, 0);
-			Utils.MemsetArray(memsetHandles, _cellCount, conductionWaterLavaTotal, 0);
 			Utils.MemsetArray(memsetHandles, _cellCount, cloudEvaporationMass, 0);
 			Utils.MemsetArray(memsetHandles, _cellCount, dropletDelta, 0);
 			Utils.MemsetArray(memsetHandles, _cellCount, precipitationMass, 0);
@@ -1080,29 +1076,13 @@ public void Dispose(ref WorldData worldData)
 				ConductionEnergyIce = conductionIceFlora,
 			}, JobHandle.CombineDependencies(energyFloraJobHandleDependencies));
 
-			//var energyLavaJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
-			//{
-			//	thermalOutJobHandles[_lavaLayer],
-			//	thermalInDownJobHandles[_lavaLayer],
-			//	thermalInUpJobHandles[_lavaLayer],
-			//	conductionAirLavaJobHandle,
-			//	conductionIceLavaJobHandle,
-			//	conductionWaterLavaJobHandle,
-			//	conductionLavaTerrainJobHandle,
-			//};
-			//jobHandleDependencies.Add(energyLavaJobHandleDependencies);
-			//energyJobHandles[_lavaLayer] = SimJob.Schedule(new EnergyLavaJob()
-			//{
-			//	LavaTemperature = nextState.LavaTemperature,
-			//	LastTemperature = lastState.LavaTemperature,
-			//	LavaMass = lastState.LavaMass,
-			//	SolarRadiationIn = solarRadiationIn[_lavaLayer],
-			//	ThermalRadiationDelta = thermalRadiationDelta[_lavaLayer],
-			//	ConductionEnergyAir = conductionAirLava,
-			//	ConductionEnergyTerrain = conductionLavaTerrain,
-			//	ConductionEnergyIce = conductionIceLava,
-			//	ConductionEnergyWater = conductionWaterLavaTotal,
-			//}, JobHandle.CombineDependencies(energyLavaJobHandleDependencies));
+			energyJobHandles[worldData.LavaLayer] = SimJob.Schedule(new EnergyLavaJob()
+			{
+				LavaTemperature = nextState.LavaTemperature,
+				LastTemperature = lastState.LavaTemperature,
+				LavaMass = lastState.LavaMass,
+				ThermalRadiationDelta = thermalRadiationDelta[worldData.LavaLayer],
+			});
 
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
@@ -1223,7 +1203,7 @@ public void Dispose(ref WorldData worldData)
 			}
 
 
-			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Run(new FluxWaterJob()
+			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Schedule(new FluxWaterJob()
 			{
 				EvaporatedWaterMass = evaporationMassWater,
 				FrozenMass = frozenMass,
@@ -1296,7 +1276,7 @@ public void Dispose(ref WorldData worldData)
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
 			});
 
-			fluxJobHandles[worldData.FloraLayer] = SimJob.Run(new FluxFloraJob()
+			fluxJobHandles[worldData.FloraLayer] = SimJob.Schedule(new FluxFloraJob()
 			{
 				LatentHeatAir = latentHeat[worldData.AirLayer0 + 1],
 				LatentHeatFlora = latentHeat[worldData.FloraLayer],
@@ -1356,27 +1336,26 @@ public void Dispose(ref WorldData worldData)
 
 			}, fluxJobHandles[worldData.FloraLayer]);
 
-			//fluxJobHandles[_lavaLayer] = SimJob.Schedule(new FluxLavaJob()
-			//{
-			//	LatentHeat = latentHeat[_lavaLayer],
-			//	CrystalizedMass = lavaCrystalizedMass,
-			//	LavaEjected = lavaEjected,
-			//	DustEjected = dustEjected,
-			//	CrustDelta = crustDelta,
+			fluxJobHandles[worldData.LavaLayer] = SimJob.Schedule(new FluxLavaJob()
+			{
+				CrystalizedMass = lavaCrystalizedMass,
+				LavaEjected = lavaEjected,
+				DustEjected = dustEjected,
+				CrustDelta = crustDelta,
 
-			//	LavaTemperature = nextState.LavaTemperature,
-			//	LavaMass = lastState.LavaMass,
-			//	CrustDepth = lastState.CrustDepth,
-			//	MagmaMass = lastState.MagmaMass,
-			//	Elevation = lastState.Elevation,
-			//	WaterCoverage = dependent.WaterCoverage[worldData.SurfaceWaterLayer],
-			//	LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
-			//	CrustEruptionDepth = worldData.CrustDepthForEruption,
-			//	DustPerLavaEjected = worldData.DustPerLavaEjected,
-			//	MagmaPressureCrustReductionSpeed = worldData.MagmaPressureCrustReductionSpeed,
-			//	LavaEruptionSpeed = worldData.LavaEruptionSpeed,
-			//	SecondsPerTick = worldData.SecondsPerTick
-			//});
+				LavaTemperature = nextState.LavaTemperature,
+				LavaMass = lastState.LavaMass,
+				CrustDepth = lastState.CrustDepth,
+				MagmaMass = lastState.MagmaMass,
+				Elevation = lastState.Elevation,
+				WaterCoverage = dependent.WaterCoverage[worldData.SurfaceWaterLayer],
+				LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
+				CrustEruptionDepth = worldData.CrustDepthForEruption,
+				DustPerLavaEjected = worldData.DustPerLavaEjected,
+				MagmaPressureCrustReductionSpeed = worldData.MagmaPressureCrustReductionSpeed,
+				LavaEruptionSpeed = worldData.LavaEruptionSpeed,
+				SecondsPerTick = worldData.SecondsPerTick
+			});
 
 			fluxJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new FluxTerrainJob()
 			{

@@ -245,6 +245,7 @@ public struct WorldData {
 	[NonSerialized] public int CloudLayer;
 	[NonSerialized] public int WaterLayer0;
 	[NonSerialized] public int FloraLayer;
+	[NonSerialized] public int LavaLayer;
 	[NonSerialized] public int IceLayer;
 	[NonSerialized] public int AirLayer0;
 	[NonSerialized] public int SurfaceWaterLayer;
@@ -268,7 +269,8 @@ public struct WorldData {
 
 		LayerCount = AirLayers + WaterLayers + TerrainLayers;
 		TerrainLayer = 0;
-		FloraLayer = TerrainLayer + 1;
+		LavaLayer = TerrainLayer + 1;
+		FloraLayer = LavaLayer + 1;
 		WaterLayer0 = FloraLayer + 1;
 		IceLayer = WaterLayer0 + WaterLayers;
 		AirLayer0 = IceLayer + 1;

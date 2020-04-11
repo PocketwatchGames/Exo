@@ -6,7 +6,7 @@
 //#define DISABLE_RAINFALL
 //#define DISABLE_MELTING_TOP
 //#define DISABLE_MELTING_BOTTOM
-#define DISABLE_ERUPTION
+//#define DISABLE_ERUPTION
 //#define DISABLE_MARINE_PHOTOSYNTHESIS
 //#define DISABLE_PHOTOSYNTHESIS
 //#define DISABLE_EVAPORATION_LATENT_HEAT
@@ -18,7 +18,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-//[BurstCompile]
+[BurstCompile]
 public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
@@ -470,7 +470,7 @@ public struct FluxIceJob : IJobParallelFor {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct FluxFloraJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> LatentHeatAir;
@@ -632,7 +632,6 @@ public struct FluxFloraJob : IJobParallelFor {
 
 [BurstCompile]
 public struct FluxLavaJob : IJobParallelFor {
-	public NativeArray<float> LatentHeat;
 	public NativeArray<float> CrystalizedMass;
 	public NativeArray<float> LavaEjected;
 	public NativeArray<float> DustEjected;
@@ -662,7 +661,7 @@ public struct FluxLavaJob : IJobParallelFor {
 
 		if (crystalizationTempDelta > 0)
 		{
-			//			float crystalized = math.min(mass, (crystalizationTempDelta * mass * WorldData.SpecificHeatLava) / WorldData.LatentHeatLava);
+			float crystalized = math.min(mass, (crystalizationTempDelta * mass * WorldData.SpecificHeatLava) / WorldData.LatentHeatLava);
 			crystalizedMass = mass;
 		}
 
@@ -680,7 +679,6 @@ public struct FluxLavaJob : IJobParallelFor {
 #endif
 
 		CrystalizedMass[i] = crystalizedMass;
-		LatentHeat[i] = latentHeat;
 		LavaEjected[i] = lavaEjected;
 		DustEjected[i] = dustEjected;
 		CrustDelta[i] = crustDelta;
