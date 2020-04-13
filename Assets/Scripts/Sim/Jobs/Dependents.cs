@@ -238,7 +238,7 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 	{
 		float iceMass = IceMass[i];
 		float lavaMass = LavaMass[i];
-		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce + lavaMass / (WorldData.MassLava * LavaDensityAdjustment);
+		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce + lavaMass * LavaDensityAdjustment / WorldData.MassLava;
 
 		IceEnergy[i] = WorldData.SpecificHeatIce * iceMass * IceTemperature[i];
 		LavaEnergy[i] = WorldData.SpecificHeatLava * lavaMass * LavaTemperature[i];

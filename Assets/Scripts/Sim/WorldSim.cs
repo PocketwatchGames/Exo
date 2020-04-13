@@ -1336,7 +1336,7 @@ public void Dispose(ref WorldData worldData)
 
 			}, fluxJobHandles[worldData.FloraLayer]);
 
-			fluxJobHandles[worldData.LavaLayer] = SimJob.Schedule(new FluxLavaJob()
+			fluxJobHandles[worldData.LavaLayer] = SimJob.Run(new FluxLavaJob()
 			{
 				CrystalizedMass = lavaCrystalizedMass,
 				LavaEjected = lavaEjected,
@@ -1481,7 +1481,7 @@ public void Dispose(ref WorldData worldData)
 				updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateAirMassJobHandle);
 				updateMassAirJobHandles[j] = updateMassJobHandle;
 			}
-			var updateMassEvaporationHandle =SimJob.Schedule(new UpdateMassAirSurfaceJob()
+			var updateMassEvaporationHandle =SimJob.Run(new UpdateMassAirSurfaceJob()
 			{
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				VaporMass = nextState.AirVapor[1],
@@ -1516,7 +1516,7 @@ public void Dispose(ref WorldData worldData)
 			});
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateIceMassJobHandle);
 
-			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateTerrainJob()
+			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Run(new UpdateTerrainJob()
 			{
 				SoilCarbon = nextState.GroundCarbon,
 				Roughness = nextState.Roughness,

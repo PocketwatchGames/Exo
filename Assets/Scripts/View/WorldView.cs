@@ -84,7 +84,6 @@ public class WorldView : MonoBehaviour {
 	public float DisplayFloraWeight = 1;
 	public float DisplaySandWeight = 1;
 	public float DisplaySoilWeight = 1;
-	public float DisplayDustHeight = 1000;
 	public float DisplayDustMax = 100;
 	public float DisplayLavaTemperatureMax = 1200;
 	public float DisplaySoilFertilityMax = 5.0f;
@@ -126,7 +125,6 @@ public class WorldView : MonoBehaviour {
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
 	public Material CloudMaterialFront, CloudMaterialBack;
-	public Material DustMaterial;
 	public Material LavaMaterial;
 	public Material OverlayMaterial;
 	public GameObject SelectionCirclePrefab;
@@ -153,9 +151,6 @@ public class WorldView : MonoBehaviour {
 	private NativeArray<Vector3> _cloudVerticesArray;
 	private NativeArray<Color32> _cloudColorsArray;
 	private NativeArray<Vector3> _cloudNormalsArray;
-	private NativeArray<Vector3> _dustVerticesArray;
-	private NativeArray<Color32> _dustColorsArray;
-	private NativeArray<Vector3> _dustNormalsArray;
 
 	private Vector3[] _terrainVertices;
 	private Color32[] _terrainColors;
@@ -167,20 +162,15 @@ public class WorldView : MonoBehaviour {
 	private Vector3[] _cloudVertices;
 	private Color32[] _cloudColors;
 	private Vector3[] _cloudNormals;
-	private Vector3[] _dustVertices;
-	private Color32[] _dustColors;
-	private Vector3[] _dustNormals;
 
 	private Mesh _terrainMesh;
 	private Mesh _waterMesh;
 	private Mesh _cloudMesh;
-	private Mesh _dustMesh;
 	private Mesh _lavaMesh;
 
 	private GameObject _terrainObject;
 	private GameObject _waterObject;
 	private GameObject _cloudObject;
-	private GameObject _dustObject;
 	private GameObject _lavaObject;
 	private GameObject _selectionCircle;
 	private List<GameObject> _selectionCircleNeighbors;
@@ -240,7 +230,6 @@ public class WorldView : MonoBehaviour {
 		_cloudMesh = new Mesh();
 		_waterMesh = new Mesh();
 		_lavaMesh = new Mesh();
-		_dustMesh = new Mesh();
 
 		_terrainObject = new GameObject("Terrain Mesh");
 		_terrainObject.transform.SetParent(Planet.transform, false);
@@ -279,15 +268,6 @@ public class WorldView : MonoBehaviour {
 		cloudFilter.mesh = _cloudMesh;
 		cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 		_cloudMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-
-		_dustObject = new GameObject("Dust Mesh");
-		_dustObject.transform.SetParent(Planet.transform, false);
-		var dustFilter = _dustObject.AddComponent<MeshFilter>();
-		var dustSurfaceRenderer = _dustObject.AddComponent<MeshRenderer>();
-		dustSurfaceRenderer.material = DustMaterial;
-		dustFilter.mesh = _dustMesh;
-		dustSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-		_dustMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
 		_selectionCircle = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
 		_selectionCircle.transform.localScale *= 0.02f;
@@ -331,9 +311,6 @@ public class WorldView : MonoBehaviour {
 		_lavaVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_lavaColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 
-		_dustVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
-		_dustColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
-		_dustNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		_cloudVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		_cloudColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		_cloudNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
@@ -345,7 +322,6 @@ public class WorldView : MonoBehaviour {
 		_terrainMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_waterMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_cloudMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
-		_dustMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_lavaMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 
 		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
@@ -375,9 +351,6 @@ public class WorldView : MonoBehaviour {
 		_cloudNormalsArray.Dispose();
 		_lavaVerticesArray.Dispose();
 		_lavaColorsArray.Dispose();
-		_dustVerticesArray.Dispose();
-		_dustColorsArray.Dispose();
-		_dustNormalsArray.Dispose();
 
 		Foliage.Dispose();
 	}
@@ -443,7 +416,7 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateCellJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateCellJob()
 		{
 			TerrainColor = to.TerrainColor,
 			TerrainElevation = to.TerrainElevation,
@@ -454,8 +427,6 @@ public class WorldView : MonoBehaviour {
 			CloudColor = to.CloudColor,
 			CloudHeight = to.CloudHeight,
 			CloudElevation = to.CloudElevation,
-			DustColor = to.DustColor,
-			DustElevation = to.DustElevation,
 			VelocityArrow = to.VelocityArrow,
 			SurfacePosition = to.SurfacePosition,
 
@@ -493,7 +464,6 @@ public class WorldView : MonoBehaviour {
 			WindOverlayData = windOverlayData.Values,
 			GroundWaterMax = worldData.GroundWaterMax,
 			SoilFertilityMax = DisplaySoilFertilityMax,
-			DustHeight = DisplayDustHeight,
 			LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
 			DustCoverage = display.DustMass,
@@ -527,8 +497,6 @@ public class WorldView : MonoBehaviour {
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.TerrainColor, Start = lastState.TerrainColor, End = nextState.TerrainColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.WaterElevation, Start = lastState.WaterElevation, End = nextState.WaterElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.WaterColor, Start = lastState.WaterColor, End = nextState.WaterColor }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.DustElevation, Start = lastState.DustElevation, End = nextState.DustElevation }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.DustColor, Start = lastState.DustColor, End = nextState.DustColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.LavaElevation, Start = lastState.LavaElevation, End = nextState.LavaElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.LavaColor, Start = lastState.LavaColor, End = nextState.LavaColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.SurfacePosition, Start = lastState.SurfacePosition, End = nextState.SurfacePosition }).Schedule(Sim.CellCount, _batchCount));
@@ -544,7 +512,7 @@ public class WorldView : MonoBehaviour {
 			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
 		}
 
-		var getVertsHandle = _renderTerrainHelper.Schedule(new BuildTerrainVertsJob()
+		var getVertsHandle = _renderTerrainHelper.Run(new BuildTerrainVertsJob()
 		{
 			VTerrainPosition = _terrainVerticesArray,
 			VTerrainColor = _terrainColorsArray,
@@ -567,16 +535,11 @@ public class WorldView : MonoBehaviour {
 		{
 			VCloudPosition = _cloudVerticesArray,
 			VCloudColor = _cloudColorsArray,
-			VDustPosition = _dustVerticesArray,
-			VDustColor = _dustColorsArray,
 			VCloudNormal = _cloudNormalsArray,
-			VDustNormal = _dustNormalsArray,
 
 			CloudElevation = state.CloudElevation,
 			CloudHeight = state.CloudHeight,
 			CloudColor = state.CloudColor,
-			DustElevation = state.DustElevation,
-			DustColor = state.DustColor,
 			StandardVerts = _cloudVerts,
 		}, JobHandle.CombineDependencies(dependencies)));
 
@@ -593,9 +556,6 @@ public class WorldView : MonoBehaviour {
 		_cloudVerticesArray.CopyTo(_cloudVertices);
 		_cloudColorsArray.CopyTo(_cloudColors);
 		_cloudNormalsArray.CopyTo(_cloudNormals);
-		_dustVerticesArray.CopyTo(_dustVertices);
-		_dustColorsArray.CopyTo(_dustColors);
-		_dustNormalsArray.CopyTo(_dustNormals);
 
 		_terrainMesh.vertices = _terrainVertices;
 		_terrainMesh.colors32 = _terrainColors;
@@ -611,9 +571,6 @@ public class WorldView : MonoBehaviour {
 		_cloudMesh.colors32 = _cloudColors;
 		_cloudMesh.normals = _cloudNormals;
 
-		_dustMesh.vertices = _dustVertices;
-		_dustMesh.colors32 = _dustColors;
-		_dustMesh.normals = _dustNormals;
 
 		if (!_indicesInitialized)
 		{
@@ -621,7 +578,6 @@ public class WorldView : MonoBehaviour {
 			_waterMesh.SetTriangles(_indicesTerrain, 0);
 			_lavaMesh.SetTriangles(_indicesTerrain, 0);
 			_cloudMesh.SetTriangles(_indicesCloud, 0);
-			_dustMesh.SetTriangles(_indicesTerrain, 0);
 			_indicesInitialized = true;
 		}
 
@@ -631,13 +587,11 @@ public class WorldView : MonoBehaviour {
 		//_waterMesh.RecalculateBounds();
 		//_cloudMesh.RecalculateBounds();
 		//_lavaMesh.RecalculateBounds();
-		//_dustMesh.RecalculateBounds();
 
 		_terrainMesh.RecalculateNormals();
 	//	_waterMesh.RecalculateNormals();
 	//	_cloudMesh.RecalculateNormals();
 		_lavaMesh.RecalculateNormals();
-	//	_dustMesh.RecalculateNormals();
 		_terrainMesh.RecalculateTangents();
 		_waterMesh.RecalculateTangents();
 
@@ -668,7 +622,6 @@ public class WorldView : MonoBehaviour {
 	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
 		_cloudObject.SetActive(toggle.isOn);
-		_dustObject.SetActive(toggle.isOn);
 	}
 	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
 	{
@@ -745,9 +698,6 @@ public class WorldView : MonoBehaviour {
 		_lavaVertices = new Vector3[Sim.CellCount * VertsPerCell];
 		_lavaColors = new Color32[Sim.CellCount * VertsPerCell];
 
-		_dustVertices = new Vector3[Sim.CellCount * VertsPerCloud];
-		_dustColors = new Color32[Sim.CellCount * VertsPerCloud];
-		_dustNormals = new Vector3[Sim.CellCount * VertsPerCloud];
 		_cloudVertices = new Vector3[Sim.CellCount * VertsPerCloud];
 		_cloudColors = new Color32[Sim.CellCount * VertsPerCloud];
 		_cloudNormals = new Vector3[Sim.CellCount * VertsPerCloud];

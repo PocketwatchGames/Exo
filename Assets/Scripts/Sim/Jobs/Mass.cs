@@ -306,7 +306,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 		float lavaMass = LastLavaMass[i];
 		float newLavaMass = lavaMass - lavaCrystalized + lavaEjected;
 
-		float lavaCrystalizedDepth = lavaCrystalized / (WorldData.MassLava * LavaDensityAdjustment);
+		float lavaCrystalizedDepth = lavaCrystalized * LavaDensityAdjustment / (WorldData.MassLava);
 		Elevation[i] = LastElevation[i] + lavaCrystalizedDepth;
 		// TODO: improve soil fertility when dust settles
 		SoilCarbon[i] = LastSoilFertility[i] - SoilRespiration[i] + FloraDeath[i] + PlanktonDeath[i];

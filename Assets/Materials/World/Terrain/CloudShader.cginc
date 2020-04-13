@@ -1,5 +1,5 @@
 
-sampler2D _MainTex;
+sampler2D _CloudTex;
 sampler2D _NormalMap;
 float _AlphaTest;
 float _HardEdge;
@@ -34,7 +34,7 @@ float3 GetTriplanarWeights(float3 normal) {
 	return triW / (triW.x + triW.y + triW.z);
 }
 
-void standardPass(Input IN, inout SurfaceOutputStandardSpecular o)
+void standardPass(Input IN, inout SurfaceOutputStandardSpecular o, float alpha)
 {
 	//TriplanarUV triUV1 = GetTriplanarUV(localPos * _TextureScale + _GameTime * _TimeScale);
 	//float4 texX1 = tex2D(_MainTex, triUV1.x);
@@ -47,14 +47,14 @@ void standardPass(Input IN, inout SurfaceOutputStandardSpecular o)
 	float3 localPos = mul(unity_WorldToObject, float4(IN.worldPos, 1)).xyz;
 
 	TriplanarUV triUV1 = GetTriplanarUV(localPos * _TextureScale + _GameTime * _TimeScale);
-	float4 texX1 = tex2D(_MainTex, triUV1.x);
-	float4 texY1 = tex2D(_MainTex, triUV1.y);
-	float4 texZ1 = tex2D(_MainTex, triUV1.z);
+	float4 texX1 = tex2D(_CloudTex, triUV1.x);
+	float4 texY1 = tex2D(_CloudTex, triUV1.y);
+	float4 texZ1 = tex2D(_CloudTex, triUV1.z);
 
 	TriplanarUV triUV2 = GetTriplanarUV(localPos * _TextureScale - _GameTime * _TimeScale + 0.4);
-	float4 texX2 = tex2D(_MainTex, triUV2.x);
-	float4 texY2 = tex2D(_MainTex, triUV2.y);
-	float4 texZ2 = tex2D(_MainTex, triUV2.z);
+	float4 texX2 = tex2D(_CloudTex, triUV2.x);
+	float4 texY2 = tex2D(_CloudTex, triUV2.y);
+	float4 texZ2 = tex2D(_CloudTex, triUV2.z);
 	float4 tex = (texX1 + texY1 + texZ1 + texX2 + texY2 + texZ2) / 6;
 
 	float4 normalX1 = tex2D(_NormalMap, triUV1.x);
@@ -65,15 +65,14 @@ void standardPass(Input IN, inout SurfaceOutputStandardSpecular o)
 	float4 normalZ2 = tex2D(_NormalMap, triUV2.z);
 	float4 normal = (normalX1 + normalY1 + normalZ1 + normalX2 + normalY2 + normalZ2) / 6;
 
-	float alpha = tex.x * IN.color.a;
-	alpha = saturate((alpha - _AlphaTest) * _HardEdge) * _Alpha;
+	float cloudAlpha = tex.x * IN.color.a;
+	clip(cloudAlpha - _AlphaTest);
+	alpha *= saturate((cloudAlpha - _AlphaTest) / (1.0 - _AlphaTest)) * _Alpha;
 
-	clip(alpha);
 
-	o.Specular *= _Alpha;
 	o.Normal = UnpackNormal(normal);
-	o.Albedo = 1;
-
+	o.Albedo = IN.color.rgb;
 	o.Alpha = alpha;
+	o.Specular = 0;
 }
 
