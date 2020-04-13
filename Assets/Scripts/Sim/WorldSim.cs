@@ -1076,12 +1076,13 @@ public void Dispose(ref WorldData worldData)
 				ConductionEnergyIce = conductionIceFlora,
 			}, JobHandle.CombineDependencies(energyFloraJobHandleDependencies));
 
-			energyJobHandles[worldData.LavaLayer] = SimJob.Schedule(new EnergyLavaJob()
+			energyJobHandles[worldData.LavaLayer] = SimJob.Run(new EnergyLavaJob()
 			{
 				LavaTemperature = nextState.LavaTemperature,
 				LastTemperature = lastState.LavaTemperature,
 				LavaMass = lastState.LavaMass,
-				ThermalRadiationDelta = thermalRadiationDelta[worldData.LavaLayer],
+				Emissivity = worldData.ThermalEmissivityLava,
+				SecondsPerTick = worldData.SecondsPerTick
 			});
 
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
@@ -1203,7 +1204,7 @@ public void Dispose(ref WorldData worldData)
 			}
 
 
-			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Schedule(new FluxWaterJob()
+			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Run(new FluxWaterJob()
 			{
 				EvaporatedWaterMass = evaporationMassWater,
 				FrozenMass = frozenMass,
@@ -1336,8 +1337,13 @@ public void Dispose(ref WorldData worldData)
 
 			}, fluxJobHandles[worldData.FloraLayer]);
 
-			fluxJobHandles[worldData.LavaLayer] = SimJob.Run(new FluxLavaJob()
+			fluxJobHandles[worldData.LavaLayer] = SimJob.Schedule(new FluxLavaJob()
 			{
+			});
+
+			fluxJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new FluxTerrainJob()
+			{
+				SoilRespiration = soilRespiration,
 				CrystalizedMass = lavaCrystalizedMass,
 				LavaEjected = lavaEjected,
 				DustEjected = dustEjected,
@@ -1348,20 +1354,14 @@ public void Dispose(ref WorldData worldData)
 				CrustDepth = lastState.CrustDepth,
 				MagmaMass = lastState.MagmaMass,
 				Elevation = lastState.Elevation,
+				SoilCarbon = nextState.GroundCarbon,
 				WaterCoverage = dependent.WaterCoverage[worldData.SurfaceWaterLayer],
 				LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 				CrustEruptionDepth = worldData.CrustDepthForEruption,
 				DustPerLavaEjected = worldData.DustPerLavaEjected,
 				MagmaPressureCrustReductionSpeed = worldData.MagmaPressureCrustReductionSpeed,
 				LavaEruptionSpeed = worldData.LavaEruptionSpeed,
-				SecondsPerTick = worldData.SecondsPerTick
-			});
-
-			fluxJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new FluxTerrainJob()
-			{
-				SoilRespiration = soilRespiration,
-
-				SoilCarbon = nextState.GroundCarbon,
+				SecondsPerTick = worldData.SecondsPerTick,
 				SoilRespirationSpeed = worldData.SoilRespirationSpeed,
 				OxygenPercent = lastState.PlanetState.Oxygen
 			});
@@ -1481,7 +1481,7 @@ public void Dispose(ref WorldData worldData)
 				updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateAirMassJobHandle);
 				updateMassAirJobHandles[j] = updateMassJobHandle;
 			}
-			var updateMassEvaporationHandle =SimJob.Run(new UpdateMassAirSurfaceJob()
+			var updateMassEvaporationHandle =SimJob.Schedule(new UpdateMassAirSurfaceJob()
 			{
 				AirTemperaturePotential = nextState.AirTemperaturePotential[1],
 				VaporMass = nextState.AirVapor[1],
@@ -1544,7 +1544,7 @@ public void Dispose(ref WorldData worldData)
 				LavaCrystalized = lavaCrystalizedMass,
 				LavaEjected = lavaEjected,
 				MagmaTemperature = worldData.MagmaTemperature,
-				LavaDensityAdjustment = worldData.LavaDensityAdjustment,
+				LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
 			}));
 
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateFloraJob()

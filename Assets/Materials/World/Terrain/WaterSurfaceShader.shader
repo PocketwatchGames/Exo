@@ -1,4 +1,4 @@
-﻿Shader "Custom/TransparentVertexColoredShader"
+﻿Shader "Custom/WaterSurfaceShader"
  {
     Properties{
         _Color("Color", Color) = (1,1,1,1)

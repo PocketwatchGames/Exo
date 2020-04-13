@@ -152,7 +152,7 @@ public struct WorldData {
 	public float DustVerticalVelocity;
 	public float DustPerLavaEjected;
 	public float MagmaPressureCrustReductionSpeed;
-	public float LavaDensityAdjustment;
+	public float LavaToRockMassAdjustment;
 	public float LavaEruptionSpeed;
 
 	[Header("SurfaceWaterFlow")]

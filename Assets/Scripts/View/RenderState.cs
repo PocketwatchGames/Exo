@@ -112,7 +112,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public float LavaCrystalizationTemperature;
 	[ReadOnly] public float LavaTemperatureRangeInverse;
 	[ReadOnly] public float DustMaxInverse;
-	[ReadOnly] public float LavaDensityAdjustment;
+	[ReadOnly] public float LavaToRockMassAdjustment;
 	[ReadOnly] public float DisplaySoilWeight;
 	[ReadOnly] public float DisplaySandWeight;
 	[ReadOnly] public float DisplayFloraWeight;
@@ -183,7 +183,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		cloudHeight = cloudCoverage == 0 ? 0 : (cloudVolume / cloudCoverage * DisplayCloudHeight);
 
 
-		float lavaDepth = LavaMass[i] * LavaDensityAdjustment / WorldData.MassLava;
+		float lavaDepth = LavaMass[i] * LavaToRockMassAdjustment / WorldData.MassLava;
 		lavaElevation = (lavaDepth == 0) ? 0.75f : (((elevation + roughness + lavaDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
 
 		if (WindOverlayActive)

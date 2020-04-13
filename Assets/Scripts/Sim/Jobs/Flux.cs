@@ -18,7 +18,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-[BurstCompile]
+//[BurstCompile]
 public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
@@ -158,17 +158,18 @@ public struct FluxWaterJob : IJobParallelFor {
 							planktonMass * PlanktonRespirationSpeed
 							* math.max(0, 1.0f + (temperature - WorldData.FreezingTemperature) * PlanktonRespirationPerDegree)
 							* (1.0f - math.min(1, planktonMass / (waterMass * PlanktonDensityMax)));
-						float desiredRespirationInverse = 1.0f / desiredRespiration;
-						float glucoseUsed = math.min(1, glucose * desiredRespirationInverse);
-						float respiration = 
-							desiredRespiration * glucoseUsed;
+						if (desiredRespiration > 0)
+						{
+							float desiredRespirationInverse = 1.0f / desiredRespiration;
+							float glucoseUsed = math.min(1, glucose * desiredRespirationInverse);
+							float respiration = desiredRespiration * glucoseUsed;
 
-						energyFlux += respiration * PlanktonEnergyForPhotosynthesis;
-						glucoseDelta -= respiration;
-						waterCarbonDelta += respiration;
+							energyFlux += respiration * PlanktonEnergyForPhotosynthesis;
+							glucoseDelta -= respiration;
+							waterCarbonDelta += respiration;
 
-						respirationHealth = respiration / PlanktonRespirationSpeed;
-
+							respirationHealth = respiration / PlanktonRespirationSpeed;
+						}
 					}
 				}
 
@@ -632,10 +633,19 @@ public struct FluxFloraJob : IJobParallelFor {
 
 [BurstCompile]
 public struct FluxLavaJob : IJobParallelFor {
+	public void Execute(int i)
+	{
+	}
+}
+
+[BurstCompile]
+public struct FluxTerrainJob : IJobParallelFor {
 	public NativeArray<float> CrystalizedMass;
 	public NativeArray<float> LavaEjected;
 	public NativeArray<float> DustEjected;
 	public NativeArray<float> CrustDelta;
+	public NativeArray<float> SoilRespiration;
+	[ReadOnly] public NativeArray<float> SoilCarbon;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> LavaMass;
@@ -648,16 +658,28 @@ public struct FluxLavaJob : IJobParallelFor {
 	[ReadOnly] public float LavaEruptionSpeed;
 	[ReadOnly] public float MagmaPressureCrustReductionSpeed;
 	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float SoilRespirationSpeed;
+	[ReadOnly] public float OxygenPercent;
+
 	public void Execute(int i)
 	{
+		float soilCarbon = SoilCarbon[i];
 		float crystalizedMass = 0;
 		float latentHeat = 0;
 		float lavaEjected = 0;
 		float dustEjected = 0;
 		float crustDelta = 0;
+		float soilRespiration = 0;
 		float mass = LavaMass[i];
 		float temperature = LavaTemperature[i];
 		float crystalizationTempDelta = LavaCrystalizationTemperature - temperature;
+
+#if !DISABLE_SOIL_RESPIRATION
+
+		soilRespiration = soilCarbon * OxygenPercent * SoilRespirationSpeed;
+		soilCarbon -= soilRespiration;
+
+#endif
 
 		if (crystalizationTempDelta > 0)
 		{
@@ -673,33 +695,24 @@ public struct FluxLavaJob : IJobParallelFor {
 			if (CrustDepth[i] < CrustEruptionDepth)
 			{
 				lavaEjected = math.min(MagmaMass[i], (magmaPressure - 1.0f) * (1.0f - CrustDepth[i] / CrustEruptionDepth) * LavaEruptionSpeed * SecondsPerTick);
+
+				// TODO: track dust carbon and eject it so it can settle elsewhere
 				dustEjected = lavaEjected * DustPerLavaEjected * (1.0f - WaterCoverage[i]);
+
+				// eject carbon as a gas
+				soilRespiration += math.min(soilCarbon, lavaEjected * DustPerLavaEjected);
 			}
 		}
 #endif
 
+
+		SoilRespiration[i] = soilRespiration;
 		CrystalizedMass[i] = crystalizedMass;
 		LavaEjected[i] = lavaEjected;
 		DustEjected[i] = dustEjected;
 		CrustDelta[i] = crustDelta;
-	}
-}
 
-[BurstCompile]
-public struct FluxTerrainJob : IJobParallelFor {
-	public NativeArray<float> SoilRespiration;
-	[ReadOnly] public NativeArray<float> SoilCarbon;
-	[ReadOnly] public float SoilRespirationSpeed;
-	[ReadOnly] public float OxygenPercent;
-	public void Execute(int i)
-	{
-		float soilRespiration = 0;
-#if !DISABLE_SOIL_RESPIRATION
 
-		soilRespiration = SoilCarbon[i] * OxygenPercent * SoilRespirationSpeed;
 
-#endif
-
-		SoilRespiration[i] = soilRespiration;
 	}
 }

@@ -71,7 +71,7 @@ public static class SimJobs {
 			LavaTemperature = state.LavaTemperature,
 			IceMass = state.IceMass,
 			IceTemperature = state.IceTemperature,
-			LavaDensityAdjustment = worldData.LavaDensityAdjustment,
+			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
 		}, dependencies);
 		dependencies.Complete();
 
@@ -233,12 +233,12 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> Elevation;
-	[ReadOnly] public float LavaDensityAdjustment;
+	[ReadOnly] public float LavaToRockMassAdjustment;
 	public void Execute(int i)
 	{
 		float iceMass = IceMass[i];
 		float lavaMass = LavaMass[i];
-		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce + lavaMass * LavaDensityAdjustment / WorldData.MassLava;
+		SurfaceElevation[i] = Elevation[i] + WaterDepth[i] + iceMass / WorldData.MassIce + lavaMass * LavaToRockMassAdjustment / WorldData.MassLava;
 
 		IceEnergy[i] = WorldData.SpecificHeatIce * iceMass * IceTemperature[i];
 		LavaEnergy[i] = WorldData.SpecificHeatLava * lavaMass * LavaTemperature[i];

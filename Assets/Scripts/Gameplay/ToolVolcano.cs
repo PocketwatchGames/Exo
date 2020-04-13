@@ -31,7 +31,7 @@ public class ToolVolcano : GameTool {
 
 			float crustDelta = math.min(lastState.CrustDepth[cell], magmaVolume);
 			nextState.CrustDepth[cell] = lastState.CrustDepth[cell] - crustDelta;
-			nextState.Elevation[cell] = lastState.Elevation[cell] - crustDelta;
+			//nextState.Elevation[cell] = lastState.Elevation[cell] - crustDelta;
 		}
 	}
 }

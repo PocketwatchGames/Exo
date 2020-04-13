@@ -66,11 +66,6 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		PlanktonGlucose[i] = LastPlanktonGlucose[i] + PlanktonGlucoseDelta[i];
 		CarbonMass[i] += WaterCarbonDelta[i];
 
-		if (PlanktonMass[i] < 0)
-		{
-			Debug.Break();
-		}
-
 		if (newMass <= 0)
 		{
 			WaterTemperature[i] = 0;
@@ -270,7 +265,7 @@ public struct UpdateMassIceJob : IJobParallelFor {
 }
 
 
-[BurstCompile]
+//[BurstCompile]
 public struct UpdateTerrainJob : IJobParallelFor {
 	public NativeArray<float> SoilCarbon;
 	public NativeArray<float> Roughness;
@@ -298,7 +293,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> FloraDeath;
 	[ReadOnly] public NativeArray<float> PlanktonDeath;
 	[ReadOnly] public float MagmaTemperature;
-	[ReadOnly] public float LavaDensityAdjustment;
+	[ReadOnly] public float LavaToRockMassAdjustment;
 	public void Execute(int i)
 	{
 		float lavaCrystalized = LavaCrystalized[i];
@@ -306,7 +301,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 		float lavaMass = LastLavaMass[i];
 		float newLavaMass = lavaMass - lavaCrystalized + lavaEjected;
 
-		float lavaCrystalizedDepth = lavaCrystalized * LavaDensityAdjustment / (WorldData.MassLava);
+		float lavaCrystalizedDepth = lavaCrystalized * LavaToRockMassAdjustment / WorldData.MassLava;
 		Elevation[i] = LastElevation[i] + lavaCrystalizedDepth;
 		// TODO: improve soil fertility when dust settles
 		SoilCarbon[i] = LastSoilFertility[i] - SoilRespiration[i] + FloraDeath[i] + PlanktonDeath[i];

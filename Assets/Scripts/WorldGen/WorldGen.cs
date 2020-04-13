@@ -315,6 +315,7 @@ public static class WorldGen {
 				ElevationTop[i] -= layerDepth;
 				PlanktonMass[i] = PlanktonInLayer * layerDepth / LayerDepthMax;
 				PlanktonGlucose[i] = PlanktonMass[i] / 2;
+
 			}
 		}
 	}

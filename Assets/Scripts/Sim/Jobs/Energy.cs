@@ -152,17 +152,18 @@ public struct EnergyFloraJob : IJobParallelFor {
 }
 
 
-[BurstCompile]
+//[BurstCompile]
 public struct EnergyLavaJob : IJobParallelFor {
 	public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LavaMass;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
+	[ReadOnly] public float Emissivity;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		if (LavaMass[i] > 0)
 		{
-			float energy = ThermalRadiationDelta[i];
+			float energy = -Atmosphere.GetRadiationRate(LastTemperature[i], Emissivity) * SecondsPerTick;
 			LavaTemperature[i] = LastTemperature[i] + energy / (LavaMass[i] * WorldData.SpecificHeatLava);
 		}
 		else

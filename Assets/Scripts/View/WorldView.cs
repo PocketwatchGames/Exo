@@ -416,7 +416,7 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateCellJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateCellJob()
 		{
 			TerrainColor = to.TerrainColor,
 			TerrainElevation = to.TerrainElevation,
@@ -468,7 +468,7 @@ public class WorldView : MonoBehaviour {
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
 			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
-			LavaDensityAdjustment = worldData.LavaDensityAdjustment,
+			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
 			DisplayFloraWeight = DisplayFloraWeight,
 			DisplaySandWeight = DisplaySandWeight,
 			DisplaySoilWeight = DisplaySoilWeight,
@@ -512,7 +512,7 @@ public class WorldView : MonoBehaviour {
 			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
 		}
 
-		var getVertsHandle = _renderTerrainHelper.Run(new BuildTerrainVertsJob()
+		var getVertsHandle = _renderTerrainHelper.Schedule(new BuildTerrainVertsJob()
 		{
 			VTerrainPosition = _terrainVerticesArray,
 			VTerrainColor = _terrainColorsArray,
