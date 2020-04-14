@@ -60,6 +60,7 @@ public static class SimJobs {
 			IceEnergy = dependent.IceEnergy,
 			FloraEnergy = dependent.FloraEnergy,
 			LavaEnergy = dependent.LavaEnergy,
+			LavaDepth = dependent.LavaDepth,
 			SurfaceElevation = dependent.LayerElevation[1],
 
 			WaterDepth = dependent.WaterLayerDepth[1],
@@ -224,6 +225,7 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 	public NativeArray<float> IceEnergy;
 	public NativeArray<float> FloraEnergy;
 	public NativeArray<float> LavaEnergy;
+	public NativeArray<float> LavaDepth;
 	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public NativeArray<float> FloraMass;
 	[ReadOnly] public NativeArray<float> FloraWater;
@@ -242,6 +244,7 @@ public struct UpdateDependentStateJob : IJobParallelFor {
 
 		IceEnergy[i] = WorldData.SpecificHeatIce * iceMass * IceTemperature[i];
 		LavaEnergy[i] = WorldData.SpecificHeatLava * lavaMass * LavaTemperature[i];
+		LavaDepth[i] = lavaMass * LavaToRockMassAdjustment / WorldData.MassLava;
 		FloraEnergy[i] = (WorldData.SpecificHeatFlora * FloraMass[i] + WorldData.SpecificHeatWater * FloraWater[i]) * FloraTemperature[i];
 	}
 

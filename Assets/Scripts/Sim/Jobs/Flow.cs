@@ -19,6 +19,7 @@ public struct UpdateFlowVelocityJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float Gravity;
 	[ReadOnly] public float Damping;
+	[ReadOnly] public float ViscosityInverse;
 
 	public void Execute(int i)
 	{
@@ -33,7 +34,7 @@ public struct UpdateFlowVelocityJob : IJobParallelFor {
 		int upwindIndex = elevationDiff > 0 ? cellIndex : nIndex;
 		float acceleration = Gravity * elevationDiff * NeighborDistInverse[i];
 
-		float v = LastFlow[i] * Damping + acceleration * SecondsPerTick;
+		float v = LastFlow[i] * Damping + acceleration * SecondsPerTick * ViscosityInverse;
 		Flow[i] = v;
 	}
 }
@@ -110,7 +111,7 @@ public struct LimitOutgoingFlowJob : IJobParallelFor {
 
 
 [BurstCompile]
-public struct ApplyFlowJob : IJobParallelFor {
+public struct ApplyFlowWaterJob : IJobParallelFor {
 
 	public NativeArray<DiffusionWater> Delta;
 	[ReadOnly] public NativeArray<float> Mass;
@@ -189,11 +190,12 @@ public struct ApplyFlowJob : IJobParallelFor {
 			velocity = 0;
 			planktonMass = 0;
 			planktonGlucose = 0;
-		} else
+		}
+		else
 		{
 			float inverseMass = 1.0f / (mass + salt);
 			temperature *= inverseMass;
-			velocity *= inverseMass; 
+			velocity *= inverseMass;
 		}
 
 #endif
@@ -207,6 +209,77 @@ public struct ApplyFlowJob : IJobParallelFor {
 			PlanktonGlucose = planktonGlucose,
 			Temperature = temperature,
 			Velocity = velocity
+		};
+	}
+}
+
+//[BurstCompile]
+public struct ApplyFlowLavaJob : IJobParallelFor {
+
+	public NativeArray<DiffusionLava> Delta;
+	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float> FlowPercent;
+
+	public void Execute(int i)
+	{
+		float mass = 0;
+		float temperature = 0;
+		float massPercentRemaining = 1;
+
+#if !DISABLE_SURFACE_FLOW
+
+		for (int j = 0; j < StaticState.MaxNeighbors; j++)
+		{
+			int n = i * StaticState.MaxNeighbors + j;
+			int nIndex = Neighbors[n];
+			if (nIndex >= 0)
+			{
+				float flowPercent = -FlowPercent[n];
+				if (flowPercent < 0)
+				{
+					massPercentRemaining += flowPercent;
+				}
+				else
+				{
+					// TODO: cache the neighbor's neighbor inverse
+					for (int k = 0; k < StaticState.MaxNeighbors; k++)
+					{
+						int incomingNIndex = nIndex * StaticState.MaxNeighbors + k;
+						if (Neighbors[incomingNIndex] == i)
+						{
+							float massIncoming = Mass[nIndex] * flowPercent;
+							mass += massIncoming;
+							temperature += Temperature[nIndex] * massIncoming;
+
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		massPercentRemaining = math.max(0, massPercentRemaining);
+		float massRemaining = Mass[i] * massPercentRemaining;
+		mass += massRemaining;
+		temperature += Temperature[i] * massRemaining;
+
+		if (mass == 0)
+		{
+			temperature = 0;
+		}
+		else
+		{
+			temperature /= mass;
+		}
+
+#endif
+
+		Delta[i] = new DiffusionLava()
+		{
+			Mass = mass,
+			Temperature = temperature,
 		};
 	}
 }

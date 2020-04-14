@@ -60,7 +60,7 @@ public struct RenderState {
 	}
 }
 
-[BurstCompile]
+//[BurstCompile]
 public struct BuildRenderStateCellJob : IJobParallelFor {
 	public NativeArray<Color32> TerrainColor;
 	public NativeArray<float> TerrainElevation;
@@ -141,7 +141,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		var elevation = Elevation[i];
 		float roughness = math.max(1, Roughness[i]);
 		// TODO: draw roughness correctly
-		roughness = 1;
+		roughness = 0.1f;
 
 		float surfaceElevation = elevation + math.max(roughness, waterDepth);
 
@@ -174,7 +174,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		float cloudCoverage = math.saturate(math.pow(cloudVolume, 0.6667f));
 		float dustCoverage = math.saturate(math.sqrt(DustCoverage[i] * DustMaxInverse));
 		cloudColor = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0,0,0,255), dustCoverage);
-		cloudColor.a = (byte)(255 * math.max(dustCoverage, cloudCoverage));
+		cloudColor.a = (byte)(255 * math.max(dustCoverage, cloudCoverage * 0.75f));
 
 		terrainElevation = ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
 		waterElevation = ((waterDepth == 0) ? 0.99f : ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius);

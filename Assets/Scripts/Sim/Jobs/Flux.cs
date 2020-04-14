@@ -638,13 +638,14 @@ public struct FluxLavaJob : IJobParallelFor {
 	}
 }
 
-[BurstCompile]
+//[BurstCompile]
 public struct FluxTerrainJob : IJobParallelFor {
 	public NativeArray<float> CrystalizedMass;
 	public NativeArray<float> LavaEjected;
 	public NativeArray<float> DustEjected;
 	public NativeArray<float> CrustDelta;
 	public NativeArray<float> SoilRespiration;
+	public NativeArray<float> LatentHeatLava;
 	[ReadOnly] public NativeArray<float> SoilCarbon;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
@@ -688,10 +689,10 @@ public struct FluxTerrainJob : IJobParallelFor {
 		}
 
 #if !DISABLE_ERUPTION
-		float magmaPressure = MagmaMass[i] / (WorldData.MassLava * (Elevation[i] - CrustDepth[i] + 20000));
+		float magmaPressure = MagmaMass[i] / (WorldData.MassLava * (Elevation[i] - CrustDepth[i] + 2000));
 		if (magmaPressure > 1)
 		{
-			crustDelta = -CrustDepth[i] * math.min(1, SecondsPerTick * (magmaPressure - 1) * MagmaPressureCrustReductionSpeed);
+//			crustDelta = -CrustDepth[i] * math.min(1, SecondsPerTick * (magmaPressure - 1) * MagmaPressureCrustReductionSpeed);
 			if (CrustDepth[i] < CrustEruptionDepth)
 			{
 				lavaEjected = math.min(MagmaMass[i], (magmaPressure - 1.0f) * (1.0f - CrustDepth[i] / CrustEruptionDepth) * LavaEruptionSpeed * SecondsPerTick);
@@ -705,7 +706,7 @@ public struct FluxTerrainJob : IJobParallelFor {
 		}
 #endif
 
-
+		LatentHeatLava[i] = crystalizedMass * WorldData.LatentHeatLava;
 		SoilRespiration[i] = soilRespiration;
 		CrystalizedMass[i] = crystalizedMass;
 		LavaEjected[i] = lavaEjected;

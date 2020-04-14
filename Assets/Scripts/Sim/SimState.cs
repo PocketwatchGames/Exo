@@ -31,7 +31,8 @@ public struct SimState {
 	public NativeArray<float> MagmaMass;
 	public NativeArray<float> LavaMass;
 	public NativeArray<float> LavaTemperature;
-	public NativeArray<float> Flow;
+	public NativeArray<float> FlowWater;
+	public NativeArray<float> FlowLava;
 	public NativeArray<float>[] AirTemperaturePotential;
 	public NativeArray<float>[] AirVapor;
 	public NativeArray<float>[] AirCarbon;
@@ -67,7 +68,8 @@ public struct SimState {
 		CrustDepth = new NativeArray<float>(count, Allocator.Persistent);
 		MagmaMass = new NativeArray<float>(count, Allocator.Persistent);
 
-		Flow = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
+		FlowWater = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
+		FlowLava = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
 
 		AirTemperaturePotential = new NativeArray<float>[worldData.AirLayers];
 		AirVapor = new NativeArray<float>[worldData.AirLayers];
@@ -124,7 +126,8 @@ public struct SimState {
 		LavaMass.CopyFrom(from.LavaMass);
 		CrustDepth.CopyFrom(from.CrustDepth);
 		MagmaMass.CopyFrom(from.MagmaMass);
-		Flow.CopyFrom(from.Flow);
+		FlowWater.CopyFrom(from.FlowWater);
+		FlowLava.CopyFrom(from.FlowLava);
 		for (int i = 0; i < from.AirTemperaturePotential.Length; i++)
 		{
 			AirTemperaturePotential[i].CopyFrom(from.AirTemperaturePotential[i]);
@@ -167,7 +170,8 @@ public struct SimState {
 		LavaTemperature.Dispose();
 		MagmaMass.Dispose();
 		CrustDepth.Dispose();
-		Flow.Dispose();
+		FlowWater.Dispose();
+		FlowLava.Dispose();
 		for (int i = 0; i < AirTemperaturePotential.Length; i++)
 		{
 			AirTemperaturePotential[i].Dispose();
@@ -243,6 +247,7 @@ public struct DependentState {
 	public NativeArray<float3> CloudVelocity;
 	public NativeArray<float> DewPoint;
 	public NativeArray<float> AirDensityCloud;
+	public NativeArray<float> LavaDepth;
 
 	public void Init(int count, int airLayers, int waterLayers)
 	{
@@ -268,6 +273,7 @@ public struct DependentState {
 		SurfaceAreaWaterFlora = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAreaWaterTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		SurfaceAreaFloraTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		LavaDepth = new NativeArray<float>(count, Allocator.Persistent);
 
 		AirMass = new NativeArray<float>[airLayers];
 		AirPressure = new NativeArray<float>[airLayers];
@@ -331,6 +337,7 @@ public struct DependentState {
 		SurfaceAreaWaterFlora.Dispose();
 		SurfaceAreaWaterTerrain.Dispose();
 		SurfaceAreaFloraTerrain.Dispose();
+		LavaDepth.Dispose();
 
 		for (int i = 0; i < AirPressure.Length; i++)
 		{

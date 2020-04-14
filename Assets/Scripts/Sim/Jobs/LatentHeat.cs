@@ -68,3 +68,16 @@ public struct ApplyLatentHeatWaterJob : IJobParallelFor {
 	}
 }
 
+//[BurstCompile]
+public struct ApplyLatentHeatLavaJob : IJobParallelFor {
+	public NativeArray<float> LavaTemperature;
+	[ReadOnly] public NativeArray<float> LatentHeat;
+	[ReadOnly] public NativeArray<float> LavaMass;
+	public void Execute(int i)
+	{
+		if (LavaMass[i] > 0)
+		{
+			LavaTemperature[i] = math.max(0, LavaTemperature[i] + LatentHeat[i] / (LavaMass[i] * WorldData.SpecificHeatLava));
+		}
+	}
+}

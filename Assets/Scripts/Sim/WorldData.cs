@@ -154,11 +154,14 @@ public struct WorldData {
 	public float MagmaPressureCrustReductionSpeed;
 	public float LavaToRockMassAdjustment;
 	public float LavaEruptionSpeed;
+	public float LavaFlowDamping;
+	public float LavaViscosity;
 
 	[Header("SurfaceWaterFlow")]
 	public float SurfaceWaterFlowDamping;
 	public float SurfaceWaterDepth;
 	public float ThermoclineDepth;
+	public float WaterViscosity;
 
 	#region Constants
 	public const float TemperatureLapseRate = -0.0065f;

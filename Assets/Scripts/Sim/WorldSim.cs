@@ -101,8 +101,11 @@ public class WorldSim {
 	private NativeArray<float> atmosphericWindowUp;
 	private NativeArray<float> atmosphericWindowDown;
 
-	private NativeArray<float> _outgoingFlow;
-	private NativeArray<float> _flowPercent;
+	private NativeArray<float> _outgoingFlowWater;
+	private NativeArray<float> _outgoingFlowLava;
+	private NativeArray<float> _flowPercentWater;
+	private NativeArray<float> _flowPercentLava;
+	private NativeArray<DiffusionLava> _diffusionLava;
 
 
 
@@ -236,12 +239,15 @@ public class WorldSim {
 		}
 
 
-		_outgoingFlow = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
-		_flowPercent = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
+		_outgoingFlowWater = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
+		_outgoingFlowLava = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
+		_flowPercentWater = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
+		_flowPercentLava = new NativeArray<float>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
+		_diffusionLava = new NativeArray<DiffusionLava>(_cellCount * StaticState.MaxNeighbors, Allocator.TempJob);
 
 	}
 
-public void Dispose(ref WorldData worldData)
+	public void Dispose(ref WorldData worldData)
 	{
 		solarRadiation.Dispose();
 		albedoSlope.Dispose();
@@ -337,8 +343,11 @@ public void Dispose(ref WorldData worldData)
 		}
 
 
-		_outgoingFlow.Dispose();
-		_flowPercent.Dispose();
+		_outgoingFlowWater.Dispose();
+		_outgoingFlowLava.Dispose();
+		_flowPercentWater.Dispose();
+		_flowPercentLava.Dispose();
+		_diffusionLava.Dispose();
 
 	}
 
@@ -1341,13 +1350,14 @@ public void Dispose(ref WorldData worldData)
 			{
 			});
 
-			fluxJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new FluxTerrainJob()
+			fluxJobHandles[worldData.TerrainLayer] = SimJob.Run(new FluxTerrainJob()
 			{
 				SoilRespiration = soilRespiration,
 				CrystalizedMass = lavaCrystalizedMass,
 				LavaEjected = lavaEjected,
 				DustEjected = dustEjected,
 				CrustDelta = crustDelta,
+				LatentHeatLava = latentHeat[worldData.LavaLayer],
 
 				LavaTemperature = nextState.LavaTemperature,
 				LavaMass = lastState.LavaMass,
@@ -1599,6 +1609,14 @@ public void Dispose(ref WorldData worldData)
 				LatentHeat = latentHeat[worldData.TerrainLayer],
 				SoilFertility = nextState.GroundCarbon,
 				HeatingDepth = worldData.SoilHeatDepth
+			}));
+
+			latentHeatJobHandle = JobHandle.CombineDependencies(latentHeatJobHandle, SimJob.Run(new ApplyLatentHeatLavaJob()
+			{
+				LavaTemperature = nextState.LavaTemperature,
+
+				LatentHeat = latentHeat[worldData.LavaLayer],
+				LavaMass = nextState.LavaMass
 			}));
 
 			for (int i = 1; i < worldData.AirLayers - 1; i++)
@@ -2176,11 +2194,11 @@ public void Dispose(ref WorldData worldData)
 			var waterFlowJobHandle = default(JobHandle);
 
 			// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
-			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, NeighborJob.Schedule(new UpdateFlowVelocityJob()
+			waterFlowJobHandle = NeighborJob.Schedule(new UpdateFlowVelocityJob()
 			{
-				Flow = nextState.Flow,
+				Flow = nextState.FlowWater,
 
-				LastFlow = lastState.Flow,
+				LastFlow = lastState.FlowWater,
 				SurfaceElevation = dependent.LayerElevation[1],
 				WaterDepth = dependent.WaterLayerHeight[worldData.SurfaceWaterLayer],
 				NeighborDistInverse = staticState.NeighborDistInverse,
@@ -2188,26 +2206,26 @@ public void Dispose(ref WorldData worldData)
 				Gravity = nextState.PlanetState.Gravity,
 				SecondsPerTick = worldData.SecondsPerTick,
 				Damping = worldData.SurfaceWaterFlowDamping,
+				ViscosityInverse = 1.0f - worldData.WaterViscosity,
+			}, waterFlowJobHandle);
 
-			}, waterFlowJobHandle));
-
-			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, SimJob.Schedule(new SumOutgoingFlowJob()
+			waterFlowJobHandle = SimJob.Schedule(new SumOutgoingFlowJob()
 			{
-				OutgoingFlow = _outgoingFlow,
-				Flow = nextState.Flow
-			}, waterFlowJobHandle));
+				OutgoingFlow = _outgoingFlowWater,
+				Flow = nextState.FlowWater
+			}, waterFlowJobHandle);
 
-			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, NeighborJob.Schedule(new LimitOutgoingFlowJob()
+			waterFlowJobHandle = NeighborJob.Schedule(new LimitOutgoingFlowJob()
 			{
-				Flow = nextState.Flow,
-				FlowPercent = _flowPercent,
+				Flow = nextState.FlowWater,
+				FlowPercent = _flowPercentWater,
 
-				OutgoingFlow = _outgoingFlow,
+				OutgoingFlow = _outgoingFlowWater,
 				Neighbors = staticState.Neighbors,
 				WaterDepth = dependent.WaterLayerHeight[worldData.SurfaceWaterLayer]
-			}, waterFlowJobHandle));
+			}, waterFlowJobHandle);
 
-			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, SimJob.Schedule(new ApplyFlowJob()
+			waterFlowJobHandle = SimJob.Schedule(new ApplyFlowWaterJob()
 			{
 				Delta = diffusionWater[worldData.SurfaceWaterLayer],
 
@@ -2218,11 +2236,11 @@ public void Dispose(ref WorldData worldData)
 				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
 				Salt = nextState.SaltMass[worldData.SurfaceWaterLayer],
 				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
-				FlowPercent = _flowPercent,
+				FlowPercent = _flowPercentWater,
 				Neighbors = staticState.Neighbors
-			}, waterFlowJobHandle));
+			}, waterFlowJobHandle);
 
-			waterFlowJobHandle = JobHandle.CombineDependencies(waterDestJob, SimJob.Schedule(new ApplyAdvectionWaterJob()
+			waterFlowJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
 			{
 				WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer],
 				SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
@@ -2233,8 +2251,64 @@ public void Dispose(ref WorldData worldData)
 				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
 
 				Advection = diffusionWater[worldData.SurfaceWaterLayer],
-			}, waterFlowJobHandle));
-			waterFlowJobHandle.Complete();
+			}, waterFlowJobHandle);
+
+			var lavaFlowJobHandle = default(JobHandle);
+
+			// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
+			lavaFlowJobHandle = NeighborJob.Schedule(new UpdateFlowVelocityJob()
+			{
+				Flow = nextState.FlowLava,
+
+				LastFlow = lastState.FlowLava,
+				SurfaceElevation = nextState.Elevation,
+				WaterDepth = dependent.LavaDepth,
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				Neighbors = staticState.Neighbors,
+				Gravity = nextState.PlanetState.Gravity,
+				SecondsPerTick = worldData.SecondsPerTick,
+				Damping = worldData.LavaFlowDamping,
+				ViscosityInverse = 1.0f - worldData.LavaViscosity,
+
+			}, lavaFlowJobHandle);
+
+			lavaFlowJobHandle = SimJob.Schedule(new SumOutgoingFlowJob()
+			{
+				OutgoingFlow = _outgoingFlowLava,
+				Flow = nextState.FlowLava
+			}, lavaFlowJobHandle);
+
+			lavaFlowJobHandle = NeighborJob.Schedule(new LimitOutgoingFlowJob()
+			{
+				Flow = nextState.FlowLava,
+				FlowPercent = _flowPercentLava,
+
+				OutgoingFlow = _outgoingFlowLava,
+				Neighbors = staticState.Neighbors,
+				WaterDepth = dependent.LavaDepth
+			}, lavaFlowJobHandle);
+
+			lavaFlowJobHandle = SimJob.Run(new ApplyFlowLavaJob()
+			{
+				Delta = _diffusionLava,
+
+				Mass = nextState.LavaMass,
+				Temperature = nextState.LavaTemperature,
+				FlowPercent = _flowPercentLava,
+				Neighbors = staticState.Neighbors
+			}, lavaFlowJobHandle);
+
+			lavaFlowJobHandle = SimJob.Schedule(new ApplyAdvectionLavaJob()
+			{
+				Mass = nextState.LavaMass,
+				Temperature = nextState.LavaTemperature,
+
+				Advection = _diffusionLava,
+			}, lavaFlowJobHandle);
+
+
+
+			JobHandle.CombineDependencies(waterFlowJobHandle, lavaFlowJobHandle).Complete();
 
 
 			#endregion
@@ -2659,7 +2733,7 @@ public void Dispose(ref WorldData worldData)
 		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
 		for (int j=0;j<staticState.GetMaxNeighbors(i);j++)
 		{
-			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.Flow[i * StaticState.MaxNeighbors + j]);
+			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.FlowWater[i * StaticState.MaxNeighbors + j]);
 		}
 
 		s.AppendFormat("\nLAVA\n");

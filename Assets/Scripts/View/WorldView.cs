@@ -416,7 +416,7 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateCellJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateCellJob()
 		{
 			TerrainColor = to.TerrainColor,
 			TerrainElevation = to.TerrainElevation,

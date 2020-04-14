@@ -110,10 +110,13 @@
 	"MagmaTemperature": 1500,
 	"DustPerLavaEjected": 0.1,
 	"MagmaPressureCrustReductionSpeed": 0.00001,
-	"LavaToRockMassAdjustment": 1000,
-	"LavaEruptionSpeed": 1,
+	"LavaToRockMassAdjustment": 100,
+	"LavaEruptionSpeed": 10,
+	"LavaFlowDamping": 0.5,
+	"LavaViscosity": 0.001,
 
 	"SurfaceWaterFlowDamping": 0.9,
+	"WaterViscosity": 1,
 	"SurfaceWaterDepth": 200,
 	"ThermoclineDepth": 800
 }

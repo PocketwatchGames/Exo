@@ -1,4 +1,4 @@
-﻿#define ASYNC_WORLDGEN
+﻿//#define ASYNC_WORLDGEN
 
 using System;
 using System.Collections.Generic;
@@ -150,7 +150,7 @@ public static class WorldGen {
 				(0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 4570) +
 				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1430));
 
-			MagmaMass[i] = (Elevation[i] - CrustDepth[i] + 20000 + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.5f, 1630, -1000, 1000)) * WorldData.MassLava;
+			MagmaMass[i] = math.max(0, (elevation - CrustDepth[i] + 2000)) * WorldData.MassLava;
 
 			//LavaMass[i] = 10000 * math.max(0, (GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 1630) - 0.75f));
 			//LavaMass[i] = 10000;
