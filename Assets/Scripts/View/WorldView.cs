@@ -125,7 +125,6 @@ public class WorldView : MonoBehaviour {
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
 	public Material CloudMaterialFront, CloudMaterialBack;
-	public Material LavaMaterial;
 	public Material OverlayMaterial;
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
@@ -142,20 +141,16 @@ public class WorldView : MonoBehaviour {
 	private const int _renderStateCount = 3;
 
 	private NativeArray<Vector3> _terrainVerticesArray;
-	private NativeArray<Color32> _terrainColorsArray;
+	private NativeArray<Vector4> _terrainColorsArray1;
+	private NativeArray<Vector4> _terrainColorsArray2;
 	private NativeArray<Vector3> _waterVerticesArray;
 	private NativeArray<Vector3> _waterNormalsArray;
 	private NativeArray<Color32> _waterColorsArray;
-	private NativeArray<Vector3> _lavaVerticesArray;
-	private NativeArray<Color32> _lavaColorsArray;
 	private NativeArray<Vector3> _cloudVerticesArray;
 	private NativeArray<Color32> _cloudColorsArray;
 	private NativeArray<Vector3> _cloudNormalsArray;
 
 	private Vector3[] _terrainVertices;
-	private Color32[] _terrainColors;
-	private Vector3[] _lavaVertices;
-	private Color32[] _lavaColors;
 	private Vector3[] _waterVertices;
 	private Vector3[] _waterNormals;
 	private Color32[] _waterColors;
@@ -166,12 +161,10 @@ public class WorldView : MonoBehaviour {
 	private Mesh _terrainMesh;
 	private Mesh _waterMesh;
 	private Mesh _cloudMesh;
-	private Mesh _lavaMesh;
 
 	private GameObject _terrainObject;
 	private GameObject _waterObject;
 	private GameObject _cloudObject;
-	private GameObject _lavaObject;
 	private GameObject _selectionCircle;
 	private List<GameObject> _selectionCircleNeighbors;
 
@@ -190,7 +183,7 @@ public class WorldView : MonoBehaviour {
 	private NativeArray<float3> _terrainVerts;
 	private NativeArray<float3> _cloudVerts;
 
-	private const int _batchCount = 128;
+	private const int _batchCount = 1;
 
 	private Unity.Mathematics.Random _random;
 
@@ -229,7 +222,6 @@ public class WorldView : MonoBehaviour {
 		_terrainMesh = new Mesh();
 		_cloudMesh = new Mesh();
 		_waterMesh = new Mesh();
-		_lavaMesh = new Mesh();
 
 		_terrainObject = new GameObject("Terrain Mesh");
 		_terrainObject.transform.SetParent(Planet.transform, false);
@@ -239,16 +231,6 @@ public class WorldView : MonoBehaviour {
 		terrainSurfaceRenderer.material = TerrainMaterial;
 		terrainFilter.mesh = terrainCollider.sharedMesh = _terrainMesh;
 		_terrainMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-
-		_lavaObject = new GameObject("Lava Mesh");
-		_lavaObject.transform.SetParent(Planet.transform, false);
-		var lavaFilter = _lavaObject.AddComponent<MeshFilter>();
-		var lavaSurfaceRenderer = _lavaObject.AddComponent<MeshRenderer>();
-		var lavaCollider = _lavaObject.AddComponent<MeshCollider>();
-		lavaSurfaceRenderer.material = LavaMaterial;
-		lavaFilter.mesh = lavaCollider.sharedMesh = _lavaMesh;
-		_lavaMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-
 
 		_waterObject = new GameObject("Water Mesh");
 		_waterObject.transform.SetParent(Planet.transform, false);
@@ -304,12 +286,11 @@ public class WorldView : MonoBehaviour {
 		_renderTerrainHelper = new JobHelper(Sim.CellCount* VertsPerCell);
 		_renderCloudHelper = new JobHelper(Sim.CellCount * VertsPerCloud);
 		_terrainVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
-		_terrainColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_terrainColorsArray1 = new NativeArray<Vector4>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_terrainColorsArray2 = new NativeArray<Vector4>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
-		_lavaVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
-		_lavaColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 
 		_cloudVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		_cloudColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
@@ -322,7 +303,6 @@ public class WorldView : MonoBehaviour {
 		_terrainMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_waterMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_cloudMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
-		_lavaMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 
 		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
 
@@ -342,15 +322,14 @@ public class WorldView : MonoBehaviour {
 		_terrainVerts.Dispose();
 		_cloudVerts.Dispose();
 		_terrainVerticesArray.Dispose();
-		_terrainColorsArray.Dispose();
+		_terrainColorsArray1.Dispose();
+		_terrainColorsArray2.Dispose();
 		_waterVerticesArray.Dispose();
 		_waterNormalsArray.Dispose();
 		_waterColorsArray.Dispose();
 		_cloudVerticesArray.Dispose();
 		_cloudColorsArray.Dispose();
 		_cloudNormalsArray.Dispose();
-		_lavaVerticesArray.Dispose();
-		_lavaColorsArray.Dispose();
 
 		Foliage.Dispose();
 	}
@@ -418,10 +397,9 @@ public class WorldView : MonoBehaviour {
 
 		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateCellJob()
 		{
-			TerrainColor = to.TerrainColor,
+			TerrainColor1 = to.TerrainColor1,
+			TerrainColor2 = to.TerrainColor2,
 			TerrainElevation = to.TerrainElevation,
-			LavaColor = to.LavaColor,
-			LavaElevation = to.LavaElevation,
 			WaterColor = to.WaterColor,
 			WaterElevation = to.WaterElevation,
 			CloudColor = to.CloudColor,
@@ -494,7 +472,8 @@ public class WorldView : MonoBehaviour {
 
 		NativeList<JobHandle> dependencies = new NativeList<JobHandle>(Allocator.Temp);
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.TerrainElevation, Start = lastState.TerrainElevation, End = nextState.TerrainElevation }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.TerrainColor, Start = lastState.TerrainColor, End = nextState.TerrainColor }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobVector4 { Progress = t, Out = state.TerrainColor1, Start = lastState.TerrainColor1, End = nextState.TerrainColor1 }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobVector4 { Progress = t, Out = state.TerrainColor2, Start = lastState.TerrainColor2, End = nextState.TerrainColor2 }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.WaterElevation, Start = lastState.WaterElevation, End = nextState.WaterElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.WaterColor, Start = lastState.WaterColor, End = nextState.WaterColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.LavaElevation, Start = lastState.LavaElevation, End = nextState.LavaElevation }).Schedule(Sim.CellCount, _batchCount));
@@ -515,19 +494,17 @@ public class WorldView : MonoBehaviour {
 		var getVertsHandle = _renderTerrainHelper.Schedule(new BuildTerrainVertsJob()
 		{
 			VTerrainPosition = _terrainVerticesArray,
-			VTerrainColor = _terrainColorsArray,
+			VTerrainColor1 = _terrainColorsArray1,
+			VTerrainColor2 = _terrainColorsArray2,
 			VWaterPosition = _waterVerticesArray,
 			VWaterNormal = _waterNormalsArray,
 			VWaterColor = _waterColorsArray,
-			VLavaPosition = _lavaVerticesArray,
-			VLavaColor = _lavaColorsArray,
 
 			TerrainElevation = state.TerrainElevation,
-			TerrainColor = state.TerrainColor,
+			TerrainColor1 = state.TerrainColor1,
+			TerrainColor2 = state.TerrainColor2,
 			WaterElevation = state.WaterElevation,
 			WaterColor = state.WaterColor,
-			LavaElevation = state.LavaElevation,
-			LavaColor = state.LavaColor,
 			StandardVerts = _terrainVerts,
 		}, JobHandle.CombineDependencies(dependencies));
 
@@ -546,37 +523,23 @@ public class WorldView : MonoBehaviour {
 		getVertsHandle.Complete();
 		dependencies.Dispose();
 
-		_terrainVerticesArray.CopyTo(_terrainVertices);
-		_terrainColorsArray.CopyTo(_terrainColors);
-		_lavaVerticesArray.CopyTo(_lavaVertices);
-		_lavaColorsArray.CopyTo(_lavaColors);
-		_waterVerticesArray.CopyTo(_waterVertices);
-		_waterNormalsArray.CopyTo(_waterNormals);
-		_waterColorsArray.CopyTo(_waterColors);
-		_cloudVerticesArray.CopyTo(_cloudVertices);
-		_cloudColorsArray.CopyTo(_cloudColors);
-		_cloudNormalsArray.CopyTo(_cloudNormals);
+		//_terrainMesh.SetVertices(_terrainVertices);
+		//_terrainMesh.SetUVs(0, _terrainColorsArray1);
+		//_terrainMesh.SetUVs(1, _terrainColorsArray2);
 
-		_terrainMesh.vertices = _terrainVertices;
-		_terrainMesh.colors32 = _terrainColors;
+		//_waterMesh.SetVertices(_waterVerticesArray);
+		//_waterMesh.SetNormals(_waterNormalsArray);
+		//_waterMesh.SetColors(_waterColorsArray);
 
-		_lavaMesh.vertices = _lavaVertices;
-		_lavaMesh.colors32 = _lavaColors;
-
-		_waterMesh.vertices = _waterVertices;
-		_waterMesh.normals = _waterNormals;
-		_waterMesh.colors32 = _waterColors;
-
-		_cloudMesh.vertices = _cloudVertices;
-		_cloudMesh.colors32 = _cloudColors;
-		_cloudMesh.normals = _cloudNormals;
+		//_cloudMesh.SetVertices(_cloudVerticesArray);
+		//_cloudMesh.SetColors(_cloudColorsArray);
+		//_cloudMesh.SetNormals(_cloudNormalsArray);
 
 
 		if (!_indicesInitialized)
 		{
 			_terrainMesh.SetTriangles(_indicesTerrain, 0);
 			_waterMesh.SetTriangles(_indicesTerrain, 0);
-			_lavaMesh.SetTriangles(_indicesTerrain, 0);
 			_cloudMesh.SetTriangles(_indicesCloud, 0);
 			_indicesInitialized = true;
 		}
@@ -586,12 +549,10 @@ public class WorldView : MonoBehaviour {
 		//_terrainMesh.RecalculateBounds();
 		//_waterMesh.RecalculateBounds();
 		//_cloudMesh.RecalculateBounds();
-		//_lavaMesh.RecalculateBounds();
 
 		_terrainMesh.RecalculateNormals();
 	//	_waterMesh.RecalculateNormals();
 	//	_cloudMesh.RecalculateNormals();
-		_lavaMesh.RecalculateNormals();
 		_terrainMesh.RecalculateTangents();
 		_waterMesh.RecalculateTangents();
 
@@ -630,7 +591,6 @@ public class WorldView : MonoBehaviour {
 
 		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
 		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
-		_lavaObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? LavaMaterial : OverlayMaterial;
 		Sim.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
 
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
@@ -691,12 +651,9 @@ public class WorldView : MonoBehaviour {
 	private void InitVerts(Icosphere icosphere)
 	{
 		_terrainVertices = new Vector3[Sim.CellCount * VertsPerCell];
-		_terrainColors = new Color32[Sim.CellCount * VertsPerCell];
 		_waterVertices = new Vector3[Sim.CellCount * VertsPerCell];
 		_waterNormals = new Vector3[Sim.CellCount * VertsPerCell];
 		_waterColors = new Color32[Sim.CellCount * VertsPerCell];
-		_lavaVertices = new Vector3[Sim.CellCount * VertsPerCell];
-		_lavaColors = new Color32[Sim.CellCount * VertsPerCell];
 
 		_cloudVertices = new Vector3[Sim.CellCount * VertsPerCloud];
 		_cloudColors = new Color32[Sim.CellCount * VertsPerCloud];

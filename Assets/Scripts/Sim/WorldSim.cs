@@ -2253,62 +2253,8 @@ public class WorldSim {
 				Advection = diffusionWater[worldData.SurfaceWaterLayer],
 			}, waterFlowJobHandle);
 
-			var lavaFlowJobHandle = default(JobHandle);
 
-			// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
-			lavaFlowJobHandle = NeighborJob.Schedule(new UpdateFlowVelocityJob()
-			{
-				Flow = nextState.FlowLava,
-
-				LastFlow = lastState.FlowLava,
-				SurfaceElevation = nextState.Elevation,
-				WaterDepth = dependent.LavaDepth,
-				NeighborDistInverse = staticState.NeighborDistInverse,
-				Neighbors = staticState.Neighbors,
-				Gravity = nextState.PlanetState.Gravity,
-				SecondsPerTick = worldData.SecondsPerTick,
-				Damping = worldData.LavaFlowDamping,
-				ViscosityInverse = 1.0f - worldData.LavaViscosity,
-
-			}, lavaFlowJobHandle);
-
-			lavaFlowJobHandle = SimJob.Schedule(new SumOutgoingFlowJob()
-			{
-				OutgoingFlow = _outgoingFlowLava,
-				Flow = nextState.FlowLava
-			}, lavaFlowJobHandle);
-
-			lavaFlowJobHandle = NeighborJob.Schedule(new LimitOutgoingFlowJob()
-			{
-				Flow = nextState.FlowLava,
-				FlowPercent = _flowPercentLava,
-
-				OutgoingFlow = _outgoingFlowLava,
-				Neighbors = staticState.Neighbors,
-				WaterDepth = dependent.LavaDepth
-			}, lavaFlowJobHandle);
-
-			lavaFlowJobHandle = SimJob.Run(new ApplyFlowLavaJob()
-			{
-				Delta = _diffusionLava,
-
-				Mass = nextState.LavaMass,
-				Temperature = nextState.LavaTemperature,
-				FlowPercent = _flowPercentLava,
-				Neighbors = staticState.Neighbors
-			}, lavaFlowJobHandle);
-
-			lavaFlowJobHandle = SimJob.Schedule(new ApplyAdvectionLavaJob()
-			{
-				Mass = nextState.LavaMass,
-				Temperature = nextState.LavaTemperature,
-
-				Advection = _diffusionLava,
-			}, lavaFlowJobHandle);
-
-
-
-			JobHandle.CombineDependencies(waterFlowJobHandle, lavaFlowJobHandle).Complete();
+			waterFlowJobHandle.Complete();
 
 
 			#endregion
