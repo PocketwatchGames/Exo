@@ -523,17 +523,17 @@ public class WorldView : MonoBehaviour {
 		getVertsHandle.Complete();
 		dependencies.Dispose();
 
-		//_terrainMesh.SetVertices(_terrainVertices);
-		//_terrainMesh.SetUVs(0, _terrainColorsArray1);
-		//_terrainMesh.SetUVs(1, _terrainColorsArray2);
+		_terrainMesh.SetVertices(_terrainVerticesArray);
+		_terrainMesh.SetUVs(0, _terrainColorsArray1);
+		_terrainMesh.SetUVs(1, _terrainColorsArray2);
 
-		//_waterMesh.SetVertices(_waterVerticesArray);
-		//_waterMesh.SetNormals(_waterNormalsArray);
-		//_waterMesh.SetColors(_waterColorsArray);
+		_waterMesh.SetVertices(_waterVerticesArray);
+		_waterMesh.SetNormals(_waterNormalsArray);
+		_waterMesh.SetColors(_waterColorsArray);
 
-		//_cloudMesh.SetVertices(_cloudVerticesArray);
-		//_cloudMesh.SetColors(_cloudColorsArray);
-		//_cloudMesh.SetNormals(_cloudNormalsArray);
+		_cloudMesh.SetVertices(_cloudVerticesArray);
+		_cloudMesh.SetColors(_cloudColorsArray);
+		_cloudMesh.SetNormals(_cloudNormalsArray);
 
 
 		if (!_indicesInitialized)
@@ -939,7 +939,7 @@ public class WorldView : MonoBehaviour {
 		}
 		_skyboxExposureTime = math.max(0, _skyboxExposureTime - Time.deltaTime);
 		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
-		RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
+		//RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
 	}
 
 	private void OnSetActiveCell(int index)

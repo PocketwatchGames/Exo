@@ -3,20 +3,22 @@
     Properties{
 		_UVScale("UV Scale", Range(0, 100)) = 1
 		_HeightBlend("Height Blend Threshold", Range(0, 1)) = 0.025
-		_Color1("Color Base", Color) = (1,1,1,1)
-		_Color2("Color 1", Color) = (1,1,1,1)
-		_Color3("Color 2", Color) = (1,1,1,1)
-		_Color4("Color 3", Color) = (1,1,1,1)
-		_Color5("Color 4", Color) = (1,1,1,1)
+		_ColorBase("Color Base", Color) = (1,1,1,1)
+		_Color1("Color 1", Color) = (1,1,1,1)
+		_Color2("Color 2", Color) = (1,1,1,1)
+		_Color3("Color 3", Color) = (1,1,1,1)
+		_Color4("Color 4", Color) = (1,1,1,1)
 		_Color5("Color 5", Color) = (1,1,1,1)
-		_Gloss1("Gloss Base", Range(0,1)) = 0.5
-		_Gloss2("Gloss 1", Range(0,1)) = 0.5
-		_Gloss3("Gloss 2", Range(0,1)) = 0.5
-		_Gloss4("Gloss 3", Range(0,1)) = 0.5
-		_Gloss5("Gloss 4", Range(0,1)) = 0.5
+		_Color6("Color 6", Color) = (1,1,1,1)
+		_GlossBase("Gloss Base", Range(0,1)) = 0.5
+		_Gloss1("Gloss 1", Range(0,1)) = 0.5
+		_Gloss2("Gloss 2", Range(0,1)) = 0.5
+		_Gloss3("Gloss 3", Range(0,1)) = 0.5
+		_Gloss4("Gloss 4", Range(0,1)) = 0.5
 		_Gloss5("Gloss 5", Range(0,1)) = 0.5
+		_Gloss6("Gloss 6", Range(0,1)) = 0.5
 		_HeightMap("Height Map", 2D) = "white" {}
-    }
+	}
     SubShader{
         Tags{ "RenderType" = "Opaque"}
         LOD 200
@@ -32,8 +34,8 @@
 
         struct Input {
             float2 uv_HeightMap;
-			float4 color : Color;
-			float4 color2;
+			float4 height1 : TEXCOORD1;
+			float4 height2 : TEXCOORD2;
 			float3 worldNormal;
 			float3 worldPos;
 		};
@@ -44,6 +46,7 @@
 		fixed4 _Color3;
 		fixed4 _Color4;
 		fixed4 _Color5;
+		fixed4 _Color6;
 
 		half _GlossBase;
 		half _Gloss1;
@@ -51,6 +54,7 @@
 		half _Gloss3;
 		half _Gloss4;
 		half _Gloss5;
+		half _Gloss6;
 
 		float _UVScale;
 		float _HeightBlend;
@@ -89,8 +93,8 @@
 			float3 triW = GetTriplanarWeights(IN.worldNormal);
 			float4 height = triW.x * heightX + triW.y * heightY + triW.z * heightZ;
 
-			float4 w1 = IN.color * height;
-			float4 w2 = IN.color2 * height;
+			float4 w1 = IN.height1 * height;
+			float4 w2 = IN.height2 * height;
 			float maxVal = max(w1.x, max(w1.y, max(w1.z, max(w1.w, max(w2.x, max(w2.y, max(w2.z, w2.w)))))));
 			float baseVal = 1 - maxVal;
 			maxVal = max(maxVal, baseVal);
@@ -103,8 +107,8 @@
 			w2 /= totalHeight;
 			baseVal /= totalHeight;
 
-			c.rgb = _Color1 * w1.x + _Color2 * w1.y + _Color3 * w1.z + _Color4 * w1.w + _Color5 * w2.x + _ColorBase * baseVal;
-			gloss = _Gloss1 * w1.x + _Gloss2 * w1.y + _Gloss3 * w1.z + _Gloss4 * w1.w + _Gloss5 * w2.x + _GlossBase * baseVal;
+			c.rgb = _Color1 * w1.x + _Color2 * w1.y + _Color3 * w1.z + _Color4 * w1.w + _Color5 * w2.x + _Color6 * w2.y + _ColorBase * baseVal;
+			gloss = _Gloss1 * w1.x + _Gloss2 * w1.y + _Gloss3 * w1.z + _Gloss4 * w1.w + _Gloss5 * w2.x + _Gloss6 * w2.y + _GlossBase * baseVal;
 
 			o.Albedo = c.rgb;
             o.Smoothness = gloss;

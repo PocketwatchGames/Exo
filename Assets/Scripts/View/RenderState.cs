@@ -130,8 +130,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		Color32 cloudColor;
 		float cloudElevation;
 		float cloudHeight;
-		Color32 lavaColor;
-		float lavaElevation;
 		float3 velocityArrow;
 		float3 surfacePosition;
 
@@ -153,23 +151,28 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 			var overlayColor = CVP.Lerp(MeshOverlayColors, (MeshOverlayData[i] - MeshOverlayMin) * MeshOverlayInverseRange);
 			terrainColor1 = terrainColor2 = new Vector4((float)overlayColor.r / 255, (float)overlayColor.g / 255, (float)overlayColor.b / 255, 1);
 			waterColor = overlayColor;
-			lavaColor = overlayColor;
 		}
 		else
 		{
 			// Terrain color
 			float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
-			terrainColor1 = math.normalize(
-				new float4(
-				0,
+			terrainColor1 = new Vector4(
 				(1 - fertility) * DisplaySandWeight,
 				fertility * DisplaySoilWeight,
-				floraCoverage * DisplayFloraWeight));
-			terrainColor1 *= (1 - (waterDepth < 1 ? math.sqrt(iceCoverage) : 0));
-			terrainColor2 = new Color();
+				floraCoverage * DisplayFloraWeight,
+				iceCoverage);
+
+			terrainColor2 = new Vector4(
+				waterCoverage - iceCoverage,
+				math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f,
+				0,
+				0
+				);
+
+			terrainColor1 = new Vector4(0, 0, 1, 0);
+			terrainColor2 = new Vector4(0, 0, 0, 0);
 
 			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth, PlanktonMass[i]);
-			lavaColor = GetLavaColor(LavaTemperature[i], LavaCrystalizationTemperature, LavaTemperatureRangeInverse);
 		}
 
 		float cloudVolume = CloudMass[i] * 2;
@@ -184,9 +187,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		cloudElevation = (5000 * TerrainScale + PlanetRadius) / PlanetRadius;
 		cloudHeight = cloudCoverage == 0 ? 0 : (cloudVolume / cloudCoverage * DisplayCloudHeight);
 
-
-		float lavaDepth = LavaMass[i] * LavaToRockMassAdjustment / WorldData.MassLava;
-		lavaElevation = (lavaDepth == 0) ? 0.75f : (((elevation + roughness + lavaDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
 
 		if (WindOverlayActive)
 		{
@@ -265,10 +265,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		return new Color32((byte)math.min(255, red), (byte)math.min(255, green), (byte)math.min(255, blue), (byte)alpha);
 	}					   
 
-	private Color32 GetLavaColor(float temperature, float minTemp, float inverseTempRange)
-	{
-		return new Color32((byte)(255 * (temperature - minTemp) * inverseTempRange), 0, 0, 255);
-	}
 
 }
 
