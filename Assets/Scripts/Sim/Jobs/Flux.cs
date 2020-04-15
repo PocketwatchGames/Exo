@@ -18,7 +18,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-//[BurstCompile]
+[BurstCompile]
 public struct FluxWaterJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeArray<float> FrozenMass;
@@ -638,7 +638,7 @@ public struct FluxLavaJob : IJobParallelFor {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct FluxTerrainJob : IJobParallelFor {
 	public NativeArray<float> CrystalizedMass;
 	public NativeArray<float> LavaEjected;

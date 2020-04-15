@@ -150,6 +150,7 @@ public class WorldView : MonoBehaviour {
 	private NativeArray<Vector3> _cloudVerticesArray;
 	private NativeArray<Color32> _cloudColorsArray;
 	private NativeArray<Vector3> _cloudNormalsArray;
+	private NativeArray<Color32> _overlayColorsArray;
 
 	private Vector3[] _terrainVertices;
 	private Vector3[] _waterVertices;
@@ -292,6 +293,7 @@ public class WorldView : MonoBehaviour {
 		_waterVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_overlayColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 
 		_cloudVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		_cloudColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
@@ -331,6 +333,7 @@ public class WorldView : MonoBehaviour {
 		_cloudVerticesArray.Dispose();
 		_cloudColorsArray.Dispose();
 		_cloudNormalsArray.Dispose();
+		_overlayColorsArray.Dispose();
 
 		Foliage.Dispose();
 	}
@@ -396,7 +399,7 @@ public class WorldView : MonoBehaviour {
 		WindOverlayData windOverlayData;
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref dependent, ref display, out windOverlayData);
 
-		var buildRenderStateJobHandle = _renderJobHelper.Run(new BuildRenderStateCellJob()
+		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateCellJob()
 		{
 			TerrainColor1 = to.TerrainColor1,
 			TerrainColor2 = to.TerrainColor2,
@@ -408,6 +411,7 @@ public class WorldView : MonoBehaviour {
 			CloudElevation = to.CloudElevation,
 			VelocityArrow = to.VelocityArrow,
 			SurfacePosition = to.SurfacePosition,
+			OverlayColor = to.OverlayColor,
 
 			TerrainScale = TerrainScale,
 			AtmosphereScale = AtmosphereScale,
@@ -479,8 +483,6 @@ public class WorldView : MonoBehaviour {
 		dependencies.Add((new LerpJobVector4 { Progress = t, Out = state.TerrainColor2, Start = lastState.TerrainColor2, End = nextState.TerrainColor2 }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.WaterElevation, Start = lastState.WaterElevation, End = nextState.WaterElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.WaterColor, Start = lastState.WaterColor, End = nextState.WaterColor }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.LavaElevation, Start = lastState.LavaElevation, End = nextState.LavaElevation }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.LavaColor, Start = lastState.LavaColor, End = nextState.LavaColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.SurfacePosition, Start = lastState.SurfacePosition, End = nextState.SurfacePosition }).Schedule(Sim.CellCount, _batchCount));
 
 		if (true /* cloudsVisible*/)
@@ -493,6 +495,10 @@ public class WorldView : MonoBehaviour {
 		{
 			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
 		}
+		if (ActiveMeshOverlay != MeshOverlay.None)
+		{
+			dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.OverlayColor, Start = lastState.OverlayColor, End = nextState.OverlayColor }).Schedule(Sim.CellCount, _batchCount));
+		}
 
 		var getVertsHandle = _renderTerrainHelper.Schedule(new BuildTerrainVertsJob()
 		{
@@ -502,12 +508,14 @@ public class WorldView : MonoBehaviour {
 			VWaterPosition = _waterVerticesArray,
 			VWaterNormal = _waterNormalsArray,
 			VWaterColor = _waterColorsArray,
+			VOverlayColor = _overlayColorsArray,
 
 			TerrainElevation = state.TerrainElevation,
 			TerrainColor1 = state.TerrainColor1,
 			TerrainColor2 = state.TerrainColor2,
 			WaterElevation = state.WaterElevation,
 			WaterColor = state.WaterColor,
+			OverlayColor = state.OverlayColor,
 			StandardVerts = _terrainVerts,
 		}, JobHandle.CombineDependencies(dependencies));
 
@@ -527,16 +535,23 @@ public class WorldView : MonoBehaviour {
 		dependencies.Dispose();
 
 		_terrainMesh.SetVertices(_terrainVerticesArray);
-		_terrainMesh.SetUVs(1, _terrainColorsArray1);
-		_terrainMesh.SetUVs(2, _terrainColorsArray2);
-
 		_waterMesh.SetVertices(_waterVerticesArray);
 		_waterMesh.SetNormals(_waterNormalsArray);
-		_waterMesh.SetColors(_waterColorsArray);
 
 		_cloudMesh.SetVertices(_cloudVerticesArray);
 		_cloudMesh.SetColors(_cloudColorsArray);
 		_cloudMesh.SetNormals(_cloudNormalsArray);
+
+		if (ActiveMeshOverlay == MeshOverlay.None)
+		{
+			_terrainMesh.SetUVs(1, _terrainColorsArray1);
+			_terrainMesh.SetUVs(2, _terrainColorsArray2);
+			_waterMesh.SetColors(_waterColorsArray);
+		} else
+		{
+			_terrainMesh.SetColors(_overlayColorsArray);
+			_waterMesh.SetColors(_overlayColorsArray);
+		}
 
 
 		if (!_indicesInitialized)

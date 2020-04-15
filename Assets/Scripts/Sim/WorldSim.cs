@@ -1085,7 +1085,7 @@ public class WorldSim {
 				ConductionEnergyIce = conductionIceFlora,
 			}, JobHandle.CombineDependencies(energyFloraJobHandleDependencies));
 
-			energyJobHandles[worldData.LavaLayer] = SimJob.Run(new EnergyLavaJob()
+			energyJobHandles[worldData.LavaLayer] = SimJob.Schedule(new EnergyLavaJob()
 			{
 				LavaTemperature = nextState.LavaTemperature,
 				LastTemperature = lastState.LavaTemperature,
@@ -1213,7 +1213,7 @@ public class WorldSim {
 			}
 
 
-			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Run(new FluxWaterJob()
+			fluxJobHandles[worldData.WaterLayer0 + worldData.SurfaceWaterLayer] = SimJob.Schedule(new FluxWaterJob()
 			{
 				EvaporatedWaterMass = evaporationMassWater,
 				FrozenMass = frozenMass,
@@ -1350,7 +1350,7 @@ public class WorldSim {
 			{
 			});
 
-			fluxJobHandles[worldData.TerrainLayer] = SimJob.Run(new FluxTerrainJob()
+			fluxJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new FluxTerrainJob()
 			{
 				SoilRespiration = soilRespiration,
 				CrystalizedMass = lavaCrystalizedMass,
@@ -1526,7 +1526,7 @@ public class WorldSim {
 			});
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateIceMassJobHandle);
 
-			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Run(new UpdateTerrainJob()
+			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateTerrainJob()
 			{
 				SoilCarbon = nextState.GroundCarbon,
 				Roughness = nextState.Roughness,
@@ -1611,7 +1611,7 @@ public class WorldSim {
 				HeatingDepth = worldData.SoilHeatDepth
 			}));
 
-			latentHeatJobHandle = JobHandle.CombineDependencies(latentHeatJobHandle, SimJob.Run(new ApplyLatentHeatLavaJob()
+			latentHeatJobHandle = JobHandle.CombineDependencies(latentHeatJobHandle, SimJob.Schedule(new ApplyLatentHeatLavaJob()
 			{
 				LavaTemperature = nextState.LavaTemperature,
 

@@ -23,10 +23,9 @@ public struct RenderState {
 	public NativeArray<Color32> WaterColor;
 	public NativeArray<float> WaterElevation;
 	public NativeArray<Color32> CloudColor;
+	public NativeArray<Color32> OverlayColor;
 	public NativeArray<float> CloudElevation;
 	public NativeArray<float> CloudHeight;
-	public NativeArray<Color32> LavaColor;
-	public NativeArray<float> LavaElevation;
 	public NativeArray<float3> SurfacePosition;
 	public NativeArray<float3> VelocityArrow;
 
@@ -37,11 +36,10 @@ public struct RenderState {
 		TerrainElevation = new NativeArray<float>(count, Allocator.Persistent);
 		WaterColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		WaterElevation = new NativeArray<float>(count, Allocator.Persistent);
+		OverlayColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		CloudColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
 		CloudHeight = new NativeArray<float>(count, Allocator.Persistent);
-		LavaColor = new NativeArray<Color32>(count, Allocator.Persistent);
-		LavaElevation = new NativeArray<float>(count, Allocator.Persistent);
 		VelocityArrow = new NativeArray<float3>(count, Allocator.Persistent);
 		SurfacePosition = new NativeArray<float3>(count, Allocator.Persistent);
 	}
@@ -53,22 +51,22 @@ public struct RenderState {
 		TerrainElevation.Dispose();
 		WaterColor.Dispose();
 		WaterElevation.Dispose();
+		OverlayColor.Dispose();
 		CloudColor.Dispose();
 		CloudHeight.Dispose();
 		CloudElevation.Dispose();
-		LavaColor.Dispose();
-		LavaElevation.Dispose();
 		VelocityArrow.Dispose();
 		SurfacePosition.Dispose();
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct BuildRenderStateCellJob : IJobParallelFor {
 	public NativeArray<Vector4> TerrainColor1;
 	public NativeArray<Vector4> TerrainColor2;
 	public NativeArray<float> TerrainElevation;
 	public NativeArray<Color32> WaterColor;
+	public NativeArray<Color32> OverlayColor;
 	public NativeArray<float> WaterElevation;
 	public NativeArray<float> CloudElevation;
 	public NativeArray<float> CloudHeight;
@@ -128,6 +126,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		Vector4 terrainColor2;
 		float terrainElevation;
 		Color32 waterColor;
+		Color32 overlayColor;
 		float waterElevation;
 		Color32 cloudColor;
 		float cloudElevation;
@@ -147,36 +146,34 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 		if (MeshOverlayActive)
 		{
-			var overlayColor = CVP.Lerp(MeshOverlayColors, (MeshOverlayData[i] - MeshOverlayMin) * MeshOverlayInverseRange);
-			terrainColor1 = terrainColor2 = new Vector4((float)overlayColor.r / 255, (float)overlayColor.g / 255, (float)overlayColor.b / 255, 1);
-			waterColor = overlayColor;
-		}
-		else
+			overlayColor = CVP.Lerp(MeshOverlayColors, (MeshOverlayData[i] - MeshOverlayMin) * MeshOverlayInverseRange);
+		} else
 		{
-			// Terrain color
-			float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
-			float lavaCoverage = math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f;
-			float iceCoverage = IceCoverage[i];
-			float waterCoverage = WaterCoverage[i];
-			float floraCoverage = FloraCoverage[i] * DisplayFloraWeight;
-			float dirtCoverage = 1.0f;
-
-			terrainColor1 = new Vector4(
-				0.5f,
-				dirtCoverage * (1 - fertility),
-				dirtCoverage * fertility,
-				floraCoverage
-				);
-
-			terrainColor2 = new Vector4(
-				iceCoverage,
-				waterCoverage,
-				lavaCoverage,
-				0
-				);
-
-			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth, PlanktonMass[i]);
+			overlayColor = new Color32();
 		}
+		// Terrain color
+		float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
+		float lavaCoverage = math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f;
+		float iceCoverage = IceCoverage[i];
+		float waterCoverage = WaterCoverage[i];
+		float floraCoverage = FloraCoverage[i] * DisplayFloraWeight;
+		float dirtCoverage = 1.0f;
+
+		terrainColor1 = new Vector4(
+			0.5f,
+			dirtCoverage * (1 - fertility),
+			dirtCoverage * fertility,
+			floraCoverage
+			);
+
+		terrainColor2 = new Vector4(
+			iceCoverage,
+			waterCoverage,
+			lavaCoverage,
+			0
+			);
+
+		waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth, PlanktonMass[i]);
 
 		float cloudVolume = CloudMass[i] * 2;
 		float cloudCoverage = math.saturate((math.pow(cloudVolume, 0.6667f) - DisplayCloudMin) * DisplayCloudRangeInverse);
@@ -218,6 +215,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		CloudHeight[i] = cloudHeight;
 		VelocityArrow[i] = velocityArrow;
 		SurfacePosition[i] = surfacePosition;
+		OverlayColor[i] = overlayColor;
 	}
 
 
@@ -281,6 +279,7 @@ public struct BuildTerrainVertsJob : IJobParallelFor {
 	public NativeArray<Vector3> VWaterPosition;
 	public NativeArray<Vector3> VWaterNormal;
 	public NativeArray<Color32> VWaterColor;
+	public NativeArray<Color32> VOverlayColor;
 
 	[ReadOnly] public NativeArray<float> TerrainElevation;
 	[ReadOnly] public NativeArray<float> WaterElevation;
@@ -288,6 +287,7 @@ public struct BuildTerrainVertsJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<Vector4> TerrainColor2;
 	[ReadOnly] public NativeArray<Color32> WaterColor;
 	[ReadOnly] public NativeArray<float3> StandardVerts;
+	[ReadOnly] public NativeArray<Color32> OverlayColor;
 
 	public void Execute(int i)
 	{
@@ -299,6 +299,7 @@ public struct BuildTerrainVertsJob : IJobParallelFor {
 		VTerrainColor1[i] = TerrainColor1[j];
 		VTerrainColor2[i] = TerrainColor2[j];
 		VWaterColor[i] = WaterColor[j];
+		VOverlayColor[i] = OverlayColor[j];
 
 		VWaterNormal[i] = v;
 	}

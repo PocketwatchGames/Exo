@@ -265,7 +265,7 @@ public struct UpdateMassIceJob : IJobParallelFor {
 }
 
 
-//[BurstCompile]
+[BurstCompile]
 public struct UpdateTerrainJob : IJobParallelFor {
 	public NativeArray<float> SoilCarbon;
 	public NativeArray<float> Roughness;

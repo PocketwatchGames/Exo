@@ -68,7 +68,7 @@ public struct ApplyLatentHeatWaterJob : IJobParallelFor {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct ApplyLatentHeatLavaJob : IJobParallelFor {
 	public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> LatentHeat;
