@@ -14,7 +14,7 @@ Material:
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 3000
+  m_CustomRenderQueue: 3001
   stringTagMap:
     MotionVector: User
     RenderType: Transparent
@@ -24,6 +24,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - Texture2D_A9E215B1:
+        m_Texture: {fileID: 2800000, guid: 8ad218217046e5d459ca68d8c1a80473, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _BumpMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -94,7 +98,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - Vector1_212FE051: -0.02
+    - Vector1_262ED2F8: 0.1
     - Vector1_31593DAB: 0.075
+    - Vector1_4150CA4C: 1
+    - Vector1_615A9D35: 0
     - Vector1_7C5C456F: 1
     - Vector1_A74332C0: 1
     - _Alpha: 1
@@ -108,6 +115,7 @@ Material:
     - _CullModeForward: 2
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
+    - _DiffusionProfileHash: 0
     - _DoubleSidedEnable: 0
     - _DoubleSidedNormalMode: 1
     - _DstBlend: 10
@@ -142,7 +150,7 @@ Material:
     - _TimeScale: 0.02
     - _TransparentBackfaceEnable: 0
     - _TransparentCullMode: 2
-    - _TransparentSortPriority: 0
+    - _TransparentSortPriority: 1
     - _TransparentZWrite: 0
     - _UVSec: 0
     - _UseShadowThreshold: 0
@@ -155,6 +163,7 @@ Material:
     - _ZWrite: 0
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 0}
+    - _DiffusionProfileAsset: {r: 0, g: 0, b: 0, a: 0}
     - _DoubleSidedConstants: {r: 1, g: 1, b: -1, a: 0}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &4932003184578714756

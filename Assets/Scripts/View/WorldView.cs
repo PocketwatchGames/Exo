@@ -524,8 +524,8 @@ public class WorldView : MonoBehaviour {
 		dependencies.Dispose();
 
 		_terrainMesh.SetVertices(_terrainVerticesArray);
-		_terrainMesh.SetUVs(0, _terrainColorsArray1);
-		_terrainMesh.SetUVs(1, _terrainColorsArray2);
+		_terrainMesh.SetUVs(1, _terrainColorsArray1);
+		_terrainMesh.SetUVs(2, _terrainColorsArray2);
 
 		_waterMesh.SetVertices(_waterVerticesArray);
 		_waterMesh.SetNormals(_waterNormalsArray);

@@ -135,9 +135,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 
 		float waterDepth = WaterDepth[i];
-		float waterCoverage = WaterCoverage[i];
-		float iceCoverage = IceCoverage[i];
-		float floraCoverage = FloraCoverage[i];
 		var icosphere = Icosphere[i];
 		var elevation = Elevation[i];
 		float roughness = math.max(1, Roughness[i]);
@@ -156,21 +153,25 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		{
 			// Terrain color
 			float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
-			terrainColor1 = new Vector4(
-				(1 - fertility) * DisplaySandWeight,
-				fertility * DisplaySoilWeight,
-				floraCoverage * DisplayFloraWeight,
-				iceCoverage);
+			float lavaCoverage = math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f;
+			float iceCoverage = math.saturate(IceCoverage[i] - lavaCoverage);
+			float waterCoverage = math.saturate(WaterCoverage[i] - lavaCoverage - iceCoverage);
+			float floraCoverage = math.saturate(FloraCoverage[i] * DisplayFloraWeight - waterCoverage - iceCoverage - lavaCoverage);
+			float dirtCoverage = math.saturate(1.0f - floraCoverage - iceCoverage - lavaCoverage - waterCoverage);
 
-			terrainColor2 = new Vector4(
-				waterCoverage - iceCoverage,
-				math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f,
-				0,
-				0
+			terrainColor1 = new Vector4(
+				0.5f,
+				dirtCoverage * (1 - fertility),
+				dirtCoverage * fertility,
+				floraCoverage
 				);
 
-			terrainColor1 = new Vector4(0, 0, 1, 0);
-			terrainColor2 = new Vector4(0, 0, 0, 0);
+			terrainColor2 = new Vector4(
+				iceCoverage,
+				waterCoverage,
+				lavaCoverage,
+				0
+				);
 
 			waterColor = GetWaterColor(iceCoverage, WaterTemperature[i], waterDepth, PlanktonMass[i]);
 		}

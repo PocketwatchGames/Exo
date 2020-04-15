@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 1598314396}
-  m_IndirectSpecularColor: {r: 0.0034038895, g: 0.0032569426, b: 0.003185539, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -7574,8 +7574,8 @@ MonoBehaviour:
   TerrainScale: 250
   CloudHeight: 0.1
   AtmosphereScale: 600
-  DisplayFloraWeight: 5
-  DisplaySandWeight: 5
+  DisplayFloraWeight: 100
+  DisplaySandWeight: 1
   DisplaySoilWeight: 1
   DisplayDustMax: 100
   DisplayLavaTemperatureMax: 1200
