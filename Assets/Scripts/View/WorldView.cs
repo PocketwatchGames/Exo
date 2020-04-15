@@ -357,8 +357,10 @@ public class WorldView : MonoBehaviour {
 
 		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
 
-		CloudMaterialBack.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
-		CloudMaterialFront.SetFloat("_GameTime", _renderStates[_curRenderState].Ticks);
+		CloudMaterialBack.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
+		CloudMaterialFront.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
+		WaterMaterial.SetFloat("Vector1_2C57E502", Sim.TimeScale); // sim time scale
+		WaterMaterial.SetFloat("Vector1_91938D4", _renderStates[_curRenderState].Ticks); // sim time
 	}
 	public void StartLerp(float lerpTime)
 	{
