@@ -97,13 +97,16 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - Vector1_212FE051: -0.02
-    - Vector1_262ED2F8: 0.1
-    - Vector1_31593DAB: 0.075
+    - Vector1_212FE051: -0.013
+    - Vector1_262ED2F8: 0.01
+    - Vector1_31280194: 2
+    - Vector1_31593DAB: 0.01
     - Vector1_4150CA4C: 1
     - Vector1_615A9D35: 0
     - Vector1_7C5C456F: 1
     - Vector1_A74332C0: 1
+    - Vector1_C3F63C53: 2
+    - Vector1_F21F5787: 1
     - _Alpha: 1
     - _AlphaCutoffEnable: 1
     - _AlphaDstBlend: 10

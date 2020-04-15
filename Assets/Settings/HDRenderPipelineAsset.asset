@@ -315,7 +315,7 @@ MonoBehaviour:
       ChromaticAberrationMaxSamples: 03000000060000000c000000
     lightSettings:
       useContactShadow:
-        m_Values: 
+        m_Values: 000000
         m_SchemaId:
           m_Id: 
     maximumLODLevel:
@@ -346,6 +346,7 @@ MonoBehaviour:
   diffusionProfileSettingsList:
   - {fileID: 0}
   - {fileID: 11400000, guid: 2a29b4893d12bd84b94789e7e90ac575, type: 2}
+  - {fileID: 11400000, guid: a7d8cdb7a723b3f48aaf80eaf519b0e6, type: 2}
   beforeTransparentCustomPostProcesses: []
   beforePostProcessCustomPostProcesses: []
   afterPostProcessCustomPostProcesses: []

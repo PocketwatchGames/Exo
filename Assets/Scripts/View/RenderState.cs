@@ -119,6 +119,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public float DisplaySandWeight;
 	[ReadOnly] public float DisplayFloraWeight;
 	[ReadOnly] public float DisplayCloudHeight;
+	[ReadOnly] public float DisplayCloudMin;
+	[ReadOnly] public float DisplayCloudRangeInverse;
 
 	public void Execute(int i)
 	{
@@ -154,10 +156,10 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 			// Terrain color
 			float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
 			float lavaCoverage = math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f;
-			float iceCoverage = math.saturate(IceCoverage[i] - lavaCoverage);
-			float waterCoverage = math.saturate(WaterCoverage[i] - lavaCoverage - iceCoverage);
-			float floraCoverage = math.saturate(FloraCoverage[i] * DisplayFloraWeight - waterCoverage - iceCoverage - lavaCoverage);
-			float dirtCoverage = math.saturate(1.0f - floraCoverage - iceCoverage - lavaCoverage - waterCoverage);
+			float iceCoverage = IceCoverage[i];
+			float waterCoverage = WaterCoverage[i];
+			float floraCoverage = FloraCoverage[i] * DisplayFloraWeight;
+			float dirtCoverage = 1.0f;
 
 			terrainColor1 = new Vector4(
 				0.5f,
@@ -177,7 +179,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		}
 
 		float cloudVolume = CloudMass[i] * 2;
-		float cloudCoverage = math.saturate(math.pow(cloudVolume, 0.6667f));
+		float cloudCoverage = math.saturate((math.pow(cloudVolume, 0.6667f) - DisplayCloudMin) * DisplayCloudRangeInverse);
 		float dustCoverage = math.saturate(math.sqrt(DustCoverage[i] * DustMaxInverse));
 		cloudColor = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0,0,0,255), dustCoverage);
 		cloudColor.a = (byte)(255 * math.max(dustCoverage, cloudCoverage * 0.75f));

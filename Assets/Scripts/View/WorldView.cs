@@ -80,6 +80,7 @@ public class WorldView : MonoBehaviour {
 	public float SlopeAmountCloud = 10;
 	public float TerrainScale = 100f;
 	public float CloudHeight = 0.1f;
+	public float DisplayCloudMin = 0.1f;
 	public float AtmosphereScale = 1000f;
 	public float DisplayFloraWeight = 1;
 	public float DisplaySandWeight = 1;
@@ -450,7 +451,9 @@ public class WorldView : MonoBehaviour {
 			DisplayFloraWeight = DisplayFloraWeight,
 			DisplaySandWeight = DisplaySandWeight,
 			DisplaySoilWeight = DisplaySoilWeight,
-			DisplayCloudHeight = CloudHeight
+			DisplayCloudHeight = CloudHeight,
+			DisplayCloudMin = DisplayCloudMin,
+			DisplayCloudRangeInverse = 1.0f / (1.0f - DisplayCloudMin)
 		});
 
 		buildRenderStateJobHandle.Complete();
