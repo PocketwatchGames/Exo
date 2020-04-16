@@ -8,7 +8,7 @@ public class GameToolButton : MonoBehaviour
 	public GameplayManager Gameplay;
 	public GameTool Tool;
 
-	public void Start()
+	public void Awake()
 	{
 		var textComponent = GetComponentInChildren<Text>();
 		textComponent.text = Tool.Name;

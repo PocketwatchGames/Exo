@@ -11,8 +11,9 @@ public class ToggleButton : Toggle {
 	private Image _background;
 
 	// Start is called before the first frame update
-	public void Start()
+	public void Awake()
 	{
+		base.Start();
 		_background = GetComponentInChildren<Image>();
 		_buttonText = GetComponentInChildren<Text>();
 		_buttonText.fontStyle = isOn ? FontStyle.Bold : FontStyle.Normal;

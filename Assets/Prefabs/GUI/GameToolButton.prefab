@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95fc98a4bfbe3634b9dd497fa1cbcaa9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Gameplay: {fileID: 0}
   Tool: {fileID: 0}
 --- !u!1001 &8490330120699327243
 PrefabInstance:
@@ -20,11 +21,6 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 8588871925205568351, guid: f9d687b655750f540a943da38f2db82d,
-        type: 3}
-      propertyPath: m_Name
-      value: GameToolButton
-      objectReference: {fileID: 0}
     - target: {fileID: 3610853393386982885, guid: f9d687b655750f540a943da38f2db82d,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -129,6 +125,51 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Pivot.y
       value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[1].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[1].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[1].m_Target
+      value: 
+      objectReference: {fileID: 8430261473561869062}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[1].m_MethodName
+      value: OnGameToolChanged
+      objectReference: {fileID: 0}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: onValueChanged.m_PersistentCalls.m_Calls.Array.data[1].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: m_Group
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6269329344474345268, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: m_IsOn
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8588871925205568351, guid: f9d687b655750f540a943da38f2db82d,
+        type: 3}
+      propertyPath: m_Name
+      value: GameToolButton
       objectReference: {fileID: 0}
     - target: {fileID: 8934161167890269896, guid: f9d687b655750f540a943da38f2db82d,
         type: 3}

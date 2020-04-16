@@ -116,7 +116,7 @@
 	"LavaViscosity": 0.001,
 
 	"SurfaceWaterFlowDamping": 0.9,
-	"WaterViscosity": 1,
+	"WaterViscosity": 0,
 	"SurfaceWaterDepth": 200,
 	"ThermoclineDepth": 800
 }
