@@ -214,7 +214,7 @@ MonoBehaviour:
     supportedLitShaderMode: 2
     supportDecals: 1
     msaaSampleCount: 1
-    supportMotionVectors: 1
+    supportMotionVectors: 0
     supportRuntimeDebugDisplay: 1
     supportDitheringCrossFade: 1
     supportTerrainHole: 0
@@ -343,10 +343,7 @@ MonoBehaviour:
   availableMaterialQualityLevels: -1
   m_DefaultMaterialQualityLevel: 4
   diffusionProfileSettings: {fileID: 0}
-  diffusionProfileSettingsList:
-  - {fileID: 0}
-  - {fileID: 11400000, guid: 2a29b4893d12bd84b94789e7e90ac575, type: 2}
-  - {fileID: 11400000, guid: a7d8cdb7a723b3f48aaf80eaf519b0e6, type: 2}
+  diffusionProfileSettingsList: []
   beforeTransparentCustomPostProcesses: []
   beforePostProcessCustomPostProcesses: []
   afterPostProcessCustomPostProcesses: []

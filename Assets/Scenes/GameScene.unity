@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 1598314396}
-  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
+  m_IndirectSpecularColor: {r: 0.002042491, g: 0.0019542999, b: 0.0019113645, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -182,6 +182,26 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 248849726187168289, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: clearColorMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 248849726187168289, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: backgroundColorHDR.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 248849726187168289, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: backgroundColorHDR.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 248849726187168289, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: backgroundColorHDR.b
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 812337360743864452, guid: 95ce40cc2f301554fb59ad45dc57e341,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -357,6 +377,11 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 812337361253630275, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 812337361255540166, guid: 95ce40cc2f301554fb59ad45dc57e341,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -442,6 +467,26 @@ PrefabInstance:
       propertyPath: m_SizeDelta.x
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 812337362084468784, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_BoundingSphereOverride.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 812337362084468784, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_BoundingSphereOverride.y
+      value: -0.0000000034567993
+      objectReference: {fileID: 0}
+    - target: {fileID: 812337362084468784, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_BoundingSphereOverride.z
+      value: 8.67e-43
+      objectReference: {fileID: 0}
+    - target: {fileID: 812337362084468784, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_BoundingSphereOverride.w
+      value: 8.56e-43
+      objectReference: {fileID: 0}
     - target: {fileID: 812337362330083815, guid: 95ce40cc2f301554fb59ad45dc57e341,
         type: 3}
       propertyPath: m_AnchorMin.y
@@ -496,6 +541,21 @@ PrefabInstance:
         type: 3}
       propertyPath: m_SizeDelta.x
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 812337362448737934, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_BoundingSphereOverride.y
+      value: -0.000000007394444
+      objectReference: {fileID: 0}
+    - target: {fileID: 812337362448737934, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_BoundingSphereOverride.z
+      value: 8.67e-43
+      objectReference: {fileID: 0}
+    - target: {fileID: 812337362448737934, guid: 95ce40cc2f301554fb59ad45dc57e341,
+        type: 3}
+      propertyPath: m_BoundingSphereOverride.w
+      value: 8.56e-43
       objectReference: {fileID: 0}
     - target: {fileID: 812337362461581972, guid: 95ce40cc2f301554fb59ad45dc57e341,
         type: 3}
@@ -1707,5 +1767,6 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 812337361253630275, guid: 95ce40cc2f301554fb59ad45dc57e341, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 95ce40cc2f301554fb59ad45dc57e341, type: 3}
