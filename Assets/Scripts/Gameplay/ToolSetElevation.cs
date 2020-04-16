@@ -32,7 +32,7 @@ public class ToolSetElevation : GameTool {
 
 			nextState.Elevation[cell] += move;
 
-			int neighborCount = staticState.GetMaxNeighbors(cell);
+			int neighborCount = StaticState.GetMaxNeighbors(cell, staticState.Neighbors);
 			for (int i = 0; i < neighborCount; i++)
 			{
 				nextState.Elevation[staticState.Neighbors[cell * StaticState.MaxNeighbors + i]] -= move / neighborCount;

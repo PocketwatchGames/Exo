@@ -36,6 +36,7 @@ public class WorldSim {
 	private NativeArray<BarycentricValue> destinationCloud;
 	private NativeArray<BarycentricValueVertical>[] destinationAir;
 	private NativeArray<BarycentricValueVertical>[] destinationWater;
+	private NativeArray<float>[] divergencePressureAir;
 	private NativeArray<float3>[] airAcceleration;
 	private NativeArray<float3>[] airVelocityDeflected;
 	private NativeArray<float3>[] waterVelocityDeflected;
@@ -132,6 +133,7 @@ public class WorldSim {
 		diffusionAir = new NativeArray<DiffusionAir>[worldData.AirLayers];
 		advectionAir = new NativeArray<DiffusionAir>[worldData.AirLayers];
 		destinationAir = new NativeArray<BarycentricValueVertical>[worldData.AirLayers];
+		divergencePressureAir = new NativeArray<float>[worldData.AirLayers];
 		airAcceleration = new NativeArray<float3>[worldData.AirLayers];
 		absorptivitySolar = new NativeArray<SolarAbsorptivity>[worldData.AirLayers];
 		absorptivityThermal = new NativeArray<ThermalAbsorptivity>[worldData.AirLayers];
@@ -144,6 +146,7 @@ public class WorldSim {
 			diffusionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			advectionAir[i] = new NativeArray<DiffusionAir>(_cellCount, Allocator.Persistent);
 			destinationAir[i] = new NativeArray<BarycentricValueVertical>(_cellCount, Allocator.Persistent);
+			divergencePressureAir[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			airAcceleration[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 			absorptivitySolar[i] = new NativeArray<SolarAbsorptivity>(_cellCount, Allocator.Persistent);
 			absorptivityThermal[i] = new NativeArray<ThermalAbsorptivity>(_cellCount, Allocator.Persistent);
@@ -262,6 +265,7 @@ public class WorldSim {
 			diffusionAir[i].Dispose();
 			advectionAir[i].Dispose();
 			destinationAir[i].Dispose();
+			divergencePressureAir[i].Dispose();
 			airAcceleration[i].Dispose();
 			absorptivitySolar[i].Dispose();
 			absorptivityThermal[i].Dispose();
@@ -390,6 +394,9 @@ public class WorldSim {
 			Utils.MemsetArray(memsetHandles, _cellCount, precipitationTemperature, 0);
 			Utils.MemsetArray(memsetHandles, _cellCount, atmosphericWindowUp, 0);
 			Utils.MemsetArray(memsetHandles, _cellCount, atmosphericWindowDown, 0);
+			for (int i = 1; i < worldData.AirLayers - 1; i++) {
+				Utils.MemsetArray(memsetHandles, _cellCount, divergencePressureAir[i], 0);
+			}
 			for (int i = 0; i < worldData.LayerCount; i++)
 			{
 				Utils.MemsetArray(memsetHandles, _cellCount, latentHeat[i], 0);
@@ -1843,7 +1850,7 @@ public class WorldSim {
 				airDestJob = JobHandle.CombineDependencies(airDestJob, SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 				{
 					Destination = destinationAir[j],
-					VelocityDeflected = airVelocityDeflected[j],
+					VelocityDeflected = airVelocityDeflected[j], // TODO: calculated deflected vel in a later step (afte incompressibility)
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
 					Velocity = nextState.AirVelocity[j],
@@ -1873,21 +1880,81 @@ public class WorldSim {
 					IsTop = j == worldData.AirLayers - 2,
 				}, airDestJob));
 			}
+			divergenceJobHandle.Complete();
+
+			// Calculate Pressure gradient field
+			for (int a = 0; a < 20; a++)
+			{
+				for (int i = 1; i < worldData.AirLayers - 1; i++)
+				{
+					bool isTop = i == worldData.AirLayers - 2;
+					bool isBottom = i == 1;
+					for (int j = 0; j < _cellCount; j++)
+					{
+						float pressure = divergenceAir[i][j];
+						int neighborCount = StaticState.GetMaxNeighbors(j, staticState.Neighbors);
+						for (int k = 0; k < neighborCount; k++)
+						{
+							pressure += divergencePressureAir[i][staticState.Neighbors[j * StaticState.MaxNeighbors + k]];
+						}
+						if (!isTop)
+						{
+							pressure += divergencePressureAir[i + 1][j];
+							neighborCount++;
+						}
+						if (!isBottom)
+						{
+							pressure += divergencePressureAir[i - 1][j];
+							neighborCount++;
+						}
+						divergencePressureAir[i][j] = pressure / neighborCount;
+					}
+				}
+			}
+
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
 				int layer = worldData.AirLayer0 + j;
 				divergenceFreeFieldAirJob = JobHandle.CombineDependencies(divergenceFreeFieldAirJob, SimJob.Schedule(new GetDivergenceFreeFieldJob()
 				{
-					Destination = destinationAir[j],
-					Divergence = divergenceAir[j],
-					DivergenceAbove = divergenceAir[j + 1],
-					DivergenceBelow = divergenceAir[j - 1],
+					Velocity = nextState.AirVelocity[j],
+					Pressure = divergencePressureAir[j],
+					PressureAbove = divergencePressureAir[j + 1],
+					PressureBelow = divergencePressureAir[j - 1],
 					Neighbors = staticState.Neighbors,
+					NeighborTangent = staticState.NeighborTangent,
+					Positions = staticState.SphericalPosition,
 					AirMass = dependent.AirMass[j],
 					IsBottom = j == 1,
 					IsTop = j == worldData.AirLayers - 2,
+					SecondsPerTickInverse = worldData.TicksPerSecond
 				}, divergenceJobHandle));
 			}
+
+
+			airDestJob = default(JobHandle);
+			for (int j = 1; j < worldData.AirLayers - 1; j++)
+			{
+				int layer = worldData.AirLayer0 + j;
+				// TODO: we need to deal with coriolis for differently:
+				// either apply it as a true force (although in my experience this causes velocity to spin)
+				// or we deflect it after advecting it
+				airDestJob = JobHandle.CombineDependencies(airDestJob, SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
+				{
+					Destination = destinationAir[j],
+					VelocityDeflected = airVelocityDeflected[j], 
+					Neighbors = staticState.Neighbors,
+					Position = staticState.SphericalPosition,
+					Velocity = nextState.AirVelocity[j],
+					LayerHeight = dependent.LayerHeight[j],
+					CoriolisMultiplier = staticState.CoriolisMultiplier,
+					CoriolisTerm = coriolisTerm,
+					PlanetRadius = staticState.PlanetRadius,
+					SecondsPerTick = worldData.SecondsPerTick
+				}, divergenceFreeFieldAirJob));
+			}
+
+
 
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
@@ -1919,7 +1986,7 @@ public class WorldSim {
 					DestinationAbove = destinationAir[j + 1],
 					DestinationBelow = destinationAir[j - 1],
 					Positions = staticState.SphericalPosition,
-				}, divergenceFreeFieldAirJob);
+				}, airDestJob);
 			}
 
 
@@ -2677,7 +2744,7 @@ public class WorldSim {
 		s.AppendFormat("TerrainTemperature: {0}\n", state.GroundTemperature[i]);
 		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
 		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
-		for (int j=0;j<staticState.GetMaxNeighbors(i);j++)
+		for (int j=0;j<StaticState.GetMaxNeighbors(i, staticState.Neighbors);j++)
 		{
 			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.FlowWater[i * StaticState.MaxNeighbors + j]);
 		}

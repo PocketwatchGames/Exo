@@ -21,6 +21,7 @@ public struct StaticState {
 	public NativeArray<float> NeighborDistInverse;
 	public NativeArray<float> NeighborDist;
 	public NativeArray<float3> NeighborDir;
+	public NativeArray<float3> NeighborTangent;
 	public NativeArray<float3> NeighborDiffInverse;
 	public NativeArray<float> CoriolisMultiplier;
 
@@ -35,6 +36,7 @@ public struct StaticState {
 		Neighbors = new NativeArray<int>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborDir = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborDistInverse = new NativeArray<float>(Count * MaxNeighbors, Allocator.Persistent);
+		NeighborTangent = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborDiffInverse = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborDist = new NativeArray<float>(Count * MaxNeighbors, Allocator.Persistent);
 		float surfaceArea = 4 * math.PI * PlanetRadius * PlanetRadius;
@@ -95,6 +97,7 @@ public struct StaticState {
 					NeighborDistInverse[index] = 1.0f / dist;
 					NeighborDir[index] = math.normalize(math.cross(math.cross(pos, diff), pos));
 					NeighborDiffInverse[index] = NeighborDir[index] * NeighborDistInverse[index];
+					NeighborTangent[index] = NeighborDir[index] * dist;
 
 				}
 				else
@@ -130,6 +133,7 @@ public struct StaticState {
 		NeighborDist.Dispose();
 		NeighborDistInverse.Dispose();
 		NeighborDiffInverse.Dispose();
+		NeighborTangent.Dispose();
 		Coordinate.Dispose();
 		SphericalPosition.Dispose();
 		CoriolisMultiplier.Dispose();
@@ -140,8 +144,8 @@ public struct StaticState {
 		return Count * layer + i;
 	}
 
-	public int GetMaxNeighbors(int cell)
+	public static int GetMaxNeighbors(int cell, NativeArray<int> neighbors)
 	{
-		return (Neighbors[(cell + 1) * MaxNeighbors - 1] >= 0) ? MaxNeighbors : (MaxNeighbors - 1);
+		return (neighbors[(cell + 1) * MaxNeighbors - 1] >= 0) ? MaxNeighbors : (MaxNeighbors - 1);
 	}
 }

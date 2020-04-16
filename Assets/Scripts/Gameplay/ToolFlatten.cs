@@ -29,7 +29,7 @@ public class ToolFlatten : GameTool {
 			float elevation = lastState.Elevation[cell];
 			float avgElevation = lastState.Elevation[cell];
 			float neighborElevation = 0;
-			int neighborCount = staticState.GetMaxNeighbors(cell);
+			int neighborCount = StaticState.GetMaxNeighbors(cell, staticState.Neighbors);
 			for (int i=0;i< neighborCount; i++)
 			{
 				neighborElevation += lastState.Elevation[staticState.Neighbors[cell * StaticState.MaxNeighbors + i]];

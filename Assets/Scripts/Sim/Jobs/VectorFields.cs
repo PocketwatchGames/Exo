@@ -325,52 +325,39 @@ public struct GetDivergenceJob : IJobParallelFor {
 }
 
 
-[BurstCompile]
+//[BurstCompile]
 public struct GetDivergenceFreeFieldJob : IJobParallelFor {
-	public NativeArray<BarycentricValueVertical> Destination;
-	[ReadOnly] public NativeArray<float> Divergence;
-	[ReadOnly] public NativeArray<float> DivergenceAbove;
-	[ReadOnly] public NativeArray<float> DivergenceBelow;
+	public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float> Pressure;
+	[ReadOnly] public NativeArray<float> PressureAbove;
+	[ReadOnly] public NativeArray<float> PressureBelow;
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> NeighborTangent;
+	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
+	[ReadOnly] public float SecondsPerTickInverse;
 	public void Execute(int i)
 	{
-		float flux = 0;
-		float localDivergence = Divergence[i];
+		int neighborCount = StaticState.GetMaxNeighbors(i, Neighbors);
+		float pressure = Pressure[i];
+		float3 pressureGradient = 0;
+		float3 up = Positions[i];
+		for (int j=0;j< neighborCount; j++)
+		{
+			int nIndex = i * StaticState.MaxNeighbors + j;
+			float3 diff = NeighborTangent[nIndex];
+			pressureGradient += (pressure - Pressure[Neighbors[nIndex]]) * diff;
+		}
 		if (!IsTop)
 		{
-			flux += math.max(0, localDivergence - DivergenceAbove[i]) / 2;
+			pressureGradient += (pressure - PressureAbove[i]) * up;
 		}
 		if (!IsBottom)
 		{
-			flux -= math.max(0, localDivergence - DivergenceBelow[i]) / 2;
+			pressureGradient += (PressureBelow[i] - pressure) * up;
 		}
-		var oldDest = Destination[i];
-		float valueA = oldDest.valueA;
-		float valueB = oldDest.valueB;
-		float valueC = oldDest.valueC;
-		float m = 1.0f - math.abs(oldDest.moveVertical);
-		if (m > 0)
-		{
-			valueA /= m;
-			valueB /= m;
-			valueC /= m;
-		}
-
-		float newMoveVertical = oldDest.moveVertical + math.clamp(flux / AirMass[i], -1, 1);
-		float newMoveVertComplement = 1.0f - math.abs(newMoveVertical);
-		Destination[i] = new BarycentricValueVertical()
-		{
-			indexA = oldDest.indexA,
-			indexB = oldDest.indexB,
-			indexC = oldDest.indexC,
-			valueA = valueA * newMoveVertComplement,
-			valueB = valueB * newMoveVertComplement,
-			valueC = valueC * newMoveVertComplement,
-			moveVertical = newMoveVertical,
-		};
-
+		Velocity[i] -= pressureGradient / AirMass[i] * SecondsPerTickInverse;
 	}
 }
