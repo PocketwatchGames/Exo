@@ -23,7 +23,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	[HideInInspector] public Icosphere Icosphere;
 	[HideInInspector] public bool CollectOverlay = false;
-	[HideInInspector] public float TimeScale;
+	[HideInInspector] public float TimeScale = 0;
 
 	public int CellCount { get; private set; }
 	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
@@ -45,6 +45,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	public void Awake()
     {
+		TimeScale = 0;
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
 		WorldData.Init();
 
