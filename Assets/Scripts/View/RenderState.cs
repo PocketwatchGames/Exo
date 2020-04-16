@@ -183,7 +183,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 		terrainElevation = ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
 		waterElevation = ((waterDepth == 0) ? 0.99f : ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
-		surfacePosition = icosphere * (surfaceElevation * TerrainScale + PlanetRadius) / PlanetRadius;
+		surfacePosition = icosphere * ((surfaceElevation + 50) * TerrainScale + PlanetRadius) / PlanetRadius;
 		cloudElevation = (5000 * TerrainScale + PlanetRadius) / PlanetRadius;
 		cloudHeight = cloudCoverage == 0 ? 0 : (cloudVolume / cloudCoverage * DisplayCloudHeight);
 
