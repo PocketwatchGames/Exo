@@ -132,6 +132,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 		}
 
 		// TODO: subtract vertical motion first before applying horizontal motion (right now it adds up to more than 1)
+		// Wait, does it? is this comment outdated?
 		for (int j = 0; j < 6; j++)
 		{
 			int n = Neighbors[i * 6 + j];
@@ -159,6 +160,10 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newDust += Dust[n] * incoming;
 
 				var deflectedVelocity = math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
+
+//				math.quaternion()
+
+				// TODO: is this really appropriate? do we have vertical motion due to the atmospheric layer changing height, or is this accounted for in the pressure gradient?
 				deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
 
 				// TODO: this is temp
@@ -180,11 +185,11 @@ public struct AdvectionAirJob : IJobParallelFor {
 			{
 				float incomingMass = math.max(0, -AirMassAbove[i] * vertMove.moveVertical);
 				totalMass += incomingMass;
-				newTemperature += TemperatureAbove[i] * incomingMass;
 				newWaterVapor += VaporAbove[i] * -vertMove.moveVertical;
 				newCO2 += CarbonDioxideAbove[i] * -vertMove.moveVertical;
 				newDust += DustAbove[i] * -vertMove.moveVertical;
-				newVelocity += VelocityAbove[i] * -vertMove.moveVertical;
+				newTemperature += TemperatureAbove[i] * incomingMass;
+				newVelocity += VelocityAbove[i] * incomingMass;
 			}
 		}
 
@@ -195,11 +200,11 @@ public struct AdvectionAirJob : IJobParallelFor {
 			{
 				float incomingMass = math.max(0, AirMassBelow[i] * vertMove.moveVertical);
 				totalMass += incomingMass;
-				newTemperature += TemperatureBelow[i] * incomingMass;
 				newWaterVapor += VaporBelow[i] * vertMove.moveVertical;
 				newCO2 += CarbonDioxideBelow[i] * vertMove.moveVertical;
 				newDust += DustBelow[i] * vertMove.moveVertical;
-				newVelocity += VelocityBelow[i] * vertMove.moveVertical;
+				newTemperature += TemperatureBelow[i] * incomingMass;
+				newVelocity += VelocityBelow[i] * incomingMass;
 			}
 		}
 
@@ -287,8 +292,8 @@ public struct AdvectionCloudJob : IJobParallelFor {
 					incoming = Destination[n].valueC;
 				}
 				float m = Mass[n] * incoming;
+				totalMass += m;
 				newMass += m;
-				totalMass += totalMass;
 				newTemperature += Temperature[n] * incoming * m;
 				newDropletMass += DropletMass[n] * incoming;
 			}

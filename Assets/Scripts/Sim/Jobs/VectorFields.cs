@@ -40,7 +40,7 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 
 		float3 move = velocity * SecondsPerTick;
 		float windMoveHorizontalSq = math.lengthsq(move);
-		const float maxWindMove = 200000;
+		const float maxWindMove = 400000;
 		if (windMoveHorizontalSq > maxWindMove * maxWindMove)
 		{
 			move = move / math.sqrt(windMoveHorizontalSq) * maxWindMove;
@@ -256,7 +256,7 @@ public struct GetDivergencePressureJob : IJobFor {
 
 	public void Execute(int i)
 	{
-		float pressure = Pressure[i];
+		float pressure = Divergence[i];
 		int neighborCount = StaticState.GetMaxNeighbors(i, Neighbors);
 		for (int k = 0; k < neighborCount; k++)
 		{

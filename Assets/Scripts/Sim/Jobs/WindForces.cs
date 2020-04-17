@@ -90,22 +90,42 @@ public struct AccelerationAirJob : IJobParallelFor {
 		var vel = Velocity[i] + force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
 //		vel += math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
 
-		vel -= Positions[i] * math.dot(Positions[i], vel);
-
 		float buoyancy = 0;
 		// Cold air moves into warm air via gravity
 		// Note that if warm air is above cold air, it is stratified but stable, so there's no force
 		if (!IsBottom)
 		{
-			buoyancy = math.min(0, SecondsPerTick * Gravity * (DownTemperaturePotential[i] / TemperaturePotential[i] - 1));
+			//buoyancy = math.min(0, SecondsPerTick * Gravity * (DownTemperaturePotential[i] / TemperaturePotential[i] - 1));
 
-			// TODO: this is temp, what's a reasonable way to apply a buoyant force over 3600 seconds?
-			buoyancy = buoyancy * 0.001f;
+			//// TODO: this is temp, what's a reasonable way to apply a buoyant force over 3600 seconds?
+			//buoyancy = buoyancy * 0.001f;
 
-			// TODO: it might be a good idea to just separate buoyancy velocity since we aren't preserving momentum, then we could get rid of this
-			vel += Positions[i] * (buoyancy - math.dot(Positions[i], vel));
+			//// TODO: it might be a good idea to just separate buoyancy velocity since we aren't preserving momentum, then we could get rid of this
+			//vel += Positions[i] * (buoyancy - math.dot(Positions[i], vel));
+
+
+			// THis is the actual force version of buoyancy, but it produces drastic effects
+			//buoyancy = math.min(0, SecondsPerTick * Gravity * (DownTemperaturePotential[i] / TemperaturePotential[i] - 1));
+			//vel += Positions[i] * buoyancy;
+
 		}
 
+		if (IsTop)
+		{
+			float dotUp = math.dot(Positions[i], vel);
+			if (dotUp > 0)
+			{
+				vel -= Positions[i] * dotUp;
+			}
+		}
+		if (IsBottom)
+		{
+			float dotUp = math.dot(Positions[i], vel);
+			if (dotUp < 0)
+			{
+				vel -= Positions[i] * dotUp;
+			}
+		}
 
 		Velocity[i] = vel;
 	}
