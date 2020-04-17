@@ -83,9 +83,14 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationAbove;
 	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationBelow;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float> NeighborDistInverse;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public NativeArray<float> LayerMiddle;
+	[ReadOnly] public NativeArray<float> LayerMiddleAbove;
+	[ReadOnly] public NativeArray<float> LayerMiddleBelow;
 	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public float TicksPerSecond;
 	public void Execute(int i)
 	{
 		float newTemperature;
@@ -108,6 +113,8 @@ public struct AdvectionAirJob : IJobParallelFor {
 		newCO2 = 0;
 		newVelocity = 0;
 		newDust = 0;
+
+		float layerMiddle = LayerMiddle[i];
 
 		// TODO: remove this when we have incompressibility
 		float totalMass = 0;
@@ -151,12 +158,14 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newCO2 += CarbonDioxide[n] * incoming;
 				newDust += Dust[n] * incoming;
 
+				var deflectedVelocity = math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
+				deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
+
 				// TODO: this is temp
 				// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
-				var deflectedVelocity = math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
-				newVelocity += incomingMass * (deflectedVelocity - Positions[i] * math.dot(Positions[i], deflectedVelocity));
+				//newVelocity += incomingMass * (deflectedVelocity - Positions[i] * math.dot(Positions[i], deflectedVelocity));
 
-//				newVelocity += DeflectedVelocity[n] * incoming;
+				newVelocity += incomingMass * deflectedVelocity;
 			}
 		}
 
@@ -175,7 +184,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newWaterVapor += VaporAbove[i] * -vertMove.moveVertical;
 				newCO2 += CarbonDioxideAbove[i] * -vertMove.moveVertical;
 				newDust += DustAbove[i] * -vertMove.moveVertical;
-	//			newVelocity += VelocityAbove[i] * -vertMove.moveVertical;
+				newVelocity += VelocityAbove[i] * -vertMove.moveVertical;
 			}
 		}
 
@@ -190,7 +199,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newWaterVapor += VaporBelow[i] * vertMove.moveVertical;
 				newCO2 += CarbonDioxideBelow[i] * vertMove.moveVertical;
 				newDust += DustBelow[i] * vertMove.moveVertical;
-	//			newVelocity += VelocityBelow[i] * vertMove.moveVertical;
+				newVelocity += VelocityBelow[i] * vertMove.moveVertical;
 			}
 		}
 

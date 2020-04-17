@@ -1965,10 +1965,15 @@ public class WorldSim {
 					Destination = destinationAir[j],
 					DestinationAbove = destinationAir[j + 1],
 					DestinationBelow = destinationAir[j - 1],
+					LayerMiddle = dependent.LayerMiddle[j],
+					LayerMiddleAbove = dependent.LayerMiddle[j + 1],
+					LayerMiddleBelow = dependent.LayerMiddle[j - 1],
 					Positions = staticState.SphericalPosition,
+					NeighborDistInverse = staticState.NeighborDistInverse,
 					CoriolisMultiplier = staticState.CoriolisMultiplier,
 					CoriolisTerm = coriolisTerm,
 					SecondsPerTick = worldData.SecondsPerTick,
+					TicksPerSecond = worldData.TicksPerSecond
 				}, airDestJob);
 			}
 
