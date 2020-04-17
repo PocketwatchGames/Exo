@@ -21,5 +21,12 @@ public class DropdownOverlay<T> : MonoBehaviour where T : struct, System.IConver
     {
         
     }
+
+	public void SetValueWithoutNotify(T v)
+	{
+		var dd = GetComponent<UnityEngine.UI.Dropdown>();
+		int index = dd.options.FindIndex(i => i.text == v.ToString());
+		dd.SetValueWithoutNotify(index);
+	}
 }
 

@@ -2,7 +2,6 @@
 //#define DISABLE_AIR_ADVECTION
 //#define DISABLE_WATER_ADVECTION
 //#define DISABLE_CLOUD_ADVECTION
-//#define AdvectionAirJobDebug
 
 using Unity.Burst;
 using Unity.Jobs;

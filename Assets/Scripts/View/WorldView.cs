@@ -9,16 +9,26 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using System.Globalization;
+using System.Xml.Serialization;
 
 public class WorldView : MonoBehaviour {
 
 	public enum MeshOverlay {
 		None,
 		TemperatureSurface,
+		PotentialTemperature,
+		Pressure,
+		VerticalWind,
+		AbsoluteHumidity,
+		RelativeHumidity,
+		CarbonDioxide,
 		Evaporation,
 		Rainfall,
 		Condensation,
 		HeatAbsorbed,
+		WaterTemperature,
+		WaterCarbonDioxide,
+		Salinity,
 		GroundTemperature,
 		GroundWater,
 		GroundWaterTemperature,
@@ -26,31 +36,6 @@ public class WorldView : MonoBehaviour {
 		FloraWater,
 		CrustDepth,
 		MagmaMass,
-		PotentialTemperature0,
-		PotentialTemperature1,
-		PotentialTemperature2,
-		Pressure0,
-		Pressure1,
-		Pressure2,
-		WaterTemperature0,
-		WaterTemperature1,
-		WaterTemperature2,
-		WaterCarbonDioxide0,
-		WaterCarbonDioxide1,
-		WaterCarbonDioxide2,
-		Salinity0,
-		Salinity1,
-		Salinity2,
-		VerticalWind0,
-		VerticalWind1,
-		VerticalWind2,
-		CarbonDioxide0,
-		CarbonDioxide1,
-		CarbonDioxide2,
-		AbsoluteHumidity0,
-		AbsoluteHumidity1,
-		AbsoluteHumidity2,
-		RelativeHumidity0,
 	}
 
 	public enum WindOverlay {
@@ -121,8 +106,6 @@ public class WorldView : MonoBehaviour {
 	public GameObject Sun;
 	public GameObject Moon;
 	public GameObject SunLight;
-	public MeshOverlay ActiveMeshOverlay;
-	public WindOverlay ActiveWindOverlay;
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
 	public Material CloudMaterialFront, CloudMaterialBack;
@@ -130,6 +113,18 @@ public class WorldView : MonoBehaviour {
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
 	public FoliageManager Foliage;
+
+
+	[XmlIgnore] public MeshOverlay ActiveMeshOverlay { get; private set; }
+	[XmlIgnore] public WindOverlay ActiveWindOverlay;
+	[XmlIgnore] public int ActiveMeshLayerWater = 1;
+	[XmlIgnore] public int ActiveMeshLayerAir = 1;
+
+	public event Action MeshOverlayChangedEvent;
+	public event Action WindOverlayChangedEvent;
+	public event Action AirLayerChangedEvent;
+	public event Action WaterLayerChangedEvent;
+
 
 	private JobHelper _renderJobHelper;
 	private JobHelper _renderTerrainHelper;
@@ -783,77 +778,35 @@ public class WorldView : MonoBehaviour {
 		float ticksPerYear = Sim.WorldData.TicksPerSecond * 60 * 60 * 24 * 365;
 		switch (activeOverlay)
 		{
-			case MeshOverlay.AbsoluteHumidity0:
-				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, dependentState.AirHumidityAbsolute[1]);
+			case MeshOverlay.AbsoluteHumidity:
+				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, dependentState.AirHumidityAbsolute[ActiveMeshLayerAir]);
 				return true;
-			case MeshOverlay.AbsoluteHumidity1:
-				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityAbsolute[2]);
-				return true;
-			case MeshOverlay.AbsoluteHumidity2:
-				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityAbsolute[3]);
-				return true;
-			case MeshOverlay.RelativeHumidity0:
-				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[1]);
+			case MeshOverlay.RelativeHumidity:
+				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, dependentState.AirHumidityRelative[ActiveMeshLayerAir]);
 				return true;
 			case MeshOverlay.TemperatureSurface:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperatureAbsolute);
 				return true;
-			case MeshOverlay.PotentialTemperature0:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperaturePotential[1]);
+			case MeshOverlay.PotentialTemperature:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperaturePotential[ActiveMeshLayerAir]);
 				return true;
-			case MeshOverlay.PotentialTemperature1:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperaturePotential[2]);
+			case MeshOverlay.Pressure:
+				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[ActiveMeshLayerAir]);
 				return true;
-			case MeshOverlay.PotentialTemperature2:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.AirTemperaturePotential[3]);
+			case MeshOverlay.WaterTemperature:
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[ActiveMeshLayerWater]);
 				return true;
-			case MeshOverlay.Pressure0:
-				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[1]);
+			case MeshOverlay.WaterCarbonDioxide:
+				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[ActiveMeshLayerWater]);
 				return true;
-			case MeshOverlay.Pressure1:
-				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[2]);
-				return true;
-			case MeshOverlay.Pressure2:
-				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[3]);
-				return true;
-			case MeshOverlay.WaterTemperature0:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 2]);
-				return true;
-			case MeshOverlay.WaterTemperature1:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 3]);
-				return true;
-			case MeshOverlay.WaterTemperature2:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[Sim.WorldData.WaterLayers - 4]);
-				return true;
-			case MeshOverlay.WaterCarbonDioxide0:
-				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[Sim.WorldData.WaterLayers - 2]);
-				return true;
-			case MeshOverlay.WaterCarbonDioxide1:
-				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[Sim.WorldData.WaterLayers - 3]);
-				return true;
-			case MeshOverlay.WaterCarbonDioxide2:
-				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[Sim.WorldData.WaterLayers - 4]);
-				return true;
-			case MeshOverlay.Salinity0:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 2]);
-				return true;
-			case MeshOverlay.Salinity1:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 3]);
-				return true;
-			case MeshOverlay.Salinity2:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[Sim.WorldData.WaterLayers - 4]);
+			case MeshOverlay.Salinity:
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[ActiveMeshLayerWater]);
 				return true;
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundTemperature);
 				return true;
-			case MeshOverlay.CarbonDioxide0:
-				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[1]);
-				return true;
-			case MeshOverlay.CarbonDioxide1:
-				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[2]);
-				return true;
-			case MeshOverlay.CarbonDioxide2:
-				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[3]);
+			case MeshOverlay.CarbonDioxide:
+				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, display.CarbonDioxidePercent[ActiveMeshLayerAir]);
 				return true;
 			case MeshOverlay.HeatAbsorbed:
 				overlay = new MeshOverlayData(0, DisplayHeatAbsorbedMax, _normalizedRainbow, display.SolarRadiationAbsorbedSurface);
@@ -876,14 +829,8 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.FloraWater:
 				overlay = new MeshOverlayData(0, Sim.WorldData.FullCoverageFlora, _normalizedRainbow, simState.FloraWater);
 				return true;
-			case MeshOverlay.VerticalWind0:
-				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[1]);
-				return true;
-			case MeshOverlay.VerticalWind1:
-				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[2]);
-				return true;
-			case MeshOverlay.VerticalWind2:
-				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[3]);
+			case MeshOverlay.VerticalWind:
+				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[ActiveMeshLayerAir]);
 				return true;
 			case MeshOverlay.CrustDepth:
 				overlay = new MeshOverlayData(DisplayCrustDepthMax, 0, _normalizedRainbow, simState.CrustDepth);
@@ -988,6 +935,27 @@ public class WorldView : MonoBehaviour {
 				}
 			}
 		}
+	}
+
+	public void SetActiveMeshOverlay(MeshOverlay o)
+	{
+		ActiveMeshOverlay = o;
+		MeshOverlayChangedEvent?.Invoke();
+	}
+	public void SetActiveWindOverlay(WindOverlay o)
+	{
+		ActiveWindOverlay = o;
+		WindOverlayChangedEvent?.Invoke();
+	}
+	public void SetActiveLayerAir(int l)
+	{
+		ActiveMeshLayerAir = l;
+		AirLayerChangedEvent?.Invoke();
+	}
+	public void SetActiveLayerWater(int l)
+	{
+		ActiveMeshLayerWater = l;
+		WaterLayerChangedEvent?.Invoke();
 	}
 
 	#endregion

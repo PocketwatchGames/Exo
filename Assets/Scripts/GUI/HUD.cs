@@ -13,7 +13,7 @@ public class HUD : MonoBehaviour
 	public WorldSimComponent Sim;
 	public GameToolButton GameToolButtonPrefab;
 	public GameObject Toolbar;
-
+	public GameObject OptionsPanel;
 
 	private bool _isDown;
 	private Vector3 _dragStart;
@@ -52,6 +52,11 @@ public class HUD : MonoBehaviour
 		}
 	}
 
+	public void OnOptionsClicked()
+	{
+		OptionsPanel.SetActive(true);
+	}
+
 	public void OnBackgroundClicked()
 	{
 		var p = GetMouseCellIndex();
@@ -69,11 +74,6 @@ public class HUD : MonoBehaviour
 		_isDown = false;
 		var p = GetMouseCellIndex();
 		Gameplay.OnWorldMouseUp(p.Item1, p.Item2);
-	}
-
-	public void OnHUDTemperatureUnitsChanged(UnityEngine.UI.Dropdown dropdown)
-	{
-		ActiveTemperatureUnits = (CellInfo.TemperatureUnits)dropdown.value;
 	}
 
 	public string GetCellInfo(CellInfo.CellInfoType cellInfoType)
