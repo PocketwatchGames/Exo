@@ -54,6 +54,8 @@ public struct AccelerationAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DownHumidity;
 	[ReadOnly] public NativeArray<float> DownAirMass;
 	[ReadOnly] public NativeArray<float> DownLayerMiddle;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float GravityInverse;
 	[ReadOnly] public float Gravity;
@@ -86,6 +88,8 @@ public struct AccelerationAirJob : IJobParallelFor {
 
 		Force[i] = force;
 		var vel = Velocity[i] + force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
+//		vel += math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
+
 		vel -= Positions[i] * math.dot(Positions[i], vel);
 
 		float buoyancy = 0;

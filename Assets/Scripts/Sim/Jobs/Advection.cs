@@ -78,12 +78,14 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> VelocityAbove;
 	[ReadOnly] public NativeArray<float3> VelocityBelow;
-	[ReadOnly] public NativeArray<float3> VelocityDeflected;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<BarycentricValueVertical> Destination;
 	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationAbove;
 	[ReadOnly] public NativeArray<BarycentricValueVertical> DestinationBelow;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public float CoriolisTerm;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		float newTemperature;
@@ -151,7 +153,8 @@ public struct AdvectionAirJob : IJobParallelFor {
 
 				// TODO: this is temp
 				// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
-				newVelocity += incomingMass * (VelocityDeflected[n] - Positions[i] * math.dot(Positions[i], VelocityDeflected[n]));
+				var deflectedVelocity = math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
+				newVelocity += incomingMass * (deflectedVelocity - Positions[i] * math.dot(Positions[i], deflectedVelocity));
 
 //				newVelocity += DeflectedVelocity[n] * incoming;
 			}
@@ -307,7 +310,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> VelocityAbove;
 	[ReadOnly] public NativeArray<float3> VelocityBelow;
-	[ReadOnly] public NativeArray<float3> VelocityDeflected;
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> MassAbove;
 	[ReadOnly] public NativeArray<float> MassBelow;
@@ -425,7 +427,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 						// TODO: this is temp
 						// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
-						newVelocity += massIncoming * (VelocityDeflected[n] - Positions[i] * math.dot(Positions[i], VelocityDeflected[n]));
+						newVelocity += massIncoming * (Velocity[n] - Positions[i] * math.dot(Positions[i], Velocity[n]));
 
 	//					newVelocity += VelocityDeflected[n] * massIncoming;
 					}

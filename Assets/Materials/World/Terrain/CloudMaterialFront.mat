@@ -106,7 +106,7 @@ Material:
     - Vector1_7C5C456F: 1
     - Vector1_A74332C0: 1
     - Vector1_C3F63C53: 2
-    - Vector1_F21F5787: 1
+    - Vector1_F21F5787: 0
     - _Alpha: 1
     - _AlphaCutoffEnable: 1
     - _AlphaDstBlend: 10

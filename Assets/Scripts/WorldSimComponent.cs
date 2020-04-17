@@ -67,7 +67,7 @@ public class WorldSimComponent : MonoBehaviour
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref DependentState, ref WorldData);
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref DependentState, ref StaticState, ref WorldData);
 	}
 
 	public void OnDestroy()
@@ -143,7 +143,7 @@ public class WorldSimComponent : MonoBehaviour
 			i.Dispose();
 		}
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref DependentState, ref WorldData);
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref DependentState, ref StaticState, ref WorldData);
 
 		OnTick?.Invoke();
 	}
@@ -155,14 +155,13 @@ public class WorldSimComponent : MonoBehaviour
 	}
 
 
-	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref DependentState dependentState, ref WorldData worldData)
+	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref DependentState dependentState, ref StaticState staticState, ref WorldData worldData)
 	{
 		displayState.Dispose();
 
 		displayState = new DisplayState();
 		displayState.Init(cellCount, worldData.AirLayers, worldData.WaterLayers, worldData.LayerCount);
 
-		var tempAdvectionDestination = new NativeArray<BarycentricValueVertical>(cellCount, Allocator.TempJob);
 		var tempVelocity = new NativeArray<float3>(cellCount, Allocator.TempJob);
 		var tempCloudMass = new NativeArray<float>(cellCount, Allocator.TempJob);
 		JobHandle initDisplayHandle = default(JobHandle);
@@ -188,14 +187,14 @@ public class WorldSimComponent : MonoBehaviour
 				CondensationCloud = tempCloudMass,
 				CondensationGround = tempCloudMass,
 				AirMass = dependentState.AirMass[i],
+				AirVelocity = activeSimState.AirVelocity[i],				
 				VaporMass = activeSimState.AirVapor[i],
 				DustMass = activeSimState.Dust[i],
-				AdvectionDestination = tempAdvectionDestination,
+				Positions = staticState.SphericalPosition,
 			};
 			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(cellCount, 1, initDisplayHandle));
 		}
 		initDisplayHandle.Complete();
-		tempAdvectionDestination.Dispose();
 		tempVelocity.Dispose();
 		tempCloudMass.Dispose();
 	}

@@ -38,8 +38,6 @@ public class WorldSim {
 	private NativeArray<BarycentricValueVertical>[] destinationWater;
 	private NativeArray<float>[] divergencePressureAir;
 	private NativeArray<float3>[] airAcceleration;
-	private NativeArray<float3>[] airVelocityDeflected;
-	private NativeArray<float3>[] waterVelocityDeflected;
 	private NativeArray<float3> cloudVelocityDeflected;
 	private NativeArray<float> terrainGradient;
 	private NativeArray<float> windFriction;
@@ -137,7 +135,6 @@ public class WorldSim {
 		airAcceleration = new NativeArray<float3>[worldData.AirLayers];
 		absorptivitySolar = new NativeArray<SolarAbsorptivity>[worldData.AirLayers];
 		absorptivityThermal = new NativeArray<ThermalAbsorptivity>[worldData.AirLayers];
-		airVelocityDeflected = new NativeArray<float3>[worldData.AirLayers];
 		dustUp = new NativeArray<float>[worldData.AirLayers];
 		dustDown = new NativeArray<float>[worldData.AirLayers];
 		divergenceAir = new NativeArray<float>[worldData.AirLayers];
@@ -150,7 +147,6 @@ public class WorldSim {
 			airAcceleration[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 			absorptivitySolar[i] = new NativeArray<SolarAbsorptivity>(_cellCount, Allocator.Persistent);
 			absorptivityThermal[i] = new NativeArray<ThermalAbsorptivity>(_cellCount, Allocator.Persistent);
-			airVelocityDeflected[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 			dustUp[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			dustDown[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
 			divergenceAir[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -159,14 +155,12 @@ public class WorldSim {
 		advectionWater = new NativeArray<DiffusionWater>[worldData.WaterLayers];
 		destinationWater = new NativeArray<BarycentricValueVertical>[worldData.WaterLayers];
 		conductionWaterTerrain = new NativeArray<float>[worldData.WaterLayers];
-		waterVelocityDeflected = new NativeArray<float3>[worldData.WaterLayers];
 		for (int i = 0; i < worldData.WaterLayers; i++)
 		{
 			diffusionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			advectionWater[i] = new NativeArray<DiffusionWater>(_cellCount, Allocator.Persistent);
 			destinationWater[i] = new NativeArray<BarycentricValueVertical>(_cellCount, Allocator.Persistent);
 			conductionWaterTerrain[i] = new NativeArray<float>(_cellCount, Allocator.Persistent);
-			waterVelocityDeflected[i] = new NativeArray<float3>(_cellCount, Allocator.Persistent);
 		}
 		frozenTemperature = new NativeArray<float>(_cellCount, Allocator.Persistent);
 		frozenMass = new NativeArray<float>(_cellCount, Allocator.Persistent);
@@ -269,7 +263,6 @@ public class WorldSim {
 			airAcceleration[i].Dispose();
 			absorptivitySolar[i].Dispose();
 			absorptivityThermal[i].Dispose();
-			airVelocityDeflected[i].Dispose();
 			dustUp[i].Dispose();
 			dustDown[i].Dispose();
 			divergenceAir[i].Dispose();
@@ -280,7 +273,6 @@ public class WorldSim {
 			advectionWater[i].Dispose();
 			destinationWater[i].Dispose();
 			conductionWaterTerrain[i].Dispose();
-			waterVelocityDeflected[i].Dispose();
 		}
 		frozenTemperature.Dispose();
 		frozenMass.Dispose();
@@ -1788,6 +1780,8 @@ public class WorldSim {
 					DownHumidity = lastState.AirVapor[j - 1],
 					DownAirMass = dependent.AirMass[j - 1],
 					DownLayerMiddle = dependent.LayerMiddle[j - 1],
+					CoriolisMultiplier = staticState.CoriolisMultiplier,
+					CoriolisTerm = coriolisTerm,
 					IsTop = j == worldData.AirLayers - 2,
 					IsBottom = j == 1,
 					FrictionCoefficient = j == 1 ? 1 : 0,
@@ -1850,13 +1844,10 @@ public class WorldSim {
 				airDestJob = JobHandle.CombineDependencies(airDestJob, SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 				{
 					Destination = destinationAir[j],
-					VelocityDeflected = airVelocityDeflected[j], // TODO: calculated deflected vel in a later step (afte incompressibility)
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
 					Velocity = nextState.AirVelocity[j],
 					LayerHeight = dependent.LayerHeight[j],
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick
 				}, airAccelerationJobHandles[j]));
@@ -1883,32 +1874,24 @@ public class WorldSim {
 			divergenceJobHandle.Complete();
 
 			// Calculate Pressure gradient field
+			JobHandle divergencePressureJobHandle = divergenceJobHandle;
 			for (int a = 0; a < 20; a++)
 			{
 				for (int i = 1; i < worldData.AirLayers - 1; i++)
 				{
 					bool isTop = i == worldData.AirLayers - 2;
 					bool isBottom = i == 1;
-					for (int j = 0; j < _cellCount; j++)
+					var dpj = new GetDivergencePressureJob()
 					{
-						float pressure = divergenceAir[i][j];
-						int neighborCount = StaticState.GetMaxNeighbors(j, staticState.Neighbors);
-						for (int k = 0; k < neighborCount; k++)
-						{
-							pressure += divergencePressureAir[i][staticState.Neighbors[j * StaticState.MaxNeighbors + k]];
-						}
-						if (!isTop)
-						{
-							pressure += divergencePressureAir[i + 1][j];
-							neighborCount++;
-						}
-						if (!isBottom)
-						{
-							pressure += divergencePressureAir[i - 1][j];
-							neighborCount++;
-						}
-						divergencePressureAir[i][j] = pressure / neighborCount;
-					}
+						Pressure = divergencePressureAir[i],
+						Divergence = divergenceAir[i],
+						PressureAbove = divergencePressureAir[i + 1],
+						PressureBelow = divergencePressureAir[i - 1],
+						IsTop = i == worldData.AirLayers - 2,
+						IsBottom = i == 1,
+						Neighbors = staticState.Neighbors
+					};
+					divergencePressureJobHandle = dpj.Schedule(_cellCount, divergencePressureJobHandle);
 				}
 			}
 
@@ -1921,6 +1904,7 @@ public class WorldSim {
 					Pressure = divergencePressureAir[j],
 					PressureAbove = divergencePressureAir[j + 1],
 					PressureBelow = divergencePressureAir[j - 1],
+					LayerHeight = dependent.LayerHeight[j],
 					Neighbors = staticState.Neighbors,
 					NeighborTangent = staticState.NeighborTangent,
 					Positions = staticState.SphericalPosition,
@@ -1928,7 +1912,7 @@ public class WorldSim {
 					IsBottom = j == 1,
 					IsTop = j == worldData.AirLayers - 2,
 					SecondsPerTickInverse = worldData.TicksPerSecond
-				}, divergenceJobHandle));
+				}, divergencePressureJobHandle));
 			}
 
 
@@ -1942,13 +1926,10 @@ public class WorldSim {
 				airDestJob = JobHandle.CombineDependencies(airDestJob, SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 				{
 					Destination = destinationAir[j],
-					VelocityDeflected = airVelocityDeflected[j], 
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
 					Velocity = nextState.AirVelocity[j],
 					LayerHeight = dependent.LayerHeight[j],
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick
 				}, divergenceFreeFieldAirJob));
@@ -1980,12 +1961,14 @@ public class WorldSim {
 					Velocity = nextState.AirVelocity[j],
 					VelocityAbove = nextState.AirVelocity[j + 1],
 					VelocityBelow = nextState.AirVelocity[j - 1],
-					VelocityDeflected = airVelocityDeflected[j],
 					Neighbors = staticState.Neighbors,
 					Destination = destinationAir[j],
 					DestinationAbove = destinationAir[j + 1],
 					DestinationBelow = destinationAir[j - 1],
 					Positions = staticState.SphericalPosition,
+					CoriolisMultiplier = staticState.CoriolisMultiplier,
+					CoriolisTerm = coriolisTerm,
+					SecondsPerTick = worldData.SecondsPerTick,
 				}, airDestJob);
 			}
 
@@ -2001,10 +1984,7 @@ public class WorldSim {
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
 					Velocity = nextState.WaterVelocity[j],
-					VelocityDeflected = waterVelocityDeflected[j],
 					LayerHeight = dependent.WaterLayerHeight[j],
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick
 				}, waterAccelerationJobHandles[j]));
@@ -2024,7 +2004,6 @@ public class WorldSim {
 					Velocity = nextState.WaterVelocity[j],
 					VelocityAbove = nextState.WaterVelocity[j+1],
 					VelocityBelow = nextState.WaterVelocity[j-1],
-					VelocityDeflected = waterVelocityDeflected[j],
 					Temperature = nextState.WaterTemperature[j],
 					TemperatureAbove = nextState.WaterTemperature[j+1],
 					TemperatureBelow = nextState.WaterTemperature[j-1],
@@ -2044,15 +2023,12 @@ public class WorldSim {
 				}, waterDestJob);
 			}
 
-			var cloudDestJob =SimJob.Schedule(new GetVectorDestCoordsCoriolisJob()
+			var cloudDestJob =SimJob.Schedule(new GetVectorDestCoordsJob()
 			{
 				Destination = destinationCloud,
-				VelocityDeflected = cloudVelocityDeflected,
 				Neighbors = staticState.Neighbors,
 				Position = staticState.SphericalPosition,
 				Velocity = dependent.CloudVelocity,
-				CoriolisMultiplier = staticState.CoriolisMultiplier,
-				CoriolisTerm = coriolisTerm,
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick
 			});
@@ -2452,7 +2428,8 @@ public class WorldSim {
 						AirMass = dependent.AirMass[i],
 						VaporMass = nextState.AirVapor[i],
 						DustMass = nextState.Dust[i],
-						AdvectionDestination = destinationAir[i],
+						AirVelocity = curState.AirVelocity[i],
+						Positions = staticState.SphericalPosition,
 					}, initDisplayAirHandle)));
 				}
 
