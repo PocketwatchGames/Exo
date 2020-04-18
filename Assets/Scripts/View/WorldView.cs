@@ -40,15 +40,9 @@ public class WorldView : MonoBehaviour {
 
 	public enum WindOverlay {
 		None,
-		Current0,
-		Current1,
-		Current2,
-		Wind0,
-		Wind1,
-		Wind2,
-		PGF0,
-		PGF1,
-		PGF2,
+		Current,
+		Wind,
+		PGF,
 		WindCloud,
 
 	}
@@ -119,11 +113,6 @@ public class WorldView : MonoBehaviour {
 	[XmlIgnore] public WindOverlay ActiveWindOverlay;
 	[XmlIgnore] public int ActiveMeshLayerWater = 1;
 	[XmlIgnore] public int ActiveMeshLayerAir = 1;
-
-	public event Action MeshOverlayChangedEvent;
-	public event Action WindOverlayChangedEvent;
-	public event Action AirLayerChangedEvent;
-	public event Action WaterLayerChangedEvent;
 
 
 	private JobHelper _renderJobHelper;
@@ -599,30 +588,15 @@ public class WorldView : MonoBehaviour {
 	{
 		_cloudObject.SetActive(toggle.isOn);
 	}
-	public void OnHUDOverlayChanged(UnityEngine.UI.Dropdown dropdown)
+	public void OnFoliageDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
-		ActiveMeshOverlay = (WorldView.MeshOverlay)dropdown.value;
-		_tickLerpTime = 0;
-
-		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
-		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
-		Sim.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
-
-		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		Foliage.FoliageParent.SetActive(toggle.isOn);
 	}
-	public void OnHUDWindChanged(UnityEngine.UI.Dropdown dropdown)
+	public void OnStarsDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
-		ActiveWindOverlay = (WorldView.WindOverlay)dropdown.value;
-		_tickLerpTime = 0;
-		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
-
-		for (int i = 0; i < _windArrows.Length; i++)
-		{
-			var wind = _renderStates[_curRenderState].VelocityArrow[i];
-			bool visible = ActiveWindOverlay != WindOverlay.None && !(wind.x == 0 && wind.y == 0);
-			_windArrows[i].SetActive(visible);
-
-		}
+		_skyboxExposureDest = toggle.isOn ? 1 : 0;
+		_skyboxExposureStart = _skyboxExposure;
+		_skyboxExposureTime = 0.1f;
 	}
 
 
@@ -847,35 +821,17 @@ public class WorldView : MonoBehaviour {
 	{
 		switch (activeOverlay)
 		{
-			case WindOverlay.Wind0:
-				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.AirVelocity[1]);
-				return true;
-			case WindOverlay.Wind1:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.AirVelocity[2]);
-				return true;
-			case WindOverlay.Wind2:
-				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, simState.AirVelocity[3]);
+			case WindOverlay.Wind:
+				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, simState.AirVelocity[ActiveMeshLayerAir]);
 				return true;
 			case WindOverlay.WindCloud:
 				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.CloudVelocity);
 				return true;
-			case WindOverlay.PGF0:
-				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[1]);
+			case WindOverlay.PGF:
+				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[ActiveMeshLayerAir]);
 				return true;
-			case WindOverlay.PGF1:
-				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[2]);
-				return true;
-			case WindOverlay.PGF2:
-				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, displayState.PressureGradientForce[3]);
-				return true;
-			case WindOverlay.Current0:
-				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers-2]);
-				return true;
-			case WindOverlay.Current1:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 3]);
-				return true;
-			case WindOverlay.Current2:
-				overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, true, simState.WaterVelocity[Sim.WorldData.WaterLayers - 4]);
+			case WindOverlay.Current:
+				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, simState.WaterVelocity[ActiveMeshLayerWater]);
 				return true;
 		}
 		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
@@ -887,22 +843,22 @@ public class WorldView : MonoBehaviour {
 	{
 		if (Sim.TimeScale == 0)
 		{
-			if (_skyboxExposureDest != 1)
-			{
-				_skyboxExposureStart = _skyboxExposure;
-				_skyboxExposureTime = 1.0f;
-			}
-			_skyboxExposureDest = 1.0f;
+			//if (_skyboxExposureDest != 1)
+			//{
+			//	_skyboxExposureStart = _skyboxExposure;
+			//	_skyboxExposureTime = 1.0f;
+			//}
+			//_skyboxExposureDest = 1.0f;
 
 		}
 		else
 		{
-			if (_skyboxExposureDest != 0)
-			{
-				_skyboxExposureStart = _skyboxExposure;
-				_skyboxExposureTime = 1.0f;
-			}
-			_skyboxExposureDest = 0;
+			//if (_skyboxExposureDest != 0)
+			//{
+			//	_skyboxExposureStart = _skyboxExposure;
+			//	_skyboxExposureTime = 1.0f;
+			//}
+			//_skyboxExposureDest = 0;
 		}
 		_skyboxExposureTime = math.max(0, _skyboxExposureTime - Time.deltaTime);
 		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
@@ -940,22 +896,46 @@ public class WorldView : MonoBehaviour {
 	public void SetActiveMeshOverlay(MeshOverlay o)
 	{
 		ActiveMeshOverlay = o;
-		MeshOverlayChangedEvent?.Invoke();
+
+		_tickLerpTime = 0;
+		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
+		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
+		Sim.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
+		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 	public void SetActiveWindOverlay(WindOverlay o)
 	{
 		ActiveWindOverlay = o;
-		WindOverlayChangedEvent?.Invoke();
+		_tickLerpTime = 0;
+		BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+
+		for (int i = 0; i < _windArrows.Length; i++)
+		{
+			var wind = _renderStates[_curRenderState].VelocityArrow[i];
+			bool visible = ActiveWindOverlay != WindOverlay.None && !(wind.x == 0 && wind.y == 0);
+			_windArrows[i].SetActive(visible);
+
+		}
 	}
 	public void SetActiveLayerAir(int l)
 	{
-		ActiveMeshLayerAir = l;
-		AirLayerChangedEvent?.Invoke();
+		if (l != ActiveMeshLayerAir)
+		{
+			ActiveMeshLayerAir = l;
+
+			_tickLerpTime = 0;
+			BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		}
 	}
 	public void SetActiveLayerWater(int l)
 	{
-		ActiveMeshLayerWater = l;
-		WaterLayerChangedEvent?.Invoke();
+		if (l != ActiveMeshLayerAir)
+		{
+			ActiveMeshLayerWater = l;
+
+			_tickLerpTime = 0;
+			BuildRenderState(ref Sim.ActiveSimState, ref Sim.DependentState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		}
 	}
 
 	#endregion

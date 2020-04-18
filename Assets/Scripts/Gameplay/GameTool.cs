@@ -19,14 +19,14 @@ public class GameTool : MonoBehaviour {
 	{
 		foreach (var c in HUDComponents)
 		{
-			c.SetActive(true);
+			c?.SetActive(true);
 		}
 	}
 	virtual public void OnDeselected()
 	{
 		foreach (var c in HUDComponents)
 		{
-			c.SetActive(false);
+			c?.SetActive(false);
 		}
 	}
 	virtual public void OnClick(Vector3 worldPos, int cellIndex) { }

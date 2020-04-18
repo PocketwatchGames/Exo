@@ -57,6 +57,11 @@ public class HUD : MonoBehaviour
 		OptionsPanel.SetActive(true);
 	}
 
+	public void OnAirLayerChanged(Slider slider)
+	{
+		View.ActiveMeshLayerAir = (int)slider.value;
+	}
+
 	public void OnBackgroundClicked()
 	{
 		var p = GetMouseCellIndex();

@@ -13,15 +13,7 @@ public class MeshDisplayPanel : MonoBehaviour {
 	// Start is called before the first frame update
 	void Start()
 	{
-		View.AirLayerChangedEvent += OnAirLayerChanged;
-		View.WaterLayerChangedEvent += OnWaterLayerChanged;
-		View.MeshOverlayChangedEvent+= OnMeshOverlayChanged;
-		View.WindOverlayChangedEvent += OnWindOverlayChanged;
 
-		LayerSliderAir.GetComponentInChildren<Slider>().minValue = 1;
-		LayerSliderAir.GetComponentInChildren<Slider>().maxValue = View.Sim.WorldData.AirLayers - 2;
-		LayerSliderWater.GetComponentInChildren<Slider>().minValue = 1;
-		LayerSliderWater.GetComponentInChildren<Slider>().maxValue = View.Sim.WorldData.WaterLayers - 2;
 	}
 
 	// Update is called once per frame
@@ -56,10 +48,6 @@ public class MeshDisplayPanel : MonoBehaviour {
 	{
 		WorldView.WindOverlay overlay = (WorldView.WindOverlay)OverlayDropdown.value;
 		View.SetActiveWindOverlay(overlay);
-	}
-	public void OnAirSliderChanged()
-	{
-		View.SetActiveLayerAir((int)LayerSliderAir.GetComponentInChildren<Slider>().value);
 	}
 	public void OnWaterSliderChanged()
 	{
