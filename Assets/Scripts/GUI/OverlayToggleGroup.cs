@@ -15,8 +15,8 @@ public class OverlayToggleGroup : MonoBehaviour
     {
 		LayerSliderAir.GetComponentInChildren<Slider>().minValue = 1;
 		LayerSliderAir.GetComponentInChildren<Slider>().maxValue = View.Sim.WorldData.AirLayers - 2;
-		//LayerSliderWater.GetComponentInChildren<Slider>().minValue = 1;
-		//LayerSliderWater.GetComponentInChildren<Slider>().maxValue = View.Sim.WorldData.WaterLayers - 2;
+		LayerSliderWater.GetComponentInChildren<Slider>().minValue = 1;
+		LayerSliderWater.GetComponentInChildren<Slider>().maxValue = View.Sim.WorldData.WaterLayers - 2;
 
 	}
 
