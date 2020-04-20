@@ -27,7 +27,7 @@ public static class CellInfo {
 	}
 
 
-	public static string GetCellInfoGlobal(TemperatureUnits ActiveTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref DependentState dependent, ref DisplayState display)
+	public static string GetCellInfoGlobal(TemperatureUnits ActiveTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref TempState dependent, ref DisplayState display)
 	{
 		StringBuilder s = new StringBuilder();
 		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
@@ -56,7 +56,7 @@ public static class CellInfo {
 
 		return s.ToString();
 	}
-	public static string GetCellInfoEnthalpy(TemperatureUnits ActiveTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref DependentState dependent, ref DisplayState display)
+	public static string GetCellInfoEnthalpy(TemperatureUnits ActiveTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref TempState dependent, ref DisplayState display)
 	{
 		StringBuilder s = new StringBuilder();
 		s.AppendFormat("Enthalpy Delta: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDelta * inverseCellCount), worldData.SecondsPerTick));
@@ -71,7 +71,7 @@ public static class CellInfo {
 
 		return s.ToString();
 	}
-	public static string GetCellInfoEnergy(TemperatureUnits ActiveTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref DependentState dependent, ref DisplayState display)
+	public static string GetCellInfoEnergy(TemperatureUnits ActiveTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref TempState dependent, ref DisplayState display)
 	{
 		StringBuilder s = new StringBuilder();
 		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
@@ -103,7 +103,7 @@ public static class CellInfo {
 
 		return s.ToString();
 	}
-	public static string GetCellInfoCell(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref StaticState staticState, ref SimState state, ref DependentState dependent, ref DisplayState display)
+	public static string GetCellInfoCell(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref StaticState staticState, ref SimState state, ref TempState dependent, ref DisplayState display)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
@@ -134,7 +134,7 @@ public static class CellInfo {
 
 		return s.ToString();
 	}
-	public static string GetCellInfoAtmosphere(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref WorldData worldData, ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
+	public static string GetCellInfoAtmosphere(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref WorldData worldData, ref SimState state, ref TempState dependent, ref StaticState staticState, ref DisplayState display)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
@@ -184,7 +184,7 @@ public static class CellInfo {
 		}
 		return s.ToString();
 	}
-	public static string GetCellInfoGround(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref SimState state, ref DependentState dependent)
+	public static string GetCellInfoGround(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref SimState state, ref TempState dependent)
 	{
 		if (ActiveCellIndex < 0)
 			return "";
@@ -209,7 +209,7 @@ public static class CellInfo {
 			GetTemperatureString(state.LavaTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		return s.ToString();
 	}
-	public static string GetCellInfoWater(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref WorldData worldData, ref SimState state, ref DependentState dependent, ref StaticState staticState, ref DisplayState display)
+	public static string GetCellInfoWater(TemperatureUnits ActiveTemperatureUnits, int ActiveCellIndex, ref WorldData worldData, ref SimState state, ref TempState dependent, ref StaticState staticState, ref DisplayState display)
 	{
 		if (ActiveCellIndex < 0)
 			return "";

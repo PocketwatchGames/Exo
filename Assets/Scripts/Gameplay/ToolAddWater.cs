@@ -12,7 +12,7 @@ public class ToolAddWater : GameTool {
 
 	override public void OnDragMove(Vector3 worldPos, int cellIndex, Vector2 direction) {
 		Gameplay.SetActiveCell(cellIndex, false);
-		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.DependentState); });
+		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.TempState); });
 	}
 	public override void OnUpdate(Vector3 worldPos, int cellIndex)
 	{
@@ -20,7 +20,7 @@ public class ToolAddWater : GameTool {
 		Gameplay.SetActiveCell(cellIndex, false);
 	}
 
-	private void Activate(ref SimState lastState, ref SimState nextState, int cell, ref WorldData worldData, ref DependentState dependent)
+	private void Activate(ref SimState lastState, ref SimState nextState, int cell, ref WorldData worldData, ref TempState tempState)
 	{
 		nextState.CopyFrom(ref lastState);
 
@@ -32,7 +32,7 @@ public class ToolAddWater : GameTool {
 			nextState.WaterMass[worldData.SurfaceWaterLayer][cell] = waterMass + waterAdded;
 			nextState.WaterTemperature[worldData.SurfaceWaterLayer][cell] =
 				(lastState.WaterTemperature[worldData.SurfaceWaterLayer][cell] * (waterMass + saltMass)
-				+ dependent.SurfaceAirTemperatureAbsolute[cell] * waterAdded)
+				+ tempState.SurfaceAirTemperatureAbsolute[cell] * waterAdded)
 				/ (waterMass + saltMass + waterAdded);
 		}
 	}

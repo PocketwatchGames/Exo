@@ -12,7 +12,7 @@ public class ToolAddFlora : GameTool {
 
 	override public void OnDragMove(Vector3 worldPos, int cellIndex, Vector2 direction) {
 		Gameplay.SetActiveCell(cellIndex, false);
-		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.DependentState); });
+		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.TempState); });
 	}
 	public override void OnUpdate(Vector3 worldPos, int cellIndex)
 	{
@@ -20,7 +20,7 @@ public class ToolAddFlora : GameTool {
 		Gameplay.SetActiveCell(cellIndex, false);
 	}
 
-	private void Activate(ref SimState lastState, ref SimState nextState, int cell, ref WorldData worldData, ref DependentState dependent)
+	private void Activate(ref SimState lastState, ref SimState nextState, int cell, ref WorldData worldData, ref TempState tempState)
 	{
 		nextState.CopyFrom(ref lastState);
 

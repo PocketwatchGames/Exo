@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Collections;
+using System;
 
 public class WorldSimComponent : MonoBehaviour
 {
@@ -27,7 +28,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	public int CellCount { get; private set; }
 	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
-	public ref DependentState DependentState { get { return ref _dependentState; } }
+	public ref TempState TempState { get { return ref _tempState; } }
 	public ref DisplayState DisplayState { get { return ref _displayState; } }
 	public float TimeTillTick { get; private set; }
 	public float InverseCellCount { get; private set; }
@@ -36,9 +37,10 @@ public class WorldSimComponent : MonoBehaviour
 	private WorldSim _worldSim;
 	private WorldGenData _worldGenData = new WorldGenData();
 	private SimState[] _simStates;
-	private DependentState _dependentState;
+	private TempState _tempState;
 	private DisplayState _displayState;
 	private int _activeSimState;
+	private Action _prepNextFrame;
 
 	public delegate void TickEventHandler();
 	public event TickEventHandler OnTick;
@@ -65,9 +67,9 @@ public class WorldSimComponent : MonoBehaviour
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
-		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _dependentState);
+		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempState);
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref DependentState, ref StaticState, ref WorldData);
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref TempState, ref StaticState, ref WorldData);
 	}
 
 	public void OnDestroy()
@@ -75,7 +77,7 @@ public class WorldSimComponent : MonoBehaviour
 		_worldSim.Dispose(ref WorldData);
 		StaticState.Dispose();
 		Icosphere.Dispose();
-		_dependentState.Dispose();
+		_tempState.Dispose(ref WorldData, _prepNextFrame);
 		_displayState.Dispose();
 		for (int i = 0; i < _simStateCount; i++)
 		{
@@ -108,11 +110,12 @@ public class WorldSimComponent : MonoBehaviour
 			_simStates,
 			_simStateCount,
 			ticksToAdvance, 
-			ref _dependentState, 
+			ref _tempState, 
 			ref _displayState, 
 			ref StaticState, 
 			ref WorldData, 
 			ref _activeSimState,
+			ref _prepNextFrame,
 			CheckForDegeneracy,
 			LogState, 
 			LogStateIndex,
@@ -134,16 +137,18 @@ public class WorldSimComponent : MonoBehaviour
 		_activeSimState = (_activeSimState + 1) % _simStateCount;
 		ref var nextState = ref _simStates[_activeSimState];
 
+		_prepNextFrame?.Invoke();
+
 		editSimState(ref lastState, ref nextState);
 
 		List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
-		SimJobs.UpdateDependentVariables(_worldSim.SimJob, ref nextState, ref DependentState, ref WorldData, default(JobHandle), tempArrays).Complete();
+		TempState.Update(_worldSim.SimJob, ref nextState, ref TempState, ref WorldData, default(JobHandle), tempArrays).Complete();
 		foreach (var i in tempArrays)
 		{
 			i.Dispose();
 		}
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref DependentState, ref StaticState, ref WorldData);
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref TempState, ref StaticState, ref WorldData);
 
 		OnTick?.Invoke();
 	}
@@ -155,48 +160,14 @@ public class WorldSimComponent : MonoBehaviour
 	}
 
 
-	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref DependentState dependentState, ref StaticState staticState, ref WorldData worldData)
+	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref TempState dependentState, ref StaticState staticState, ref WorldData worldData)
 	{
 		displayState.Dispose();
 
 		displayState = new DisplayState();
-		displayState.Init(cellCount, worldData.AirLayers, worldData.WaterLayers, worldData.LayerCount);
+		displayState.Init(cellCount, ref worldData);
 
-		var tempVelocity = new NativeArray<float3>(cellCount, Allocator.TempJob);
-		var tempCloudMass = new NativeArray<float>(cellCount, Allocator.TempJob);
-		JobHandle initDisplayHandle = default(JobHandle);
-		for (int i = 1; i < worldData.AirLayers - 1; i++)
-		{
-			var initDisplayJob = new InitDisplayAirLayerJob()
-			{
-				DisplayPressure = displayState.Pressure[i],
-				DisplayPressureGradientForce = displayState.PressureGradientForce[i],
-				DisplayCondensationCloud = displayState.CondensationCloud,
-				DisplayCondensationGround = displayState.CondensationGround,
-				Enthalpy = displayState.EnthalpyAir[i],
-				WindVertical = displayState.WindVertical[i],
-				DustCoverage = displayState.DustMass,
-				CarbonDioxidePercent = displayState.CarbonDioxidePercent[i],
-
-				CarbonDioxide = activeSimState.AirCarbon[i],
-				Gravity = activeSimState.PlanetState.Gravity,
-				AirTemperaturePotential = activeSimState.AirTemperaturePotential[i],
-				AirPressure = dependentState.AirPressure[i],
-				LayerMiddle = dependentState.LayerMiddle[i],
-				PressureGradientForce = tempVelocity,
-				CondensationCloud = tempCloudMass,
-				CondensationGround = tempCloudMass,
-				AirMass = dependentState.AirMass[i],
-				AirVelocity = activeSimState.AirVelocity[i],				
-				VaporMass = activeSimState.AirVapor[i],
-				DustMass = activeSimState.Dust[i],
-				Positions = staticState.SphericalPosition,
-			};
-			initDisplayHandle = JobHandle.CombineDependencies(initDisplayHandle, initDisplayJob.Schedule(cellCount, 1, initDisplayHandle));
-		}
-		initDisplayHandle.Complete();
-		tempVelocity.Dispose();
-		tempCloudMass.Dispose();
+		DisplayState.Update(ref displayState, ref worldData, ref dependentState, ref activeSimState, ref staticState).Complete();
 	}
 
 }

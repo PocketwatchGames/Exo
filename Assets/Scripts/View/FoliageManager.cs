@@ -88,7 +88,7 @@ public class FoliageManager
 		_foliageTransform.Dispose();
 	}
 
-	public void Tick(ref DependentState dependent)
+	public void Tick(ref TempState dependent)
 	{
 		var updateStateJob = new UpdateFoliageSimStateJob()
 		{
