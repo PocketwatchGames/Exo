@@ -28,6 +28,7 @@ public struct RenderState {
 	public NativeArray<float> CloudHeight;
 	public NativeArray<float3> SurfacePosition;
 	public NativeArray<float3> VelocityArrow;
+	public NativeArray<Color32> VelocityColor;
 
 	public void Init(int count)
 	{
@@ -41,6 +42,7 @@ public struct RenderState {
 		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
 		CloudHeight = new NativeArray<float>(count, Allocator.Persistent);
 		VelocityArrow = new NativeArray<float3>(count, Allocator.Persistent);
+		VelocityColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		SurfacePosition = new NativeArray<float3>(count, Allocator.Persistent);
 	}
 
@@ -56,6 +58,7 @@ public struct RenderState {
 		CloudHeight.Dispose();
 		CloudElevation.Dispose();
 		VelocityArrow.Dispose();
+		VelocityColor.Dispose();
 		SurfacePosition.Dispose();
 	}
 }
@@ -73,6 +76,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	public NativeArray<Color32> CloudColor;
 	public NativeArray<float3> SurfacePosition;
 	public NativeArray<float3> VelocityArrow;
+	public NativeArray<Color32> VelocityColor;
 
 	[ReadOnly] public NativeArray<float> Roughness;
 	[ReadOnly] public NativeArray<float> SoilFertility;
@@ -91,17 +95,20 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Icosphere;
 	[ReadOnly] public NativeArray<float> MeshOverlayData;
 	[ReadOnly] public NativeArray<CVP> MeshOverlayColors;
+	[ReadOnly] public NativeArray<CVP> WindColors;
 	[ReadOnly] public NativeArray<float3> WindOverlayData;
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> DustCoverage;
 	[ReadOnly] public NativeArray<float> PlanktonMass;
+	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public bool MeshOverlayActive;
 	[ReadOnly] public float MeshOverlayMin;
 	[ReadOnly] public float MeshOverlayInverseRange;
 	[ReadOnly] public bool WindOverlayActive;
 	[ReadOnly] public bool WindMaskedByLand;
 	[ReadOnly] public float WindVelocityMax;
+	[ReadOnly] public float WindVerticalMax;
 	[ReadOnly] public float TerrainScale;
 	[ReadOnly] public float AtmosphereScale;
 	[ReadOnly] public float PlanetRadius;
@@ -132,6 +139,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		float cloudElevation;
 		float cloudHeight;
 		float3 velocityArrow;
+		Color32 velocityColor;
 		float3 surfacePosition;
 
 
@@ -191,6 +199,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		if (WindOverlayActive)
 		{
 			velocityArrow = WindOverlayData[i] / WindVelocityMax;
+			velocityColor = CVP.Lerp(WindColors, (math.dot(WindOverlayData[i], Positions[i]) / WindVerticalMax + 1) / 2);
 			if (math.length(velocityArrow) < 0.01f)
 			{
 				velocityArrow = float3.zero;
@@ -203,6 +212,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		else
 		{
 			velocityArrow = float3.zero;
+			velocityColor = new Color32(255, 255, 255, 255);
 		}
 
 		TerrainColor1[i] = terrainColor1;
@@ -214,6 +224,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		CloudElevation[i] = cloudElevation;
 		CloudHeight[i] = cloudHeight;
 		VelocityArrow[i] = velocityArrow;
+		VelocityColor[i] = velocityColor;
 		SurfacePosition[i] = surfacePosition;
 		OverlayColor[i] = overlayColor;
 	}

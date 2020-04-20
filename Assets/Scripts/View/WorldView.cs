@@ -18,7 +18,6 @@ public class WorldView : MonoBehaviour {
 		TemperatureSurface,
 		PotentialTemperature,
 		Pressure,
-		VerticalWind,
 		AbsoluteHumidity,
 		RelativeHumidity,
 		CarbonDioxide,
@@ -74,12 +73,12 @@ public class WorldView : MonoBehaviour {
 	public float DisplayPressureGradientForceMax = 0.01f;
 	public float DisplayWindSpeedSurfaceWaterMax = 5;
 	public float DisplayWindSpeedDeepWaterMax = 0.5f;
+	public float DisplayVerticalWindSpeedMax = 1.0f;
 
 	[Header("Overlays")]
 	public float DisplayRainfallMax = 5.0f;
 	public float DisplaySalinityMin = 0;
 	public float DisplaySalinityMax = 50;
-	public float DisplayVerticalWindSpeedMax = 1.0f;
 	public float DisplayEvaporationMax = 5.0f;
 	public float DisplayTemperatureMin = 223;
 	public float DisplayTemperatureMax = 323;
@@ -165,7 +164,7 @@ public class WorldView : MonoBehaviour {
 	private int[] _indicesCloud;
 
 	private NativeArray<CVP> _normalizedRainbow;
-	private NativeArray<CVP> _normalizedBlueBlackRed;
+	private NativeArray<CVP> _normalizedBlueWhiteRed;
 	private NativeArray<float3> _terrainVerts;
 	private NativeArray<float3> _cloudVerts;
 
@@ -194,9 +193,9 @@ public class WorldView : MonoBehaviour {
 											new CVP(Color.red, 0.8333f),
 											new CVP(Color.magenta, 1) },
 											Allocator.Persistent);
-		_normalizedBlueBlackRed = new NativeArray<CVP>( new CVP[] {
+		_normalizedBlueWhiteRed = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.blue, 0),
-											new CVP(Color.black, 0.5f),
+											new CVP(Color.white, 0.5f),
 											new CVP(Color.red, 1) },
 											Allocator.Persistent);
 
@@ -299,7 +298,7 @@ public class WorldView : MonoBehaviour {
 		Sim.OnTick -= OnSimTick;
 
 		_normalizedRainbow.Dispose();
-		_normalizedBlueBlackRed.Dispose();
+		_normalizedBlueWhiteRed.Dispose();
 
 		for (int i=0;i<_renderStateCount;i++)
 		{
@@ -396,6 +395,7 @@ public class WorldView : MonoBehaviour {
 			CloudHeight = to.CloudHeight,
 			CloudElevation = to.CloudElevation,
 			VelocityArrow = to.VelocityArrow,
+			VelocityColor = to.VelocityColor,
 			SurfacePosition = to.SurfacePosition,
 			OverlayColor = to.OverlayColor,
 
@@ -407,6 +407,7 @@ public class WorldView : MonoBehaviour {
 			MeshOverlayActive = useMeshOverlay,
 			WindOverlayActive = useWindOverlay,
 			WindVelocityMax = windOverlayData.MaxVelocity,
+			WindVerticalMax = DisplayVerticalWindSpeedMax,
 			WindMaskedByLand = windOverlayData.MaskLand,
 			MeshOverlayMin = meshOverlay.Min,
 			MeshOverlayInverseRange = meshOverlay.InverseRange,
@@ -438,6 +439,8 @@ public class WorldView : MonoBehaviour {
 			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
 			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
+			WindColors = _normalizedBlueWhiteRed,
+			Positions = staticState.SphericalPosition,
 			DisplayFloraWeight = DisplayFloraWeight,
 			DisplaySandWeight = DisplaySandWeight,
 			DisplaySoilWeight = DisplaySoilWeight,
@@ -480,6 +483,7 @@ public class WorldView : MonoBehaviour {
 		if (ActiveWindOverlay != WindOverlay.None)
 		{
 			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
+			dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.VelocityColor, Start = lastState.VelocityColor, End = nextState.VelocityColor }).Schedule(Sim.CellCount, _batchCount));
 		}
 		if (ActiveMeshOverlay != MeshOverlay.None)
 		{
@@ -572,6 +576,11 @@ public class WorldView : MonoBehaviour {
 				_windArrows[i].SetActive(visible);
 				if (visible)
 				{
+					var m = _windArrows[i].GetComponentsInChildren<MeshRenderer>();
+					for (int j=0; j< m.Length;j++)
+					{
+						m[j].material.color = _renderStates[_curRenderState].VelocityColor[i];
+					}
 					_windArrows[i].transform.localPosition = pos;
 					_windArrows[i].transform.localRotation = Quaternion.LookRotation(windHorizontal / windSpeed, pos);
 					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, windSpeed);
@@ -802,9 +811,6 @@ public class WorldView : MonoBehaviour {
 				return true;
 			case MeshOverlay.FloraWater:
 				overlay = new MeshOverlayData(0, Sim.WorldData.FullCoverageFlora, _normalizedRainbow, simState.FloraWater);
-				return true;
-			case MeshOverlay.VerticalWind:
-				overlay = new MeshOverlayData(-1, 1, _normalizedBlueBlackRed, display.WindVertical[ActiveMeshLayerAir]);
 				return true;
 			case MeshOverlay.CrustDepth:
 				overlay = new MeshOverlayData(DisplayCrustDepthMax, 0, _normalizedRainbow, simState.CrustDepth);

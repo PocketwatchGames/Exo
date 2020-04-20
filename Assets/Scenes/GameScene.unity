@@ -3371,12 +3371,6 @@ RectTransform:
     type: 3}
   m_PrefabInstance: {fileID: 1235608197}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &409402169 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1398353587661396964, guid: a60b9e4138099cc4782400a49e4cc9f5,
-    type: 3}
-  m_PrefabInstance: {fileID: 11336113}
-  m_PrefabAsset: {fileID: 0}
 --- !u!224 &409402173 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5448723183959076515, guid: a60b9e4138099cc4782400a49e4cc9f5,
@@ -6349,12 +6343,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 764070854}
   m_CullTransparentMesh: 0
---- !u!1 &767012477 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1398353587661396964, guid: a60b9e4138099cc4782400a49e4cc9f5,
-    type: 3}
-  m_PrefabInstance: {fileID: 4801002327547743068}
-  m_PrefabAsset: {fileID: 0}
 --- !u!224 &767012478 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5448723183959076515, guid: a60b9e4138099cc4782400a49e4cc9f5,
@@ -13335,12 +13323,6 @@ PrefabInstance:
       objectReference: {fileID: 7198958402674640979}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1af8aa7ff51912b4c9e6d819a5b834d8, type: 3}
---- !u!1 &1576943893 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1398353587661396964, guid: a60b9e4138099cc4782400a49e4cc9f5,
-    type: 3}
-  m_PrefabInstance: {fileID: 1379308761}
-  m_PrefabAsset: {fileID: 0}
 --- !u!224 &1576943894 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5448723183959076515, guid: a60b9e4138099cc4782400a49e4cc9f5,
@@ -17987,9 +17969,6 @@ MonoBehaviour:
   Name: Select
   HUDComponents:
   - {fileID: 501465057}
-  - {fileID: 1576943893}
-  - {fileID: 767012477}
-  - {fileID: 409402169}
   ActiveCell: 0
 --- !u!4 &7198958403676017023
 Transform:
