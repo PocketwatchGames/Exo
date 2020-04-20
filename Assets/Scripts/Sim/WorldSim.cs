@@ -46,13 +46,9 @@ public class WorldSim {
 		ref DisplayState display, 
 		ref StaticState staticState,
 		ref WorldData worldData,
+		ref SimSettings settings,
 		ref int curStateIndex, 
-		ref Action prepNextFrameFunc,
-		bool checkForDegeneracy, 
-		bool logState, 
-		int logStateIndex,
-		bool displayGlobals, 
-		bool overlayActive)
+		ref Action prepNextFrameFunc)
 	{
 		bool degenerate = false;
 		JobHandle lastJobHandle = default(JobHandle);
@@ -1506,85 +1502,88 @@ public class WorldSim {
 
 			JobHandle[] advectionJobHandles = new JobHandle[worldData.LayerCount];
 			JobHandle airDestJob = default(JobHandle);
-			for (int j = 1; j < worldData.AirLayers - 1; j++)
-			{
-				int layer = worldData.AirLayer0 + j;
-				airDestJob = JobHandle.CombineDependencies(airDestJob, SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
-				{
-					Destination = tempState.DestinationAir[j],
-					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					Velocity = nextState.AirVelocity[j],
-					LayerHeight = tempState.LayerHeight[j],
-					PlanetRadius = staticState.PlanetRadius,
-					SecondsPerTick = worldData.SecondsPerTick
-				}, airAccelerationJobHandles[j]));
-			}
 			JobHandle divergenceJobHandle = default(JobHandle);
 			JobHandle divergenceFreeFieldAirJob = default(JobHandle);
-			for (int j = 1; j < worldData.AirLayers - 1; j++)
+			if (settings.MakeAirIncompressible)
 			{
-				int layer = worldData.AirLayer0 + j;
-				divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, SimJob.Schedule(new GetDivergenceJob()
+				for (int j = 1; j < worldData.AirLayers - 1; j++)
 				{
-					Divergence = tempState.DivergenceAir[j],
-					Destination = tempState.DestinationAir[j],
-					DestinationAbove = tempState.DestinationAir[j + 1],
-					DestinationBelow = tempState.DestinationAir[j - 1],
-					Neighbors = staticState.Neighbors,
-					Mass = tempState.AirMass[j],
-					MassAbove = tempState.AirMass[j + 1],
-					MassBelow = tempState.AirMass[j - 1],
-					IsBottom = j == 1,
-					IsTop = j == worldData.AirLayers - 2,
-				}, airDestJob));
-			}
-			divergenceJobHandle.Complete();
-
-			// Calculate Pressure gradient field
-			JobHandle divergencePressureJobHandle = divergenceJobHandle;
-			for (int a = 0; a < 20; a++)
-			{
-				for (int i = 1; i < worldData.AirLayers - 1; i++)
-				{
-					bool isTop = i == worldData.AirLayers - 2;
-					bool isBottom = i == 1;
-					var dpj = new GetDivergencePressureJob()
+					int layer = worldData.AirLayer0 + j;
+					airDestJob = JobHandle.CombineDependencies(airDestJob, SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 					{
-						Pressure = tempState.DivergencePressureAir[i],
-						Divergence = tempState.DivergenceAir[i],
-						PressureAbove = tempState.DivergencePressureAir[i + 1],
-						PressureBelow = tempState.DivergencePressureAir[i - 1],
-						IsTop = i == worldData.AirLayers - 2,
-						IsBottom = i == 1,
-						Neighbors = staticState.Neighbors
-					};
-					divergencePressureJobHandle = dpj.Schedule(_cellCount, divergencePressureJobHandle);
+						Destination = tempState.DestinationAir[j],
+						Neighbors = staticState.Neighbors,
+						Position = staticState.SphericalPosition,
+						Velocity = nextState.AirVelocity[j],
+						LayerHeight = tempState.LayerHeight[j],
+						PlanetRadius = staticState.PlanetRadius,
+						SecondsPerTick = worldData.SecondsPerTick
+					}, airAccelerationJobHandles[j]));
+				}
+				for (int j = 1; j < worldData.AirLayers - 1; j++)
+				{
+					int layer = worldData.AirLayer0 + j;
+					divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, SimJob.Schedule(new GetDivergenceJob()
+					{
+						Divergence = tempState.DivergenceAir[j],
+						Destination = tempState.DestinationAir[j],
+						DestinationAbove = tempState.DestinationAir[j + 1],
+						DestinationBelow = tempState.DestinationAir[j - 1],
+						Neighbors = staticState.Neighbors,
+						Mass = tempState.AirMass[j],
+						MassAbove = tempState.AirMass[j + 1],
+						MassBelow = tempState.AirMass[j - 1],
+						IsBottom = j == 1,
+						IsTop = j == worldData.AirLayers - 2,
+					}, airDestJob));
+				}
+				divergenceJobHandle.Complete();
+
+				// Calculate Pressure gradient field
+				JobHandle divergencePressureJobHandle = divergenceJobHandle;
+				for (int a = 0; a < 20; a++)
+				{
+					for (int i = 1; i < worldData.AirLayers - 1; i++)
+					{
+						bool isTop = i == worldData.AirLayers - 2;
+						bool isBottom = i == 1;
+						var dpj = new GetDivergencePressureJob()
+						{
+							Pressure = tempState.DivergencePressureAir[i],
+							Divergence = tempState.DivergenceAir[i],
+							PressureAbove = tempState.DivergencePressureAir[i + 1],
+							PressureBelow = tempState.DivergencePressureAir[i - 1],
+							IsTop = i == worldData.AirLayers - 2,
+							IsBottom = i == 1,
+							Neighbors = staticState.Neighbors
+						};
+						divergencePressureJobHandle = dpj.Schedule(_cellCount, divergencePressureJobHandle);
+					}
+				}
+
+				for (int j = 1; j < worldData.AirLayers - 1; j++)
+				{
+					int layer = worldData.AirLayer0 + j;
+					divergenceFreeFieldAirJob = JobHandle.CombineDependencies(divergenceFreeFieldAirJob, SimJob.Schedule(new GetDivergenceFreeFieldJob()
+					{
+						Velocity = nextState.AirVelocity[j],
+						Pressure = tempState.DivergencePressureAir[j],
+						PressureAbove = tempState.DivergencePressureAir[j + 1],
+						PressureBelow = tempState.DivergencePressureAir[j - 1],
+						LayerHeight = tempState.LayerHeight[j],
+						Neighbors = staticState.Neighbors,
+						NeighborTangent = staticState.NeighborTangent,
+						Positions = staticState.SphericalPosition,
+						AirMass = tempState.AirMass[j],
+						IsBottom = j == 1,
+						IsTop = j == worldData.AirLayers - 2,
+						SecondsPerTickInverse = worldData.TicksPerSecond
+					}, divergencePressureJobHandle));
 				}
 			}
 
-			for (int j = 1; j < worldData.AirLayers - 1; j++)
-			{
-				int layer = worldData.AirLayer0 + j;
-				divergenceFreeFieldAirJob = JobHandle.CombineDependencies(divergenceFreeFieldAirJob, SimJob.Schedule(new GetDivergenceFreeFieldJob()
-				{
-					Velocity = nextState.AirVelocity[j],
-					Pressure = tempState.DivergencePressureAir[j],
-					PressureAbove = tempState.DivergencePressureAir[j + 1],
-					PressureBelow = tempState.DivergencePressureAir[j - 1],
-					LayerHeight = tempState.LayerHeight[j],
-					Neighbors = staticState.Neighbors,
-					NeighborTangent = staticState.NeighborTangent,
-					Positions = staticState.SphericalPosition,
-					AirMass = tempState.AirMass[j],
-					IsBottom = j == 1,
-					IsTop = j == worldData.AirLayers - 2,
-					SecondsPerTickInverse = worldData.TicksPerSecond
-				}, divergencePressureJobHandle));
-			}
 
-
-			airDestJob = default(JobHandle);
+				airDestJob = default(JobHandle);
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
 				int layer = worldData.AirLayer0 + j;
@@ -2052,20 +2051,20 @@ public class WorldSim {
 			#endregion
 
 			#region Debug
-			if (checkForDegeneracy)
+			if (settings.CheckForDegeneracy)
 			{
 				degenerate = CheckForDegeneracy(_cellCount, ref nextState, ref lastState, ref staticState, ref tempState, ref worldData);
 			}
 
-			if (logState)
+			if (settings.LogState)
 			{
-				PrintState("State", logStateIndex, ref staticState, ref nextState, ref worldData, new List<string>());
-				PrintDependentState("Dependent Vars", logStateIndex, ref tempState, ref worldData);
+				PrintState("State", settings.LogStateIndex, ref staticState, ref nextState, ref worldData, new List<string>());
+				PrintDependentState("Dependent Vars", settings.LogStateIndex, ref tempState, ref worldData);
 			}
 			#endregion
 
 			#region Update Display
-			if (tick == ticksToAdvance-1 && overlayActive)
+			if (tick == ticksToAdvance-1 && settings.CollectOverlay)
 			{
 				var curState = states[curStateIndex];
 
@@ -2073,7 +2072,7 @@ public class WorldSim {
 				display = new DisplayState();
 				display.Init(_cellCount, ref worldData);
 				DisplayState.Update(ref display, ref worldData, ref tempState, ref nextState, ref staticState).Complete();
-				if (displayGlobals) { 
+				if (settings.CollectGlobals) { 
 					display.GlobalEnthalpyDelta = display.GlobalEnthalpy - lastDisplay.GlobalEnthalpy;
 					display.GlobalEnthalpyDeltaTerrain = display.GlobalEnthalpyTerrain - lastDisplay.GlobalEnthalpyTerrain;
 					display.GlobalEnthalpyDeltaAir = display.GlobalEnthalpyAir - lastDisplay.GlobalEnthalpyAir;

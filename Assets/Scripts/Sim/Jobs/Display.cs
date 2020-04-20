@@ -251,12 +251,6 @@ public struct DisplayState {
 				WaterCarbon = nextState.WaterCarbon[i]
 			}));
 		}
-		for (int i = 0; i < worldData.LayerCount; i++)
-		{
-			tempState.SolarRadiationIn[i].CopyTo(display.SolarDelta[i]);
-			tempState.ThermalRadiationDelta[i].CopyTo(display.ThermalDelta[i]);
-		}
-
 		var updateDisplayJobHandle = DisplayJob.Schedule(new UpdateDisplayJob()
 		{
 			SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
@@ -286,6 +280,32 @@ public struct DisplayState {
 			GroundWaterMass = nextState.GroundWater,
 			GroundWaterTemperature = nextState.GroundWaterTemperature
 		});
+
+		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		{
+			int layer = worldData.AirLayer0 + j;
+			updateDisplayJobHandle = JobHandle.CombineDependencies(updateDisplayJobHandle, DisplayJob.Schedule(new GetDivergenceJob()
+			{
+				Divergence = display.Divergence[j],
+				Destination = tempState.DestinationAir[j],
+				DestinationAbove = tempState.DestinationAir[j + 1],
+				DestinationBelow = tempState.DestinationAir[j - 1],
+				Neighbors = staticState.Neighbors,
+				Mass = tempState.AirMass[j],
+				MassAbove = tempState.AirMass[j + 1],
+				MassBelow = tempState.AirMass[j - 1],
+				IsBottom = j == 1,
+				IsTop = j == worldData.AirLayers - 2,
+			}));
+		}
+
+		for (int i = 0; i < worldData.LayerCount; i++)
+		{
+			tempState.SolarRadiationIn[i].CopyTo(display.SolarDelta[i]);
+			tempState.ThermalRadiationDelta[i].CopyTo(display.ThermalDelta[i]);
+		}
+
+
 		return JobHandle.CombineDependencies(initDisplayAirHandle, initDisplayWaterHandle, updateDisplayJobHandle);
 	}
 
@@ -480,6 +500,7 @@ public struct DisplayState {
 			}
 		}
 	}
+
 
 }
 

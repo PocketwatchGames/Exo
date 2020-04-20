@@ -9,7 +9,6 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using System.Globalization;
-using System.Xml.Serialization;
 using UnityEngine.Profiling;
 
 public class WorldView : MonoBehaviour {
@@ -36,6 +35,7 @@ public class WorldView : MonoBehaviour {
 		FloraWater,
 		CrustDepth,
 		MagmaMass,
+		Divergence
 	}
 
 	public enum WindOverlay {
@@ -92,6 +92,7 @@ public class WorldView : MonoBehaviour {
 	public float DisplayMagmaMassMax = 1000000;
 	public float DisplayCarbonDioxideMax = 0.002f;
 	public float DisplayOxygenMax = 0.35f;
+	public float DisplayDivergenceMax = 1000;
 
 	[Header("References")]
 	public WorldSimComponent Sim;
@@ -109,10 +110,10 @@ public class WorldView : MonoBehaviour {
 	public FoliageManager Foliage;
 
 
-	[XmlIgnore] public MeshOverlay ActiveMeshOverlay { get; private set; }
-	[XmlIgnore] public WindOverlay ActiveWindOverlay;
-	[XmlIgnore] public int ActiveMeshLayerWater = 1;
-	[XmlIgnore] public int ActiveMeshLayerAir = 1;
+	[HideInInspector] public MeshOverlay ActiveMeshOverlay { get; private set; }
+	[HideInInspector] public WindOverlay ActiveWindOverlay;
+	[HideInInspector] public int ActiveMeshLayerWater = 1;
+	[HideInInspector] public int ActiveMeshLayerAir = 1;
 
 
 	private JobHelper _renderJobHelper;
@@ -849,6 +850,9 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.MagmaMass:
 				overlay = new MeshOverlayData(0, DisplayMagmaMassMax, _normalizedRainbow, simState.MagmaMass);
 				return true;
+			case MeshOverlay.Divergence:
+				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueWhiteRed, display.Divergence[ActiveMeshLayerAir]);
+				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 		return false;
@@ -937,7 +941,7 @@ public class WorldView : MonoBehaviour {
 		_tickLerpTime = 0;
 		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
 		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
-		Sim.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
+		Sim.SimSettings.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
 		BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
 	}
 	public void SetActiveWindOverlay(WindOverlay o)

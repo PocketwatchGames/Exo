@@ -10,17 +10,23 @@ public class WorldSimComponent : MonoBehaviour
 {
 	private const int _simStateCount = 2;
 
+	[Header("Init")]
 	public int Seed;
 	public int Subdivisions = 5;
-	public float TicksPerSecond = 1;
-	public bool CheckForDegeneracy;
-	public bool CollectGlobals = false;
-	public bool LogState;
-	public int LogStateIndex;
 	public TextAsset WorldGenAsset;
 	public TextAsset WorldDataAsset;
-	public WorldData WorldData;
-	public StaticState StaticState;
+	public float TicksPerRealSecond = 1;
+
+	[Header("Simulation Features")]
+	public SimSettings SimSettings = new SimSettings()
+	{
+		MakeAirIncompressible = true,
+		
+	};
+
+
+	[HideInInspector] public WorldData WorldData;
+	[HideInInspector] public StaticState StaticState;
 
 	[HideInInspector] public Icosphere Icosphere;
 	[HideInInspector] public bool CollectOverlay = false;
@@ -96,7 +102,7 @@ public class WorldSimComponent : MonoBehaviour
 			int iterations = 0;
 			while (TimeTillTick <= 0)
 			{
-				TimeTillTick += TicksPerSecond;
+				TimeTillTick += TicksPerRealSecond;
 				iterations++;
 			}
 			Tick(ref _simStates[_activeSimState], iterations);
@@ -114,13 +120,9 @@ public class WorldSimComponent : MonoBehaviour
 			ref _displayState, 
 			ref StaticState, 
 			ref WorldData, 
+			ref SimSettings,
 			ref _activeSimState,
-			ref _prepNextFrame,
-			CheckForDegeneracy,
-			LogState, 
-			LogStateIndex,
-			CollectGlobals,
-			CollectOverlay);
+			ref _prepNextFrame);
 
 		OnTick?.Invoke();
 
