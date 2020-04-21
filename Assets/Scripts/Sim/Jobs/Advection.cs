@@ -158,7 +158,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newCO2 += CarbonDioxide[n] * incoming;
 				newDust += Dust[n] * incoming;
 
-				var deflectedVelocity = math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
+				var deflectedVelocity = Velocity[n] + math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
 
 //				math.quaternion()
 
