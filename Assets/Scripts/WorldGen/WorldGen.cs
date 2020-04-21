@@ -258,7 +258,7 @@ public static class WorldGen {
 			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * LayerMiddle[i];
 			float airVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, Pressure[i]) * RelativeHumidity[i];
 			AirVapor[i] = airVapor;
-			CarbonDioxide[i] = AirMass[i] * CarbonDioxidePPM;
+			CarbonDioxide[i] = CarbonDioxidePPM * AirMass[i];
 		}
 	}
 
@@ -304,7 +304,7 @@ public static class WorldGen {
 				float waterAndSaltMass = layerDepth * waterDensity;
 				float waterMass = waterAndSaltMass * (1.0f - salinity);
 				float saltMass = waterAndSaltMass * salinity;
-				float waterCarbonMass = waterMass * CarbonPercent;
+				float waterCarbonMass = CarbonPercent * waterAndSaltMass / (1.0f - CarbonPercent);
 
 				float density = Atmosphere.GetWaterDensity(salinity, WaterTemperature[i]);
 				float actualDepth = (waterMass + saltMass) / density;

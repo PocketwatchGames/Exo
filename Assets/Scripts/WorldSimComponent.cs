@@ -75,7 +75,7 @@ public class WorldSimComponent : MonoBehaviour
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempState);
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref TempState, ref StaticState, ref WorldData);
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref TempState, ref StaticState, ref WorldData, ref SimSettings);
 	}
 
 	public void OnDestroy()
@@ -150,7 +150,7 @@ public class WorldSimComponent : MonoBehaviour
 			i.Dispose();
 		}
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref TempState, ref StaticState, ref WorldData);
+		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref TempState, ref StaticState, ref WorldData, ref SimSettings);
 
 		OnTick?.Invoke();
 	}
@@ -162,14 +162,14 @@ public class WorldSimComponent : MonoBehaviour
 	}
 
 
-	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref TempState dependentState, ref StaticState staticState, ref WorldData worldData)
+	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref TempState dependentState, ref StaticState staticState, ref WorldData worldData, ref SimSettings settings)
 	{
 		displayState.Dispose();
 
 		displayState = new DisplayState();
 		displayState.Init(cellCount, ref worldData);
 
-		DisplayState.Update(ref displayState, ref worldData, ref dependentState, ref activeSimState, ref staticState).Complete();
+		DisplayState.Update(ref displayState, ref displayState, ref worldData, ref dependentState, ref activeSimState, ref staticState, ref settings).Complete();
 	}
 
 }

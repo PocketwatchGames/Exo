@@ -1239,7 +1239,7 @@ public class WorldSim {
 				LastWater = lastState.FloraWater,
 			}));
 
-			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Schedule(new UpdateWaterAirDiffusionJob()
+			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, SimJob.Run(new UpdateWaterAirDiffusionJob()
 			{
 				AirCarbon = nextState.AirCarbon[1],
 				WaterCarbon = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
@@ -2084,17 +2084,7 @@ public class WorldSim {
 				var lastDisplay = display;
 				display = new DisplayState();
 				display.Init(_cellCount, ref worldData);
-				DisplayState.Update(ref display, ref worldData, ref tempState, ref nextState, ref staticState).Complete();
-				if (settings.CollectGlobals) { 
-					display.GlobalEnthalpyDelta = display.GlobalEnthalpy - lastDisplay.GlobalEnthalpy;
-					display.GlobalEnthalpyDeltaTerrain = display.GlobalEnthalpyTerrain - lastDisplay.GlobalEnthalpyTerrain;
-					display.GlobalEnthalpyDeltaAir = display.GlobalEnthalpyAir - lastDisplay.GlobalEnthalpyAir;
-					display.GlobalEnthalpyDeltaWater = display.GlobalEnthalpyWater - lastDisplay.GlobalEnthalpyWater;
-					display.GlobalEnthalpyDeltaFlora = display.GlobalEnthalpyFlora - lastDisplay.GlobalEnthalpyFlora;
-					display.GlobalEnthalpyDeltaCloud = display.GlobalEnthalpyCloud - lastDisplay.GlobalEnthalpyCloud;
-					display.GlobalEnthalpyDeltaIce = display.GlobalEnthalpyIce - lastDisplay.GlobalEnthalpyIce;
-					display.GlobalEnthalpyDeltaGroundWater = display.GlobalEnthalpyGroundWater - lastDisplay.GlobalEnthalpyGroundWater;
-				}
+				DisplayState.Update(ref display, ref lastDisplay, ref worldData, ref tempState, ref nextState, ref staticState, ref settings).Complete();
 				lastDisplay.Dispose();
 
 			}

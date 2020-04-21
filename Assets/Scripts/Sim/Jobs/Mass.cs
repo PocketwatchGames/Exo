@@ -348,7 +348,7 @@ public struct UpdateFloraJob : IJobParallelFor {
 
 
 
-[BurstCompile]
+//[BurstCompile]
 public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 	public NativeArray<float> AirCarbon;
 	public NativeArray<float> WaterCarbon;
@@ -367,8 +367,7 @@ public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 		if ((waterCarbon > 0 || airCarbon > 0) && WaterMass[i] > 0)
 		{
 			float waterLayerMass = WaterMass[i] + SaltMass[i] + waterCarbon;
-			float airLayerMass = AirMass[i] + airCarbon;
-			float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + airLayerMass);
+			float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + AirMass[i]);
 			float diffusionDepth = math.min(1, WaterAirCarbonDiffusionDepth / WaterDepth[i]);
 			float diffusion = (desiredCarbonDensity * waterLayerMass - waterCarbon) * WaterAirCarbonDiffusionCoefficient;
 			diffusion *= diffusionDepth;

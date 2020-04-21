@@ -191,12 +191,13 @@ public class WorldView : MonoBehaviour {
 
 		_normalizedRainbow = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.black, 0),
-											new CVP(Color.white, 0.1667f),
-											new CVP(Color.blue, 0.3333f),
-											new CVP(Color.green, 0.5f),
-											new CVP(Color.yellow, 0.6667f),
-											new CVP(Color.red, 0.8333f),
-											new CVP(Color.magenta, 1) },
+											new CVP(Color.blue, 0.1667f),
+											new CVP(Color.green, 0.3333f),
+											new CVP(Color.yellow, 0.5f),
+											new CVP(Color.red, 0.6667f),
+											new CVP(Color.magenta, 0.8333f),
+											new CVP(Color.white, 1),
+											},
 											Allocator.Persistent);
 		_normalizedBlueWhiteRed = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.blue, 0),
@@ -806,7 +807,7 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, display.Pressure[ActiveMeshLayerAir]);
 				return true;
 			case MeshOverlay.WaterTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[ActiveMeshLayerWater]);
+				overlay = new MeshOverlayData(WorldData.FreezingTemperature, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[ActiveMeshLayerWater]);
 				return true;
 			case MeshOverlay.WaterCarbonDioxide:
 				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[ActiveMeshLayerWater]);

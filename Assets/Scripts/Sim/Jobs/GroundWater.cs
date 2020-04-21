@@ -176,6 +176,7 @@ public struct GroundWaterAbsorptionJob : IJobParallelFor {
 		GroundWater[i] = newGroundWater;
 		GroundWaterTemperature[i] = newGroundWaterTemperature;
 		WaterMass[i] = newWaterMass;
+		WaterTemperature[i] = newWaterTemperature;
 
 	}
 }
