@@ -132,10 +132,11 @@ public struct UpdateMassCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastDropletMass;
 	[ReadOnly] public NativeArray<float> CloudEvaporation;
 	[ReadOnly] public NativeArray<float> PrecipitationMass;
+	[ReadOnly] public NativeArray<float> DropletDelta;
 	public void Execute(int i)
 	{
 		CloudMass[i] = LastCloudMass[i] - CloudEvaporation[i] - PrecipitationMass[i];
-		CloudDropletMass[i] = LastDropletMass[i];
+		CloudDropletMass[i] = LastDropletMass[i] + DropletDelta[i];
 	}
 }
 

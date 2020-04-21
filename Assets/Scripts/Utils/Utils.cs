@@ -42,6 +42,16 @@ public static class Utils {
 		}
 	}
 
+	public static float3 GetHorizontalComponent(float3 v, float3 up)
+	{
+		return v - math.dot(v, up) * up;
+	}
+
+	public static float3 GetVerticalComponent(float3 v, float3 up)
+	{
+		return math.dot(v, up) * up;
+	}
+
 	static public float RepeatExclusive(float x, float y)
 	{
 		while (x < 0)

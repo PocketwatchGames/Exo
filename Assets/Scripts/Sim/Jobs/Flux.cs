@@ -239,6 +239,7 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public float RainDropMinSize;
 	[ReadOnly] public float RainDropMaxSize;
 	[ReadOnly] public float RainDropDragCoefficient;
+	[ReadOnly] public float RainDropGrowthRate;
 	[ReadOnly] public float CloudDissapationRateDryAir;
 	[ReadOnly] public float CloudDissapationRateWind;
 	[ReadOnly] public float SecondsPerTick;
@@ -262,7 +263,7 @@ public struct FluxCloudJob : IJobParallelFor {
 		if (cloudMass > 0)
 		{
 			// TODO: improve this somehow
-			dropletMass += cloudMass * 0.00000001f;
+			dropletMass += cloudMass * RainDropGrowthRate;
 
 
 			float waterDensityAtElevation = Atmosphere.GetWaterDensityAtElevation(dewPoint, cloudElevation);

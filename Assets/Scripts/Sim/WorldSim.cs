@@ -946,6 +946,7 @@ public class WorldSim {
 				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
 				RainDropMaxSize = worldData.rainDropMaxSize,
 				RainDropMinSize = worldData.rainDropMinSize,
+				RainDropGrowthRate = worldData.RainDropGrowthRate,
 				SecondsPerTick = worldData.SecondsPerTick,
 				CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
 				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
@@ -1120,7 +1121,8 @@ public class WorldSim {
 				LastCloudMass = lastState.CloudMass,
 				LastDropletMass = lastState.CloudDropletMass,
 				CloudEvaporation = tempState.CloudEvaporationMass,
-				PrecipitationMass = tempState.PrecipitationMass
+				PrecipitationMass = tempState.PrecipitationMass,
+				DropletDelta = tempState.DropletDelta,
 			});
 			updateMassJobHandle = JobHandle.CombineDependencies(updateMassJobHandle, updateCloudMassJobHandle);
 
@@ -1524,7 +1526,8 @@ public class WorldSim {
 						Velocity = nextState.AirVelocity[j],
 						LayerHeight = tempState.LayerHeight[j],
 						PlanetRadius = staticState.PlanetRadius,
-						SecondsPerTick = worldData.SecondsPerTick
+						SecondsPerTick = worldData.SecondsPerTick,
+						MaxWindMove = staticState.CellRadius * 0.9f,
 					}, airAccelerationJobHandles[j]));
 				}
 				for (int j = 1; j < worldData.AirLayers - 1; j++)
@@ -1605,7 +1608,8 @@ public class WorldSim {
 					Velocity = nextState.AirVelocity[j],
 					LayerHeight = tempState.LayerHeight[j],
 					PlanetRadius = staticState.PlanetRadius,
-					SecondsPerTick = worldData.SecondsPerTick
+					SecondsPerTick = worldData.SecondsPerTick,
+					MaxWindMove = staticState.CellRadius * 0.9f,
 				}, divergenceFreeFieldAirJob));
 			}
 
@@ -1614,7 +1618,7 @@ public class WorldSim {
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
 				int layer = worldData.AirLayer0 + j;
-				advectionJobHandles[layer] = SimJob.Schedule(new AdvectionAirJob()
+				advectionJobHandles[layer] = SimJob.Run(new AdvectionAirJob()
 				{
 					Delta = tempState.AdvectionAir[j],
 					Temperature = nextState.AirTemperaturePotential[j],
@@ -1665,7 +1669,8 @@ public class WorldSim {
 					Velocity = nextState.WaterVelocity[j],
 					LayerHeight = tempState.WaterLayerHeight[j],
 					PlanetRadius = staticState.PlanetRadius,
-					SecondsPerTick = worldData.SecondsPerTick
+					SecondsPerTick = worldData.SecondsPerTick,
+					MaxWindMove = staticState.CellRadius * 0.9f,
 				}, waterAccelerationJobHandles[j]));
 			}
 
@@ -1709,7 +1714,8 @@ public class WorldSim {
 				Position = staticState.SphericalPosition,
 				Velocity = tempState.CloudVelocity,
 				PlanetRadius = staticState.PlanetRadius,
-				SecondsPerTick = worldData.SecondsPerTick
+				SecondsPerTick = worldData.SecondsPerTick,
+				MaxWindMove = staticState.CellRadius * 0.9f,
 			});
 			var advectionJobHandleCloud =SimJob.Schedule(new AdvectionCloudJob()
 			{

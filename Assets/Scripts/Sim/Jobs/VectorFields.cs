@@ -31,6 +31,7 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
+	[ReadOnly] public float MaxWindMove;
 	public void Execute(int i)
 	{
 		float3 position = Position[i];
@@ -40,12 +41,14 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 
 		float3 move = velocity * SecondsPerTick;
 		float windMoveHorizontalSq = math.lengthsq(move);
-		const float maxWindMove = 400000;
-		if (windMoveHorizontalSq > maxWindMove * maxWindMove)
+
+		// TODO: this limit is bad, we should just iterate to the next neighbor!
+		if (windMoveHorizontalSq > MaxWindMove * MaxWindMove)
 		{
-			move = move / math.sqrt(windMoveHorizontalSq) * maxWindMove;
+			move = move / math.sqrt(windMoveHorizontalSq) * MaxWindMove;
 		}
 
+		// TODO: move around arc/circumference instead of along a tangent
 		float3 movePos = pos + move;
 		for (int j = 0; j < 6; j++)
 		{
@@ -101,6 +104,7 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
+	[ReadOnly] public float MaxWindMove;
 	public void Execute(int i)
 	{
 		float3 position = Position[i];
@@ -127,10 +131,9 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 		// TODO: deal with high wind speeds appropriately and remove this section
 		float3 move = velocity * SecondsPerTick;
 		float windMoveHorizontalSq = math.lengthsq(move);
-		const float maxWindMove = 200000;
-		if (windMoveHorizontalSq > maxWindMove * maxWindMove)
+		if (windMoveHorizontalSq > MaxWindMove * MaxWindMove)
 		{
-			move = move / math.sqrt(windMoveHorizontalSq) * maxWindMove;
+			move = move / math.sqrt(windMoveHorizontalSq) * MaxWindMove;
 		}
 
 

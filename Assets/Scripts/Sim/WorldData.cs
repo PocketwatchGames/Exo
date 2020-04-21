@@ -85,6 +85,7 @@ public struct WorldData {
 	public float rainDropDragCoefficient;
 	public float rainDropMaxSize;
 	public float rainDropMinSize;
+	public float RainDropGrowthRate;
 	public float CloudDissapationRateWind;
 	public float CloudDissapationRateDryAir;
 

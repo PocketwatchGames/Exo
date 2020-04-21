@@ -52,6 +52,7 @@
 	"rainDropDragCoefficient": 0.5,
 	"rainDropMaxSize": 0.004,
 	"rainDropMinSize": 0.000002,
+	"RainDropGrowthRate": 0.00000001,
 	"CloudDissapationRateWind": 0.1,
 	"CloudDissapationRateDryAir": 0.1,
 
@@ -61,11 +62,11 @@
 	"WaterDiffusionCoefficientHorizontal": 10,
 	"WaterDiffusionCoefficientVertical": 0.1,
 
-	"WindWaterFriction": 0.2,
-	"WindIceFriction": 0.1,
-	"WindTerrainFrictionMax": 0.5,
-	"WindTerrainFrictionMin": 0.25,
-	"WindFloraFriction": 0.5,
+	"WindWaterFriction": 0.02,
+	"WindIceFriction": 0.01,
+	"WindTerrainFrictionMax": 0.05,
+	"WindTerrainFrictionMin": 0.025,
+	"WindFloraFriction": 0.05,
 	"MaxTerrainRoughnessForWindFriction": 1000,
 
 	"WindToWaterCurrentFrictionCoefficient": 0.00001,

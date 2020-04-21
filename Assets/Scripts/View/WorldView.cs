@@ -386,7 +386,7 @@ public class WorldView : MonoBehaviour {
 			for (int i = 0; i < _windArrows.Length; i++)
 			{
 				var wind = _renderStates[_curRenderState].VelocityArrow[i];
-				var windHorizontal = math.cross(math.cross(Sim.StaticState.SphericalPosition[i], wind), Sim.StaticState.SphericalPosition[i]);
+				var windHorizontal = Utils.GetHorizontalComponent(wind, Sim.StaticState.SphericalPosition[i]);
 				float windSpeed = math.length(windHorizontal);
 				var pos = _renderStates[_curRenderState].SurfacePosition[i];
 				bool visible = windSpeed > 0;

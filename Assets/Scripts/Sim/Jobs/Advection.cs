@@ -158,12 +158,14 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newCO2 += CarbonDioxide[n] * incoming;
 				newDust += Dust[n] * incoming;
 
+				// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
 				var deflectedVelocity = Velocity[n] + math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
 
-//				math.quaternion()
-
+				// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+				var deflectedVertical = Utils.GetVerticalComponent(deflectedVelocity, Positions[n]);
+				deflectedVelocity += deflectedVertical * (Positions[i] - Positions[n]);
 				// TODO: is this really appropriate? do we have vertical motion due to the atmospheric layer changing height, or is this accounted for in the pressure gradient?
-				deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
+				//deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
 
 				// TODO: this is temp
 				// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth

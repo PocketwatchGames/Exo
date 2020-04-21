@@ -4136,7 +4136,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e80a900d4d531747afdfd76fa8cc0aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Overlay: 7
+  Overlay: 6
 --- !u!1 &468723924
 GameObject:
   m_ObjectHideFlags: 0
@@ -4595,7 +4595,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e80a900d4d531747afdfd76fa8cc0aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Overlay: 9
+  Overlay: 8
 --- !u!114 &487601513
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14762,7 +14762,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e80a900d4d531747afdfd76fa8cc0aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Overlay: 8
+  Overlay: 7
 --- !u!114 &1709262026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16316,8 +16316,8 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1112133854}
-        m_MethodName: OnMeshOverlayChanged
+      - m_Target: {fileID: 917836588}
+        m_MethodName: OnWindOverlayChanged
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -18852,6 +18852,13 @@ MonoBehaviour:
   WorldGenAsset: {fileID: 4900000, guid: f661699919efc1e4e98b545db973f8eb, type: 3}
   WorldDataAsset: {fileID: 4900000, guid: a0e62a68ba207124092d1d775e028c05, type: 3}
   TicksPerRealSecond: 1
+  SimSettings:
+    MakeAirIncompressible: 1
+    CheckForDegeneracy: 0
+    CollectGlobals: 0
+    CollectOverlay: 0
+    LogState: 0
+    LogStateIndex: 0
   WorldData:
     SecondsPerTick: 0
     AirLayers: 0
@@ -18897,6 +18904,7 @@ MonoBehaviour:
     rainDropDragCoefficient: 0.5
     rainDropMaxSize: 0.004
     rainDropMinSize: 0.00001
+    RainDropGrowthRate: 0
     CloudDissapationRateWind: 0.1
     CloudDissapationRateDryAir: 0.1
     CloudDiffusionCoefficient: 0

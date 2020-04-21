@@ -98,6 +98,10 @@ public struct AccelerationAirJob : IJobParallelFor {
 
 		//		vel += math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
 
+		// Remove vertical component
+		// TODO: we shouldn't need to do this if we are correctly turning the velocity
+		vel -= Utils.GetVerticalComponent(vel, Positions[i]);
+
 		float buoyancy = 0;
 		if (!IsTop)
 		{
@@ -153,8 +157,8 @@ public struct WaterSurfaceFrictionJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
-		var horizontalWindUp = math.cross(math.cross(Position[i], AirVelocityUp[i]), Position[i]);
-		var horizontalWindDown = math.cross(math.cross(Position[i], AirVelocityDown[i]), Position[i]);
+		var horizontalWindUp = Utils.GetHorizontalComponent(AirVelocityUp[i], Position[i]);
+		var horizontalWindDown = Utils.GetHorizontalComponent(AirVelocityDown[i], Position[i]);
 
 		// TODO: the ekman depth is calculable!
 		// https://en.wikipedia.org/wiki/Ekman_transport
