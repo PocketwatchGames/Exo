@@ -56,9 +56,7 @@ public struct AccelerationAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> DownHumidity;
 	[ReadOnly] public NativeArray<float> DownAirMass;
 	[ReadOnly] public NativeArray<float> DownLayerMiddle;
-	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<float3> LastVelocity;
-	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float GravityInverse;
 	[ReadOnly] public float Gravity;
@@ -95,8 +93,6 @@ public struct AccelerationAirJob : IJobParallelFor {
 		// we are leaving out the SecondsPerTick term here
 		// TODO: is there a better way to integrate this over the full time step?
 		vel -= LastVelocity[i] * Friction[i] * FrictionCoefficient;
-
-		//		vel += math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
 
 		// Remove vertical component
 		// TODO: we shouldn't need to do this if we are correctly turning the velocity

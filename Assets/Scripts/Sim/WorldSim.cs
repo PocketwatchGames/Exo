@@ -1452,8 +1452,6 @@ public class WorldSim {
 					DownHumidity = lastState.AirVapor[j - 1],
 					DownAirMass = tempState.AirMass[j - 1],
 					DownLayerMiddle = tempState.LayerMiddle[j - 1],
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
 					IsTop = j == worldData.AirLayers - 2,
 					IsBottom = j == 1,
 					FrictionCoefficient = j == 1 ? 1 : 0,
@@ -1704,6 +1702,9 @@ public class WorldSim {
 					PlanktonGlucose = nextState.PlanktonGlucose[j],
 					Positions = staticState.SphericalPosition,
 					Neighbors = staticState.Neighbors,
+					CoriolisMultiplier = staticState.CoriolisMultiplier,
+					CoriolisTerm = coriolisTerm,
+					SecondsPerTick = worldData.SecondsPerTick
 				}, waterDestJob);
 			}
 

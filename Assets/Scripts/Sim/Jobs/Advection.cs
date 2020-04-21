@@ -164,6 +164,9 @@ public struct AdvectionAirJob : IJobParallelFor {
 				// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
 				var deflectedVertical = Utils.GetVerticalComponent(deflectedVelocity, Positions[n]);
 				deflectedVelocity += deflectedVertical * (Positions[i] - Positions[n]);
+
+
+
 				// TODO: is this really appropriate? do we have vertical motion due to the atmospheric layer changing height, or is this accounted for in the pressure gradient?
 				//deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
 
@@ -339,7 +342,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CarbonBelow;
 	[ReadOnly] public NativeArray<float> PlanktonMass;
 	[ReadOnly] public NativeArray<float> PlanktonGlucose;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public float CoriolisTerm;
+	[ReadOnly] public float SecondsPerTick;
 	public void Execute(int i)
 	{
 		float waterMass = Mass[i];
@@ -440,11 +446,27 @@ public struct AdvectionWaterJob : IJobParallelFor {
 						newGlucose += PlanktonGlucose[n] * incoming;
 						newTemperature += Temperature[n] * massIncoming;
 
+						// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
+						var deflectedVelocity = Velocity[n] + math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
+
+						// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+						var deflectedVertical = Utils.GetVerticalComponent(deflectedVelocity, Positions[n]);
+						deflectedVelocity += deflectedVertical * (Positions[i] - Positions[n]);
+
+
+
+						// TODO: is this really appropriate? do we have vertical motion due to the atmospheric layer changing height, or is this accounted for in the pressure gradient?
+						//deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
+
 						// TODO: this is temp
 						// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
-						newVelocity += massIncoming * (Velocity[n] - Positions[i] * math.dot(Positions[i], Velocity[n]));
+						//newVelocity += incomingMass * (deflectedVelocity - Positions[i] * math.dot(Positions[i], deflectedVelocity));
 
-	//					newVelocity += VelocityDeflected[n] * massIncoming;
+						newVelocity += massIncoming * deflectedVelocity;
+
+
+
+						//					newVelocity += VelocityDeflected[n] * massIncoming;
 					}
 				}
 			}
