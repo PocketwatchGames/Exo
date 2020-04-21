@@ -69,6 +69,7 @@ public class WorldSim {
 
 			#endregion
 
+
 			#region Update Planetary Globals
 
 			nextState.PlanetState = lastState.PlanetState;
@@ -83,6 +84,7 @@ public class WorldSim {
 
 			float coriolisTerm = 2 * lastState.PlanetState.SpinSpeed;
 			#endregion
+
 
 			#region Init Solar Radiation Per Cell
 			var solarInJobHandle =SimJob.Schedule(new SolarRadiationJob()
@@ -1419,15 +1421,17 @@ public class WorldSim {
 			JobHandle[] airAccelerationJobHandles = new JobHandle[worldData.AirLayers];
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
-				airAccelerationJobHandles[j] =SimJob.Schedule(new AccelerationAirJob()
+				airAccelerationJobHandles[j] =SimJob.Run(new AccelerationAirJob()
 				{
 					Velocity = nextState.AirVelocity[j],
 					Force = tempState.AirAcceleration[j],
 
+					LastVelocity = lastState.AirVelocity[j],
 					Friction = tempState.WindFriction,
 					Pressure = tempState.AirPressure[j],
 					AirMass = tempState.AirMass[j],
 					TemperaturePotential = lastState.AirTemperaturePotential[j],
+					NewTemperaturePotential = nextState.AirTemperaturePotential[j],
 					VaporMass = lastState.AirVapor[j],
 					LayerMiddle = tempState.LayerMiddle[j],
 					Neighbors = staticState.Neighbors,
@@ -1436,10 +1440,12 @@ public class WorldSim {
 					PlanetRadius = staticState.PlanetRadius,
 					Gravity = lastState.PlanetState.Gravity,
 					GravityInverse = 1.0f / lastState.PlanetState.Gravity,
+					NewUpTemperaturePotential = nextState.AirTemperaturePotential[j + 1],
 					UpTemperaturePotential = lastState.AirTemperaturePotential[j + 1],
 					UpHumidity = lastState.AirVapor[j + 1],
 					UpAirMass = tempState.AirMass[j + 1],
 					UpLayerMiddle = tempState.LayerMiddle[j + 1],
+					NewDownTemperaturePotential = nextState.AirTemperaturePotential[j - 1],
 					DownTemperaturePotential = lastState.AirTemperaturePotential[j - 1],
 					DownHumidity = lastState.AirVapor[j - 1],
 					DownAirMass = tempState.AirMass[j - 1],
@@ -1462,6 +1468,7 @@ public class WorldSim {
 				{
 					Velocity = nextState.WaterVelocity[j],
 
+					LastVelocity = lastState.WaterVelocity[j],
 					Positions = staticState.SphericalPosition,
 					Neighbors = staticState.Neighbors,
 					NeighborDiffInverse = staticState.NeighborDiffInverse,
@@ -1583,7 +1590,7 @@ public class WorldSim {
 			}
 
 
-				airDestJob = default(JobHandle);
+			airDestJob = default(JobHandle);
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
 				int layer = worldData.AirLayer0 + j;

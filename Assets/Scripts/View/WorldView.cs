@@ -375,6 +375,12 @@ public class WorldView : MonoBehaviour {
 		WaterMaterial.SetFloat("Vector1_2C57E502", Sim.TimeScale); // sim time scale
 		WaterMaterial.SetFloat("Vector1_91938D4", _renderStates[_curRenderState].Ticks); // sim time
 
+	}
+	public void LateUpdate()
+	{
+		UpdateMesh(_prepareMesh);
+		Foliage.Update(ref _renderStates[_curRenderState]);
+
 		if (ActiveWindOverlay != WindOverlay.None)
 		{
 			for (int i = 0; i < _windArrows.Length; i++)
@@ -387,24 +393,15 @@ public class WorldView : MonoBehaviour {
 				_windArrows[i].SetActive(visible);
 				if (visible)
 				{
-					var m = _windArrows[i].GetComponentsInChildren<MeshRenderer>();
-					for (int j = 0; j < m.Length; j++)
-					{
-						m[j].material.color = _renderStates[_curRenderState].VelocityColor[i];
-					}
+					var m = _windArrows[i].transform.GetChild(0).GetComponent<MeshRenderer>().material.color = _renderStates[_curRenderState].VelocityColor[i];
 					_windArrows[i].transform.localPosition = pos;
 					_windArrows[i].transform.localRotation = Quaternion.LookRotation(windHorizontal / windSpeed, pos);
-					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(1, windSpeed);
+					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(math.pow(windSpeed, 0.25f), 1);
 				}
 			}
 		}
 
 
-	}
-	public void LateUpdate()
-	{
-		UpdateMesh(_prepareMesh);
-		Foliage.Update(ref _renderStates[_curRenderState]);
 
 	}
 	public void StartLerp(float lerpTime)

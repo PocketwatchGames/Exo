@@ -25,7 +25,7 @@ public class WorldSimComponent : MonoBehaviour
 	};
 
 
-	[HideInInspector] public WorldData WorldData;
+	public WorldData WorldData;
 	[HideInInspector] public StaticState StaticState;
 
 	[HideInInspector] public Icosphere Icosphere;

@@ -5,9 +5,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 
 
-#if !WindFrictionJobDebug
 [BurstCompile]
-#endif
 public struct AirTerrainFrictionJob : IJobParallelFor {
 	public NativeArray<float> Force;
 	[ReadOnly] public NativeArray<float> Roughness;
@@ -33,7 +31,8 @@ public struct AirTerrainFrictionJob : IJobParallelFor {
 	}
 }
 
-[BurstCompile]
+
+//[BurstCompile]
 public struct AccelerationAirJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
 	public NativeArray<float3> Force;
@@ -41,20 +40,24 @@ public struct AccelerationAirJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> VaporMass;
 	[ReadOnly] public NativeArray<float> TemperaturePotential;
+	[ReadOnly] public NativeArray<float> NewTemperaturePotential;
 	[ReadOnly] public NativeArray<float> Pressure;
 	[ReadOnly] public NativeArray<float> LayerMiddle;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> NeighborDiffInverse;
 	[ReadOnly] public NativeArray<float3> Positions;
+	[ReadOnly] public NativeArray<float> NewUpTemperaturePotential;
 	[ReadOnly] public NativeArray<float> UpTemperaturePotential;
 	[ReadOnly] public NativeArray<float> UpHumidity;
 	[ReadOnly] public NativeArray<float> UpAirMass;
 	[ReadOnly] public NativeArray<float> UpLayerMiddle;
+	[ReadOnly] public NativeArray<float> NewDownTemperaturePotential;
 	[ReadOnly] public NativeArray<float> DownTemperaturePotential;
 	[ReadOnly] public NativeArray<float> DownHumidity;
 	[ReadOnly] public NativeArray<float> DownAirMass;
 	[ReadOnly] public NativeArray<float> DownLayerMiddle;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float GravityInverse;
@@ -87,28 +90,31 @@ public struct AccelerationAirJob : IJobParallelFor {
 		force = gradientPressure * Gravity * inverseDensity / neighborCount;
 
 		Force[i] = force;
-		var vel = Velocity[i] + force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
-//		vel += math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
+		var vel = LastVelocity[i] + force * SecondsPerTick;
+
+		// we are leaving out the SecondsPerTick term here
+		// TODO: is there a better way to integrate this over the full time step?
+		vel -= LastVelocity[i] * Friction[i] * FrictionCoefficient;
+
+		//		vel += math.cross(position, Velocity[i]) * CoriolisMultiplier[i] * CoriolisTerm * SecondsPerTick;
 
 		float buoyancy = 0;
-		// Cold air moves into warm air via gravity
-		// Note that if warm air is above cold air, it is stratified but stable, so there's no force
+		if (!IsTop)
+		{
+			// When air is heated, it pushes surrounding air out of the way
+			buoyancy += math.max(0, 1 - NewUpTemperaturePotential[i] / NewTemperaturePotential[i]);
+		}
 		if (!IsBottom)
 		{
-			//buoyancy = math.min(0, SecondsPerTick * Gravity * (DownTemperaturePotential[i] / TemperaturePotential[i] - 1));
-
-			//// TODO: this is temp, what's a reasonable way to apply a buoyant force over 3600 seconds?
-			//buoyancy = buoyancy * 0.001f;
-
-			//// TODO: it might be a good idea to just separate buoyancy velocity since we aren't preserving momentum, then we could get rid of this
-			//vel += Positions[i] * (buoyancy - math.dot(Positions[i], vel));
-
-
-			// THis is the actual force version of buoyancy, but it produces drastic effects
-			//buoyancy = math.min(0, SecondsPerTick * Gravity * (DownTemperaturePotential[i] / TemperaturePotential[i] - 1));
-			//vel += Positions[i] * buoyancy;
-
+			// Cold air sitting on top of warm air produces a downdraft
+			// Note that if warm air is above cold air, it is stratified but stable, so there's no force
+			buoyancy += math.min(0, 1 - DownTemperaturePotential[i] / TemperaturePotential[i]);
 		}
+
+		// TODO: I've removed the secondsPerTick term here because it produces massive vertical velocities, but it's not physically accurate
+		// We ARE accelerating over the entire time of the tick, so figure out how the pro ACGMs deal with buoyancy
+		vel += Positions[i] * Gravity * buoyancy;
+		//vel += Positions[i] * SecondsPerTick * Gravity * buoyancy;
 
 		if (IsTop)
 		{
@@ -131,9 +137,7 @@ public struct AccelerationAirJob : IJobParallelFor {
 	}
 }
 
-#if !WaterSurfaceFrictionJobDebug
 [BurstCompile]
-#endif
 public struct WaterSurfaceFrictionJob : IJobParallelFor {
 	public NativeArray<float3> Force;
 	[ReadOnly] public NativeArray<float3> Current;
@@ -167,11 +171,10 @@ public struct WaterSurfaceFrictionJob : IJobParallelFor {
 	}
 }
 
-#if !WaterDensityGradientForceJobDebug
 [BurstCompile]
-#endif
 public struct AccelerationWaterJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public NativeArray<float3> Friction;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> NeighborDiffInverse;
@@ -223,7 +226,7 @@ public struct AccelerationWaterJob : IJobParallelFor {
 			//	{
 			//		Force[i] += pos * Gravity * (1 - UpWaterDensity[i] / density)/* / (LayerHeight[i] + UpLayerHeight[i]) * 0.5f*/;
 			//	}
-			Velocity[i] += force * SecondsPerTick - Velocity[i] * Friction[i] * FrictionCoefficient;
+			Velocity[i] = LastVelocity[i] + (force + Friction[i] * FrictionCoefficient) * SecondsPerTick;
 		}
 
 	}
