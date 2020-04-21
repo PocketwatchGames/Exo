@@ -11,6 +11,16 @@ public class ToolSelect : GameTool {
 	public bool ActiveCellLocked { get; private set; }
 	public int ActiveCellIndex { get; private set; }
 
+	public override void OnDeselected()
+	{
+		base.OnDeselected();
+		Gameplay.Sim.SimSettings.CollectGlobals = false;
+	}
+	public override void OnSelected()
+	{
+		base.OnSelected();
+		Gameplay.Sim.SimSettings.CollectGlobals = true;
+	}
 	override public void OnClick(Vector3 worldPos, int cellIndex)
 	{
 		Gameplay.SetActiveCell(cellIndex, cellIndex >= 0);

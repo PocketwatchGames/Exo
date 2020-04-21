@@ -174,6 +174,7 @@ public class WorldView : MonoBehaviour {
 
 	private Unity.Mathematics.Random _random;
 
+	private bool _skyboxActive = false;
 	private float _skyboxExposure = 1;
 	private float _skyboxExposureDest = 1;
 	private float _skyboxExposureStart = 1;
@@ -633,9 +634,7 @@ public class WorldView : MonoBehaviour {
 	}
 	public void OnStarsDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
-		_skyboxExposureDest = toggle.isOn ? 1 : 0;
-		_skyboxExposureStart = _skyboxExposure;
-		_skyboxExposureTime = 0.1f;
+		_skyboxActive = toggle.isOn;
 	}
 
 
@@ -880,28 +879,29 @@ public class WorldView : MonoBehaviour {
 
 	private void UpdateSkybox()
 	{
-		if (Sim.TimeScale == 0)
+		if (Sim.TimeScale == 0 || _skyboxActive)
 		{
-			//if (_skyboxExposureDest != 1)
-			//{
-			//	_skyboxExposureStart = _skyboxExposure;
-			//	_skyboxExposureTime = 1.0f;
-			//}
-			//_skyboxExposureDest = 1.0f;
+			if (_skyboxExposureDest != 1)
+			{
+				_skyboxExposureStart = _skyboxExposure;
+				_skyboxExposureTime = 1.0f;
+			}
+			_skyboxExposureDest = 1.0f;
 
 		}
 		else
 		{
-			//if (_skyboxExposureDest != 0)
-			//{
-			//	_skyboxExposureStart = _skyboxExposure;
-			//	_skyboxExposureTime = 1.0f;
-			//}
-			//_skyboxExposureDest = 0;
+			if (_skyboxExposureDest != 0)
+			{
+				_skyboxExposureStart = _skyboxExposure;
+				_skyboxExposureTime = 1.0f;
+			}
+			_skyboxExposureDest = 0;
 		}
 		_skyboxExposureTime = math.max(0, _skyboxExposureTime - Time.deltaTime);
 		_skyboxExposure = math.lerp(_skyboxExposureStart, _skyboxExposureDest, 1.0f - math.sin(_skyboxExposureTime * math.PI / 2));
-		//RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
+		//RenderSettings.skybox.Set
+		RenderSettings.skybox.SetFloat("_Exposure", _skyboxExposure);
 	}
 
 	private void OnSetActiveCell(int index)

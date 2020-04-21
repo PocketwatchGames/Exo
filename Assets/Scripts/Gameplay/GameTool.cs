@@ -10,11 +10,7 @@ public class GameTool : MonoBehaviour {
 
 	public string Name;
 	public List<GameObject> HUDComponents;
-	protected GameplayManager Gameplay;
-	public void Start()
-	{
-		Gameplay = transform.parent.GetComponent<GameplayManager>();
-	}
+	public GameplayManager Gameplay;
 	virtual public void OnSelected()
 	{
 		foreach (var c in HUDComponents)
