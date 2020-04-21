@@ -1423,7 +1423,7 @@ public class WorldSim {
 			JobHandle[] airAccelerationJobHandles = new JobHandle[worldData.AirLayers];
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
-				airAccelerationJobHandles[j] =SimJob.Run(new AccelerationAirJob()
+				airAccelerationJobHandles[j] =SimJob.Schedule(new AccelerationAirJob()
 				{
 					Velocity = nextState.AirVelocity[j],
 					Force = tempState.AirAcceleration[j],
@@ -1618,7 +1618,7 @@ public class WorldSim {
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
 				int layer = worldData.AirLayer0 + j;
-				advectionJobHandles[layer] = SimJob.Run(new AdvectionAirJob()
+				advectionJobHandles[layer] = SimJob.Schedule(new AdvectionAirJob()
 				{
 					Delta = tempState.AdvectionAir[j],
 					Temperature = nextState.AirTemperaturePotential[j],

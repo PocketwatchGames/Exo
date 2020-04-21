@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Collections;
+using Unity.Burst;
 
 public static class Utils {
 	public static float Sqr(float x) { return x * x; }
@@ -18,6 +19,15 @@ public static class Utils {
 			Source = array,
 			Value = value
 		}.Schedule(count, 1));
+	}
+
+	public static JobHandle MemCopy(NativeArray<float> dest, NativeArray<float> src, JobHandle dependencies) {
+		return new MemCopyFloat()
+		{
+			Dest = dest,
+			Src = src,
+
+		}.Schedule(src.Length, 1, dependencies);
 	}
 
 
@@ -196,3 +206,15 @@ public class JobHelper {
 		return job.Schedule(_cellCount, DefaultBatchCount, dependences);
 	}
 }
+
+[BurstCompile]
+public struct MemCopyFloat : IJobParallelFor {
+	public NativeArray<float> Dest;
+	[ReadOnly] public NativeArray<float> Src;
+	public void Execute(int i)
+	{
+		Dest[i] = Src[i];
+	}
+
+}
+

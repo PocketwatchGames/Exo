@@ -32,7 +32,7 @@ public struct AirTerrainFrictionJob : IJobParallelFor {
 }
 
 
-//[BurstCompile]
+[BurstCompile]
 public struct AccelerationAirJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
 	public NativeArray<float3> Force;

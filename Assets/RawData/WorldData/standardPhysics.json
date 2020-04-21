@@ -57,7 +57,7 @@
 	"CloudDissapationRateDryAir": 0.1,
 
 	"CloudDiffusionCoefficient": 0.01,
-	"AirDiffusionCoefficientHorizontal": 10000,
+	"AirDiffusionCoefficientHorizontal": 100,
 	"AirDiffusionCoefficientVertical": 100,
 	"WaterDiffusionCoefficientHorizontal": 10,
 	"WaterDiffusionCoefficientVertical": 0.1,
