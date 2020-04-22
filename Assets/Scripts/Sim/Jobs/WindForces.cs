@@ -116,6 +116,7 @@ public struct AccelerationAirJob : IJobParallelFor {
 		vel += Positions[i] * Gravity * buoyancy;
 		//vel += Positions[i] * SecondsPerTick * Gravity * buoyancy;
 
+		// TODO: is there a better way to deal with boundary conditions than this?
 		if (IsTop)
 		{
 			float dotUp = math.dot(Positions[i], vel);

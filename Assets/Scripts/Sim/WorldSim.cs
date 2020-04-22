@@ -1585,7 +1585,7 @@ public class WorldSim {
 						AirMass = tempState.AirMass[j],
 						IsBottom = j == 1,
 						IsTop = j == worldData.AirLayers - 2,
-						SecondsPerTickInverse = worldData.TicksPerSecond
+						TicksPerSecond = worldData.TicksPerSecond
 					}, divergencePressureJobHandle));
 				}
 			}

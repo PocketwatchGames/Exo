@@ -294,7 +294,7 @@ public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
-	[ReadOnly] public float SecondsPerTickInverse;
+	[ReadOnly] public float TicksPerSecond;
 	public void Execute(int i)
 	{
 		int neighborCount = StaticState.GetMaxNeighbors(i, Neighbors);
@@ -316,6 +316,6 @@ public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 		{
 			pressureGradient += (PressureBelow[i] - pressure) * up * height;
 		}
-		Velocity[i] -= pressureGradient / AirMass[i] * SecondsPerTickInverse;
+		Velocity[i] -= pressureGradient / AirMass[i] * TicksPerSecond;
 	}
 }
