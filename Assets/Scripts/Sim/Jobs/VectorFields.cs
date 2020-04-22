@@ -319,3 +319,4 @@ public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 		Velocity[i] -= pressureGradient / AirMass[i] * TicksPerSecond;
 	}
 }
+

@@ -146,21 +146,44 @@ public struct UpdateMassAirJob : IJobParallelFor {
 	public NativeArray<float> VaporMass;
 	public NativeArray<float> CarbonDioxideMass;
 	public NativeArray<float> DustMass;
-	public NativeArray<float> CloudMass;
-	public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> LastVaporMass;
 	[ReadOnly] public NativeArray<float> LastCarbonDioxideMass;
 	[ReadOnly] public NativeArray<float> LastDustMass;
-	[ReadOnly] public NativeArray<float> CloudEvaporation;
-	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> CloudCondensation;
 	[ReadOnly] public NativeArray<float> GroundCondensation;
 	[ReadOnly] public NativeArray<float> DustFromAbove;
 	[ReadOnly] public NativeArray<float> DustFromBelow;
 	[ReadOnly] public NativeArray<float> DustUp;
 	[ReadOnly] public NativeArray<float> DustDown;
+	[ReadOnly] public bool IsTop;
+	[ReadOnly] public bool IsBottom;
+	public void Execute(int i)
+	{
+		float newVaporMass = LastVaporMass[i] - CloudCondensation[i] - GroundCondensation[i];
+		float newDustMass = LastDustMass[i] + DustFromAbove[i] + DustFromBelow[i] - DustDown[i];
+		float newCarbonDioxide = LastCarbonDioxideMass[i];
+		if (!IsTop)
+		{
+			newDustMass -= DustUp[i];
+		}
+
+		VaporMass[i] = newVaporMass;
+		DustMass[i] = newDustMass;
+		CarbonDioxideMass[i] = newCarbonDioxide;
+	}
+}
+
+
+[BurstCompile]
+public struct UpdateMassCloudCondensationJob : IJobParallelFor {
+	public NativeArray<float> CloudMass;
+	public NativeArray<float> CloudDropletMass;
+	[ReadOnly] public NativeArray<float> CloudEvaporation;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeArray<float> LayerElevation;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> CloudCondensation;
+	[ReadOnly] public NativeArray<float> GroundCondensation;
 	[ReadOnly] public bool IsTop;
 	[ReadOnly] public bool IsBottom;
 	public void Execute(int i)
@@ -172,15 +195,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 		{
 			cloudEvaporationInLayer = CloudEvaporation[i];
 		}
-		float newVaporMass = LastVaporMass[i] - CloudCondensation[i] - GroundCondensation[i];
 		float newCloudMass = cloudMass + CloudCondensation[i];
-		float newDustMass = LastDustMass[i] + DustFromAbove[i] + DustFromBelow[i] - DustDown[i];
-		float newCarbonDioxide = LastCarbonDioxideMass[i];
-		if (!IsTop)
-		{
-			newDustMass -= DustUp[i];
-		}
-
 		float newDropletSize = 0;
 		if (newCloudMass > 0)
 		{
@@ -194,11 +209,9 @@ public struct UpdateMassAirJob : IJobParallelFor {
 
 		CloudMass[i] = newCloudMass;
 		CloudDropletMass[i] = newDropletSize;
-		VaporMass[i] = newVaporMass;
-		DustMass[i] = newDustMass;
-		CarbonDioxideMass[i] = newCarbonDioxide;
 	}
 }
+
 
 [BurstCompile]
 public struct UpdateMassAirSurfaceJob : IJobParallelFor {
@@ -348,7 +361,7 @@ public struct UpdateFloraJob : IJobParallelFor {
 
 
 
-//[BurstCompile]
+[BurstCompile]
 public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 	public NativeArray<float> AirCarbon;
 	public NativeArray<float> WaterCarbon;

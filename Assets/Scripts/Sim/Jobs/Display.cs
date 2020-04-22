@@ -266,7 +266,7 @@ public struct DisplayState {
 
 			SolarRadiationInTerrain = tempState.SolarRadiationIn[worldData.TerrainLayer],
 			SolarRadiationInIce = tempState.SolarRadiationIn[worldData.IceLayer],
-			SolarRadiationInWaterSurface = tempState.SolarRadiationIn[worldData.WaterLayer0 + worldData.SurfaceWaterLayer],
+			SolarRadiationInWaterSurface = tempState.SolarRadiationIn[worldData.SurfaceWaterLayerGlobal],
 			EvaporationWater = tempState.EvaporationMassWater,
 			EvaporationFlora = tempState.FloraRespirationMassVapor,
 			Precipitation = tempState.PrecipitationMass,
@@ -352,7 +352,7 @@ public struct DisplayState {
 			display.GlobalIceMass += nextState.IceMass[i];
 			display.GlobalOceanCoverage += tempState.WaterCoverage[worldData.SurfaceWaterLayer][i];
 			display.GlobalSurfaceTemperature += tempState.SurfaceAirTemperatureAbsolute[i];
-			display.GlobalSeaLevel += tempState.LayerElevation[1][i];
+			display.GlobalSeaLevel += tempState.LayerElevation[worldData.SurfaceAirLayer][i];
 			display.GlobalEvaporation += display.Evaporation[i];
 			display.GlobalRainfall += display.Rainfall[i];
 			display.GlobalCondensationCloud += display.CondensationCloud[i];
@@ -394,7 +394,7 @@ public struct DisplayState {
 			display.EnergyOceanConduction += tempState.ConductionAirWater[i];
 			display.EnergyEvapotranspiration += (tempState.EvaporationMassWater[i] + tempState.FloraRespirationMassVapor[i]) * WorldData.LatentHeatWaterVapor;
 			display.EnergyThermalBackRadiation += tempState.WindowRadiationTransmittedDown[worldData.AirLayer0 + 1][i] + tempState.ThermalRadiationTransmittedDown[worldData.AirLayer0 + 1][i];
-			display.EnergyThermalOceanRadiation += (tempState.WindowRadiationTransmittedUp[worldData.WaterLayer0 + worldData.SurfaceWaterLayer][i] + tempState.ThermalRadiationTransmittedUp[worldData.WaterLayer0 + worldData.SurfaceWaterLayer][i]) * tempState.WaterCoverage[worldData.SurfaceWaterLayer][i];
+			display.EnergyThermalOceanRadiation += (tempState.WindowRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal][i] + tempState.ThermalRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal][i]) * tempState.WaterCoverage[worldData.SurfaceWaterLayer][i];
 
 			float surfaceRadiation = tempState.WindowRadiationTransmittedUp[worldData.IceLayer][i] + tempState.ThermalRadiationTransmittedUp[worldData.IceLayer][i];
 			float surfaceRadiationOutWindow = tempState.WindowRadiationTransmittedUp[worldData.IceLayer][i];

@@ -562,9 +562,9 @@ public struct TempState {
 			FloraEnergy = tempState.FloraEnergy,
 			LavaEnergy = tempState.LavaEnergy,
 			LavaDepth = tempState.LavaDepth,
-			SurfaceElevation = tempState.LayerElevation[1],
+			SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
 
-			WaterDepth = tempState.WaterLayerDepth[1],
+			WaterDepth = tempState.WaterLayerDepth[worldData.SurfaceAirLayer],
 			Elevation = state.Elevation,
 			FloraMass = state.FloraMass,
 			FloraWater = state.FloraWater,
@@ -576,7 +576,7 @@ public struct TempState {
 			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
 		}, dependencies);
 		dependencies = JobHandle.CombineDependencies(surfaceElevationJob, dependencies);
-		dependencies = Utils.MemCopy(standardLayerElevation, tempState.LayerElevation[1], dependencies);
+		dependencies = Utils.MemCopy(standardLayerElevation, tempState.LayerElevation[worldData.SurfaceAirLayer], dependencies);
 
 		for (int j = 1; j < worldData.AirLayers - 1; j++)
 		{
@@ -637,7 +637,7 @@ public struct TempState {
 				LayerElevation = tempState.LayerElevation[j],
 				LayerMiddle = tempState.LayerMiddle[j],
 				LayerHeight = tempState.LayerHeight[j],
-				SurfaceElevation = tempState.LayerElevation[1],
+				SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
 				Gravity = state.PlanetState.Gravity,
 			}, dependencies);
 		}
@@ -653,7 +653,7 @@ public struct TempState {
 
 				AirMass = tempState.AirMass[j],
 				VaporMass = state.AirVapor[j],
-				SurfaceElevation = tempState.LayerElevation[1],
+				SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
 				RelativeHumidity = tempState.AirHumidityRelative[j],
 				Pressure = tempState.AirPressure[j],
 				AirTemperaturePotential = state.AirTemperaturePotential[j],
@@ -690,11 +690,11 @@ public struct TempState {
 			FloraCoverage = tempState.FloraCoverage,
 			IceCoverage = tempState.IceCoverage,
 
-			WaterCoverage = tempState.WaterCoverage[worldData.WaterLayers - 2],
+			WaterCoverage = tempState.WaterCoverage[worldData.SurfaceWaterLayer],
 			FloraMass = state.FloraMass,
 			IceMass = state.IceMass,
-			AirTemperaturePotential = state.AirTemperaturePotential[1],
-			SurfaceLayerElevation = tempState.LayerElevation[1],
+			AirTemperaturePotential = state.AirTemperaturePotential[worldData.SurfaceAirLayer],
+			SurfaceLayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
 			inverseFullCoverageFloraMass = 1.0f / worldData.FullCoverageFlora,
 			inverseFullCoverageIceMass = 1.0f / (worldData.FullCoverageIce * WorldData.MassIce),
 			FloraAirSurfaceArea = worldData.FloraAirSurfaceArea,
@@ -743,9 +743,9 @@ public struct TempState {
 			FloraEnergy = tempState.FloraEnergy,
 			LavaEnergy = tempState.LavaEnergy,
 			LavaDepth = tempState.LavaDepth,
-			SurfaceElevation = tempState.LayerElevation[1],
+			SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
 
-			WaterDepth = tempState.WaterLayerDepth[1],
+			WaterDepth = tempState.WaterLayerDepth[worldData.SurfaceAirLayer],
 			Elevation = state.Elevation,
 			FloraMass = state.FloraMass,
 			FloraWater = state.FloraWater,

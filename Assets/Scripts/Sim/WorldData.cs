@@ -253,6 +253,9 @@ public struct WorldData {
 	[NonSerialized] public int IceLayer;
 	[NonSerialized] public int AirLayer0;
 	[NonSerialized] public int SurfaceWaterLayer;
+	[NonSerialized] public int SurfaceWaterLayerGlobal;
+	[NonSerialized] public int SurfaceAirLayer;
+	[NonSerialized] public int SurfaceAirLayerGlobal;
 
 
 	#endregion
@@ -279,6 +282,9 @@ public struct WorldData {
 		IceLayer = WaterLayer0 + WaterLayers;
 		AirLayer0 = IceLayer + 1;
 		SurfaceWaterLayer = WaterLayers - 2;
+		SurfaceWaterLayerGlobal = SurfaceWaterLayer + WaterLayer0;
+		SurfaceAirLayer = 1;
+		SurfaceAirLayerGlobal = AirLayer0 + SurfaceAirLayer;
 		CloudLayer = AirLayer0 + AirLayers;
 
 	}

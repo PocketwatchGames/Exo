@@ -48,7 +48,7 @@ public class WorldSimComponent : MonoBehaviour
 	private int _activeSimState;
 	private Action _prepNextFrame;
 
-	public delegate void TickEventHandler();
+	public delegate void TickEventHandler(JobHandle tickJobHandle);
 	public event TickEventHandler OnTick;
 
 	public void Awake()
@@ -112,7 +112,11 @@ public class WorldSimComponent : MonoBehaviour
 
 	private void Tick(ref SimState state, int ticksToAdvance)
 	{
-		bool degen = _worldSim.Tick(
+		bool degen;
+		JobHandle tickJobHandle;
+		_worldSim.Tick(
+			out tickJobHandle,
+			out degen,
 			_simStates,
 			_simStateCount,
 			ticksToAdvance, 
@@ -124,7 +128,7 @@ public class WorldSimComponent : MonoBehaviour
 			ref _activeSimState,
 			ref _prepNextFrame);
 
-		OnTick?.Invoke();
+		OnTick?.Invoke(tickJobHandle);
 
 		if (degen)
 		{
@@ -152,7 +156,7 @@ public class WorldSimComponent : MonoBehaviour
 
 		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref TempState, ref StaticState, ref WorldData, ref SimSettings);
 
-		OnTick?.Invoke();
+		OnTick?.Invoke(default(JobHandle));
 	}
 
 	public void StepTime()

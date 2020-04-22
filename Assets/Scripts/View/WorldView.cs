@@ -182,6 +182,7 @@ public class WorldView : MonoBehaviour {
 
 	private Action _prepareMesh;
 	private bool _advanceRenderState;
+	private JobHandle _tickJobHandle;
 
 	public void Start()
 	{
@@ -412,8 +413,14 @@ public class WorldView : MonoBehaviour {
 		_tickLerpTimeTotal = lerpTime;
 	}
 
-	private void OnSimTick()
+	private void OnSimTick(JobHandle tickJobHandle)
 	{
+		_tickJobHandle = tickJobHandle;
+
+		// TODO: we want the view to kick off the next simulation step in update
+		_tickJobHandle.Complete();
+
+
 		_advanceRenderState = true;
 	}
 
@@ -473,7 +480,7 @@ public class WorldView : MonoBehaviour {
 			PlanktonMass = from.PlanktonMass[Sim.WorldData.WaterLayers - 2],
 			LavaMass = from.LavaMass,
 			LavaTemperature = from.LavaTemperature,
-			SurfaceElevation = dependent.LayerElevation[1],
+			SurfaceElevation = dependent.LayerElevation[worldData.SurfaceAirLayer],
 			GroundWater = from.GroundWater,
 			MeshOverlayData = meshOverlay.Values,
 			MeshOverlayColors = meshOverlay.ColorValuePairs,
