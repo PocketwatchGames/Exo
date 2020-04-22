@@ -121,8 +121,12 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> PlanktonGlucose;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> FlowPercent;
+	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
+	[ReadOnly] public float CoriolisTerm;
+	[ReadOnly] public float SecondsPerTick;
 
 	public void Execute(int i)
 	{
@@ -163,8 +167,20 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 							carbon += Carbon[nIndex] * flowPercent;
 							planktonMass += PlanktonMass[nIndex] * flowPercent;
 							planktonGlucose += PlanktonGlucose[nIndex] * flowPercent;
-							velocity += Velocity[nIndex] * (massIncoming + saltIncoming);
 							temperature += Temperature[nIndex] * (massIncoming + saltIncoming);
+
+							// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
+							var deflectedVelocity = Velocity[nIndex] + math.cross(Positions[nIndex], Velocity[nIndex]) * CoriolisMultiplier[nIndex] * CoriolisTerm * SecondsPerTick;
+
+							// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+							var deflectedVertical = math.dot(deflectedVelocity, Positions[nIndex]);
+							deflectedVelocity -= Positions[nIndex] * deflectedVertical;
+							deflectedVelocity -= Positions[i] * math.dot(Positions[i], deflectedVelocity);
+							deflectedVelocity += deflectedVertical * Positions[i];
+
+
+							velocity += deflectedVelocity * (massIncoming + saltIncoming);
+
 
 							break;
 						}

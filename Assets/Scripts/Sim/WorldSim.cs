@@ -1966,7 +1966,11 @@ public class WorldSim {
 				Salt = nextState.SaltMass[worldData.SurfaceWaterLayer],
 				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
 				FlowPercent = tempState.FlowPercentWater,
-				Neighbors = staticState.Neighbors
+				Positions = staticState.SphericalPosition,
+				Neighbors = staticState.Neighbors,
+				CoriolisMultiplier = staticState.CoriolisMultiplier,
+				CoriolisTerm = coriolisTerm,
+				SecondsPerTick = worldData.SecondsPerTick
 			}, waterFlowJobHandle);
 
 			waterFlowJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()

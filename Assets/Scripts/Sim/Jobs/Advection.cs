@@ -162,13 +162,17 @@ public struct AdvectionAirJob : IJobParallelFor {
 				var deflectedVelocity = Velocity[n] + math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
 
 				// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-				var deflectedVertical = Utils.GetVerticalComponent(deflectedVelocity, Positions[n]);
-				deflectedVelocity += deflectedVertical * (Positions[i] - Positions[n]);
+				var deflectedVertical = math.dot(deflectedVelocity, Positions[n]);
+				deflectedVelocity -= Positions[n] * deflectedVertical;
+				deflectedVelocity -= Positions[i] * math.dot(Positions[i], deflectedVelocity);
+				deflectedVelocity += deflectedVertical * Positions[i];
 
 
 
-				// TODO: is this really appropriate? do we have vertical motion due to the atmospheric layer changing height, or is this accounted for in the pressure gradient?
-				//deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
+				// adjust vertical wind velocity when we hit a mountain or go down a valley
+				// TODO: this should be based on the difference of the current velocity's slope and the terrain slope
+				// probably apply this when we generate wind forces
+				//deflectedVelocity += Positions[i] * (layerMiddle - LayerMiddle[n]) * TicksPerSecond;
 
 				// TODO: this is temp
 				// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
@@ -450,13 +454,15 @@ public struct AdvectionWaterJob : IJobParallelFor {
 						var deflectedVelocity = Velocity[n] + math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
 
 						// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-						var deflectedVertical = Utils.GetVerticalComponent(deflectedVelocity, Positions[n]);
-						deflectedVelocity += deflectedVertical * (Positions[i] - Positions[n]);
+						var deflectedVertical = math.dot(deflectedVelocity, Positions[n]);
+						deflectedVelocity -= Positions[n] * deflectedVertical;
+						deflectedVelocity -= Positions[i] * math.dot(Positions[i], deflectedVelocity);
+						deflectedVelocity += deflectedVertical * Positions[i];
 
 
 
-						// TODO: is this really appropriate? do we have vertical motion due to the atmospheric layer changing height, or is this accounted for in the pressure gradient?
-						//deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
+						// TODO: adjust vertical wind velocity when we hit a mountain or go down a valley
+						// deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
 
 						// TODO: this is temp
 						// need to deal with centrifugal force/gravity so that as air moves horizontally, it can fly into the air or get pulled to earth
