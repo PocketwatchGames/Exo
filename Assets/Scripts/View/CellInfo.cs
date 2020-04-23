@@ -308,5 +308,90 @@ public static class CellInfo {
 		return energy * 1000 / secondsPerTick;
 	}
 
+	public static void PrintState(string title, int i, ref StaticState staticState, ref SimState state, ref WorldData worldData, List<string> degenVarNames)
+	{
+		StringBuilder s = new StringBuilder();
+		s.AppendFormat("{0} Index: {1} Time: {2}", title, i, state.PlanetState.Ticks);
+		foreach (var n in degenVarNames)
+		{
+			s.AppendFormat(" | {0}", n);
+		}
+		s.AppendLine("");
+		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
+		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
+		s.AppendFormat("Roughness: {0}\n", state.Roughness[i]);
+		s.AppendFormat("SoilFertility: {0}\n", state.GroundCarbon[i]);
+		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
+		s.AppendFormat("TerrainTemperature: {0}\n", state.GroundTemperature[i]);
+		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
+		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
+		for (int j = 0; j < StaticState.GetMaxNeighbors(i, staticState.Neighbors); j++)
+		{
+			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.FlowWater[i * StaticState.MaxNeighbors + j]);
+		}
+
+		s.AppendFormat("\nLAVA\n");
+		s.AppendFormat("Mass: {0}\n", state.LavaMass[i]);
+		s.AppendFormat("Temperature: {0}\n", state.LavaTemperature[i]);
+		s.AppendFormat("MagmaMass: {0}\n", state.MagmaMass[i]);
+		s.AppendFormat("CrustDepth: {0}\n", state.CrustDepth[i]);
+
+		s.AppendFormat("\nFLORA\n");
+		s.AppendFormat("Mass: {0}\n", state.FloraMass[i]);
+		s.AppendFormat("Glucose: {0}\n", state.FloraGlucose[i]);
+		s.AppendFormat("Water: {0}\n", state.FloraWater[i]);
+		s.AppendFormat("Temperature: {0}\n", state.FloraTemperature[i]);
+
+		s.AppendFormat("\nPLANKTON\n");
+		s.AppendFormat("Mass: {0}\n", state.PlanktonMass[worldData.SurfaceWaterLayer][i]);
+		s.AppendFormat("Glucose: {0}\n", state.PlanktonGlucose[worldData.SurfaceWaterLayer][i]);
+
+		s.AppendFormat("\nCLOUD\n");
+		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
+		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);
+
+		for (int j = worldData.AirLayers - 2; j >= 1; j--)
+		{
+			s.AppendFormat("\nAIR LAYER {0}\n", j);
+			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[j][i]);
+			s.AppendFormat("Vapor: {0}\n", state.AirVapor[j][i]);
+			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbon[j][i]);
+			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[j][i]);
+		}
+
+		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
+		{
+			s.AppendFormat("\nWATER LAYER {0}\n", j);
+			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[j][i]);
+			s.AppendFormat("SaltMass: {0}\n", state.SaltMass[j][i]);
+			s.AppendFormat("Temperature: {0}\n", state.WaterTemperature[j][i]);
+			s.AppendFormat("Carbon: {0}\n", state.WaterCarbon[j][i]);
+			s.AppendFormat("Velocity: {0}\n", state.WaterVelocity[j][i]);
+		}
+		Debug.Log(s);
+	}
+	public static void PrintDependentState(string title, int i, ref TempState dependent, ref WorldData worldData)
+	{
+		StringBuilder s = new StringBuilder();
+		s.AppendFormat("{0} Index: {1}\n", title, i);
+		s.AppendFormat("Surface Elevation: {0}\n", dependent.LayerElevation[worldData.SurfaceAirLayer][i]);
+		s.AppendFormat("Water Depth: {0}\n", dependent.WaterLayerDepth[1][i]);
+		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
+		s.AppendFormat("Flora Coverage: {0}\n", dependent.FloraCoverage[i]);
+		s.AppendFormat("Ice Terrain SA: {0}\n", dependent.SurfaceAreaIceTerrain[i]);
+		s.AppendFormat("Ice Flora SA: {0}\n", dependent.SurfaceAreaIceFlora[i]);
+		s.AppendFormat("Ice Water SA: {0}\n", dependent.SurfaceAreaIceWater[i]);
+		s.AppendFormat("Air Ice SA: {0}\n", dependent.SurfaceAreaAirIce[i]);
+		s.AppendFormat("Cloud Elevation: {0}\n", dependent.CloudElevation[i]);
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			s.AppendFormat("Water Coverage: {0}\n", dependent.WaterCoverage[j][i]);
+		}
+		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		{
+		}
+		Debug.Log(s);
+	}
+
 
 }

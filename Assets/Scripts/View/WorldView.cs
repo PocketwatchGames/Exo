@@ -114,6 +114,7 @@ public class WorldView : MonoBehaviour {
 	[HideInInspector] public WindOverlay ActiveWindOverlay;
 	[HideInInspector] public int ActiveMeshLayerWater = 1;
 	[HideInInspector] public int ActiveMeshLayerAir = 1;
+	[HideInInspector] public DisplayState DisplayState;
 
 
 	private JobHelper _renderJobHelper;
@@ -172,24 +173,16 @@ public class WorldView : MonoBehaviour {
 
 	private const int _batchCount = 128;
 
-	private Unity.Mathematics.Random _random;
-
 	private bool _skyboxActive = false;
 	private float _skyboxExposure = 1;
 	private float _skyboxExposureDest = 1;
 	private float _skyboxExposureStart = 1;
 	private float _skyboxExposureTime = 0;
 
-	private Action _prepareMesh;
-	public DisplayState DisplayState;
-	private TempState _tempState;
-
 	public void Start()
 	{
 		Sim.OnTick += OnSimTick;
 		GameplayManager.OnSetActiveCell += OnSetActiveCell;
-
-		_random = new Unity.Mathematics.Random(1);
 
 		_normalizedRainbow = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.black, 0),
@@ -292,8 +285,6 @@ public class WorldView : MonoBehaviour {
 
 		DisplayState = new DisplayState();
 		DisplayState.Init(Sim.CellCount, ref Sim.WorldData);
-		_tempState = new TempState();
-		_tempState.Init(Sim.CellCount, ref Sim.WorldData);
 
 		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
 
@@ -335,7 +326,6 @@ public class WorldView : MonoBehaviour {
 
 		Foliage.Dispose();
 		DisplayState.Dispose();
-		_tempState.Dispose();
 	}
 
 	public void Update()
@@ -395,18 +385,16 @@ public class WorldView : MonoBehaviour {
 
 		var displayJob = default(JobHandle);
 		var lastDisplay = DisplayState;
-		displayJob = TempState.Update(_renderJobHelper, ref Sim.LastSimState, ref _tempState, ref Sim.WorldData, ref Sim.StaticState, displayJob);
-		displayJob.Complete();
 		if (Sim.SimSettings.CollectOverlay)
 		{
 			DisplayState = new DisplayState();
 			DisplayState.Init(Sim.StaticState.Count, ref Sim.WorldData);
-			displayJob = DisplayState.Update(ref DisplayState, ref lastDisplay, ref Sim.WorldData, ref _tempState, ref Sim.LastSimState, ref Sim.StaticState, ref Sim.SimSettings);
+			displayJob = DisplayState.Update(ref DisplayState, ref lastDisplay, ref Sim.WorldData, ref Sim.LastTempState, ref Sim.LastSimState, ref Sim.StaticState, ref Sim.SimSettings);
 		}
 
 
-		var buildRenderStateJob = BuildRenderState(ref Sim.LastSimState, ref _tempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, displayJob);
-		var foliageJob = Foliage.Tick(ref _tempState, displayJob);
+		var buildRenderStateJob = BuildRenderState(ref Sim.LastSimState, ref Sim.LastTempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, displayJob);
+		var foliageJob = Foliage.Tick(ref Sim.LastTempState, displayJob);
 
 		displayJob = JobHandle.CombineDependencies(displayJob, buildRenderStateJob, foliageJob);
 		displayJob.Complete();
@@ -430,6 +418,7 @@ public class WorldView : MonoBehaviour {
 			lerpTime = 0.1f + Sim.TimeTillTick / Sim.TimeScale;
 		}
 		StartLerp(lerpTime);
+
 
 	}
 

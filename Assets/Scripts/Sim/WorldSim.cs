@@ -56,14 +56,14 @@ public class WorldSim {
 
 
 	public JobHandle Tick(
-		SimState[] states, 
-		int stateCount, 
 		int ticksToAdvance,
-		ref TempState tempState,
+		SimState[] states,
+		TempState[] tempStates,
 		ref StaticState staticState,
 		ref WorldData worldData,
 		ref SimSettings settings,
-		ref int curStateIndex)
+		ref int curStateIndex,
+		ref int curTempStateIndex)
 	{
 		var tickJobHandle = default(JobHandle);
 		foreach (var d in jobHandleDependencies)
@@ -84,11 +84,15 @@ public class WorldSim {
 		ref var lastState = ref states[lastStateIndex];
 		while (curStateIndex == lastStateIndex || curStateIndex == firstStateIndex)
 		{
-			curStateIndex = (curStateIndex + 1) % stateCount;
+			curStateIndex = (curStateIndex + 1) % states.Length;
 		}
 		ref var nextState = ref states[curStateIndex];
 
+		curTempStateIndex = (curTempStateIndex + 1) % tempStates.Length;
+		ref var tempState = ref tempStates[curTempStateIndex];
+
 		tickJobHandle = tempState.Clear(staticState.Count, ref worldData, tickJobHandle);
+		tickJobHandle = TempState.Update(SimJob, ref lastState, ref tempState, ref worldData, ref staticState, tickJobHandle);
 
 		#endregion
 
@@ -829,215 +833,10 @@ public class WorldSim {
 
 		#endregion
 
-		// TODO: put this in a job
-		//bool degenerate = false;
-		//if (SimSettings.CheckForDegeneracy)
-		//{
-		//	degenerate = WorldSim.CheckForDegeneracy(_cellCount, ref nextState, ref lastState, ref StaticState, ref _tempState, ref WorldData);
-		//}
-
-		//if (SimSettings.LogState)
-		//{
-		//	PrintState("State", SimSettings.LogStateIndex, ref StaticState, ref nextState, ref WorldData, new List<string>());
-		//	PrintDependentState("Dependent Vars", SimSettings.LogStateIndex, ref _tempState, ref WorldData);
-		//}
 
 
 		return tickJobHandle;
 
-	}
-
-	public static bool CheckForDegeneracy(int cellCount, ref SimState state, ref SimState lastState, ref StaticState staticState, ref TempState dependent, ref WorldData worldData)
-	{
-		bool degen = false;
-		SortedSet<int> degenIndices = new SortedSet<int>();
-		List<string> degenVarNames = new List<string>();
-		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "TerrainTemperature", state.GroundTemperature, 0, 1200, degenVarNames);
-		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "FloraTemperature", state.FloraTemperature, 0, 1200, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "FloraMass", state.FloraMass, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "FloraWater", state.FloraWater, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "FloraGlucose", state.FloraGlucose, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "PlanktonMass", state.PlanktonMass[worldData.SurfaceWaterLayer], degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "PlanktonGlucose", state.PlanktonGlucose[worldData.SurfaceWaterLayer], degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "GroundWater", state.GroundWater, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "CloudMass", state.CloudMass, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "CloudDropletMass", state.CloudDropletMass, degenVarNames);
-		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "CloudElevation", dependent.CloudElevation, -100000, 100000, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "IceMass", state.IceMass, degenVarNames);
-		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "IceTemperature", state.IceTemperature, 0, 1200, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "CrustDepth", state.LavaMass, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "MagmaMass", state.LavaMass, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "LavaMass", state.LavaMass, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "LavaTemperature", state.LavaTemperature, degenVarNames);
-		for (int i = 1; i < worldData.AirLayers - 1; i++)
-		{
-			degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirTemperature" + i, state.AirTemperaturePotential[i], 0, 1200, degenVarNames);
-			degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirVapor" + i, state.AirVapor[i], 0, 10000, degenVarNames);
-			degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonDioxide" + i, state.AirCarbon[i], degenVarNames);
-			degen |= CheckDegen(cellCount, degenIndices, "AirVelocity" + i, state.AirVelocity[i], degenVarNames);
-		}
-		for (int i = worldData.WaterLayers - 2; i >= 1 ; i--)
-		{
-			degen |= CheckDegenPosValues(cellCount, degenIndices, "WaterMass" + i, state.WaterMass[i], degenVarNames);
-			degen |= CheckDegenPosValues(cellCount, degenIndices, "SaltMass" + i, state.SaltMass[i], degenVarNames);
-			degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonMass" + i, state.WaterCarbon[i], degenVarNames);
-			degen |= CheckDegenPosValues(cellCount, degenIndices, "Plankton" + i, state.PlanktonMass[i], degenVarNames);
-			degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "WaterTemperature" + i, state.WaterTemperature[i], 0, 1200, degenVarNames);
-			degen |= CheckDegen(cellCount, degenIndices, "Current" + i, state.WaterVelocity[i], degenVarNames);
-		}
-		if (degen)
-		{
-			foreach (var i in degenIndices)
-			{
-				PrintState("Degenerate", i, ref staticState, ref state, ref worldData, degenVarNames);
-				PrintDependentState("Dependent Vars", i, ref dependent, ref worldData);
-				PrintState("Last State", i, ref staticState, ref lastState, ref worldData, new List<string>());
-			}
-			Debug.Break();
-		}
-		return degen;
-
-	}
-
-	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, List<string> degenVarNames)
-	{
-		for (int i = 0; i < count; i++)
-		{
-			float v = values[i];
-			if (!math.isfinite(v))
-			{
-				degenVarNames.Add(name);
-				degenIndices.Add(i);
-				return true;
-			}
-		}
-		return false;
-	}
-	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeArray<float3> values, List<string> degenVarNames)
-	{
-		for (int i = 0; i < count; i++)
-		{
-			if (!math.isfinite(values[i].x) || !math.isfinite(values[i].y) || !math.isfinite(values[i].z))
-			{
-				degenVarNames.Add(name);
-				degenIndices.Add(i);
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static bool CheckDegenPosValues(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, List<string> degenVarNames)
-	{
-		for (int i = 0; i < count; i++)
-		{
-			if (!math.isfinite(values[i]) || values[i] < 0)
-			{
-				degenVarNames.Add(name);
-				degenIndices.Add(i);
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static bool CheckDegenMinMaxValues(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, float min, float max, List<string> degenVarNames)
-	{
-		for (int i = 0; i < count; i++)
-		{
-			if (!math.isfinite(values[i]) || values[i] < min || values[i] > max)
-			{
-				degenVarNames.Add(name);
-				degenIndices.Add(i);
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public static void PrintState(string title, int i, ref StaticState staticState, ref SimState state, ref WorldData worldData, List<string> degenVarNames)
-	{
-		StringBuilder s = new StringBuilder();
-		s.AppendFormat("{0} Index: {1} Time: {2}", title, i, state.PlanetState.Ticks);
-		foreach (var n in degenVarNames)
-		{
-			s.AppendFormat(" | {0}", n);
-		}
-		s.AppendLine("");
-		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
-		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
-		s.AppendFormat("Roughness: {0}\n", state.Roughness[i]);
-		s.AppendFormat("SoilFertility: {0}\n", state.GroundCarbon[i]);
-		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
-		s.AppendFormat("TerrainTemperature: {0}\n", state.GroundTemperature[i]);
-		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
-		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
-		for (int j=0;j<StaticState.GetMaxNeighbors(i, staticState.Neighbors);j++)
-		{
-			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.FlowWater[i * StaticState.MaxNeighbors + j]);
-		}
-
-		s.AppendFormat("\nLAVA\n");
-		s.AppendFormat("Mass: {0}\n", state.LavaMass[i]);
-		s.AppendFormat("Temperature: {0}\n", state.LavaTemperature[i]);
-		s.AppendFormat("MagmaMass: {0}\n", state.MagmaMass[i]);
-		s.AppendFormat("CrustDepth: {0}\n", state.CrustDepth[i]);
-
-		s.AppendFormat("\nFLORA\n");
-		s.AppendFormat("Mass: {0}\n", state.FloraMass[i]);
-		s.AppendFormat("Glucose: {0}\n", state.FloraGlucose[i]);
-		s.AppendFormat("Water: {0}\n", state.FloraWater[i]);
-		s.AppendFormat("Temperature: {0}\n", state.FloraTemperature[i]);
-
-		s.AppendFormat("\nPLANKTON\n");
-		s.AppendFormat("Mass: {0}\n", state.PlanktonMass[worldData.SurfaceWaterLayer][i]);
-		s.AppendFormat("Glucose: {0}\n", state.PlanktonGlucose[worldData.SurfaceWaterLayer][i]);
-
-		s.AppendFormat("\nCLOUD\n");
-		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
-		s.AppendFormat("CloudDropletMass: {0}\n", state.CloudDropletMass[i]);
-
-		for (int j = worldData.AirLayers - 2; j >= 1; j--)
-		{
-			s.AppendFormat("\nAIR LAYER {0}\n", j);
-			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[j][i]);
-			s.AppendFormat("Vapor: {0}\n", state.AirVapor[j][i]);
-			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbon[j][i]);
-			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[j][i]);
-		}
-
-		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
-		{
-			s.AppendFormat("\nWATER LAYER {0}\n", j);
-			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[j][i]);
-			s.AppendFormat("SaltMass: {0}\n", state.SaltMass[j][i]);
-			s.AppendFormat("Temperature: {0}\n", state.WaterTemperature[j][i]);
-			s.AppendFormat("Carbon: {0}\n", state.WaterCarbon[j][i]);
-			s.AppendFormat("Velocity: {0}\n", state.WaterVelocity[j][i]);
-		}
-		Debug.Log(s);
-	}
-	public static void PrintDependentState(string title, int i, ref TempState dependent, ref WorldData worldData)
-	{
-		StringBuilder s = new StringBuilder();
-		s.AppendFormat("{0} Index: {1}\n", title, i);
-		s.AppendFormat("Surface Elevation: {0}\n", dependent.LayerElevation[worldData.SurfaceAirLayer][i]);
-		s.AppendFormat("Water Depth: {0}\n", dependent.WaterLayerDepth[1][i]);
-		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
-		s.AppendFormat("Flora Coverage: {0}\n", dependent.FloraCoverage[i]);
-		s.AppendFormat("Ice Terrain SA: {0}\n", dependent.SurfaceAreaIceTerrain[i]);
-		s.AppendFormat("Ice Flora SA: {0}\n", dependent.SurfaceAreaIceFlora[i]);
-		s.AppendFormat("Ice Water SA: {0}\n", dependent.SurfaceAreaIceWater[i]);
-		s.AppendFormat("Air Ice SA: {0}\n", dependent.SurfaceAreaAirIce[i]);
-		s.AppendFormat("Cloud Elevation: {0}\n", dependent.CloudElevation[i]);
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
-		{
-			s.AppendFormat("Water Coverage: {0}\n", dependent.WaterCoverage[j][i]);
-		}
-		for (int j = 1; j < worldData.AirLayers - 1; j++)
-		{
-		}
-		Debug.Log(s);
 	}
 
 	private void DoEnergyCycle(

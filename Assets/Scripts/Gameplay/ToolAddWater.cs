@@ -12,7 +12,7 @@ public class ToolAddWater : GameTool {
 
 	override public void OnDragMove(Vector3 worldPos, int cellIndex, Vector2 direction) {
 		Gameplay.SetActiveCell(cellIndex, false);
-		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.TempState); });
+		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.LastTempState); });
 	}
 	public override void OnUpdate(Vector3 worldPos, int cellIndex)
 	{
