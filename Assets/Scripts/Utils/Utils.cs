@@ -12,13 +12,14 @@ public static class Utils {
 	public static float Sqr(float x) { return x * x; }
 	public static int Sqr(int x) { return x * x; }
 
-	public static void MemsetArray<T>(NativeList<JobHandle> handles, int count, NativeArray<T> array, T value) where T : struct
+
+	public static JobHandle MemsetArray<T>(int count, JobHandle dependency, NativeArray<T> array, T value) where T : struct
 	{
-		handles.Add(new Unity.Entities.MemsetNativeArray<T>()
+		return new Unity.Entities.MemsetNativeArray<T>()
 		{
 			Source = array,
 			Value = value
-		}.Schedule(count, 1));
+		}.Schedule(count, 128, dependency);
 	}
 
 	public static JobHandle MemCopy(NativeArray<float> dest, NativeArray<float> src, JobHandle dependencies) {
@@ -27,7 +28,7 @@ public static class Utils {
 			Dest = dest,
 			Src = src,
 
-		}.Schedule(src.Length, 1, dependencies);
+		}.Schedule(src.Length, 128, dependencies);
 	}
 
 
@@ -194,10 +195,10 @@ public class JobHelper {
 		_cellCount = cellCount;
 	}
 
-	public static int DefaultBatchCount = 100;
-	public JobHandle Run<T>(T job, JobHandle dependences = default(JobHandle)) where T : struct, IJobParallelFor
+	public static int DefaultBatchCount = 16;
+	public JobHandle Run<T>(T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor
 	{
-		dependences.Complete();
+		dependencies.Complete();
 		job.Run(_cellCount);
 		return default(JobHandle);
 	}

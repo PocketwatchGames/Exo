@@ -88,17 +88,16 @@ public class FoliageManager
 		_foliageTransform.Dispose();
 	}
 
-	public void Tick(ref TempState dependent)
+	public JobHandle Tick(ref TempState tempState, JobHandle dependency)
 	{
 		var updateStateJob = new UpdateFoliageSimStateJob()
 		{
 			State = _foliageState,
 			Data = _foliageData,
-			FloraCoverage = dependent.FloraCoverage,
+			FloraCoverage = tempState.FloraCoverage,
 			MinScale = MinTreeScale
 		};
-		var handle = updateStateJob.Schedule(_foliageState.Length, 100);
-		handle.Complete();
+		return updateStateJob.Schedule(_foliageState.Length, 100, dependency);
 	}
 
 

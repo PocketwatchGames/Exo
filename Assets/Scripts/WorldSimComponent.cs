@@ -8,7 +8,7 @@ using System;
 
 public class WorldSimComponent : MonoBehaviour
 {
-	private const int _simStateCount = 2;
+	private const int _simStateCount = 3;
 
 	[Header("Init")]
 	public int Seed;
@@ -35,7 +35,6 @@ public class WorldSimComponent : MonoBehaviour
 	public int CellCount { get; private set; }
 	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
 	public ref TempState TempState { get { return ref _tempState; } }
-	public ref DisplayState DisplayState { get { return ref _displayState; } }
 	public float TimeTillTick { get; private set; }
 	public float InverseCellCount { get; private set; }
 
@@ -44,11 +43,10 @@ public class WorldSimComponent : MonoBehaviour
 	private WorldGenData _worldGenData = new WorldGenData();
 	private SimState[] _simStates;
 	private TempState _tempState;
-	private DisplayState _displayState;
 	private int _activeSimState;
-	private Action _prepNextFrame;
+	private JobHandle _tickJobHandle;
 
-	public delegate void TickEventHandler(JobHandle tickJobHandle);
+	public delegate void TickEventHandler();
 	public event TickEventHandler OnTick;
 
 	public void Awake()
@@ -75,22 +73,23 @@ public class WorldSimComponent : MonoBehaviour
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempState);
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref ActiveSimState, ref TempState, ref StaticState, ref WorldData, ref SimSettings);
+		OnTick?.Invoke();
 	}
 
 	public void OnDestroy()
 	{
+		_tickJobHandle.Complete();
 		_worldSim.Dispose(ref WorldData);
 		StaticState.Dispose();
 		Icosphere.Dispose();
-		_tempState.Dispose(ref WorldData, _prepNextFrame);
-		_displayState.Dispose();
+		_tempState.Dispose(ref WorldData);
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i].Dispose();
 		}
 	}
 
+	private int _ticksToAdvance = 0;
 	public void Update()
 	{
 		if (TimeTillTick > -1)
@@ -99,42 +98,43 @@ public class WorldSimComponent : MonoBehaviour
 		}
 		if (TimeTillTick <= 0)
 		{
-			int iterations = 0;
 			while (TimeTillTick <= 0)
 			{
 				TimeTillTick += TicksPerRealSecond;
-				iterations++;
+				_ticksToAdvance++;
 			}
-			Tick(ref _simStates[_activeSimState], iterations);
+
+			_tickJobHandle.Complete();
+			OnTick?.Invoke();
+
+
+			//if (degenerate)
+			//{
+			//	TimeScale = 0;
+			//}
 
 		}
 	}
 
-	private void Tick(ref SimState state, int ticksToAdvance)
+	public void LateUpdate()
 	{
-		bool degen;
-		JobHandle tickJobHandle;
-		_worldSim.Tick(
-			out tickJobHandle,
-			out degen,
-			_simStates,
-			_simStateCount,
-			ticksToAdvance, 
-			ref _tempState, 
-			ref _displayState, 
-			ref StaticState, 
-			ref WorldData, 
-			ref SimSettings,
-			ref _activeSimState,
-			ref _prepNextFrame);
-
-		OnTick?.Invoke(tickJobHandle);
-
-		if (degen)
+		if (_ticksToAdvance > 0)
 		{
-			TimeScale = 0;
+			// TODO: make there be 3 sim states and don't overwrite the one that we are using for display
+			_tickJobHandle = _worldSim.Tick(
+				_simStates,
+				_simStateCount,
+				_ticksToAdvance,
+				ref _tempState,
+				ref StaticState,
+				ref WorldData,
+				ref SimSettings,
+				ref _activeSimState);
+			JobHandle.ScheduleBatchedJobs();
+			_ticksToAdvance = 0;
 		}
 	}
+
 
 	public delegate void EditSimStateFunc(ref SimState lastState, ref SimState nextState);
 	public void Edit(EditSimStateFunc editSimState)
@@ -143,20 +143,19 @@ public class WorldSimComponent : MonoBehaviour
 		_activeSimState = (_activeSimState + 1) % _simStateCount;
 		ref var nextState = ref _simStates[_activeSimState];
 
-		_prepNextFrame?.Invoke();
+		var tempStateJobHandle = _tempState.Clear(StaticState.Count, ref WorldData, default(JobHandle));
+		tempStateJobHandle.Complete();
 
 		editSimState(ref lastState, ref nextState);
 
 		List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
-		TempState.Update(_worldSim.SimJob, ref nextState, ref TempState, ref WorldData, default(JobHandle), tempArrays).Complete();
+		TempState.Update(_worldSim.SimJob, ref nextState, ref TempState, ref WorldData, ref StaticState, default(JobHandle)).Complete();
 		foreach (var i in tempArrays)
 		{
 			i.Dispose();
 		}
 
-		UpdateDisplayIncomplete(CellCount, ref DisplayState, ref nextState, ref TempState, ref StaticState, ref WorldData, ref SimSettings);
-
-		OnTick?.Invoke(default(JobHandle));
+		OnTick?.Invoke();
 	}
 
 	public void StepTime()
@@ -165,15 +164,5 @@ public class WorldSimComponent : MonoBehaviour
 		TimeTillTick = 0;
 	}
 
-
-	static public void UpdateDisplayIncomplete(int cellCount, ref DisplayState displayState, ref SimState activeSimState, ref TempState dependentState, ref StaticState staticState, ref WorldData worldData, ref SimSettings settings)
-	{
-		displayState.Dispose();
-
-		displayState = new DisplayState();
-		displayState.Init(cellCount, ref worldData);
-
-		DisplayState.Update(ref displayState, ref displayState, ref worldData, ref dependentState, ref activeSimState, ref staticState, ref settings).Complete();
-	}
 
 }

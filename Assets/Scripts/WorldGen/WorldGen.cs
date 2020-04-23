@@ -465,7 +465,7 @@ public static class WorldGen {
 		worldGenJobHandle.Complete();
 
 		var tempArrays = new List<NativeArray<float>>();
-		TempState.Update(worldGenJobHelper,	ref state, ref dependent, ref worldData, worldGenJobHandle,	tempArrays).Complete();
+		TempState.Update(worldGenJobHelper,	ref state, ref dependent, ref worldData, ref staticState, worldGenJobHandle).Complete();
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
@@ -488,7 +488,7 @@ public static class WorldGen {
 		///////////////////////////////////
 		// Update dependent variables
 
-		TempState.Update(worldGenJobHelper, ref state, ref dependent, ref worldData, worldGenJobHandle, tempArrays).Complete();
+		TempState.Update(worldGenJobHelper, ref state, ref dependent, ref worldData, ref staticState, worldGenJobHandle).Complete();
 
 		waterMassTotal.Dispose();
 		waterDepthTotal.Dispose();
@@ -502,7 +502,7 @@ public static class WorldGen {
 			a.Dispose();
 		}
 
-		dependent.Clear(staticState.Count, ref worldData).Invoke();
+		dependent.Clear(staticState.Count, ref worldData, default(JobHandle)).Complete();
 
 	}
 

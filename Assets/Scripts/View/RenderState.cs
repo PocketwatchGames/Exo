@@ -17,8 +17,8 @@ public struct RenderState {
 	public float3 Position;
 	public float3 Rotation;
 
-	public NativeArray<Vector4> TerrainColor1;
-	public NativeArray<Vector4> TerrainColor2;
+	public NativeArray<float4> TerrainColor1;
+	public NativeArray<float4> TerrainColor2;
 	public NativeArray<float> TerrainElevation;
 	public NativeArray<Color32> WaterColor;
 	public NativeArray<float> WaterElevation;
@@ -32,8 +32,8 @@ public struct RenderState {
 
 	public void Init(int count)
 	{
-		TerrainColor1 = new NativeArray<Vector4>(count, Allocator.Persistent);
-		TerrainColor2 = new NativeArray<Vector4>(count, Allocator.Persistent);
+		TerrainColor1 = new NativeArray<float4>(count, Allocator.Persistent);
+		TerrainColor2 = new NativeArray<float4>(count, Allocator.Persistent);
 		TerrainElevation = new NativeArray<float>(count, Allocator.Persistent);
 		WaterColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		WaterElevation = new NativeArray<float>(count, Allocator.Persistent);
@@ -65,8 +65,8 @@ public struct RenderState {
 
 [BurstCompile]
 public struct BuildRenderStateCellJob : IJobParallelFor {
-	public NativeArray<Vector4> TerrainColor1;
-	public NativeArray<Vector4> TerrainColor2;
+	public NativeArray<float4> TerrainColor1;
+	public NativeArray<float4> TerrainColor2;
 	public NativeArray<float> TerrainElevation;
 	public NativeArray<Color32> WaterColor;
 	public NativeArray<Color32> OverlayColor;
@@ -129,8 +129,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 	public void Execute(int i)
 	{
-		Vector4 terrainColor1;
-		Vector4 terrainColor2;
+		float4 terrainColor1;
+		float4 terrainColor2;
 		float terrainElevation;
 		Color32 waterColor;
 		Color32 overlayColor;
@@ -167,14 +167,14 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		float floraCoverage = FloraCoverage[i] * DisplayFloraWeight;
 		float dirtCoverage = 1.0f;
 
-		terrainColor1 = new Vector4(
+		terrainColor1 = new float4(
 			0.5f,
 			dirtCoverage * (1 - fertility),
 			dirtCoverage * fertility,
 			floraCoverage
 			);
 
-		terrainColor2 = new Vector4(
+		terrainColor2 = new float4(
 			iceCoverage,
 			waterCoverage,
 			lavaCoverage,
@@ -294,8 +294,8 @@ public struct BuildTerrainVertsJob : IJobParallelFor {
 
 	[ReadOnly] public NativeArray<float> TerrainElevation;
 	[ReadOnly] public NativeArray<float> WaterElevation;
-	[ReadOnly] public NativeArray<Vector4> TerrainColor1;
-	[ReadOnly] public NativeArray<Vector4> TerrainColor2;
+	[ReadOnly] public NativeArray<float4> TerrainColor1;
+	[ReadOnly] public NativeArray<float4> TerrainColor2;
 	[ReadOnly] public NativeArray<Color32> WaterColor;
 	[ReadOnly] public NativeArray<float3> StandardVerts;
 	[ReadOnly] public NativeArray<Color32> OverlayColor;
@@ -382,6 +382,18 @@ struct LerpJobColor32 : IJobParallelFor {
 	}
 }
 
+
+[BurstCompile]
+struct LerpJobfloat4 : IJobParallelFor {
+	public NativeArray<float4> Out;
+	[ReadOnly] public NativeArray<float4> Start;
+	[ReadOnly] public NativeArray<float4> End;
+	[ReadOnly] public float Progress;
+	public void Execute(int i)
+	{
+		Out[i] = math.lerp(Start[i], End[i], Progress);
+	}
+}
 
 [BurstCompile]
 struct LerpJobfloat3 : IJobParallelFor {

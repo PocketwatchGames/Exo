@@ -18,10 +18,12 @@ public class WorldSim {
 
 
 	private int _cellCount;
-	private int _batchCount = 100;
 
-	List<NativeList<JobHandle>> jobHandleDependencies = new List<NativeList<JobHandle>>();
-	List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
+	private NativeArray<JobHandle> applyAdvectionAirJobHandles;
+	private NativeArray<JobHandle> applyAdvectionWaterJobHandles;
+	private NativeArray<JobHandle> energyJobHandles;
+	private List<NativeList<JobHandle>> jobHandleDependencies = new List<NativeList<JobHandle>>();
+	private List<NativeArray<float>> tempArrays = new List<NativeArray<float>>();
 
 	public WorldSim(int cellCount, ref WorldData worldData)
 	{
@@ -30,837 +32,819 @@ public class WorldSim {
 		SimJob = new JobHelper(_cellCount);
 		NeighborJob = new JobHelper(_cellCount * 6);
 
+		applyAdvectionAirJobHandles = new NativeArray<JobHandle>(worldData.AirLayers, Allocator.Persistent);
+		applyAdvectionWaterJobHandles = new NativeArray<JobHandle>(worldData.WaterLayers, Allocator.Persistent);
+		energyJobHandles = new NativeArray<JobHandle>(worldData.LayerCount, Allocator.Persistent);
 
 	}
 
 	public void Dispose(ref WorldData worldData)
 	{
+		energyJobHandles.Dispose();
+		applyAdvectionAirJobHandles.Dispose();
+		applyAdvectionWaterJobHandles.Dispose();
+
+		foreach (var d in jobHandleDependencies)
+		{
+			d.Dispose();
+		}
+		foreach (var a in tempArrays)
+		{
+			a.Dispose();
+		}
 	}
 
 
-	public void Tick(
-		out JobHandle tickJobHandle,
-		out bool degenerate,
+	public JobHandle Tick(
 		SimState[] states, 
 		int stateCount, 
 		int ticksToAdvance,
 		ref TempState tempState,
-		ref DisplayState display, 
 		ref StaticState staticState,
 		ref WorldData worldData,
 		ref SimSettings settings,
-		ref int curStateIndex, 
-		ref Action prepNextFrameFunc)
+		ref int curStateIndex)
 	{
-		degenerate = false;
-		tickJobHandle = default(JobHandle);
-
-		var applyAdvectionAirJobHandles = new NativeArray<JobHandle>(worldData.AirLayers, Allocator.TempJob);
-		var applyAdvectionWaterJobHandles = new NativeArray<JobHandle>(worldData.WaterLayers, Allocator.TempJob);
-		var energyJobHandles = new NativeArray<JobHandle>(worldData.LayerCount, Allocator.TempJob);
-
-		for (int tick = 0; tick < ticksToAdvance; tick++)
+		var tickJobHandle = default(JobHandle);
+		foreach (var d in jobHandleDependencies)
 		{
-			#region Init Time step
+			d.Dispose();
+		}
+		foreach (var a in tempArrays)
+		{
+			a.Dispose();
+		}
+		jobHandleDependencies.Clear();
+		tempArrays.Clear();
+		int firstStateIndex = curStateIndex;
 
-			bool updateDisplay = tick == ticksToAdvance - 1;
+		#region Init Time step
 
-			ref var lastState = ref states[curStateIndex];
+		int lastStateIndex = curStateIndex;
+		ref var lastState = ref states[lastStateIndex];
+		while (curStateIndex == lastStateIndex || curStateIndex == firstStateIndex)
+		{
 			curStateIndex = (curStateIndex + 1) % stateCount;
-			ref var nextState = ref states[curStateIndex];
+		}
+		ref var nextState = ref states[curStateIndex];
 
-			jobHandleDependencies.Clear();
-			tempArrays.Clear();
+		tickJobHandle = tempState.Clear(staticState.Count, ref worldData, tickJobHandle);
 
-			prepNextFrameFunc?.Invoke();
-
-			#endregion
+		#endregion
 
 
-			#region Update Planetary Globals
+		#region Update Planetary Globals
 
-			nextState.PlanetState = lastState.PlanetState;
-			nextState.PlanetState.Ticks++;
+		nextState.PlanetState = lastState.PlanetState;
+		nextState.PlanetState.Ticks++;
 
-			// TODO: update
-			float distanceToSun = math.length(lastState.PlanetState.Position);
-			float angleToSun = math.atan2(lastState.PlanetState.Position.z, lastState.PlanetState.Position.x);
-			angleToSun += lastState.PlanetState.OrbitSpeed;
-			nextState.PlanetState.Position = new float3(math.cos(angleToSun), 0, math.sin(angleToSun)) * distanceToSun;
-			nextState.PlanetState.Rotation = new float3(lastState.PlanetState.Rotation.x, Mathf.Repeat(lastState.PlanetState.Rotation.y + lastState.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);
+		// TODO: update
+		float distanceToSun = math.length(lastState.PlanetState.Position);
+		float angleToSun = math.atan2(lastState.PlanetState.Position.z, lastState.PlanetState.Position.x);
+		angleToSun += lastState.PlanetState.OrbitSpeed;
+		nextState.PlanetState.Position = new float3(math.cos(angleToSun), 0, math.sin(angleToSun)) * distanceToSun;
+		nextState.PlanetState.Rotation = new float3(lastState.PlanetState.Rotation.x, Mathf.Repeat(lastState.PlanetState.Rotation.y + lastState.PlanetState.SpinSpeed * worldData.SecondsPerTick, math.PI * 2), 0);
 
-			float coriolisTerm = 2 * lastState.PlanetState.SpinSpeed;
-			#endregion
+		float coriolisTerm = 2 * lastState.PlanetState.SpinSpeed;
+		#endregion
 
-			DoEnergyCycle(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref display, ref staticState, ref worldData, ref settings);
+		DoEnergyCycle(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref staticState, ref worldData, ref settings);
 
-			DoStateChange(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref display, ref staticState, ref worldData, ref settings);
+		DoStateChange(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref staticState, ref worldData, ref settings);
 
-			var groundWaterJob = UpdateGroundWater(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref display, ref staticState, ref worldData, ref settings);
+		var groundWaterJob = UpdateGroundWater(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref staticState, ref worldData, ref settings);
 
-			#region Air Advection and Diffusion
-			// Buoyancy, Updrafts, and mixing occur across air layers and water layers
-			// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
-			// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
-			// Air, Water, Cloud
-			#region Update Velocity
+		#region Air Advection and Diffusion
+		// Buoyancy, Updrafts, and mixing occur across air layers and water layers
+		// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
+		// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
+		// Air, Water, Cloud
+		#region Update Velocity
 
 
-			var airTerrainFrictionJobHandle = SimJob.Schedule(new AirTerrainFrictionJob()
+		var airTerrainFrictionJobHandle = SimJob.Schedule(new AirTerrainFrictionJob()
+		{
+			Force = tempState.WindFriction,
+			IceCoverage = tempState.IceCoverage,
+			WaterCoverage = tempState.WaterCoverage[worldData.SurfaceWaterLayer],
+			FloraCoverage = tempState.FloraCoverage,
+			Roughness = lastState.Roughness,
+			IceFriction = worldData.WindIceFriction,
+			TerrainFrictionMin = worldData.WindTerrainFrictionMin,
+			TerrainFrictionMax = worldData.WindTerrainFrictionMax,
+			FloraFriction = worldData.WindFloraFriction,
+			WaterFriction = worldData.WindWaterFriction,
+			MaxTerrainRoughness = worldData.MaxTerrainRoughnessForWindFriction
+		}, tickJobHandle);
+
+		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		{
+			int layerIndex = worldData.AirLayer0 + j;
+			energyJobHandles[layerIndex] = SimJob.Schedule(new AccelerationAirJob()
 			{
-				Force = tempState.WindFriction,
-				IceCoverage = tempState.IceCoverage,
-				WaterCoverage = tempState.WaterCoverage[worldData.SurfaceWaterLayer],
-				FloraCoverage = tempState.FloraCoverage,
-				Roughness = lastState.Roughness,
-				IceFriction = worldData.WindIceFriction,
-				TerrainFrictionMin = worldData.WindTerrainFrictionMin,
-				TerrainFrictionMax = worldData.WindTerrainFrictionMax,
-				FloraFriction = worldData.WindFloraFriction,
-				WaterFriction = worldData.WindWaterFriction,
-				MaxTerrainRoughness = worldData.MaxTerrainRoughnessForWindFriction
-			}, tickJobHandle);
+				Velocity = nextState.AirVelocity[j],
+				Force = tempState.AirAcceleration[j],
 
+				LastVelocity = lastState.AirVelocity[j],
+				Friction = tempState.WindFriction,
+				Pressure = tempState.AirPressure[j],
+				AirMass = tempState.AirMass[j],
+				TemperaturePotential = lastState.AirTemperaturePotential[j],
+				NewTemperaturePotential = nextState.AirTemperaturePotential[j],
+				VaporMass = lastState.AirVapor[j],
+				LayerMiddle = tempState.LayerMiddle[j],
+				Neighbors = staticState.Neighbors,
+				NeighborDiffInverse = staticState.NeighborDiffInverse,
+				Positions = staticState.SphericalPosition,
+				PlanetRadius = staticState.PlanetRadius,
+				Gravity = lastState.PlanetState.Gravity,
+				GravityInverse = 1.0f / lastState.PlanetState.Gravity,
+				NewUpTemperaturePotential = nextState.AirTemperaturePotential[j + 1],
+				UpTemperaturePotential = lastState.AirTemperaturePotential[j + 1],
+				UpHumidity = lastState.AirVapor[j + 1],
+				UpAirMass = tempState.AirMass[j + 1],
+				UpLayerMiddle = tempState.LayerMiddle[j + 1],
+				NewDownTemperaturePotential = nextState.AirTemperaturePotential[j - 1],
+				DownTemperaturePotential = lastState.AirTemperaturePotential[j - 1],
+				DownHumidity = lastState.AirVapor[j - 1],
+				DownAirMass = tempState.AirMass[j - 1],
+				DownLayerMiddle = tempState.LayerMiddle[j - 1],
+				IsTop = j == worldData.AirLayers - 2,
+				IsBottom = j == 1,
+				FrictionCoefficient = j == 1 ? 1 : 0,
+				SecondsPerTick = worldData.SecondsPerTick
+
+			},
+			JobHandle.CombineDependencies(airTerrainFrictionJobHandle, 
+			JobHandle.CombineDependencies(energyJobHandles[layerIndex], energyJobHandles[layerIndex - 1],energyJobHandles[layerIndex + 1])));
+		}
+
+		#endregion
+
+		// Wind and currents move temperature and trace elements horizontally
+		// Air, Water, Cloud
+		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
+		#region Advection
+
+
+		if (settings.MakeAirIncompressible)
+		{
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
-				int layerIndex = worldData.AirLayer0 + j;
-				energyJobHandles[layerIndex] = SimJob.Schedule(new AccelerationAirJob()
-				{
-					Velocity = nextState.AirVelocity[j],
-					Force = tempState.AirAcceleration[j],
-
-					LastVelocity = lastState.AirVelocity[j],
-					Friction = tempState.WindFriction,
-					Pressure = tempState.AirPressure[j],
-					AirMass = tempState.AirMass[j],
-					TemperaturePotential = lastState.AirTemperaturePotential[j],
-					NewTemperaturePotential = nextState.AirTemperaturePotential[j],
-					VaporMass = lastState.AirVapor[j],
-					LayerMiddle = tempState.LayerMiddle[j],
-					Neighbors = staticState.Neighbors,
-					NeighborDiffInverse = staticState.NeighborDiffInverse,
-					Positions = staticState.SphericalPosition,
-					PlanetRadius = staticState.PlanetRadius,
-					Gravity = lastState.PlanetState.Gravity,
-					GravityInverse = 1.0f / lastState.PlanetState.Gravity,
-					NewUpTemperaturePotential = nextState.AirTemperaturePotential[j + 1],
-					UpTemperaturePotential = lastState.AirTemperaturePotential[j + 1],
-					UpHumidity = lastState.AirVapor[j + 1],
-					UpAirMass = tempState.AirMass[j + 1],
-					UpLayerMiddle = tempState.LayerMiddle[j + 1],
-					NewDownTemperaturePotential = nextState.AirTemperaturePotential[j - 1],
-					DownTemperaturePotential = lastState.AirTemperaturePotential[j - 1],
-					DownHumidity = lastState.AirVapor[j - 1],
-					DownAirMass = tempState.AirMass[j - 1],
-					DownLayerMiddle = tempState.LayerMiddle[j - 1],
-					IsTop = j == worldData.AirLayers - 2,
-					IsBottom = j == 1,
-					FrictionCoefficient = j == 1 ? 1 : 0,
-					SecondsPerTick = worldData.SecondsPerTick
-
-				},
-				JobHandle.CombineDependencies(airTerrainFrictionJobHandle, 
-				JobHandle.CombineDependencies(energyJobHandles[layerIndex], energyJobHandles[layerIndex - 1],energyJobHandles[layerIndex + 1])));
-			}
-
-			#endregion
-
-			// Wind and currents move temperature and trace elements horizontally
-			// Air, Water, Cloud
-			// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-			#region Advection
-
-
-			if (settings.MakeAirIncompressible)
-			{
-				for (int j = 1; j < worldData.AirLayers - 1; j++)
-				{
-					int layer = worldData.AirLayer0 + j;
-					energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
-					{
-						Destination = tempState.DestinationAir[j],
-						Neighbors = staticState.Neighbors,
-						Position = staticState.SphericalPosition,
-						Velocity = nextState.AirVelocity[j],
-						LayerHeight = tempState.LayerHeight[j],
-						PlanetRadius = staticState.PlanetRadius,
-						SecondsPerTick = worldData.SecondsPerTick,
-						MaxWindMove = staticState.CellRadius * 0.9f,
-					}, energyJobHandles[layer]);
-				}
-				for (int j = 1; j < worldData.AirLayers - 1; j++)
-				{
-					int layer = worldData.AirLayer0 + j;
-					energyJobHandles[layer] = SimJob.Schedule(new GetDivergenceJob()
-					{
-						Divergence = tempState.DivergenceAir[j],
-						Destination = tempState.DestinationAir[j],
-						DestinationAbove = tempState.DestinationAir[j + 1],
-						DestinationBelow = tempState.DestinationAir[j - 1],
-						Neighbors = staticState.Neighbors,
-						Mass = tempState.AirMass[j],
-						MassAbove = tempState.AirMass[j + 1],
-						MassBelow = tempState.AirMass[j - 1],
-						IsBottom = j == 1,
-						IsTop = j == worldData.AirLayers - 2,
-					}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-				}
-
-				// Calculate Pressure gradient field
-				var divergenceJobHandle = default(JobHandle);
-				for (int i = 1; i < worldData.AirLayers - 1; i++)
-				{
-					divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, energyJobHandles[worldData.AirLayer0 + i]);
-				}
-				for (int a = 0; a < 20; a++)
-				{
-					for (int i = 1; i < worldData.AirLayers - 1; i++)
-					{
-						bool isTop = i == worldData.AirLayers - 2;
-						bool isBottom = i == 1;
-						var dpj = new GetDivergencePressureJob()
-						{
-							Pressure = tempState.DivergencePressureAir[i],
-							Divergence = tempState.DivergenceAir[i],
-							PressureAbove = tempState.DivergencePressureAir[i + 1],
-							PressureBelow = tempState.DivergencePressureAir[i - 1],
-							IsTop = i == worldData.AirLayers - 2,
-							IsBottom = i == 1,
-							Neighbors = staticState.Neighbors
-						};
-						divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
-					}
-				}
-
-				for (int i = 1; i < worldData.AirLayers - 1; i++)
-				{
-					int layer = worldData.AirLayer0 + i;
-					energyJobHandles[worldData.AirLayer0 + i] = SimJob.Schedule(new GetDivergenceFreeFieldJob()
-					{
-						Velocity = nextState.AirVelocity[i],
-						Pressure = tempState.DivergencePressureAir[i],
-						PressureAbove = tempState.DivergencePressureAir[i + 1],
-						PressureBelow = tempState.DivergencePressureAir[i - 1],
-						LayerHeight = tempState.LayerHeight[i],
-						Neighbors = staticState.Neighbors,
-						NeighborTangent = staticState.NeighborTangent,
-						Positions = staticState.SphericalPosition,
-						AirMass = tempState.AirMass[i],
-						IsBottom = i == 1,
-						IsTop = i == worldData.AirLayers - 2,
-						TicksPerSecond = worldData.TicksPerSecond
-					}, divergenceJobHandle);
-				}
-			}
-
-
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
-			{
-				int layer = worldData.AirLayer0 + i;
-				// TODO: we need to deal with coriolis for differently:
-				// either apply it as a true force (although in my experience this causes velocity to spin)
-				// or we deflect it after advecting it
+				int layer = worldData.AirLayer0 + j;
 				energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 				{
-					Destination = tempState.DestinationAir[i],
+					Destination = tempState.DestinationAir[j],
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
-					Velocity = nextState.AirVelocity[i],
-					LayerHeight = tempState.LayerHeight[i],
+					Velocity = nextState.AirVelocity[j],
+					LayerHeight = tempState.LayerHeight[j],
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick,
 					MaxWindMove = staticState.CellRadius * 0.9f,
 				}, energyJobHandles[layer]);
 			}
-
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
+			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
-				int layer = worldData.AirLayer0 + i;
-				energyJobHandles[layer] = SimJob.Schedule(new AdvectionAirJob()
+				int layer = worldData.AirLayer0 + j;
+				energyJobHandles[layer] = SimJob.Schedule(new GetDivergenceJob()
 				{
-					Delta = tempState.AdvectionAir[i],
-					Temperature = nextState.AirTemperaturePotential[i],
-					TemperatureAbove = nextState.AirTemperaturePotential[i + 1],
-					TemperatureBelow = nextState.AirTemperaturePotential[i - 1],
-					AirMass = tempState.AirMass[i],
-					AirMassAbove = tempState.AirMass[i + 1],
-					AirMassBelow = tempState.AirMass[i - 1],
-					Vapor = nextState.AirVapor[i],
-					VaporAbove = nextState.AirVapor[i + 1],
-					VaporBelow = nextState.AirVapor[i - 1],
-					CarbonDioxide = nextState.AirCarbon[i],
-					CarbonDioxideAbove = nextState.AirCarbon[i + 1],
-					CarbonDioxideBelow = nextState.AirCarbon[i - 1],
-					Dust = nextState.Dust[i],
-					DustAbove = nextState.Dust[i + 1],
-					DustBelow = nextState.Dust[i - 1],
-					Velocity = nextState.AirVelocity[i],
-					VelocityAbove = nextState.AirVelocity[i + 1],
-					VelocityBelow = nextState.AirVelocity[i - 1],
+					Divergence = tempState.DivergenceAir[j],
+					Destination = tempState.DestinationAir[j],
+					DestinationAbove = tempState.DestinationAir[j + 1],
+					DestinationBelow = tempState.DestinationAir[j - 1],
 					Neighbors = staticState.Neighbors,
-					Destination = tempState.DestinationAir[i],
-					DestinationAbove = tempState.DestinationAir[i + 1],
-					DestinationBelow = tempState.DestinationAir[i - 1],
-					LayerMiddle = tempState.LayerMiddle[i],
-					LayerMiddleAbove = tempState.LayerMiddle[i + 1],
-					LayerMiddleBelow = tempState.LayerMiddle[i - 1],
-					Positions = staticState.SphericalPosition,
-					NeighborDistInverse = staticState.NeighborDistInverse,
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
-					SecondsPerTick = worldData.SecondsPerTick,
-					TicksPerSecond = worldData.TicksPerSecond
+					Mass = tempState.AirMass[j],
+					MassAbove = tempState.AirMass[j + 1],
+					MassBelow = tempState.AirMass[j - 1],
+					IsBottom = j == 1,
+					IsTop = j == worldData.AirLayers - 2,
 				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
 			}
 
+			// Calculate Pressure gradient field
+			var divergenceJobHandle = default(JobHandle);
+			for (int i = 1; i < worldData.AirLayers - 1; i++)
+			{
+				divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, energyJobHandles[worldData.AirLayer0 + i]);
+			}
+			for (int a = 0; a < 20; a++)
+			{
+				for (int i = 1; i < worldData.AirLayers - 1; i++)
+				{
+					bool isTop = i == worldData.AirLayers - 2;
+					bool isBottom = i == 1;
+					var dpj = new GetDivergencePressureJob()
+					{
+						Pressure = tempState.DivergencePressureAir[i],
+						Divergence = tempState.DivergenceAir[i],
+						PressureAbove = tempState.DivergencePressureAir[i + 1],
+						PressureBelow = tempState.DivergencePressureAir[i - 1],
+						IsTop = i == worldData.AirLayers - 2,
+						IsBottom = i == 1,
+						Neighbors = staticState.Neighbors
+					};
+					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
+				}
+			}
+
 			for (int i = 1; i < worldData.AirLayers - 1; i++)
 			{
 				int layer = worldData.AirLayer0 + i;
-				applyAdvectionAirJobHandles[i] = SimJob.Schedule(new ApplyAdvectionAirJob()
+				energyJobHandles[worldData.AirLayer0 + i] = SimJob.Schedule(new GetDivergenceFreeFieldJob()
 				{
-					Advection = tempState.AdvectionAir[i],
-					Vapor = nextState.AirVapor[i],
-					Dust = nextState.Dust[i],
-					CarbonDioxide = nextState.AirCarbon[i],
-					Temperature = nextState.AirTemperaturePotential[i],
-					AirVelocity = nextState.AirVelocity[i],
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-			}
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
-			{
-				energyJobHandles[worldData.AirLayer0 + i] = applyAdvectionAirJobHandles[i];
-			}
-
-			#endregion
-
-			// Diffuse from last time step
-			// Air, Water, Cloud
-			#region Diffusion
-
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
-			{
-				int layer = worldData.AirLayer0 + i;
-				// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
-				energyJobHandles[layer] = SimJob.Schedule(new DiffusionAirJob()
-				{
-					Delta = tempState.DiffusionAir[i],
-
-					AirMass = tempState.AirMass[i],
-					AirMassAbove = tempState.AirMass[i + 1],
-					AirMassBelow = tempState.AirMass[i - 1],
-					Temperature = nextState.AirTemperaturePotential[i],
-					TemperatureAbove = nextState.AirTemperaturePotential[i + 1],
-					TemperatureBelow = nextState.AirTemperaturePotential[i - 1],
-					Vapor = nextState.AirVapor[i],
-					VaporAbove = nextState.AirVapor[i + 1],
-					VaporBelow = nextState.AirVapor[i - 1],
-					CarbonDioxide = nextState.AirCarbon[i],
-					CarbonDioxideAbove = nextState.AirCarbon[i + 1],
-					CarbonDioxideBelow = nextState.AirCarbon[i - 1],
-					Dust = nextState.Dust[i],
-					DustAbove = nextState.Dust[i + 1],
-					DustBelow = nextState.Dust[i - 1],
 					Velocity = nextState.AirVelocity[i],
-					AirVelocityAbove = nextState.AirVelocity[i + 1],
-					AirVelocityBelow = nextState.AirVelocity[i - 1],
-					Neighbors = staticState.Neighbors,
+					Pressure = tempState.DivergencePressureAir[i],
+					PressureAbove = tempState.DivergencePressureAir[i + 1],
+					PressureBelow = tempState.DivergencePressureAir[i - 1],
 					LayerHeight = tempState.LayerHeight[i],
-					NeighborDistInverse = staticState.NeighborDistInverse,
-					LayerElevationAbove = tempState.LayerElevation[i + 1],
-					LayerHeightAbove = tempState.LayerHeight[i + 1],
-					LayerElevationBelow = tempState.LayerElevation[i - 1],
-					LayerHeightBelow = tempState.LayerHeight[i - 1],
-					IsTop = i == worldData.AirLayers - 2,
+					Neighbors = staticState.Neighbors,
+					NeighborTangent = staticState.NeighborTangent,
+					Positions = staticState.SphericalPosition,
+					AirMass = tempState.AirMass[i],
 					IsBottom = i == 1,
-					DiffusionCoefficientHorizontal = worldData.AirDiffusionCoefficientHorizontal,
-					DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
-					CellSurfaceArea = staticState.CellSurfaceArea,
-					CellCircumference = staticState.CellCircumference
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+					IsTop = i == worldData.AirLayers - 2,
+					TicksPerSecond = worldData.TicksPerSecond
+				}, divergenceJobHandle);
 			}
+		}
 
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
+
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			int layer = worldData.AirLayer0 + i;
+			// TODO: we need to deal with coriolis for differently:
+			// either apply it as a true force (although in my experience this causes velocity to spin)
+			// or we deflect it after advecting it
+			energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 			{
-				int layer = worldData.AirLayer0 + i;
-				applyAdvectionAirJobHandles[i] = SimJob.Schedule(new ApplyAdvectionAirJob()
-				{
-					Advection = tempState.DiffusionAir[i],
-					Vapor = nextState.AirVapor[i],
-					Dust = nextState.Dust[i],
-					CarbonDioxide = nextState.AirCarbon[i],
-					Temperature = nextState.AirTemperaturePotential[i],
-					AirVelocity = nextState.AirVelocity[i],
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-			}
-
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
-			{
-				energyJobHandles[worldData.AirLayer0 + i] = applyAdvectionAirJobHandles[i];
-			}
-
-			#endregion
-
-			#endregion
-
-			#region Water and Cloud Advection and Diffusion
-			
-			// Buoyancy, Updrafts, and mixing occur across air layers and water layers
-			// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
-			// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
-			// Air, Water, Cloud
-			#region Update Velocity
-
-			energyJobHandles[worldData.SurfaceWaterLayerGlobal] = SimJob.Schedule(new WaterSurfaceFrictionJob()
-			{
-				Force = tempState.WaterFriction,
-
-				Position = staticState.SphericalPosition,
-				Current = lastState.WaterVelocity[worldData.SurfaceWaterLayer],
-				AirVelocityUp = lastState.AirVelocity[worldData.SurfaceAirLayer],
-				AirVelocityDown = lastState.WaterVelocity[worldData.SurfaceWaterLayer - 1],
-				LayerHeight = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer],
-				CoriolisMultiplier = staticState.CoriolisMultiplier,
-				FrictionCoefficientUp = worldData.WindToWaterCurrentFrictionCoefficient,
-				FrictionCoefficientDown = 0, // TODO: do we want to add a frictional force between layers of water?
-				CoriolisTerm = coriolisTerm,
-				WaterSurfaceFrictionDepth = worldData.WaterSurfaceFrictionDepth,
-				SecondsPerTick = worldData.SecondsPerTick
-			}, JobHandle.CombineDependencies(energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
-
-			// TODO: since I moved acceleration up here, we will need to add a buoyancy job down after the temperature adjustment to incorporate positive buoyancy in the vertical velocity
-			// (see usage of "next state" velocity
-			for (int j = 1; j < worldData.WaterLayers - 1; j++)
-			{
-				energyJobHandles[worldData.WaterLayer0 + j] = SimJob.Schedule(new AccelerationWaterJob()
-				{
-					Velocity = nextState.WaterVelocity[j],
-
-					LastVelocity = lastState.WaterVelocity[j],
-					Positions = staticState.SphericalPosition,
-					Neighbors = staticState.Neighbors,
-					NeighborDiffInverse = staticState.NeighborDiffInverse,
-					WaterDensity = tempState.WaterDensity[j],
-					WaterPressure = tempState.WaterPressure[j],
-					LayerDepth = tempState.WaterLayerDepth[j],
-					LayerHeight = tempState.WaterLayerHeight[j],
-					UpWaterDensity = tempState.WaterDensity[j + 1],
-					UpWaterPressure = tempState.WaterPressure[j + 1],
-					UpLayerDepth = tempState.WaterLayerDepth[j + 1],
-					UpLayerHeight = tempState.WaterLayerHeight[j + 1],
-					DownWaterDensity = tempState.WaterDensity[j - 1],
-					DownWaterPressure = tempState.WaterPressure[j - 1],
-					DownLayerDepth = tempState.WaterLayerDepth[j - 1],
-					DownLayerHeight = tempState.WaterLayerHeight[j - 1],
-					SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
-					Friction = tempState.WaterFriction,
-					FrictionCoefficient = j == worldData.SurfaceWaterLayer ? 1 : 0,
-					Gravity = lastState.PlanetState.Gravity,
-					PlanetRadius = staticState.PlanetRadius,
-					SecondsPerTick = worldData.SecondsPerTick
-
-				}, JobHandle.CombineDependencies( energyJobHandles[worldData.WaterLayer0 + j], energyJobHandles[worldData.SurfaceWaterLayerGlobal]));
-			}
-
-
-			#endregion
-
-			// Wind and currents move temperature and trace elements horizontally
-			// Air, Water, Cloud
-			// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-			#region Advection
-
-			for (int j = 1; j < worldData.WaterLayers - 1; j++)
-			{
-				energyJobHandles[worldData.WaterLayer0 + j] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
-				{
-					Destination = tempState.DestinationWater[j],
-					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					Velocity = nextState.WaterVelocity[j],
-					LayerHeight = tempState.WaterLayerHeight[j],
-					PlanetRadius = staticState.PlanetRadius,
-					SecondsPerTick = worldData.SecondsPerTick,
-					MaxWindMove = staticState.CellRadius * 0.9f,
-				}, energyJobHandles[worldData.WaterLayer0 + j]);
-			}
-
-			for (int j = 1; j < worldData.WaterLayers - 1; j++)
-			{
-				int layer = worldData.WaterLayer0 + j;
-				energyJobHandles[layer] = SimJob.Schedule(new AdvectionWaterJob()
-				{
-					Delta = tempState.AdvectionWater[j],
-					Destination = tempState.DestinationWater[j],
-					DestinationAbove = tempState.DestinationWater[j + 1],
-					DestinationBelow = tempState.DestinationWater[j - 1],
-					Velocity = nextState.WaterVelocity[j],
-					VelocityAbove = nextState.WaterVelocity[j + 1],
-					VelocityBelow = nextState.WaterVelocity[j - 1],
-					Temperature = nextState.WaterTemperature[j],
-					TemperatureAbove = nextState.WaterTemperature[j + 1],
-					TemperatureBelow = nextState.WaterTemperature[j - 1],
-					Mass = nextState.WaterMass[j],
-					MassAbove = nextState.WaterMass[j + 1],
-					MassBelow = nextState.WaterMass[j - 1],
-					Salt = nextState.SaltMass[j],
-					SaltAbove = nextState.SaltMass[j + 1],
-					SaltBelow = nextState.SaltMass[j - 1],
-					Carbon = nextState.WaterCarbon[j],
-					CarbonAbove = nextState.WaterCarbon[j + 1],
-					CarbonBelow = nextState.WaterCarbon[j - 1],
-					PlanktonMass = nextState.PlanktonMass[j],
-					PlanktonGlucose = nextState.PlanktonGlucose[j],
-					Positions = staticState.SphericalPosition,
-					Neighbors = staticState.Neighbors,
-					CoriolisMultiplier = staticState.CoriolisMultiplier,
-					CoriolisTerm = coriolisTerm,
-					SecondsPerTick = worldData.SecondsPerTick
-				}, JobHandle.CombineDependencies(groundWaterJob,
-					JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1])));
-			}
-
-			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new GetVectorDestCoordsJob()
-			{
-				Destination = tempState.DestinationCloud,
+				Destination = tempState.DestinationAir[i],
 				Neighbors = staticState.Neighbors,
 				Position = staticState.SphericalPosition,
-				Velocity = tempState.CloudVelocity,
+				Velocity = nextState.AirVelocity[i],
+				LayerHeight = tempState.LayerHeight[i],
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick,
 				MaxWindMove = staticState.CellRadius * 0.9f,
-			}, energyJobHandles[worldData.CloudLayer]);
-			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new AdvectionCloudJob()
+			}, energyJobHandles[layer]);
+		}
+
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			int layer = worldData.AirLayer0 + i;
+			energyJobHandles[layer] = SimJob.Schedule(new AdvectionAirJob()
 			{
-				Delta = tempState.AdvectionCloud,
-				Destination = tempState.DestinationCloud,
-				Mass = nextState.CloudMass,
-				Temperature = nextState.CloudTemperature,
-				DropletMass = nextState.CloudDropletMass,
+				Delta = tempState.AdvectionAir[i],
+				Temperature = nextState.AirTemperaturePotential[i],
+				TemperatureAbove = nextState.AirTemperaturePotential[i + 1],
+				TemperatureBelow = nextState.AirTemperaturePotential[i - 1],
+				AirMass = tempState.AirMass[i],
+				AirMassAbove = tempState.AirMass[i + 1],
+				AirMassBelow = tempState.AirMass[i - 1],
+				Vapor = nextState.AirVapor[i],
+				VaporAbove = nextState.AirVapor[i + 1],
+				VaporBelow = nextState.AirVapor[i - 1],
+				CarbonDioxide = nextState.AirCarbon[i],
+				CarbonDioxideAbove = nextState.AirCarbon[i + 1],
+				CarbonDioxideBelow = nextState.AirCarbon[i - 1],
+				Dust = nextState.Dust[i],
+				DustAbove = nextState.Dust[i + 1],
+				DustBelow = nextState.Dust[i - 1],
+				Velocity = nextState.AirVelocity[i],
+				VelocityAbove = nextState.AirVelocity[i + 1],
+				VelocityBelow = nextState.AirVelocity[i - 1],
 				Neighbors = staticState.Neighbors,
-			}, energyJobHandles[worldData.CloudLayer]);
-
-			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new ApplyAdvectionCloudJob()
-			{
-				Advection = tempState.AdvectionCloud,
-				CloudMass = nextState.CloudMass,
-				Temperature = nextState.CloudTemperature,
-				DropletMass = nextState.CloudDropletMass,
-			}, energyJobHandles[worldData.CloudLayer]);
-
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
-			{
-				int layer = worldData.WaterLayer0 + i;
-				applyAdvectionWaterJobHandles[i] = SimJob.Schedule(new ApplyAdvectionWaterJob()
-				{
-					Advection = tempState.AdvectionWater[i],
-					SaltMass = nextState.SaltMass[i],
-					CarbonMass = nextState.WaterCarbon[i],
-					PlanktonMass = nextState.PlanktonMass[i],
-					PlanktonGlucose = nextState.PlanktonGlucose[i],
-					Temperature = nextState.WaterTemperature[i],
-					Velocity = nextState.WaterVelocity[i],
-					WaterMass = nextState.WaterMass[i]
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1]));
-			}
-
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
-			{
-				energyJobHandles[worldData.WaterLayer0 + i] = applyAdvectionWaterJobHandles[i];
-			}
-
-			#endregion
-
-			// Diffuse from last time step
-			// Air, Water, Cloud
-			#region Diffusion
-
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
-			{
-				int layer = worldData.WaterLayer0 + i;
-				energyJobHandles[layer] = SimJob.Schedule(new DiffusionWaterJob()
-				{
-					Delta = tempState.DiffusionWater[i],
-
-					Temperature = nextState.WaterTemperature[i],
-					TemperatureAbove = nextState.WaterTemperature[i + 1],
-					TemperatureBelow = nextState.WaterTemperature[i - 1],
-					SaltMass = nextState.SaltMass[i],
-					SaltMassAbove = nextState.SaltMass[i + 1],
-					SaltMassBelow = nextState.SaltMass[i - 1],
-					PlanktonMass = nextState.PlanktonMass[i],
-					PlanktonGlucose = nextState.PlanktonGlucose[i],
-					CarbonMass = nextState.WaterCarbon[i],
-					CarbonMassAbove = nextState.WaterCarbon[i + 1],
-					CarbonMassBelow = nextState.WaterCarbon[i - 1],
-					Velocity = nextState.WaterVelocity[i],
-					VelocityAbove = nextState.WaterVelocity[i + 1],
-					VelocityBelow = nextState.WaterVelocity[i - 1],
-					WaterMass = nextState.WaterMass[i],
-					WaterMassAbove = nextState.WaterMass[i + 1],
-					WaterMassBelow = nextState.WaterMass[i - 1],
-					LayerHeight = tempState.LayerHeight[i],
-					LayerHeightAbove = tempState.LayerHeight[i + 1],
-					LayerHeightBelow = tempState.LayerHeight[i - 1],
-					NeighborDistInverse = staticState.NeighborDistInverse,
-					Neighbors = staticState.Neighbors,
-					DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
-					DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
-					CellSurfaceArea = staticState.CellSurfaceArea,
-					CellCircumference = staticState.CellCircumference
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1]));
-			}
-
-			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new DiffusionCloudJob()
-			{
-				Delta = tempState.DiffusionCloud,
-
-				LastMass = nextState.CloudMass,
-				LastTemperature = nextState.CloudTemperature,
-				LastDropletMass = nextState.CloudDropletMass,
-				Neighbors = staticState.Neighbors,
-				DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
-			}, energyJobHandles[worldData.CloudLayer]);
-
-			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new ApplyAdvectionCloudJob()
-			{
-				Advection = tempState.DiffusionCloud,
-				CloudMass = nextState.CloudMass,
-				Temperature = nextState.CloudTemperature,
-				DropletMass = nextState.CloudDropletMass,
-			}, energyJobHandles[worldData.CloudLayer]);
-
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
-			{
-				int layer = worldData.WaterLayer0 + i;
-				applyAdvectionWaterJobHandles[i] = SimJob.Schedule(new ApplyAdvectionWaterJob()
-				{
-					Advection = tempState.DiffusionWater[i],
-					SaltMass = nextState.SaltMass[i],
-					CarbonMass = nextState.WaterCarbon[i],
-					PlanktonMass = nextState.PlanktonMass[i],
-					PlanktonGlucose = nextState.PlanktonGlucose[i],
-					Temperature = nextState.WaterTemperature[i],
-					Velocity = nextState.WaterVelocity[i],
-					WaterMass = nextState.WaterMass[i]
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1]));
-			}
-
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
-			{
-				energyJobHandles[worldData.WaterLayer0 + i] = applyAdvectionWaterJobHandles[i];
-			}
-
-			#endregion
-
-			#endregion
-
-			groundWaterJob.Complete();
-			JobHandle.CompleteAll(energyJobHandles);
-
-
-			// TODO: we really just want to update depths
-			#region Update dependent variables
-
-			TempState.Update(SimJob, ref nextState, ref tempState, ref worldData, default(JobHandle), tempArrays).Complete();
-
-			#endregion
-
-
-			#region Flow
-			var waterFlowJobHandle = default(JobHandle);
-
-			// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
-			waterFlowJobHandle = NeighborJob.Schedule(new UpdateFlowVelocityJob()
-			{
-				Flow = nextState.FlowWater,
-
-				LastFlow = lastState.FlowWater,
-				SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
-				WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer],
+				Destination = tempState.DestinationAir[i],
+				DestinationAbove = tempState.DestinationAir[i + 1],
+				DestinationBelow = tempState.DestinationAir[i - 1],
+				LayerMiddle = tempState.LayerMiddle[i],
+				LayerMiddleAbove = tempState.LayerMiddle[i + 1],
+				LayerMiddleBelow = tempState.LayerMiddle[i - 1],
+				Positions = staticState.SphericalPosition,
 				NeighborDistInverse = staticState.NeighborDistInverse,
-				Neighbors = staticState.Neighbors,
-				Gravity = nextState.PlanetState.Gravity,
+				CoriolisMultiplier = staticState.CoriolisMultiplier,
+				CoriolisTerm = coriolisTerm,
 				SecondsPerTick = worldData.SecondsPerTick,
-				Damping = worldData.SurfaceWaterFlowDamping,
-				ViscosityInverse = 1.0f - worldData.WaterViscosity,
-			}, waterFlowJobHandle);
+				TicksPerSecond = worldData.TicksPerSecond
+			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+		}
 
-			waterFlowJobHandle = SimJob.Schedule(new SumOutgoingFlowJob()
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			int layer = worldData.AirLayer0 + i;
+			applyAdvectionAirJobHandles[i] = SimJob.Schedule(new ApplyAdvectionAirJob()
 			{
-				OutgoingFlow = tempState.OutgoingFlowWater,
-				Flow = nextState.FlowWater
-			}, waterFlowJobHandle);
+				Advection = tempState.AdvectionAir[i],
+				Vapor = nextState.AirVapor[i],
+				Dust = nextState.Dust[i],
+				CarbonDioxide = nextState.AirCarbon[i],
+				Temperature = nextState.AirTemperaturePotential[i],
+				AirVelocity = nextState.AirVelocity[i],
+			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+		}
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			energyJobHandles[worldData.AirLayer0 + i] = applyAdvectionAirJobHandles[i];
+		}
 
-			waterFlowJobHandle = NeighborJob.Schedule(new LimitOutgoingFlowJob()
+		#endregion
+
+		// Diffuse from last time step
+		// Air, Water, Cloud
+		#region Diffusion
+
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			int layer = worldData.AirLayer0 + i;
+			// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
+			energyJobHandles[layer] = SimJob.Schedule(new DiffusionAirJob()
 			{
-				Flow = nextState.FlowWater,
-				FlowPercent = tempState.FlowPercentWater,
+				Delta = tempState.DiffusionAir[i],
 
-				OutgoingFlow = tempState.OutgoingFlowWater,
+				AirMass = tempState.AirMass[i],
+				AirMassAbove = tempState.AirMass[i + 1],
+				AirMassBelow = tempState.AirMass[i - 1],
+				Temperature = nextState.AirTemperaturePotential[i],
+				TemperatureAbove = nextState.AirTemperaturePotential[i + 1],
+				TemperatureBelow = nextState.AirTemperaturePotential[i - 1],
+				Vapor = nextState.AirVapor[i],
+				VaporAbove = nextState.AirVapor[i + 1],
+				VaporBelow = nextState.AirVapor[i - 1],
+				CarbonDioxide = nextState.AirCarbon[i],
+				CarbonDioxideAbove = nextState.AirCarbon[i + 1],
+				CarbonDioxideBelow = nextState.AirCarbon[i - 1],
+				Dust = nextState.Dust[i],
+				DustAbove = nextState.Dust[i + 1],
+				DustBelow = nextState.Dust[i - 1],
+				Velocity = nextState.AirVelocity[i],
+				AirVelocityAbove = nextState.AirVelocity[i + 1],
+				AirVelocityBelow = nextState.AirVelocity[i - 1],
 				Neighbors = staticState.Neighbors,
-				WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer]
-			}, waterFlowJobHandle);
+				LayerHeight = tempState.LayerHeight[i],
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				LayerElevationAbove = tempState.LayerElevation[i + 1],
+				LayerHeightAbove = tempState.LayerHeight[i + 1],
+				LayerElevationBelow = tempState.LayerElevation[i - 1],
+				LayerHeightBelow = tempState.LayerHeight[i - 1],
+				IsTop = i == worldData.AirLayers - 2,
+				IsBottom = i == 1,
+				DiffusionCoefficientHorizontal = worldData.AirDiffusionCoefficientHorizontal,
+				DiffusionCoefficientVertical = worldData.AirDiffusionCoefficientVertical,
+				CellSurfaceArea = staticState.CellSurfaceArea,
+				CellCircumference = staticState.CellCircumference
+			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+		}
 
-			waterFlowJobHandle = SimJob.Schedule(new ApplyFlowWaterJob()
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			int layer = worldData.AirLayer0 + i;
+			applyAdvectionAirJobHandles[i] = SimJob.Schedule(new ApplyAdvectionAirJob()
 			{
-				Delta = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
+				Advection = tempState.DiffusionAir[i],
+				Vapor = nextState.AirVapor[i],
+				Dust = nextState.Dust[i],
+				CarbonDioxide = nextState.AirCarbon[i],
+				Temperature = nextState.AirTemperaturePotential[i],
+				AirVelocity = nextState.AirVelocity[i],
+			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+		}
 
-				Mass = nextState.WaterMass[worldData.SurfaceWaterLayer],
-				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
-				Carbon = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
-				PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
-				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
-				Salt = nextState.SaltMass[worldData.SurfaceWaterLayer],
-				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
-				FlowPercent = tempState.FlowPercentWater,
+		for (int i = 1; i < worldData.AirLayers - 1; i++)
+		{
+			energyJobHandles[worldData.AirLayer0 + i] = applyAdvectionAirJobHandles[i];
+		}
+
+		#endregion
+
+		#endregion
+
+		#region Water and Cloud Advection and Diffusion
+
+		// Buoyancy, Updrafts, and mixing occur across air layers and water layers
+		// TODO: add an empty air layer on top and bottom so we can calculate up/down diffusion in a single step 
+		// Temperature and trace elements diffuse into neighboring horizontal cells based on a diffusion constant
+		// Air, Water, Cloud
+		#region Update Velocity
+
+		energyJobHandles[worldData.SurfaceWaterLayerGlobal] = SimJob.Schedule(new WaterSurfaceFrictionJob()
+		{
+			Force = tempState.WaterFriction,
+
+			Position = staticState.SphericalPosition,
+			Current = lastState.WaterVelocity[worldData.SurfaceWaterLayer],
+			AirVelocityUp = lastState.AirVelocity[worldData.SurfaceAirLayer],
+			AirVelocityDown = lastState.WaterVelocity[worldData.SurfaceWaterLayer - 1],
+			LayerHeight = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer],
+			CoriolisMultiplier = staticState.CoriolisMultiplier,
+			FrictionCoefficientUp = worldData.WindToWaterCurrentFrictionCoefficient,
+			FrictionCoefficientDown = 0, // TODO: do we want to add a frictional force between layers of water?
+			CoriolisTerm = coriolisTerm,
+			WaterSurfaceFrictionDepth = worldData.WaterSurfaceFrictionDepth,
+			SecondsPerTick = worldData.SecondsPerTick
+		}, JobHandle.CombineDependencies(energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+
+		// TODO: since I moved acceleration up here, we will need to add a buoyancy job down after the temperature adjustment to incorporate positive buoyancy in the vertical velocity
+		// (see usage of "next state" velocity
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			energyJobHandles[worldData.WaterLayer0 + j] = SimJob.Schedule(new AccelerationWaterJob()
+			{
+				Velocity = nextState.WaterVelocity[j],
+
+				LastVelocity = lastState.WaterVelocity[j],
+				Positions = staticState.SphericalPosition,
+				Neighbors = staticState.Neighbors,
+				NeighborDiffInverse = staticState.NeighborDiffInverse,
+				WaterDensity = tempState.WaterDensity[j],
+				WaterPressure = tempState.WaterPressure[j],
+				LayerDepth = tempState.WaterLayerDepth[j],
+				LayerHeight = tempState.WaterLayerHeight[j],
+				UpWaterDensity = tempState.WaterDensity[j + 1],
+				UpWaterPressure = tempState.WaterPressure[j + 1],
+				UpLayerDepth = tempState.WaterLayerDepth[j + 1],
+				UpLayerHeight = tempState.WaterLayerHeight[j + 1],
+				DownWaterDensity = tempState.WaterDensity[j - 1],
+				DownWaterPressure = tempState.WaterPressure[j - 1],
+				DownLayerDepth = tempState.WaterLayerDepth[j - 1],
+				DownLayerHeight = tempState.WaterLayerHeight[j - 1],
+				SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+				Friction = tempState.WaterFriction,
+				FrictionCoefficient = j == worldData.SurfaceWaterLayer ? 1 : 0,
+				Gravity = lastState.PlanetState.Gravity,
+				PlanetRadius = staticState.PlanetRadius,
+				SecondsPerTick = worldData.SecondsPerTick
+
+			}, JobHandle.CombineDependencies( energyJobHandles[worldData.WaterLayer0 + j], energyJobHandles[worldData.SurfaceWaterLayerGlobal]));
+		}
+
+
+		#endregion
+
+		// Wind and currents move temperature and trace elements horizontally
+		// Air, Water, Cloud
+		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
+		#region Advection
+
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			energyJobHandles[worldData.WaterLayer0 + j] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
+			{
+				Destination = tempState.DestinationWater[j],
+				Neighbors = staticState.Neighbors,
+				Position = staticState.SphericalPosition,
+				Velocity = nextState.WaterVelocity[j],
+				LayerHeight = tempState.WaterLayerHeight[j],
+				PlanetRadius = staticState.PlanetRadius,
+				SecondsPerTick = worldData.SecondsPerTick,
+				MaxWindMove = staticState.CellRadius * 0.9f,
+			}, energyJobHandles[worldData.WaterLayer0 + j]);
+		}
+
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			int layer = worldData.WaterLayer0 + j;
+			energyJobHandles[layer] = SimJob.Schedule(new AdvectionWaterJob()
+			{
+				Delta = tempState.AdvectionWater[j],
+				Destination = tempState.DestinationWater[j],
+				DestinationAbove = tempState.DestinationWater[j + 1],
+				DestinationBelow = tempState.DestinationWater[j - 1],
+				Velocity = nextState.WaterVelocity[j],
+				VelocityAbove = nextState.WaterVelocity[j + 1],
+				VelocityBelow = nextState.WaterVelocity[j - 1],
+				Temperature = nextState.WaterTemperature[j],
+				TemperatureAbove = nextState.WaterTemperature[j + 1],
+				TemperatureBelow = nextState.WaterTemperature[j - 1],
+				Mass = nextState.WaterMass[j],
+				MassAbove = nextState.WaterMass[j + 1],
+				MassBelow = nextState.WaterMass[j - 1],
+				Salt = nextState.SaltMass[j],
+				SaltAbove = nextState.SaltMass[j + 1],
+				SaltBelow = nextState.SaltMass[j - 1],
+				Carbon = nextState.WaterCarbon[j],
+				CarbonAbove = nextState.WaterCarbon[j + 1],
+				CarbonBelow = nextState.WaterCarbon[j - 1],
+				PlanktonMass = nextState.PlanktonMass[j],
+				PlanktonGlucose = nextState.PlanktonGlucose[j],
 				Positions = staticState.SphericalPosition,
 				Neighbors = staticState.Neighbors,
 				CoriolisMultiplier = staticState.CoriolisMultiplier,
 				CoriolisTerm = coriolisTerm,
 				SecondsPerTick = worldData.SecondsPerTick
-			}, waterFlowJobHandle);
-
-			waterFlowJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
-			{
-				WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer],
-				SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
-				CarbonMass = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
-				PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
-				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
-				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
-				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
-
-				Advection = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
-			}, waterFlowJobHandle);
-
-
-			waterFlowJobHandle.Complete();
-
-
-			#endregion
-
-			#region Rebalance
-
-			for (int i = worldData.SurfaceWaterLayer; i >= 2; i--)
-			{
-
-				float maxDepth;
-				float minDepth;
-				// TODO: this doesn't handle more than 3 layers
-				if (i == worldData.SurfaceWaterLayer)
-				{
-					maxDepth = worldData.SurfaceWaterDepth;
-					minDepth = worldData.SurfaceWaterDepth - 10;
-				} else
-				{
-					maxDepth = worldData.ThermoclineDepth;
-					minDepth = worldData.ThermoclineDepth - 10;
-				}
-				var h = SimJob.Schedule(new RebalanceWaterLayersLimitJob()
-				{
-					Delta1 = tempState.DiffusionWater[i],
-					Delta2 = tempState.DiffusionWater[i - 1],
-
-					Mass1 = nextState.WaterMass[i],
-					Salt1 = nextState.SaltMass[i],
-					Carbon1 = nextState.WaterCarbon[i],
-					PlanktonMass1 = nextState.PlanktonMass[i],
-					PlanktonGlucose1 = nextState.PlanktonGlucose[i],
-					Temperature1 = nextState.WaterTemperature[i],
-					Velocity1 = nextState.WaterVelocity[i],
-
-					Mass2 = nextState.WaterMass[i - 1],
-					Salt2 = nextState.SaltMass[i - 1],
-					Carbon2 = nextState.WaterCarbon[i - 1],
-					Temperature2 = nextState.WaterTemperature[i - 1],
-					Velocity2 = nextState.WaterVelocity[i - 1],
-
-					MaxDepth1 = maxDepth,
-					MinDepth1 = minDepth,
-				});
-				var rebalanceWaterJobHandle1 = SimJob.Schedule(new ApplyAdvectionWaterJob()
-				{
-					WaterMass = nextState.WaterMass[i],
-					SaltMass = nextState.SaltMass[i],
-					CarbonMass = nextState.WaterCarbon[i],
-					PlanktonMass = nextState.PlanktonMass[i],
-					PlanktonGlucose = nextState.PlanktonGlucose[i],
-					Temperature = nextState.WaterTemperature[i],
-					Velocity = nextState.WaterVelocity[i],
-
-					Advection = tempState.DiffusionWater[i],
-				}, h);
-				var rebalanceWaterJobHandle2 = SimJob.Schedule(new ApplyAdvectionWaterJob()
-				{
-					WaterMass = nextState.WaterMass[i - 1],
-					SaltMass = nextState.SaltMass[i - 1],
-					CarbonMass = nextState.WaterCarbon[i - 1],
-					PlanktonMass = nextState.PlanktonMass[i - 1],
-					PlanktonGlucose = nextState.PlanktonGlucose[i - 1],
-					Temperature = nextState.WaterTemperature[i - 1],
-					Velocity = nextState.WaterVelocity[i - 1],
-
-					Advection = tempState.DiffusionWater[i - 1],
-				}, h);
-
-				JobHandle.CombineDependencies(rebalanceWaterJobHandle1, rebalanceWaterJobHandle2).Complete();
-			}
-
-
-			#endregion
-
-			#region Update dependent variables
-
-			TempState.Update(SimJob, ref nextState, ref tempState, ref worldData, default(JobHandle), tempArrays).Complete();
-
-			#endregion
-
-			#region Debug
-			if (settings.CheckForDegeneracy)
-			{
-				degenerate = CheckForDegeneracy(_cellCount, ref nextState, ref lastState, ref staticState, ref tempState, ref worldData);
-			}
-
-			if (settings.LogState)
-			{
-				PrintState("State", settings.LogStateIndex, ref staticState, ref nextState, ref worldData, new List<string>());
-				PrintDependentState("Dependent Vars", settings.LogStateIndex, ref tempState, ref worldData);
-			}
-			#endregion
-
-			#region Update Display
-			if (tick == ticksToAdvance-1 && settings.CollectOverlay)
-			{
-				var curState = states[curStateIndex];
-
-				var lastDisplay = display;
-				display = new DisplayState();
-				display.Init(_cellCount, ref worldData);
-				DisplayState.Update(ref display, ref lastDisplay, ref worldData, ref tempState, ref nextState, ref staticState, ref settings).Complete();
-				lastDisplay.Dispose();
-
-			}
-
-			#endregion
-
-			#region Dispose Temporary Arrays
-			foreach (var d in jobHandleDependencies)
-			{
-				d.Dispose();
-			}
-			foreach (var a in tempArrays)
-			{
-				a.Dispose();
-			}
-			#endregion
-
-			prepNextFrameFunc = tempState.Clear(staticState.Count, ref worldData);
-
+			}, JobHandle.CombineDependencies(groundWaterJob,
+				JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1])));
 		}
 
-		energyJobHandles.Dispose();
-		applyAdvectionAirJobHandles.Dispose();
-		applyAdvectionWaterJobHandles.Dispose();
+		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new GetVectorDestCoordsJob()
+		{
+			Destination = tempState.DestinationCloud,
+			Neighbors = staticState.Neighbors,
+			Position = staticState.SphericalPosition,
+			Velocity = tempState.CloudVelocity,
+			PlanetRadius = staticState.PlanetRadius,
+			SecondsPerTick = worldData.SecondsPerTick,
+			MaxWindMove = staticState.CellRadius * 0.9f,
+		}, energyJobHandles[worldData.CloudLayer]);
+		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new AdvectionCloudJob()
+		{
+			Delta = tempState.AdvectionCloud,
+			Destination = tempState.DestinationCloud,
+			Mass = nextState.CloudMass,
+			Temperature = nextState.CloudTemperature,
+			DropletMass = nextState.CloudDropletMass,
+			Neighbors = staticState.Neighbors,
+		}, energyJobHandles[worldData.CloudLayer]);
+
+		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new ApplyAdvectionCloudJob()
+		{
+			Advection = tempState.AdvectionCloud,
+			CloudMass = nextState.CloudMass,
+			Temperature = nextState.CloudTemperature,
+			DropletMass = nextState.CloudDropletMass,
+		}, energyJobHandles[worldData.CloudLayer]);
+
+		for (int i = 1; i < worldData.WaterLayers - 1; i++)
+		{
+			int layer = worldData.WaterLayer0 + i;
+			applyAdvectionWaterJobHandles[i] = SimJob.Schedule(new ApplyAdvectionWaterJob()
+			{
+				Advection = tempState.AdvectionWater[i],
+				SaltMass = nextState.SaltMass[i],
+				CarbonMass = nextState.WaterCarbon[i],
+				PlanktonMass = nextState.PlanktonMass[i],
+				PlanktonGlucose = nextState.PlanktonGlucose[i],
+				Temperature = nextState.WaterTemperature[i],
+				Velocity = nextState.WaterVelocity[i],
+				WaterMass = nextState.WaterMass[i]
+			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1]));
+		}
+
+		for (int i = 1; i < worldData.WaterLayers - 1; i++)
+		{
+			energyJobHandles[worldData.WaterLayer0 + i] = applyAdvectionWaterJobHandles[i];
+		}
+
+		#endregion
+
+		// Diffuse from last time step
+		// Air, Water, Cloud
+		#region Diffusion
+
+		for (int i = 1; i < worldData.WaterLayers - 1; i++)
+		{
+			int layer = worldData.WaterLayer0 + i;
+			energyJobHandles[layer] = SimJob.Schedule(new DiffusionWaterJob()
+			{
+				Delta = tempState.DiffusionWater[i],
+
+				Temperature = nextState.WaterTemperature[i],
+				TemperatureAbove = nextState.WaterTemperature[i + 1],
+				TemperatureBelow = nextState.WaterTemperature[i - 1],
+				SaltMass = nextState.SaltMass[i],
+				SaltMassAbove = nextState.SaltMass[i + 1],
+				SaltMassBelow = nextState.SaltMass[i - 1],
+				PlanktonMass = nextState.PlanktonMass[i],
+				PlanktonGlucose = nextState.PlanktonGlucose[i],
+				CarbonMass = nextState.WaterCarbon[i],
+				CarbonMassAbove = nextState.WaterCarbon[i + 1],
+				CarbonMassBelow = nextState.WaterCarbon[i - 1],
+				Velocity = nextState.WaterVelocity[i],
+				VelocityAbove = nextState.WaterVelocity[i + 1],
+				VelocityBelow = nextState.WaterVelocity[i - 1],
+				WaterMass = nextState.WaterMass[i],
+				WaterMassAbove = nextState.WaterMass[i + 1],
+				WaterMassBelow = nextState.WaterMass[i - 1],
+				LayerHeight = tempState.LayerHeight[i],
+				LayerHeightAbove = tempState.LayerHeight[i + 1],
+				LayerHeightBelow = tempState.LayerHeight[i - 1],
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				Neighbors = staticState.Neighbors,
+				DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
+				DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
+				CellSurfaceArea = staticState.CellSurfaceArea,
+				CellCircumference = staticState.CellCircumference
+			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1]));
+		}
+
+		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new DiffusionCloudJob()
+		{
+			Delta = tempState.DiffusionCloud,
+
+			LastMass = nextState.CloudMass,
+			LastTemperature = nextState.CloudTemperature,
+			LastDropletMass = nextState.CloudDropletMass,
+			Neighbors = staticState.Neighbors,
+			DiffusionCoefficient = worldData.CloudDiffusionCoefficient,
+		}, energyJobHandles[worldData.CloudLayer]);
+
+		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new ApplyAdvectionCloudJob()
+		{
+			Advection = tempState.DiffusionCloud,
+			CloudMass = nextState.CloudMass,
+			Temperature = nextState.CloudTemperature,
+			DropletMass = nextState.CloudDropletMass,
+		}, energyJobHandles[worldData.CloudLayer]);
+
+		for (int i = 1; i < worldData.WaterLayers - 1; i++)
+		{
+			int layer = worldData.WaterLayer0 + i;
+			applyAdvectionWaterJobHandles[i] = SimJob.Schedule(new ApplyAdvectionWaterJob()
+			{
+				Advection = tempState.DiffusionWater[i],
+				SaltMass = nextState.SaltMass[i],
+				CarbonMass = nextState.WaterCarbon[i],
+				PlanktonMass = nextState.PlanktonMass[i],
+				PlanktonGlucose = nextState.PlanktonGlucose[i],
+				Temperature = nextState.WaterTemperature[i],
+				Velocity = nextState.WaterVelocity[i],
+				WaterMass = nextState.WaterMass[i]
+			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1]));
+		}
+
+		for (int i = 1; i < worldData.WaterLayers - 1; i++)
+		{
+			energyJobHandles[worldData.WaterLayer0 + i] = applyAdvectionWaterJobHandles[i];
+		}
+
+		#endregion
+
+		#endregion
+
+
+		tickJobHandle = JobHandle.CombineDependencies(
+			groundWaterJob,
+			JobHandle.CombineDependencies(energyJobHandles)
+			);
+
+		// TODO: we really just want to update depths
+		#region Update dependent variables
+
+		tickJobHandle = TempState.Update(SimJob, ref nextState, ref tempState, ref worldData, ref staticState, tickJobHandle);
+
+		#endregion
+
+
+		#region Flow
+
+		// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
+		tickJobHandle = NeighborJob.Schedule(new UpdateFlowVelocityJob()
+		{
+			Flow = nextState.FlowWater,
+
+			LastFlow = lastState.FlowWater,
+			SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+			WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer],
+			NeighborDistInverse = staticState.NeighborDistInverse,
+			Neighbors = staticState.Neighbors,
+			Gravity = nextState.PlanetState.Gravity,
+			SecondsPerTick = worldData.SecondsPerTick,
+			Damping = worldData.SurfaceWaterFlowDamping,
+			ViscosityInverse = 1.0f - worldData.WaterViscosity,
+		}, tickJobHandle);
+
+		tickJobHandle = SimJob.Schedule(new SumOutgoingFlowJob()
+		{
+			OutgoingFlow = tempState.OutgoingFlowWater,
+			Flow = nextState.FlowWater
+		}, tickJobHandle);
+
+		tickJobHandle = NeighborJob.Schedule(new LimitOutgoingFlowJob()
+		{
+			Flow = nextState.FlowWater,
+			FlowPercent = tempState.FlowPercentWater,
+
+			OutgoingFlow = tempState.OutgoingFlowWater,
+			Neighbors = staticState.Neighbors,
+			WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer]
+		}, tickJobHandle);
+
+		tickJobHandle = SimJob.Schedule(new ApplyFlowWaterJob()
+		{
+			Delta = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
+
+			Mass = nextState.WaterMass[worldData.SurfaceWaterLayer],
+			Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
+			Carbon = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
+			PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
+			PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
+			Salt = nextState.SaltMass[worldData.SurfaceWaterLayer],
+			Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+			FlowPercent = tempState.FlowPercentWater,
+			Positions = staticState.SphericalPosition,
+			Neighbors = staticState.Neighbors,
+			CoriolisMultiplier = staticState.CoriolisMultiplier,
+			CoriolisTerm = coriolisTerm,
+			SecondsPerTick = worldData.SecondsPerTick
+		}, tickJobHandle);
+
+		tickJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
+		{
+			WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer],
+			SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
+			CarbonMass = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
+			PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
+			PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
+			Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+			Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
+
+			Advection = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
+		}, tickJobHandle);
+
+
+		#endregion
+
+		#region Rebalance
+
+		for (int i = worldData.SurfaceWaterLayer; i >= 2; i--)
+		{
+
+			float maxDepth;
+			float minDepth;
+			// TODO: this doesn't handle more than 3 layers
+			if (i == worldData.SurfaceWaterLayer)
+			{
+				maxDepth = worldData.SurfaceWaterDepth;
+				minDepth = worldData.SurfaceWaterDepth - 10;
+			} else
+			{
+				maxDepth = worldData.ThermoclineDepth;
+				minDepth = worldData.ThermoclineDepth - 10;
+			}
+			var h = SimJob.Schedule(new RebalanceWaterLayersLimitJob()
+			{
+				Delta1 = tempState.DiffusionWater[i],
+				Delta2 = tempState.DiffusionWater[i - 1],
+
+				Mass1 = nextState.WaterMass[i],
+				Salt1 = nextState.SaltMass[i],
+				Carbon1 = nextState.WaterCarbon[i],
+				PlanktonMass1 = nextState.PlanktonMass[i],
+				PlanktonGlucose1 = nextState.PlanktonGlucose[i],
+				Temperature1 = nextState.WaterTemperature[i],
+				Velocity1 = nextState.WaterVelocity[i],
+
+				Mass2 = nextState.WaterMass[i - 1],
+				Salt2 = nextState.SaltMass[i - 1],
+				Carbon2 = nextState.WaterCarbon[i - 1],
+				Temperature2 = nextState.WaterTemperature[i - 1],
+				Velocity2 = nextState.WaterVelocity[i - 1],
+
+				MaxDepth1 = maxDepth,
+				MinDepth1 = minDepth,
+			}, tickJobHandle);
+			var rebalanceWaterJobHandle1 = SimJob.Schedule(new ApplyAdvectionWaterJob()
+			{
+				WaterMass = nextState.WaterMass[i],
+				SaltMass = nextState.SaltMass[i],
+				CarbonMass = nextState.WaterCarbon[i],
+				PlanktonMass = nextState.PlanktonMass[i],
+				PlanktonGlucose = nextState.PlanktonGlucose[i],
+				Temperature = nextState.WaterTemperature[i],
+				Velocity = nextState.WaterVelocity[i],
+
+				Advection = tempState.DiffusionWater[i],
+			}, h);
+			var rebalanceWaterJobHandle2 = SimJob.Schedule(new ApplyAdvectionWaterJob()
+			{
+				WaterMass = nextState.WaterMass[i - 1],
+				SaltMass = nextState.SaltMass[i - 1],
+				CarbonMass = nextState.WaterCarbon[i - 1],
+				PlanktonMass = nextState.PlanktonMass[i - 1],
+				PlanktonGlucose = nextState.PlanktonGlucose[i - 1],
+				Temperature = nextState.WaterTemperature[i - 1],
+				Velocity = nextState.WaterVelocity[i - 1],
+
+				Advection = tempState.DiffusionWater[i - 1],
+			}, h);
+
+			tickJobHandle = JobHandle.CombineDependencies(rebalanceWaterJobHandle1, rebalanceWaterJobHandle2);
+		}
+
+
+		#endregion
+
+		#region Update dependent variables
+
+		tickJobHandle = TempState.Update(SimJob, ref nextState, ref tempState, ref worldData, ref staticState, tickJobHandle);
+
+		#endregion
+
+		// TODO: put this in a job
+		//bool degenerate = false;
+		//if (SimSettings.CheckForDegeneracy)
+		//{
+		//	degenerate = WorldSim.CheckForDegeneracy(_cellCount, ref nextState, ref lastState, ref StaticState, ref _tempState, ref WorldData);
+		//}
+
+		//if (SimSettings.LogState)
+		//{
+		//	PrintState("State", SimSettings.LogStateIndex, ref StaticState, ref nextState, ref WorldData, new List<string>());
+		//	PrintDependentState("Dependent Vars", SimSettings.LogStateIndex, ref _tempState, ref WorldData);
+		//}
+
+
+		return tickJobHandle;
+
 	}
 
 	public static bool CheckForDegeneracy(int cellCount, ref SimState state, ref SimState lastState, ref StaticState staticState, ref TempState dependent, ref WorldData worldData)
@@ -1062,7 +1046,6 @@ public class WorldSim {
 		ref SimState nextState,
 		ref SimState lastState,
 		ref TempState tempState,
-		ref DisplayState display,
 		ref StaticState staticState,
 		ref WorldData worldData,
 		ref SimSettings settings
@@ -1119,7 +1102,7 @@ public class WorldSim {
 				SaltMass = lastState.SaltMass[worldData.SurfaceWaterLayer],
 				EmissivitySalt = worldData.ThermalEmissivitySalt,
 				EmissivityWater = worldData.ThermalEmissivityWater
-			});
+			}, lastJobHandle);
 		}
 		emissivityJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new EmissivityTerrainJob()
 		{
@@ -1127,7 +1110,7 @@ public class WorldSim {
 			SoilFertility = lastState.GroundCarbon,
 			EmissivityDirt = worldData.ThermalEmissivityDirt,
 			EmissivitySand = worldData.ThermalEmissivitySand,
-		});
+		}, lastJobHandle);
 
 		#endregion
 
@@ -1654,7 +1637,7 @@ public class WorldSim {
 
 		#region Change temperature due to energy flux
 
-		var terrainEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+		var terrainEnergyJobHandleDependencies = new NativeList<JobHandle>(Allocator.Persistent)
 			{
 				solarInJobHandles[worldData.TerrainLayer],
 				thermalOutJobHandles[worldData.TerrainLayer],
@@ -1681,7 +1664,7 @@ public class WorldSim {
 			HeatingDepth = worldData.SoilHeatDepth,
 		}, JobHandle.CombineDependencies(terrainEnergyJobHandleDependencies));
 
-		var energyIceJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+		var energyIceJobHandleDependencies = new NativeList<JobHandle>(Allocator.Persistent)
 			{
 				solarInJobHandles[worldData.IceLayer],
 				thermalOutJobHandles[worldData.IceLayer],
@@ -1706,7 +1689,7 @@ public class WorldSim {
 			ConductionEnergyFlora = tempState.ConductionIceFlora,
 		}, JobHandle.CombineDependencies(energyIceJobHandleDependencies));
 
-		var energyFloraJobHandleDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+		var energyFloraJobHandleDependencies = new NativeList<JobHandle>(Allocator.Persistent)
 			{
 				solarInJobHandles[worldData.FloraLayer],
 				thermalOutJobHandles[worldData.FloraLayer],
@@ -1742,7 +1725,7 @@ public class WorldSim {
 		for (int j = 1; j < worldData.AirLayers - 1; j++)
 		{
 			int layerIndex = worldData.AirLayer0 + j;
-			var airDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			var airDependencies = new NativeList<JobHandle>(Allocator.Persistent)
 				{
 					solarInJobHandles[layerIndex],
 					thermalOutJobHandles[layerIndex],
@@ -1789,7 +1772,7 @@ public class WorldSim {
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			int layerIndex = worldData.WaterLayer0 + j;
-			var waterDependencies = new NativeList<JobHandle>(Allocator.TempJob)
+			var waterDependencies = new NativeList<JobHandle>(Allocator.Persistent)
 				{
 					solarInJobHandles[layerIndex],
 					thermalOutJobHandles[layerIndex],
@@ -1829,7 +1812,6 @@ public class WorldSim {
 		ref SimState nextState,
 		ref SimState lastState,
 		ref TempState tempState,
-		ref DisplayState display,
 		ref StaticState staticState,
 		ref WorldData worldData,
 		ref SimSettings settings
@@ -2301,7 +2283,6 @@ public class WorldSim {
 		ref SimState nextState,
 		ref SimState lastState,
 		ref TempState tempState,
-		ref DisplayState display,
 		ref StaticState staticState,
 		ref WorldData worldData,
 		ref SimSettings settings

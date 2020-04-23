@@ -170,7 +170,7 @@ public class WorldView : MonoBehaviour {
 	private NativeArray<float3> _terrainVerts;
 	private NativeArray<float3> _cloudVerts;
 
-	private const int _batchCount = 1;
+	private const int _batchCount = 128;
 
 	private Unity.Mathematics.Random _random;
 
@@ -181,8 +181,7 @@ public class WorldView : MonoBehaviour {
 	private float _skyboxExposureTime = 0;
 
 	private Action _prepareMesh;
-	private bool _advanceRenderState;
-	private JobHandle _tickJobHandle;
+	public DisplayState DisplayState;
 
 	public void Start()
 	{
@@ -248,7 +247,7 @@ public class WorldView : MonoBehaviour {
 		_selectionCircle.transform.localScale *= 0.02f;
 
 		_selectionCircleNeighbors = new List<GameObject>();
-		for (int i=0;i<6;i++)
+		for (int i = 0; i < 6; i++)
 		{
 			var s = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
 			s.transform.localScale *= 0.01f;
@@ -256,7 +255,7 @@ public class WorldView : MonoBehaviour {
 		}
 
 		_windArrows = new GameObject[Sim.CellCount];
-		for (int i = 0; i < Sim.CellCount;i++)
+		for (int i = 0; i < Sim.CellCount; i++)
 		{
 			_windArrows[i] = GameObject.Instantiate(WindArrowPrefab, Planet.transform);
 			_windArrows[i].SetActive(false);
@@ -276,7 +275,7 @@ public class WorldView : MonoBehaviour {
 		InitVerts(Sim.Icosphere);
 
 		_renderJobHelper = new JobHelper(Sim.CellCount);
-		_renderTerrainHelper = new JobHelper(Sim.CellCount* VertsPerCell);
+		_renderTerrainHelper = new JobHelper(Sim.CellCount * VertsPerCell);
 		_renderCloudHelper = new JobHelper(Sim.CellCount * VertsPerCloud);
 		_terrainVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_terrainColorsArray1 = new NativeArray<Vector4>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
@@ -290,17 +289,20 @@ public class WorldView : MonoBehaviour {
 		_cloudColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		_cloudNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 
-		BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
-		var prepMesh = PrepareMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
-		UpdateMesh(prepMesh);
+		DisplayState = new DisplayState();
+		DisplayState.Init(Sim.CellCount, ref Sim.WorldData);
+		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
 
+		OnSimTick();
+
+		//		BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
+
+		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
+		
 		const int boundsSize = 1000;
 		_terrainMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_waterMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_cloudMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
-
-		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
-
 	}
 	public void OnDestroy()
 	{
@@ -328,34 +330,11 @@ public class WorldView : MonoBehaviour {
 		_overlayColorsArray.Dispose();
 
 		Foliage.Dispose();
+		DisplayState.Dispose();
 	}
 
 	public void Update()
 	{
-		if (_advanceRenderState)
-		{
-			_advanceRenderState = false;
-
-			float lerpTime;
-			if (Sim.TimeScale == 0)
-			{
-				lerpTime = Sim.TimeTillTick;
-			}
-			else
-			{
-				lerpTime = 0.1f + Sim.TimeTillTick / Sim.TimeScale;
-			}
-			StartLerp(Sim.TimeTillTick);
-
-			_lastRenderState = _curRenderState;
-			_nextRenderState = (_curRenderState + 1) % _renderStateCount;
-			_curRenderState = (_nextRenderState + 1) % _renderStateCount;
-			BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
-
-			Foliage.Tick(ref Sim.TempState);
-
-		}
-
 		if (Sim.TimeScale == 0)
 		{
 			_tickLerpTime -= Time.deltaTime * 0.5f;
@@ -365,23 +344,7 @@ public class WorldView : MonoBehaviour {
 			_tickLerpTime -= Time.deltaTime * 0.5f * Sim.TimeScale;
 		}
 
-		_prepareMesh = PrepareMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
-
-
-		Planet.transform.SetPositionAndRotation(_renderStates[_curRenderState].Position, Quaternion.Euler(_renderStates[_curRenderState].Rotation));
-		UpdateSkybox();
-
-		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
-
-		CloudMaterialBack.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
-		CloudMaterialFront.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
-		WaterMaterial.SetFloat("Vector1_2C57E502", Sim.TimeScale); // sim time scale
-		WaterMaterial.SetFloat("Vector1_91938D4", _renderStates[_curRenderState].Ticks); // sim time
-
-	}
-	public void LateUpdate()
-	{
-		UpdateMesh(_prepareMesh);
+		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 		Foliage.Update(ref _renderStates[_curRenderState]);
 
 		if (ActiveWindOverlay != WindOverlay.None)
@@ -405,6 +368,15 @@ public class WorldView : MonoBehaviour {
 		}
 
 
+		Planet.transform.SetPositionAndRotation(_renderStates[_curRenderState].Position, Quaternion.Euler(_renderStates[_curRenderState].Rotation));
+		UpdateSkybox();
+
+		SunLight.transform.rotation = Quaternion.LookRotation(Planet.transform.position - SunLight.transform.position);
+
+		CloudMaterialBack.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
+		CloudMaterialFront.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
+		WaterMaterial.SetFloat("Vector1_2C57E502", Sim.TimeScale); // sim time scale
+		WaterMaterial.SetFloat("Vector1_91938D4", _renderStates[_curRenderState].Ticks); // sim time
 
 	}
 	public void StartLerp(float lerpTime)
@@ -413,19 +385,47 @@ public class WorldView : MonoBehaviour {
 		_tickLerpTimeTotal = lerpTime;
 	}
 
-	private void OnSimTick(JobHandle tickJobHandle)
+	private void OnSimTick()
 	{
-		_tickJobHandle = tickJobHandle;
 
-		// TODO: we want the view to kick off the next simulation step in update
-		_tickJobHandle.Complete();
+		float lerpTime;
+		if (Sim.TimeScale == 0)
+		{
+			lerpTime = Sim.TimeTillTick;
+		}
+		else
+		{
+			lerpTime = 0.1f + Sim.TimeTillTick / Sim.TimeScale;
+		}
+		StartLerp(Sim.TimeTillTick);
+
+		_lastRenderState = _curRenderState;
+		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
+		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
+
+		var displayJob = default(JobHandle);
+		var lastDisplay = DisplayState;
+		if (Sim.SimSettings.CollectOverlay)
+		{
+			DisplayState = new DisplayState();
+			DisplayState.Init(Sim.StaticState.Count, ref Sim.WorldData);
+			displayJob = DisplayState.Update(ref DisplayState, ref lastDisplay, ref Sim.WorldData, ref Sim.TempState, ref Sim.ActiveSimState, ref Sim.StaticState, ref Sim.SimSettings);
+		}
 
 
-		_advanceRenderState = true;
+		var buildRenderStateJob = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, displayJob);
+		var foliageJob = Foliage.Tick(ref Sim.TempState, displayJob);
+
+		displayJob = JobHandle.CombineDependencies(displayJob, buildRenderStateJob, foliageJob);
+		displayJob.Complete();
+		if (Sim.SimSettings.CollectOverlay)
+		{
+			lastDisplay.Dispose();
+		}
 	}
 
 
-	public void BuildRenderState(ref SimState from, ref TempState dependent, ref DisplayState display, ref RenderState to, ref WorldData worldData, ref StaticState staticState)
+	public JobHandle BuildRenderState(ref SimState from, ref TempState dependent, ref DisplayState display, ref RenderState to, ref WorldData worldData, ref StaticState staticState, JobHandle dependency)
 	{
 		to.Ticks = from.PlanetState.Ticks;
 		to.Position = from.PlanetState.Position;
@@ -500,14 +500,12 @@ public class WorldView : MonoBehaviour {
 			DisplayCloudHeight = CloudHeight,
 			DisplayCloudMin = DisplayCloudMin,
 			DisplayCloudRangeInverse = 1.0f / (1.0f - DisplayCloudMin)
-		});
+		}, dependency);
 
-		buildRenderStateJobHandle.Complete();
-
-
+		return buildRenderStateJobHandle;
 	}
 
-	public Action PrepareMesh(ref RenderState lastState, ref RenderState nextState, ref RenderState state)
+	public void UpdateMesh(ref RenderState lastState, ref RenderState nextState, ref RenderState state)
 	{
 
 		float t = Mathf.Clamp01(1.0f - _tickLerpTime / _tickLerpTimeTotal);
@@ -522,8 +520,8 @@ public class WorldView : MonoBehaviour {
 
 		NativeList<JobHandle> dependencies = new NativeList<JobHandle>(Allocator.TempJob);
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.TerrainElevation, Start = lastState.TerrainElevation, End = nextState.TerrainElevation }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector4 { Progress = t, Out = state.TerrainColor1, Start = lastState.TerrainColor1, End = nextState.TerrainColor1 }).Schedule(Sim.CellCount, _batchCount));
-		dependencies.Add((new LerpJobVector4 { Progress = t, Out = state.TerrainColor2, Start = lastState.TerrainColor2, End = nextState.TerrainColor2 }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobfloat4 { Progress = t, Out = state.TerrainColor1, Start = lastState.TerrainColor1, End = nextState.TerrainColor1 }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobfloat4 { Progress = t, Out = state.TerrainColor2, Start = lastState.TerrainColor2, End = nextState.TerrainColor2 }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.WaterElevation, Start = lastState.WaterElevation, End = nextState.WaterElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.WaterColor, Start = lastState.WaterColor, End = nextState.WaterColor }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.SurfacePosition, Start = lastState.SurfacePosition, End = nextState.SurfacePosition }).Schedule(Sim.CellCount, _batchCount));
@@ -575,17 +573,9 @@ public class WorldView : MonoBehaviour {
 			StandardVerts = _cloudVerts,
 		}, JobHandle.CombineDependencies(dependencies)));
 
+		getVertsHandle.Complete();
+		dependencies.Dispose();
 
-		return new Action(() =>
-		{
-			getVertsHandle.Complete();
-			dependencies.Dispose();
-		});
-	}
-
-	public void UpdateMesh(Action completeMeshPrep)
-	{
-		completeMeshPrep.Invoke();
 		_terrainMesh.SetVertices(_terrainVerticesArray);
 		_waterMesh.SetVertices(_waterVerticesArray);
 		_waterMesh.SetNormals(_waterNormalsArray);
@@ -947,13 +937,15 @@ public class WorldView : MonoBehaviour {
 		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
 		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
 		Sim.SimSettings.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
-		BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
+		h.Complete();
 	}
 	public void SetActiveWindOverlay(WindOverlay o)
 	{
 		ActiveWindOverlay = o;
 		_tickLerpTime = 0;
-		BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+		var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
+		h.Complete();
 
 		for (int i = 0; i < _windArrows.Length; i++)
 		{
@@ -970,7 +962,8 @@ public class WorldView : MonoBehaviour {
 			ActiveMeshLayerAir = l;
 
 			_tickLerpTime = 0;
-			BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+			var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
+			h.Complete();
 		}
 	}
 	public void SetActiveLayerWater(int l)
@@ -980,7 +973,8 @@ public class WorldView : MonoBehaviour {
 			ActiveMeshLayerWater = l;
 
 			_tickLerpTime = 0;
-			BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState);
+			var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
+			h.Complete();
 		}
 	}
 
