@@ -33,7 +33,7 @@ public class WorldSimComponent : MonoBehaviour
 	[HideInInspector] public float TimeScale = 0;
 
 	public int CellCount { get; private set; }
-	public ref SimState ActiveSimState { get { return ref _simStates[_activeSimState]; } }
+	public ref SimState LastSimState { get { return ref _simStates[_lastSimState]; } }
 	public ref TempState TempState { get { return ref _tempState; } }
 	public float TimeTillTick { get; private set; }
 	public float InverseCellCount { get; private set; }
@@ -43,6 +43,7 @@ public class WorldSimComponent : MonoBehaviour
 	private WorldGenData _worldGenData = new WorldGenData();
 	private SimState[] _simStates;
 	private TempState _tempState;
+	private int _lastSimState;
 	private int _activeSimState;
 	private JobHandle _tickJobHandle;
 
@@ -63,12 +64,14 @@ public class WorldSimComponent : MonoBehaviour
 
 		TimeTillTick = 0.00001f;
 		_activeSimState = 0;
+		_lastSimState = 0;
 		_simStates = new SimState[_simStateCount];
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i] = new SimState();
 			_simStates[i].Init(CellCount, ref WorldData);
 		}
+		_tempState.Init(CellCount, ref WorldData);
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempState);
@@ -105,6 +108,7 @@ public class WorldSimComponent : MonoBehaviour
 			}
 
 			_tickJobHandle.Complete();
+			_lastSimState = _activeSimState;
 			OnTick?.Invoke();
 
 

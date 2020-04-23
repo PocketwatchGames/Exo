@@ -15,7 +15,7 @@ public static class WorldGen {
 	static System.Random _random;
 	static FastNoise _noise;
 
-	private static void InitSync(WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref TempState dependent)
+	private static void InitSync(WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref TempState tempState)
 	{
 		staticState.Init(worldGenData.Radius, icosphere, ref worldData);
 
@@ -29,8 +29,6 @@ public static class WorldGen {
 		state.PlanetState.GeothermalHeat = worldGenData.GeothermalHeat;
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
 		state.PlanetState.Oxygen = worldGenData.Oxygen;
-
-		dependent.Init(staticState.Count, ref worldData);
 	}
 
 #if ASYNC_WORLDGEN
@@ -324,7 +322,7 @@ public static class WorldGen {
 #if ASYNC_WORLDGEN
 	[BurstCompile]
 #endif
-	public static void Generate(int seed, WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref TempState dependent)
+	public static void Generate(int seed, WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref TempState tempState)
 	{
 
 		float inversePI = 1.0f / math.PI;
@@ -332,7 +330,7 @@ public static class WorldGen {
 		_noise.SetFrequency(10);
 		_random = new System.Random(seed);
 
-		InitSync(worldGenData, icosphere, ref worldData, ref staticState, ref state, ref dependent);
+		InitSync(worldGenData, icosphere, ref worldData, ref staticState, ref state, ref tempState);
 
 		JobHelper worldGenJobHelper = new JobHelper(staticState.Count);
 
@@ -351,7 +349,7 @@ public static class WorldGen {
 			CloudMass = state.CloudMass,
 			potentialTemperature = temperaturePotential,
 			relativeHumidity = RelativeHumidity,
-			LayerElevationBase = dependent.LayerHeight[0],
+			LayerElevationBase = tempState.LayerHeight[0],
 			GroundWater = state.GroundWater,
 			Elevation = state.Elevation,
 			Flora = state.FloraMass,
@@ -465,7 +463,7 @@ public static class WorldGen {
 		worldGenJobHandle.Complete();
 
 		var tempArrays = new List<NativeArray<float>>();
-		TempState.Update(worldGenJobHelper,	ref state, ref dependent, ref worldData, ref staticState, worldGenJobHandle).Complete();
+		TempState.Update(worldGenJobHelper,	ref state, ref tempState, ref worldData, ref staticState, worldGenJobHandle).Complete();
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
@@ -474,9 +472,9 @@ public static class WorldGen {
 				AirVapor = state.AirVapor[i],
 				CarbonDioxide = state.AirCarbon[i],
 
-				AirMass = dependent.AirMass[i],
-				Pressure = dependent.AirPressure[i],
-				LayerMiddle = dependent.LayerMiddle[i],
+				AirMass = tempState.AirMass[i],
+				Pressure = tempState.AirPressure[i],
+				LayerMiddle = tempState.LayerMiddle[i],
 				TemperaturePotential = temperaturePotential,
 				RelativeHumidity = RelativeHumidity,
 				CarbonDioxidePPM = worldGenData.AirCarbonPercent,
@@ -488,7 +486,7 @@ public static class WorldGen {
 		///////////////////////////////////
 		// Update dependent variables
 
-		TempState.Update(worldGenJobHelper, ref state, ref dependent, ref worldData, ref staticState, worldGenJobHandle).Complete();
+		TempState.Update(worldGenJobHelper, ref state, ref tempState, ref worldData, ref staticState, worldGenJobHandle).Complete();
 
 		waterMassTotal.Dispose();
 		waterDepthTotal.Dispose();
@@ -502,7 +500,7 @@ public static class WorldGen {
 			a.Dispose();
 		}
 
-		dependent.Clear(staticState.Count, ref worldData, default(JobHandle)).Complete();
+		tempState.Clear(staticState.Count, ref worldData, default(JobHandle)).Complete();
 
 	}
 

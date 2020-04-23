@@ -182,6 +182,7 @@ public class WorldView : MonoBehaviour {
 
 	private Action _prepareMesh;
 	public DisplayState DisplayState;
+	private TempState _tempState;
 
 	public void Start()
 	{
@@ -291,13 +292,16 @@ public class WorldView : MonoBehaviour {
 
 		DisplayState = new DisplayState();
 		DisplayState.Init(Sim.CellCount, ref Sim.WorldData);
+		_tempState = new TempState();
+		_tempState.Init(Sim.CellCount, ref Sim.WorldData);
+
 		Foliage.Init(Sim.CellCount, ref Sim.StaticState);
 
 		OnSimTick();
 
-		//		BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
+		//		BuildRenderState(ref Sim.ActiveSimState, ref _tempState, ref DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 
-		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
+		LerpMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 		
 		const int boundsSize = 1000;
 		_terrainMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
@@ -331,6 +335,7 @@ public class WorldView : MonoBehaviour {
 
 		Foliage.Dispose();
 		DisplayState.Dispose();
+		_tempState.Dispose();
 	}
 
 	public void Update()
@@ -344,7 +349,7 @@ public class WorldView : MonoBehaviour {
 			_tickLerpTime -= Time.deltaTime * 0.5f * Sim.TimeScale;
 		}
 
-		UpdateMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
+		LerpMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 		Foliage.Update(ref _renderStates[_curRenderState]);
 
 		if (ActiveWindOverlay != WindOverlay.None)
@@ -383,6 +388,33 @@ public class WorldView : MonoBehaviour {
 	{
 		_tickLerpTime = lerpTime;
 		_tickLerpTimeTotal = lerpTime;
+
+		_lastRenderState = _curRenderState;
+		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
+		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
+
+		var displayJob = default(JobHandle);
+		var lastDisplay = DisplayState;
+		displayJob = TempState.Update(_renderJobHelper, ref Sim.LastSimState, ref _tempState, ref Sim.WorldData, ref Sim.StaticState, displayJob);
+		displayJob.Complete();
+		if (Sim.SimSettings.CollectOverlay)
+		{
+			DisplayState = new DisplayState();
+			DisplayState.Init(Sim.StaticState.Count, ref Sim.WorldData);
+			displayJob = DisplayState.Update(ref DisplayState, ref lastDisplay, ref Sim.WorldData, ref _tempState, ref Sim.LastSimState, ref Sim.StaticState, ref Sim.SimSettings);
+		}
+
+
+		var buildRenderStateJob = BuildRenderState(ref Sim.LastSimState, ref _tempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, displayJob);
+		var foliageJob = Foliage.Tick(ref _tempState, displayJob);
+
+		displayJob = JobHandle.CombineDependencies(displayJob, buildRenderStateJob, foliageJob);
+		displayJob.Complete();
+		if (Sim.SimSettings.CollectOverlay)
+		{
+			lastDisplay.Dispose();
+		}
+
 	}
 
 	private void OnSimTick()
@@ -397,32 +429,10 @@ public class WorldView : MonoBehaviour {
 		{
 			lerpTime = 0.1f + Sim.TimeTillTick / Sim.TimeScale;
 		}
-		StartLerp(Sim.TimeTillTick);
+		StartLerp(lerpTime);
 
-		_lastRenderState = _curRenderState;
-		_nextRenderState = (_curRenderState + 1) % _renderStateCount;
-		_curRenderState = (_nextRenderState + 1) % _renderStateCount;
-
-		var displayJob = default(JobHandle);
-		var lastDisplay = DisplayState;
-		if (Sim.SimSettings.CollectOverlay)
-		{
-			DisplayState = new DisplayState();
-			DisplayState.Init(Sim.StaticState.Count, ref Sim.WorldData);
-			displayJob = DisplayState.Update(ref DisplayState, ref lastDisplay, ref Sim.WorldData, ref Sim.TempState, ref Sim.ActiveSimState, ref Sim.StaticState, ref Sim.SimSettings);
-		}
-
-
-		var buildRenderStateJob = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, displayJob);
-		var foliageJob = Foliage.Tick(ref Sim.TempState, displayJob);
-
-		displayJob = JobHandle.CombineDependencies(displayJob, buildRenderStateJob, foliageJob);
-		displayJob.Complete();
-		if (Sim.SimSettings.CollectOverlay)
-		{
-			lastDisplay.Dispose();
-		}
 	}
+
 
 
 	public JobHandle BuildRenderState(ref SimState from, ref TempState dependent, ref DisplayState display, ref RenderState to, ref WorldData worldData, ref StaticState staticState, JobHandle dependency)
@@ -505,7 +515,7 @@ public class WorldView : MonoBehaviour {
 		return buildRenderStateJobHandle;
 	}
 
-	public void UpdateMesh(ref RenderState lastState, ref RenderState nextState, ref RenderState state)
+	public void LerpMesh(ref RenderState lastState, ref RenderState nextState, ref RenderState state)
 	{
 
 		float t = Mathf.Clamp01(1.0f - _tickLerpTime / _tickLerpTimeTotal);
@@ -933,27 +943,23 @@ public class WorldView : MonoBehaviour {
 	{
 		ActiveMeshOverlay = o;
 
-		_tickLerpTime = 0;
 		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
 		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
 		Sim.SimSettings.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
-		var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
-		h.Complete();
+
+		StartLerp(0.1f);
 	}
 	public void SetActiveWindOverlay(WindOverlay o)
 	{
 		ActiveWindOverlay = o;
-		_tickLerpTime = 0;
-		var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
-		h.Complete();
 
 		for (int i = 0; i < _windArrows.Length; i++)
 		{
 			var wind = _renderStates[_curRenderState].VelocityArrow[i];
 			bool visible = ActiveWindOverlay != WindOverlay.None && !(wind.x == 0 && wind.y == 0);
 			_windArrows[i].SetActive(visible);
-
 		}
+		StartLerp(0.1f);
 	}
 	public void SetActiveLayerAir(int l)
 	{
@@ -961,9 +967,7 @@ public class WorldView : MonoBehaviour {
 		{
 			ActiveMeshLayerAir = l;
 
-			_tickLerpTime = 0;
-			var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
-			h.Complete();
+			StartLerp(0.1f);
 		}
 	}
 	public void SetActiveLayerWater(int l)
@@ -972,9 +976,7 @@ public class WorldView : MonoBehaviour {
 		{
 			ActiveMeshLayerWater = l;
 
-			_tickLerpTime = 0;
-			var h = BuildRenderState(ref Sim.ActiveSimState, ref Sim.TempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, default(JobHandle));
-			h.Complete();
+			StartLerp(0.1f);
 		}
 	}
 

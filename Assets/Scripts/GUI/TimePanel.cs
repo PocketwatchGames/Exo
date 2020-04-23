@@ -21,7 +21,7 @@ public class TimePanel : MonoBehaviour
     {
 		TimeScale.text = "x" + World.TimeScale;
 
-		var state = World.ActiveSimState;
+		var state = World.LastSimState;
 		Ticks.text = "[" + state.PlanetState.Ticks + "]";
 		Time.text = ((int)(WorldTime.GetTime(state.PlanetState.Ticks, state.PlanetState.SpinSpeed) / state.PlanetState.SpinSpeed)).ToString() + "\"";
 		float days = WorldTime.GetDays(state.PlanetState.Ticks, state.PlanetState.SpinSpeed * World.WorldData.SecondsPerTick);

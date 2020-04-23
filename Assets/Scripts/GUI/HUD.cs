@@ -86,19 +86,19 @@ public class HUD : MonoBehaviour
 		switch (cellInfoType)
 		{
 			case CellInfo.CellInfoType.Global:
-				return CellInfo.GetCellInfoGlobal(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.TempState, ref View.DisplayState);
+				return CellInfo.GetCellInfoGlobal(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.LastSimState, ref Sim.TempState, ref View.DisplayState);
 			case CellInfo.CellInfoType.Enthalpy:
-				return CellInfo.GetCellInfoEnthalpy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.TempState, ref View.DisplayState);
+				return CellInfo.GetCellInfoEnthalpy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.LastSimState, ref Sim.TempState, ref View.DisplayState);
 			case CellInfo.CellInfoType.Energy:
-				return CellInfo.GetCellInfoEnergy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.TempState, ref View.DisplayState);
+				return CellInfo.GetCellInfoEnergy(ActiveTemperatureUnits, Sim.InverseCellCount, ref Sim.WorldData, ref Sim.LastSimState, ref Sim.TempState, ref View.DisplayState);
 			case CellInfo.CellInfoType.Cell:
-				return CellInfo.GetCellInfoCell(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.StaticState, ref Sim.ActiveSimState, ref Sim.TempState, ref View.DisplayState);
+				return CellInfo.GetCellInfoCell(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.StaticState, ref Sim.LastSimState, ref Sim.TempState, ref View.DisplayState);
 			case CellInfo.CellInfoType.Atmosphere:
-				return CellInfo.GetCellInfoAtmosphere(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.StaticState, ref View.DisplayState);
+				return CellInfo.GetCellInfoAtmosphere(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.WorldData, ref Sim.LastSimState, ref Sim.TempState, ref Sim.StaticState, ref View.DisplayState);
 			case CellInfo.CellInfoType.Ground:
-				return CellInfo.GetCellInfoGround(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.ActiveSimState, ref Sim.TempState);
+				return CellInfo.GetCellInfoGround(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.LastSimState, ref Sim.TempState);
 			case CellInfo.CellInfoType.Water:
-				return CellInfo.GetCellInfoWater(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.WorldData, ref Sim.ActiveSimState, ref Sim.TempState, ref Sim.StaticState, ref View.DisplayState);
+				return CellInfo.GetCellInfoWater(ActiveTemperatureUnits, Gameplay.ActiveCellIndex, ref Sim.WorldData, ref Sim.LastSimState, ref Sim.TempState, ref Sim.StaticState, ref View.DisplayState);
 		}
 		return "";
 	}
