@@ -78,12 +78,34 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - Vector1_2E03BD84: 0.005
+    - Vector1_15AF338E: 0.37
+    - Vector1_16318846: 0.07
+    - Vector1_1C878F7: 17
+    - Vector1_238DA17E: 0
+    - Vector1_249E0651: 1
+    - Vector1_2A811159: 3
+    - Vector1_2E03BD84: 0
     - Vector1_2ED904D0: 0.25
-    - Vector1_5F6D15B5: 1
-    - Vector1_A2A46DD4: 0.1
-    - Vector1_BDECE131: 10
-    - Vector1_FA316DE4: 0.975
+    - Vector1_3756E58: 1
+    - Vector1_3D9C83FF: 10
+    - Vector1_47AF40E6: 1
+    - Vector1_53F6154F: 0.75
+    - Vector1_5F6D15B5: 0.1
+    - Vector1_6D2FE89F: 0.05
+    - Vector1_6E798E0D: 9
+    - Vector1_768503E4: 2
+    - Vector1_94340AC7: 0.01
+    - Vector1_A2A46DD4: 1
+    - Vector1_A33E59DC: 1.67
+    - Vector1_A741CB15: 0.05
+    - Vector1_AFCDBB5D: 6
+    - Vector1_BDECE131: 1
+    - Vector1_DBF8243A: 1
+    - Vector1_E0B7C94B: 19
+    - Vector1_F3647427: 1
+    - Vector1_F4DFEA09: 0.2
+    - Vector1_FA316DE4: 0.75
+    - Vector1_FCD52F97: 0.07
     - _Alpha: 1
     - _AlphaCutoffEnable: 0
     - _AlphaDstBlend: 10
@@ -135,6 +157,8 @@ Material:
     - _ZTestTransparent: 4
     - _ZWrite: 0
     m_Colors:
+    - Vector3_C4AB8CB: {r: 1, g: 1, b: 1, a: 0}
+    - Vector3_ECF79C64: {r: 0.25, g: 0.25, b: 1, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DiffusionProfileAsset: {r: -0.000024538791, g: -1.13543e+32, b: -7.778573e+25,
         a: -4.1580766e+23}
