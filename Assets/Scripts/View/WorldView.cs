@@ -133,6 +133,7 @@ public class WorldView : MonoBehaviour {
 	private NativeArray<Vector3> _waterVerticesArray;
 	private NativeArray<Vector3> _waterNormalsArray;
 	private NativeArray<Color32> _waterColorsArray;
+	private NativeArray<Vector4> _waterCurrentAndDepthArray;
 	private NativeArray<Vector3> _cloudVerticesArray;
 	private NativeArray<Color32> _cloudColorsArray;
 	private NativeArray<Vector3> _cloudNormalsArray;
@@ -277,6 +278,7 @@ public class WorldView : MonoBehaviour {
 		_waterVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterNormalsArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_waterColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_waterCurrentAndDepthArray = new NativeArray<Vector4>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_overlayColorsArray = new NativeArray<Color32>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 
 		_cloudVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
@@ -319,6 +321,7 @@ public class WorldView : MonoBehaviour {
 		_waterVerticesArray.Dispose();
 		_waterNormalsArray.Dispose();
 		_waterColorsArray.Dispose();
+		_waterCurrentAndDepthArray.Dispose();
 		_cloudVerticesArray.Dispose();
 		_cloudColorsArray.Dispose();
 		_cloudNormalsArray.Dispose();
@@ -370,8 +373,7 @@ public class WorldView : MonoBehaviour {
 
 		CloudMaterialBack.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
 		CloudMaterialFront.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
-		WaterMaterial.SetFloat("Vector1_2C57E502", Sim.TimeScale); // sim time scale
-		WaterMaterial.SetFloat("Vector1_91938D4", _renderStates[_curRenderState].Ticks); // sim time
+		WaterMaterial.SetFloat("Vector1_2C57E502", _renderStates[_curRenderState].Ticks); // sim time
 
 	}
 	public void StartLerp(float lerpTime)
@@ -443,6 +445,7 @@ public class WorldView : MonoBehaviour {
 			TerrainElevation = to.TerrainElevation,
 			WaterColor = to.WaterColor,
 			WaterElevation = to.WaterElevation,
+			WaterCurrentAndDepth = to.WaterCurrentAndDepth,
 			CloudColor = to.CloudColor,
 			CloudHeight = to.CloudHeight,
 			CloudElevation = to.CloudElevation,
@@ -473,10 +476,10 @@ public class WorldView : MonoBehaviour {
 			CloudAbsorption = dependent.CloudAbsorptivity,
 			IceCoverage = dependent.IceCoverage,
 			FloraCoverage = dependent.FloraCoverage,
-			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.WaterLayers - 2],
+			WaterCoverage = dependent.WaterCoverage[Sim.WorldData.SurfaceWaterLayer],
 			WaterDepth = dependent.WaterLayerDepth[1],
-			WaterTemperature = from.WaterTemperature[Sim.WorldData.WaterLayers - 2],
-			PlanktonMass = from.PlanktonMass[Sim.WorldData.WaterLayers - 2],
+			WaterTemperature = from.WaterTemperature[Sim.WorldData.SurfaceWaterLayer],
+			PlanktonMass = from.PlanktonMass[Sim.WorldData.SurfaceWaterLayer],
 			LavaMass = from.LavaMass,
 			LavaTemperature = from.LavaTemperature,
 			SurfaceElevation = dependent.LayerElevation[worldData.SurfaceAirLayer],
@@ -492,6 +495,7 @@ public class WorldView : MonoBehaviour {
 			DustMaxInverse = 1.0f / DisplayDustMax,
 			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
 			WindColors = _normalizedBlueWhiteRed,
+			WaterCurrent = from.WaterVelocity[Sim.WorldData.SurfaceWaterLayer],
 			Positions = staticState.SphericalPosition,
 			DisplayFloraWeight = DisplayFloraWeight,
 			DisplaySandWeight = DisplaySandWeight,
@@ -523,6 +527,7 @@ public class WorldView : MonoBehaviour {
 		dependencies.Add((new LerpJobfloat4 { Progress = t, Out = state.TerrainColor2, Start = lastState.TerrainColor2, End = nextState.TerrainColor2 }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat { Progress = t, Out = state.WaterElevation, Start = lastState.WaterElevation, End = nextState.WaterElevation }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.WaterColor, Start = lastState.WaterColor, End = nextState.WaterColor }).Schedule(Sim.CellCount, _batchCount));
+		dependencies.Add((new LerpJobfloat4 { Progress = t, Out = state.WaterCurrentAndDepth, Start = lastState.WaterCurrentAndDepth, End = nextState.WaterCurrentAndDepth }).Schedule(Sim.CellCount, _batchCount));
 		dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.SurfacePosition, Start = lastState.SurfacePosition, End = nextState.SurfacePosition }).Schedule(Sim.CellCount, _batchCount));
 
 		if (true /* cloudsVisible*/)
@@ -549,6 +554,7 @@ public class WorldView : MonoBehaviour {
 			VWaterPosition = _waterVerticesArray,
 			VWaterNormal = _waterNormalsArray,
 			VWaterColor = _waterColorsArray,
+			VWaterCurrentAndDepth = _waterCurrentAndDepthArray,
 			VOverlayColor = _overlayColorsArray,
 
 			TerrainElevation = state.TerrainElevation,
@@ -556,6 +562,7 @@ public class WorldView : MonoBehaviour {
 			TerrainColor2 = state.TerrainColor2,
 			WaterElevation = state.WaterElevation,
 			WaterColor = state.WaterColor,
+			WaterCurrentAndDepth = state.WaterCurrentAndDepth,
 			OverlayColor = state.OverlayColor,
 			StandardVerts = _terrainVerts,
 		}, JobHandle.CombineDependencies(dependencies));
@@ -588,6 +595,7 @@ public class WorldView : MonoBehaviour {
 			_terrainMesh.SetUVs(1, _terrainColorsArray1);
 			_terrainMesh.SetUVs(2, _terrainColorsArray2);
 			_waterMesh.SetColors(_waterColorsArray);
+			_waterMesh.SetUVs(1, _waterCurrentAndDepthArray);
 		}
 		else
 		{

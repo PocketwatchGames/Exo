@@ -249,6 +249,10 @@ public static class CellInfo {
 					display.Salinity[i][ActiveCellIndex]);
 				s.AppendFormat("\nVEL: ({0:N3}, {1:N3}, {2:N3})",
 					current.x, current.y, current.z);
+
+				var hCurrent = Utils.GetHorizontalComponent(state.WaterVelocity[i][ActiveCellIndex], staticState.SphericalPosition[i]);
+				s.AppendFormat("\nCURRENT: ({0:N3}, {1:N3}, {2:N3})",
+					hCurrent.x, hCurrent.y, hCurrent.z);
 				s.AppendFormat("\nCO2: {0:N3}",
 					state.WaterCarbon[i][ActiveCellIndex]);
 				s.AppendFormat("\nP: {0} D: {1}",
