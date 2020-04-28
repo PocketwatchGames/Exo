@@ -142,7 +142,7 @@ Material:
     - Vector1_238DA17E: 0
     - Vector1_249E0651: 1
     - Vector1_293E83EB: 1
-    - Vector1_2985F90D: 0.1
+    - Vector1_2985F90D: 0
     - Vector1_2A811159: 3
     - Vector1_2D6D8AD6: 0.01
     - Vector1_2E03BD84: 0
@@ -152,24 +152,24 @@ Material:
     - Vector1_3D9C83FF: 10
     - Vector1_47AF40E6: 1
     - Vector1_4FB294C9: 5
-    - Vector1_515882B1: 0.01
+    - Vector1_515882B1: 0.1
     - Vector1_53F6154F: 0.75
     - Vector1_55FEB558: 0.75
-    - Vector1_58C76D8: 3
+    - Vector1_58C76D8: 1
     - Vector1_5F6D15B5: 0.1
     - Vector1_63D09760: 1
     - Vector1_6B23A7F2: 1
     - Vector1_6D2FE89F: 1
     - Vector1_6E798E0D: 9
     - Vector1_6E9E5A5C: 1
-    - Vector1_768503E4: 2
+    - Vector1_768503E4: 3
     - Vector1_7A8D9212: 5
     - Vector1_7C4D2135: 1
     - Vector1_8011EBFB: 2
     - Vector1_8732B102: 0.05
     - Vector1_93E49670: 0.01
     - Vector1_94340AC7: 0.01
-    - Vector1_9A83716C: 20
+    - Vector1_9A83716C: 10
     - Vector1_9DB09B74: 0.5
     - Vector1_A2A46DD4: 1
     - Vector1_A33E59DC: 0.5
@@ -181,8 +181,8 @@ Material:
     - Vector1_B433868A: 5
     - Vector1_BDECE131: 1
     - Vector1_C0329365: 10
-    - Vector1_C56B59B2: 0.25
-    - Vector1_CA8D1759: 1
+    - Vector1_C56B59B2: 0.5
+    - Vector1_CA8D1759: 2
     - Vector1_DBF8243A: 3
     - Vector1_E0B7C94B: 19
     - Vector1_E62ACF56: 1
@@ -191,7 +191,7 @@ Material:
     - Vector1_F4DFEA09: 0.2
     - Vector1_FA316DE4: 0.75
     - Vector1_FCD52F97: 0.07
-    - Vector1_FE572E63: 10
+    - Vector1_FE572E63: 1
     - _Alpha: 1
     - _AlphaCutoffEnable: 0
     - _AlphaDstBlend: 10
