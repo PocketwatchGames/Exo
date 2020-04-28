@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 1598314396}
-  m_IndirectSpecularColor: {r: 0.0022178374, g: 0.002123111, b: 0.0020811418, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -18739,6 +18739,12 @@ MonoBehaviour:
   DisplayDustMax: 100
   DisplayLavaTemperatureMax: 1200
   DisplaySoilFertilityMax: 5
+  DisplayPlanktonMax: 10
+  DisplayPlanktonPower: 0.5
+  DisplayPlanktonLevels: 5
+  DisplayIceLevels: 5
+  DisplayWaterTemperatureMax: 30
+  DisplayWaterTemperatureLevels: 6
   DisplayWindSpeedLowerAirMax: 50
   DisplayWindSpeedUpperAirMax: 250
   DisplayPressureGradientForceMax: 0.005
