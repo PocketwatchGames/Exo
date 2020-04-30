@@ -172,7 +172,7 @@ public static class CellInfo {
 				i,
 				GetTemperatureString(Atmosphere.GetAbsoluteTemperature(state.AirTemperaturePotential[i][ActiveCellIndex], dependent.LayerMiddle[i][ActiveCellIndex]), ActiveTemperatureUnits, 1),
 				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
-			s.AppendFormat("\nELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N1})",
+			s.AppendFormat("\nELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N3})",
 				dependent.LayerElevation[i][ActiveCellIndex],
 				display.Pressure[i][ActiveCellIndex],
 				wind.x, wind.y, wind.z);

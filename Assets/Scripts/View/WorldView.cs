@@ -83,7 +83,8 @@ public class WorldView : MonoBehaviour {
 	public float DisplayPressureGradientForceMax = 0.01f;
 	public float DisplayWindSpeedSurfaceWaterMax = 5;
 	public float DisplayWindSpeedDeepWaterMax = 0.5f;
-	public float DisplayVerticalWindSpeedMax = 1.0f;
+	public float DisplayVerticalWindSpeedMax = 0.5f;
+	public float DisplayVerticalWindSpeedMin = 0.05f;
 
 	[Header("Overlays")]
 	public float DisplayRainfallMax = 5.0f;
@@ -361,15 +362,26 @@ public class WorldView : MonoBehaviour {
 		{
 			for (int i = 0; i < _windArrows.Length; i++)
 			{
-				var wind = _renderStates[_curRenderState].VelocityArrow[i];
+				var wind = _renderStates[_curRenderState].VelocityHorizontal[i];
 				var windHorizontal = Utils.GetHorizontalComponent(wind, Sim.StaticState.SphericalPosition[i]);
+				float windVertical = _renderStates[_curRenderState].VelocityVertical[i];
 				float windSpeed = math.length(windHorizontal);
 				var pos = _renderStates[_curRenderState].SurfacePosition[i];
-				bool visible = windSpeed > 0;
+				bool visible = windSpeed > 0 || windVertical != 0;
 				_windArrows[i].SetActive(visible);
 				if (visible)
 				{
-					var m = _windArrows[i].transform.GetChild(0).GetComponent<MeshRenderer>().material.color = _renderStates[_curRenderState].VelocityColor[i];
+					var circle = _windArrows[i].transform.GetChild(0);
+					if (windVertical > 0)
+					{
+						var color = Color.Lerp(Color.white, Color.red, math.min(1, windVertical / DisplayVerticalWindSpeedMin));
+						var m = circle.GetChild(0).GetComponent<MeshRenderer>().material.color = color;	
+					} else
+					{
+						var color = Color.Lerp(Color.white, Color.blue, math.min(1, -windVertical / DisplayVerticalWindSpeedMin));
+						var m = circle.GetChild(0).GetComponent<MeshRenderer>().material.color = color;
+					}
+					circle.localScale = Vector3.one * (1 + math.abs(windVertical));
 					_windArrows[i].transform.localPosition = pos;
 					_windArrows[i].transform.localRotation = Quaternion.LookRotation(windHorizontal / windSpeed, pos);
 					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(math.pow(windSpeed, 0.25f), 1);
@@ -461,8 +473,8 @@ public class WorldView : MonoBehaviour {
 			CloudColor = to.CloudColor,
 			CloudHeight = to.CloudHeight,
 			CloudElevation = to.CloudElevation,
-			VelocityArrow = to.VelocityArrow,
-			VelocityColor = to.VelocityColor,
+			VelocityHorizontal = to.VelocityHorizontal,
+			VelocityVertical = to.VelocityVertical,
 			SurfacePosition = to.SurfacePosition,
 			OverlayColor = to.OverlayColor,
 
@@ -556,8 +568,8 @@ public class WorldView : MonoBehaviour {
 		}
 		if (ActiveWindOverlay != WindOverlay.None)
 		{
-			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityArrow, Start = lastState.VelocityArrow, End = nextState.VelocityArrow }).Schedule(Sim.CellCount, _batchCount));
-			dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.VelocityColor, Start = lastState.VelocityColor, End = nextState.VelocityColor }).Schedule(Sim.CellCount, _batchCount));
+			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityHorizontal, Start = lastState.VelocityHorizontal, End = nextState.VelocityHorizontal }).Schedule(Sim.CellCount, _batchCount));
+			dependencies.Add((new LerpJobfloat { Progress = t, Out = state.VelocityVertical, Start = lastState.VelocityVertical, End = nextState.VelocityVertical }).Schedule(Sim.CellCount, _batchCount));
 		}
 		if (ActiveMeshOverlay != MeshOverlay.None)
 		{
@@ -973,7 +985,7 @@ public class WorldView : MonoBehaviour {
 
 		for (int i = 0; i < _windArrows.Length; i++)
 		{
-			var wind = _renderStates[_curRenderState].VelocityArrow[i];
+			var wind = _renderStates[_curRenderState].VelocityHorizontal[i];
 			bool visible = ActiveWindOverlay != WindOverlay.None && !(wind.x == 0 && wind.y == 0);
 			_windArrows[i].SetActive(visible);
 		}

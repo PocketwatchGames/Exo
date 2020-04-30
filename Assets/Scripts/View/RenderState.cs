@@ -28,8 +28,8 @@ public struct RenderState {
 	public NativeArray<float> CloudElevation;
 	public NativeArray<float> CloudHeight;
 	public NativeArray<float3> SurfacePosition;
-	public NativeArray<float3> VelocityArrow;
-	public NativeArray<Color32> VelocityColor;
+	public NativeArray<float3> VelocityHorizontal;
+	public NativeArray<float> VelocityVertical;
 
 	public void Init(int count)
 	{
@@ -43,8 +43,8 @@ public struct RenderState {
 		CloudColor = new NativeArray<Color32>(count, Allocator.Persistent);
 		CloudElevation = new NativeArray<float>(count, Allocator.Persistent);
 		CloudHeight = new NativeArray<float>(count, Allocator.Persistent);
-		VelocityArrow = new NativeArray<float3>(count, Allocator.Persistent);
-		VelocityColor = new NativeArray<Color32>(count, Allocator.Persistent);
+		VelocityHorizontal = new NativeArray<float3>(count, Allocator.Persistent);
+		VelocityVertical = new NativeArray<float>(count, Allocator.Persistent);
 		SurfacePosition = new NativeArray<float3>(count, Allocator.Persistent);
 	}
 
@@ -60,8 +60,8 @@ public struct RenderState {
 		CloudColor.Dispose();
 		CloudHeight.Dispose();
 		CloudElevation.Dispose();
-		VelocityArrow.Dispose();
-		VelocityColor.Dispose();
+		VelocityHorizontal.Dispose();
+		VelocityVertical.Dispose();
 		SurfacePosition.Dispose();
 	}
 }
@@ -79,8 +79,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	public NativeArray<float> CloudHeight;
 	public NativeArray<Color32> CloudColor;
 	public NativeArray<float3> SurfacePosition;
-	public NativeArray<float3> VelocityArrow;
-	public NativeArray<Color32> VelocityColor;
+	public NativeArray<float3> VelocityHorizontal;
+	public NativeArray<float> VelocityVertical;
 
 	[ReadOnly] public NativeArray<float> Roughness;
 	[ReadOnly] public NativeArray<float> SoilFertility;
@@ -150,8 +150,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		float cloudElevation;
 		float cloudHeight;
 		float3 velocityArrow;
-		Color32 velocityColor;
 		float3 surfacePosition;
+		float velocityVertical = 0;
 
 		float waterDepth = WaterDepth[i];
 		var icosphere = Icosphere[i];
@@ -212,7 +212,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		if (WindOverlayActive)
 		{
 			velocityArrow = Utils.GetHorizontalComponent(WindOverlayData[i], Positions[i]) / WindVelocityMax;
-			velocityColor = CVP.Lerp(WindColors, (math.dot(WindOverlayData[i], Positions[i]) / WindVerticalMax + 1) / 2);
 			if (math.length(velocityArrow) < 0.01f)
 			{
 				velocityArrow = float3.zero;
@@ -221,11 +220,11 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 			{
 				velocityArrow = float3.zero;
 			}
+			velocityVertical = math.dot(WindOverlayData[i], Positions[i]) / WindVerticalMax;
 		}
 		else
 		{
 			velocityArrow = float3.zero;
-			velocityColor = new Color32(255, 255, 255, 255);
 		}
 
 		TerrainColor1[i] = terrainColor1;
@@ -236,8 +235,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		CloudColor[i] = cloudColor;
 		CloudElevation[i] = cloudElevation;
 		CloudHeight[i] = cloudHeight;
-		VelocityArrow[i] = velocityArrow;
-		VelocityColor[i] = velocityColor;
+		VelocityHorizontal[i] = velocityArrow;
+		VelocityVertical[i] = velocityVertical;
 		SurfacePosition[i] = surfacePosition;
 		OverlayColor[i] = overlayColor;
 		RWaterCurrent[i] = Utils.GetHorizontalComponent(WaterCurrent[i], Positions[i]);

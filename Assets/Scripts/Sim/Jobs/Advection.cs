@@ -197,7 +197,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newCO2 += CarbonDioxideAbove[i] * -vertMove.moveVertical;
 				newDust += DustAbove[i] * -vertMove.moveVertical;
 				newTemperature += TemperatureAbove[i] * incomingMass;
-				newVelocity += VelocityAbove[i] * (1 - math.dot(Positions[i], VelocityAbove[i])) * incomingMass;
+				newVelocity += Velocity[i] * incomingMass;
 			}
 		}
 
@@ -212,7 +212,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newCO2 += CarbonDioxideBelow[i] * vertMove.moveVertical;
 				newDust += DustBelow[i] * vertMove.moveVertical;
 				newTemperature += TemperatureBelow[i] * incomingMass;
-				newVelocity += VelocityBelow[i] * (1 - math.dot(Positions[i], VelocityBelow[i])) * incomingMass;
+				newVelocity += Velocity[i] * incomingMass;
 			}
 		}
 
