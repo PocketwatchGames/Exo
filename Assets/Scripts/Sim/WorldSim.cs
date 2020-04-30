@@ -257,7 +257,7 @@ public class WorldSim {
 			{
 				divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, energyJobHandles[worldData.AirLayer0 + i]);
 			}
-			for (int a = 0; a < 20; a++)
+			for (int a = 0; a < settings.IncompressibilityIterations; a++)
 			{
 				for (int i = 1; i < worldData.AirLayers - 1; i++)
 				{

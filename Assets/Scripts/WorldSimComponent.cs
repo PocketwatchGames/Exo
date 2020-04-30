@@ -45,6 +45,8 @@ public class WorldSimComponent : MonoBehaviour
 		ConductionIceWater = true,
 		ConductionWaterTerrain = true,
 
+		IncompressibilityIterations = 20,
+
 		CheckForDegeneracy = false,
 		CollectGlobals = false,
 		CollectOverlay = false,

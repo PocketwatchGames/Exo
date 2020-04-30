@@ -27,6 +27,7 @@ public struct SimSettings {
 	public bool ConductionIceTerrain;
 	public bool ConductionFloraTerrain;
 	public bool ConductionWaterTerrain;
+	public int IncompressibilityIterations;
 	public bool CheckForDegeneracy;
 	public bool CollectGlobals;
 	public bool CollectOverlay;
