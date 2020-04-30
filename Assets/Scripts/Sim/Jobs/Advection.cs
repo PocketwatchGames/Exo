@@ -197,7 +197,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newCO2 += CarbonDioxideAbove[i] * -vertMove.moveVertical;
 				newDust += DustAbove[i] * -vertMove.moveVertical;
 				newTemperature += TemperatureAbove[i] * incomingMass;
-				newVelocity += VelocityAbove[i] * incomingMass;
+				newVelocity += VelocityAbove[i] * (1 - math.dot(Positions[i], VelocityAbove[i])) * incomingMass;
 			}
 		}
 
@@ -212,7 +212,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newCO2 += CarbonDioxideBelow[i] * vertMove.moveVertical;
 				newDust += DustBelow[i] * vertMove.moveVertical;
 				newTemperature += TemperatureBelow[i] * incomingMass;
-				newVelocity += VelocityBelow[i] * incomingMass;
+				newVelocity += VelocityBelow[i] * (1 - math.dot(Positions[i], VelocityBelow[i])) * incomingMass;
 			}
 		}
 
@@ -480,29 +480,31 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 			// from top coming down
 			{
-				var vertMove = DestinationAbove[i].moveVertical;
-				float massIncoming = -(MassAbove[i] * vertMove);
-				if (massIncoming < 0)
+				var vertMove = -DestinationAbove[i].moveVertical;
+				if (vertMove > 0)
 				{
+					float massIncoming = vertMove * MassAbove[i];
 					newMass += massIncoming;
 					newTemperature += TemperatureAbove[i] * massIncoming;
-					newVelocity += VelocityAbove[i] * massIncoming;
 					newSaltMass += SaltAbove[i] * vertMove;
 					newCarbon += CarbonAbove[i] * vertMove;
+
+					// We don't advect velocity vertically
 				}
 			}
 
 			// from bottom going up
 			{
 				var vertMove = DestinationBelow[i].moveVertical;
-				float massIncoming = MassBelow[i] * vertMove;
-				if (massIncoming > 0)
+				if (vertMove > 0)
 				{
+					float massIncoming = MassBelow[i] * vertMove;
 					newMass += massIncoming;
 					newTemperature += TemperatureBelow[i] * massIncoming;
-					newVelocity += VelocityBelow[i] * massIncoming;
 					newSaltMass += SaltBelow[i] * vertMove;
 					newCarbon += CarbonBelow[i] * vertMove;
+
+					// We don't advect velocity vertically
 				}
 			}
 
@@ -522,7 +524,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			}
 		}
 #endif
-
 		Delta[i] = new DiffusionWater()
 		{
 			WaterMass = newMass,

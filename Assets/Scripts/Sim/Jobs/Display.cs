@@ -79,7 +79,8 @@ public struct DisplayState {
 	public NativeArray<float>[] EnthalpyAir;
 	public NativeArray<float>[] Salinity;
 	public NativeArray<float>[] Pressure;
-	public NativeArray<float>[] Divergence;
+	public NativeArray<float>[] DivergenceAir;
+	public NativeArray<float>[] DivergenceWater;
 	public NativeArray<float3>[] PressureGradientForce;
 	public NativeArray<float>[] ThermalDelta;
 	public NativeArray<float>[] ConductionDelta;
@@ -106,7 +107,7 @@ public struct DisplayState {
 		EnthalpyGroundWater = new NativeArray<float>(count, Allocator.Persistent);
 		DustMass = new NativeArray<float>(count, Allocator.Persistent);
 
-		Divergence = new NativeArray<float>[worldData.AirLayers];
+		DivergenceAir = new NativeArray<float>[worldData.AirLayers];
 		Pressure = new NativeArray<float>[worldData.AirLayers];
 		PressureGradientForce = new NativeArray<float3>[worldData.AirLayers];
 		CarbonDioxidePercent = new NativeArray<float>[worldData.AirLayers];
@@ -116,7 +117,7 @@ public struct DisplayState {
 		AbsorptionThermal = new NativeArray<ThermalAbsorptivity>[worldData.AirLayers];
 		for (int i = 0; i < worldData.AirLayers; i++)
 		{
-			Divergence[i] = new NativeArray<float>(count, Allocator.Persistent);
+			DivergenceAir[i] = new NativeArray<float>(count, Allocator.Persistent);
 			Pressure[i] = new NativeArray<float>(count, Allocator.Persistent);
 			PressureGradientForce[i] = new NativeArray<float3>(count, Allocator.Persistent);
 			EnthalpyAir[i] = new NativeArray<float>(count, Allocator.Persistent);
@@ -129,11 +130,13 @@ public struct DisplayState {
 		WaterCarbonDioxidePercent = new NativeArray<float>[worldData.WaterLayers];
 		Salinity = new NativeArray<float>[worldData.WaterLayers];
 		EnthalpyWater = new NativeArray<float>[worldData.WaterLayers];
+		DivergenceWater = new NativeArray<float>[worldData.WaterLayers];
 		for (int i = 0; i < worldData.WaterLayers; i++)
 		{
 			WaterCarbonDioxidePercent[i] = new NativeArray<float>(count, Allocator.Persistent);
 			Salinity[i] = new NativeArray<float>(count, Allocator.Persistent);
 			EnthalpyWater[i] = new NativeArray<float>(count, Allocator.Persistent);
+			DivergenceWater[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 
 		ThermalDelta = new NativeArray<float>[worldData.LayerCount];
@@ -169,7 +172,7 @@ public struct DisplayState {
 		DustMass.Dispose();
 		for (int i = 0; i < Pressure.Length; i++)
 		{
-			Divergence[i].Dispose();
+			DivergenceAir[i].Dispose();
 			Pressure[i].Dispose();
 			PressureGradientForce[i].Dispose();
 			EnthalpyAir[i].Dispose();
@@ -183,6 +186,7 @@ public struct DisplayState {
 			WaterCarbonDioxidePercent[i].Dispose();
 			Salinity[i].Dispose();
 			EnthalpyWater[i].Dispose();
+			DivergenceWater[i].Dispose();
 		}
 		for (int i = 0; i < ThermalDelta.Length; i++)
 		{
@@ -288,7 +292,7 @@ public struct DisplayState {
 			int layer = worldData.AirLayer0 + j;
 			updateDisplayJobHandle = JobHandle.CombineDependencies(updateDisplayJobHandle, DisplayJob.Schedule(new GetDivergenceJob()
 			{
-				Divergence = display.Divergence[j],
+				Divergence = display.DivergenceAir[j],
 				Destination = tempState.DestinationAir[j],
 				DestinationAbove = tempState.DestinationAir[j + 1],
 				DestinationBelow = tempState.DestinationAir[j - 1],
@@ -298,6 +302,24 @@ public struct DisplayState {
 				MassBelow = tempState.AirMass[j - 1],
 				IsBottom = j == 1,
 				IsTop = j == worldData.AirLayers - 2,
+			}));
+		}
+
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			int layer = worldData.WaterLayer0 + j;
+			updateDisplayJobHandle = JobHandle.CombineDependencies(updateDisplayJobHandle, DisplayJob.Schedule(new GetDivergenceJob()
+			{
+				Divergence = display.DivergenceWater[j],
+				Destination = tempState.DestinationWater[j],
+				DestinationAbove = tempState.DestinationWater[j + 1],
+				DestinationBelow = tempState.DestinationWater[j - 1],
+				Neighbors = staticState.Neighbors,
+				Mass = nextState.WaterMass[j],
+				MassAbove = nextState.WaterMass[j + 1],
+				MassBelow = nextState.WaterMass[j - 1],
+				IsBottom = j == 1,
+				IsTop = j == worldData.SurfaceWaterLayer,
 			}));
 		}
 

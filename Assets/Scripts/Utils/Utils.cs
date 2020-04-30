@@ -206,6 +206,16 @@ public class JobHelper {
 	{
 		return job.Schedule(_cellCount, DefaultBatchCount, dependences);
 	}
+	public JobHandle ScheduleOrMemset<S, T>(bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
+	{
+		if (schedule)
+		{
+			return Schedule(job, dependencies);
+		} else
+		{
+			return Utils.MemsetArray<S>(_cellCount, dependencies, arrayToSet, setVal);
+		}
+	}
 }
 
 [BurstCompile]

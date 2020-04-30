@@ -10,9 +10,11 @@ using Unity.Jobs;
 using Unity.Collections;
 using System.Globalization;
 using UnityEngine.Profiling;
+using UnityEngine.VFX;
 
 public class WorldView : MonoBehaviour {
 
+	
 	public enum MeshOverlay {
 		None,
 		TemperatureSurface,
@@ -35,7 +37,8 @@ public class WorldView : MonoBehaviour {
 		FloraWater,
 		CrustDepth,
 		MagmaMass,
-		Divergence
+		DivergenceAir,
+		DivergenceWater
 	}
 
 	public enum WindOverlay {
@@ -107,6 +110,7 @@ public class WorldView : MonoBehaviour {
 	public GameObject Sun;
 	public GameObject Moon;
 	public GameObject SunLight;
+	public VisualEffect WindEffect;
 	public Material TerrainMaterial;
 	public Material WaterMaterial;
 	public Material CloudMaterialFront, CloudMaterialBack;
@@ -174,7 +178,7 @@ public class WorldView : MonoBehaviour {
 	private int[] _indicesCloud;
 
 	private NativeArray<CVP> _normalizedRainbow;
-	private NativeArray<CVP> _normalizedBlueWhiteRed;
+	private NativeArray<CVP> _normalizedBlueBlackRed;
 	private NativeArray<float3> _terrainVerts;
 	private NativeArray<float3> _cloudVerts;
 
@@ -201,9 +205,9 @@ public class WorldView : MonoBehaviour {
 											new CVP(Color.white, 1),
 											},
 											Allocator.Persistent);
-		_normalizedBlueWhiteRed = new NativeArray<CVP>(new CVP[] {
+		_normalizedBlueBlackRed = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.blue, 0),
-											new CVP(Color.white, 0.5f),
+											new CVP(Color.black, 0.5f),
 											new CVP(Color.red, 1) },
 											Allocator.Persistent);
 
@@ -306,13 +310,15 @@ public class WorldView : MonoBehaviour {
 		_terrainMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_waterMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_cloudMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
+
+		WindEffect.SetMesh("TerrainMesh", _terrainMesh);
 	}
 	public void OnDestroy()
 	{
 		Sim.OnTick -= OnSimTick;
 
 		_normalizedRainbow.Dispose();
-		_normalizedBlueWhiteRed.Dispose();
+		_normalizedBlueBlackRed.Dispose();
 
 		for (int i=0;i<_renderStateCount;i++)
 		{
@@ -500,7 +506,7 @@ public class WorldView : MonoBehaviour {
 			DustCoverage = display.DustMass,
 			DustMaxInverse = 1.0f / DisplayDustMax,
 			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
-			WindColors = _normalizedBlueWhiteRed,
+			WindColors = _normalizedBlueBlackRed,
 			WaterCurrent = from.WaterVelocity[Sim.WorldData.SurfaceWaterLayer],
 			Positions = staticState.SphericalPosition,
 			DisplayFloraWeight = DisplayFloraWeight,
@@ -863,8 +869,11 @@ public class WorldView : MonoBehaviour {
 			case MeshOverlay.MagmaMass:
 				overlay = new MeshOverlayData(0, DisplayMagmaMassMax, _normalizedRainbow, simState.MagmaMass);
 				return true;
-			case MeshOverlay.Divergence:
-				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueWhiteRed, display.Divergence[ActiveMeshLayerAir]);
+			case MeshOverlay.DivergenceAir:
+				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, display.DivergenceAir[ActiveMeshLayerAir]);
+				return true;
+			case MeshOverlay.DivergenceWater:
+				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, display.DivergenceWater[ActiveMeshLayerWater]);
 				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
@@ -981,7 +990,7 @@ public class WorldView : MonoBehaviour {
 	}
 	public void SetActiveLayerWater(int l)
 	{
-		if (l != ActiveMeshLayerAir)
+		if (l != ActiveMeshLayerWater)
 		{
 			ActiveMeshLayerWater = l;
 

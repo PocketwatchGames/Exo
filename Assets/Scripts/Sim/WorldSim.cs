@@ -196,13 +196,38 @@ public class WorldSim {
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
 				int layer = worldData.AirLayer0 + j;
+				energyJobHandles[layer] = SimJob.Schedule(new ResolveAdvectionConflict()
+				{
+					NewVelocity = tempState.AirVelocityConflictFree[j],
+					Neighbors = staticState.Neighbors,
+					Position = staticState.SphericalPosition,
+					Velocity = nextState.AirVelocity[j],
+					VelocityAbove = nextState.AirVelocity[j + 1],
+					VelocityBelow = nextState.AirVelocity[j - 1],
+					LayerHeight = tempState.LayerHeight[j],
+					LayerHeightAbove = tempState.LayerHeight[j + 1],
+					LayerHeightBelow = tempState.LayerHeight[j - 1],
+					Mass = tempState.AirMass[j],
+					MassAbove = tempState.AirMass[j + 1],
+					MassBelow = tempState.AirMass[j - 1],
+					IsBottom = j == 1,
+					IsTop = j == worldData.AirLayers - 2,
+					SecondsPerTick = worldData.SecondsPerTick,
+				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+			}
+			for (int j = 1; j < worldData.AirLayers - 1; j++)
+			{
+				int layer = worldData.AirLayer0 + j;
 				energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 				{
 					Destination = tempState.DestinationAir[j],
 					Neighbors = staticState.Neighbors,
 					Position = staticState.SphericalPosition,
-					Velocity = nextState.AirVelocity[j],
+					Velocity = tempState.AirVelocityConflictFree[j],
 					LayerHeight = tempState.LayerHeight[j],
+					Mass = tempState.AirMass[j],
+					MassAbove = tempState.AirMass[j + 1],
+					MassBelow = tempState.AirMass[j - 1],
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick,
 					MaxWindMove = staticState.CellRadius * 0.9f,
@@ -257,7 +282,8 @@ public class WorldSim {
 				int layer = worldData.AirLayer0 + i;
 				energyJobHandles[worldData.AirLayer0 + i] = SimJob.Schedule(new GetDivergenceFreeFieldJob()
 				{
-					Velocity = nextState.AirVelocity[i],
+					VelocityOut = nextState.AirVelocity[i],
+					VelocityIn = tempState.AirVelocityConflictFree[i],
 					Pressure = tempState.DivergencePressureAir[i],
 					PressureAbove = tempState.DivergencePressureAir[i + 1],
 					PressureBelow = tempState.DivergencePressureAir[i - 1],
@@ -265,7 +291,7 @@ public class WorldSim {
 					Neighbors = staticState.Neighbors,
 					NeighborTangent = staticState.NeighborTangent,
 					Positions = staticState.SphericalPosition,
-					AirMass = tempState.AirMass[i],
+					Mass = tempState.AirMass[i],
 					IsBottom = i == 1,
 					IsTop = i == worldData.AirLayers - 2,
 					TicksPerSecond = worldData.TicksPerSecond
@@ -287,6 +313,9 @@ public class WorldSim {
 				Position = staticState.SphericalPosition,
 				Velocity = nextState.AirVelocity[i],
 				LayerHeight = tempState.LayerHeight[i],
+				Mass = tempState.AirMass[i],
+				MassAbove = tempState.AirMass[i + 1],
+				MassBelow = tempState.AirMass[i - 1],
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick,
 				MaxWindMove = staticState.CellRadius * 0.9f,
@@ -489,19 +518,135 @@ public class WorldSim {
 		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
 		#region Advection
 
+
+		if (settings.MakeWaterIncompressible)
+		{
+			for (int j = 1; j < worldData.WaterLayers - 1; j++)
+			{
+				int layer = worldData.WaterLayer0 + j;
+				energyJobHandles[layer] = SimJob.Schedule(new ResolveAdvectionConflict()
+				{
+					NewVelocity = tempState.WaterVelocityConflictFree[j],
+					Neighbors = staticState.Neighbors,
+					Position = staticState.SphericalPosition,
+					Velocity = nextState.WaterVelocity[j],
+					VelocityAbove = nextState.WaterVelocity[j + 1],
+					VelocityBelow = nextState.WaterVelocity[j - 1],
+					LayerHeight = tempState.WaterLayerHeight[j],
+					LayerHeightAbove = tempState.WaterLayerHeight[j + 1],
+					LayerHeightBelow = tempState.WaterLayerHeight[j - 1],
+					Mass = nextState.WaterMass[j],
+					MassAbove = nextState.WaterMass[j + 1],
+					MassBelow = nextState.WaterMass[j - 1],
+					IsBottom = j == 1,
+					IsTop = j == worldData.WaterLayers - 2,
+					SecondsPerTick = worldData.SecondsPerTick,
+				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+			}
+
+			for (int j = 1; j < worldData.WaterLayers - 1; j++)
+			{
+				int layer = worldData.WaterLayer0 + j;
+				energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
+				{
+					Destination = tempState.DestinationWater[j],
+					Neighbors = staticState.Neighbors,
+					Position = staticState.SphericalPosition,
+					Velocity = tempState.WaterVelocityConflictFree[j],
+					LayerHeight = tempState.WaterLayerHeight[j],
+					Mass = nextState.WaterMass[j],
+					MassAbove = nextState.WaterMass[j + 1],
+					MassBelow = nextState.WaterMass[j - 1],
+					PlanetRadius = staticState.PlanetRadius,
+					SecondsPerTick = worldData.SecondsPerTick,
+					MaxWindMove = staticState.CellRadius * 0.9f,
+				}, energyJobHandles[layer]);
+			}
+			for (int j = 1; j < worldData.WaterLayers - 1; j++)
+			{
+				int layer = worldData.WaterLayer0 + j;
+				energyJobHandles[layer] = SimJob.Schedule(new GetDivergenceJob()
+				{
+					Divergence = tempState.DivergenceWater[j],
+					Destination = tempState.DestinationWater[j],
+					DestinationAbove = tempState.DestinationWater[j + 1],
+					DestinationBelow = tempState.DestinationWater[j - 1],
+					Neighbors = staticState.Neighbors,
+					Mass = nextState.WaterMass[j],
+					MassAbove = nextState.WaterMass[j + 1],
+					MassBelow = nextState.WaterMass[j - 1],
+					IsBottom = j == 1,
+					IsTop = j == worldData.SurfaceWaterLayer,
+				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
+			}
+
+			// Calculate Pressure gradient field
+			var divergenceJobHandle = default(JobHandle);
+			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			{
+				divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, energyJobHandles[worldData.WaterLayer0 + i]);
+			}
+			for (int a = 0; a < 20; a++)
+			{
+				for (int i = 1; i < worldData.WaterLayers - 1; i++)
+				{
+					bool isTop = i == worldData.WaterLayers - 2;
+					bool isBottom = i == 1;
+					var dpj = new GetDivergencePressureJob()
+					{
+						Pressure = tempState.DivergencePressureWater[i],
+						Divergence = tempState.DivergenceWater[i],
+						PressureAbove = tempState.DivergencePressureWater[i + 1],
+						PressureBelow = tempState.DivergencePressureWater[i - 1],
+						IsTop = i == worldData.SurfaceWaterLayer,
+						IsBottom = i == 1,
+						Neighbors = staticState.Neighbors
+					};
+					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
+				}
+			}
+
+			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			{
+				int layer = worldData.WaterLayer0 + i;
+				energyJobHandles[worldData.WaterLayer0 + i] = SimJob.Schedule(new GetDivergenceFreeFieldJob()
+				{
+					VelocityOut = nextState.WaterVelocity[i],
+					VelocityIn = tempState.WaterVelocityConflictFree[i],
+					Pressure = tempState.DivergencePressureWater[i],
+					PressureAbove = tempState.DivergencePressureWater[i + 1],
+					PressureBelow = tempState.DivergencePressureWater[i - 1],
+					LayerHeight = tempState.WaterLayerHeight[i],
+					Neighbors = staticState.Neighbors,
+					NeighborTangent = staticState.NeighborTangent,
+					Positions = staticState.SphericalPosition,
+					Mass = nextState.WaterMass[i],
+					IsBottom = i == 1,
+					IsTop = i == worldData.SurfaceWaterLayer,
+					TicksPerSecond = worldData.TicksPerSecond
+				}, divergenceJobHandle);
+			}
+		}
+
+
+
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
-			energyJobHandles[worldData.WaterLayer0 + j] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
+			int layer = worldData.WaterLayer0 + j;
+			energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
 			{
 				Destination = tempState.DestinationWater[j],
 				Neighbors = staticState.Neighbors,
 				Position = staticState.SphericalPosition,
 				Velocity = nextState.WaterVelocity[j],
 				LayerHeight = tempState.WaterLayerHeight[j],
+				Mass = nextState.WaterMass[j],
+				MassAbove = nextState.WaterMass[j + 1],
+				MassBelow = nextState.WaterMass[j - 1],
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick,
 				MaxWindMove = staticState.CellRadius * 0.9f,
-			}, energyJobHandles[worldData.WaterLayer0 + j]);
+			}, energyJobHandles[layer]);
 		}
 
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
@@ -690,70 +835,72 @@ public class WorldSim {
 
 		#region Flow
 
-		// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
-		tickJobHandle = NeighborJob.Schedule(new UpdateFlowVelocityJob()
+		if (settings.WaterSurfaceFlowEnabled)
 		{
-			Flow = nextState.FlowWater,
+			// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
+			tickJobHandle = NeighborJob.Schedule(new UpdateFlowVelocityJob()
+			{
+				Flow = nextState.FlowWater,
 
-			LastFlow = lastState.FlowWater,
-			SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
-			WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer],
-			NeighborDistInverse = staticState.NeighborDistInverse,
-			Neighbors = staticState.Neighbors,
-			Gravity = nextState.PlanetState.Gravity,
-			SecondsPerTick = worldData.SecondsPerTick,
-			Damping = worldData.SurfaceWaterFlowDamping,
-			ViscosityInverse = 1.0f - worldData.WaterViscosity,
-		}, tickJobHandle);
+				LastFlow = lastState.FlowWater,
+				SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+				WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer],
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				Neighbors = staticState.Neighbors,
+				Gravity = nextState.PlanetState.Gravity,
+				SecondsPerTick = worldData.SecondsPerTick,
+				Damping = worldData.SurfaceWaterFlowDamping,
+				ViscosityInverse = 1.0f - worldData.WaterViscosity,
+			}, tickJobHandle);
 
-		tickJobHandle = SimJob.Schedule(new SumOutgoingFlowJob()
-		{
-			OutgoingFlow = tempState.OutgoingFlowWater,
-			Flow = nextState.FlowWater
-		}, tickJobHandle);
+			tickJobHandle = SimJob.Schedule(new SumOutgoingFlowJob()
+			{
+				OutgoingFlow = tempState.OutgoingFlowWater,
+				Flow = nextState.FlowWater
+			}, tickJobHandle);
 
-		tickJobHandle = NeighborJob.Schedule(new LimitOutgoingFlowJob()
-		{
-			Flow = nextState.FlowWater,
-			FlowPercent = tempState.FlowPercentWater,
+			tickJobHandle = NeighborJob.Schedule(new LimitOutgoingFlowJob()
+			{
+				Flow = nextState.FlowWater,
+				FlowPercent = tempState.FlowPercentWater,
 
-			OutgoingFlow = tempState.OutgoingFlowWater,
-			Neighbors = staticState.Neighbors,
-			WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer]
-		}, tickJobHandle);
+				OutgoingFlow = tempState.OutgoingFlowWater,
+				Neighbors = staticState.Neighbors,
+				WaterDepth = tempState.WaterLayerHeight[worldData.SurfaceWaterLayer]
+			}, tickJobHandle);
 
-		tickJobHandle = SimJob.Schedule(new ApplyFlowWaterJob()
-		{
-			Delta = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
+			tickJobHandle = SimJob.Schedule(new ApplyFlowWaterJob()
+			{
+				Delta = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
 
-			Mass = nextState.WaterMass[worldData.SurfaceWaterLayer],
-			Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
-			Carbon = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
-			PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
-			PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
-			Salt = nextState.SaltMass[worldData.SurfaceWaterLayer],
-			Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
-			FlowPercent = tempState.FlowPercentWater,
-			Positions = staticState.SphericalPosition,
-			Neighbors = staticState.Neighbors,
-			CoriolisMultiplier = staticState.CoriolisMultiplier,
-			CoriolisTerm = coriolisTerm,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, tickJobHandle);
+				Mass = nextState.WaterMass[worldData.SurfaceWaterLayer],
+				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
+				Carbon = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
+				PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
+				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
+				Salt = nextState.SaltMass[worldData.SurfaceWaterLayer],
+				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				FlowPercent = tempState.FlowPercentWater,
+				Positions = staticState.SphericalPosition,
+				Neighbors = staticState.Neighbors,
+				CoriolisMultiplier = staticState.CoriolisMultiplier,
+				CoriolisTerm = coriolisTerm,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, tickJobHandle);
 
-		tickJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
-		{
-			WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer],
-			SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
-			CarbonMass = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
-			PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
-			PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
-			Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
-			Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
+			tickJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
+			{
+				WaterMass = nextState.WaterMass[worldData.SurfaceWaterLayer],
+				SaltMass = nextState.SaltMass[worldData.SurfaceWaterLayer],
+				CarbonMass = nextState.WaterCarbon[worldData.SurfaceWaterLayer],
+				PlanktonMass = nextState.PlanktonMass[worldData.SurfaceWaterLayer],
+				PlanktonGlucose = nextState.PlanktonGlucose[worldData.SurfaceWaterLayer],
+				Temperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				Velocity = nextState.WaterVelocity[worldData.SurfaceWaterLayer],
 
-			Advection = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
-		}, tickJobHandle);
-
+				Advection = tempState.DiffusionWater[worldData.SurfaceWaterLayer],
+			}, tickJobHandle);
+		}
 
 		#endregion
 
@@ -1315,121 +1462,178 @@ public class WorldSim {
 		// Conduction is calculated for each Surface that might touch another surface
 		// Air to Cloud, Air to Ice, Air to Water, Air to Terrain, Ice to Water, Ice to Terrain, Water to Terrain
 		#region Conduction
+
+		JobHandle conductionAirIceJobHandle;
+		JobHandle conductionAirWaterJobHandle;
+		JobHandle conductionAirFloraJobHandle;
+		JobHandle conductionAirTerrainJobHandle;
+		JobHandle conductionIceWaterJobHandle;
+		JobHandle conductionIceFloraJobHandle;
+		JobHandle conductionIceTerrainJobHandle;
+		JobHandle conductionFloraTerrainJobHandle;
+		JobHandle conductionWaterTerrainJobHandle;
+
 		// air to ice
-		var conductionAirIceJobHandle = SimJob.Schedule(new ConductionBJob()
-		{
-			EnergyDelta = tempState.ConductionAirIce,
-			TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
-			TemperatureB = lastState.IceTemperature,
-			EnergyB = tempState.IceEnergy,
-			ConductionCoefficient = WorldData.ConductivityAirIce,
-			SurfaceArea = tempState.SurfaceAreaAirIce,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionAirIceJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionAirIce,
+			tempState.ConductionAirIce,
+			0,
+			new ConductionBJob()
+			{
+				EnergyDelta = tempState.ConductionAirIce,
+				TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
+				TemperatureB = lastState.IceTemperature,
+				EnergyB = tempState.IceEnergy,
+				ConductionCoefficient = WorldData.ConductivityAirIce,
+				SurfaceArea = tempState.SurfaceAreaAirIce,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 		// air to water
-		var conductionAirWaterJobHandle = SimJob.Schedule(new ConductionBJob()
-		{
-			EnergyDelta = tempState.ConductionAirWater,
-			TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
-			TemperatureB = lastState.WaterTemperature[worldData.SurfaceWaterLayer],
-			EnergyB = tempState.WaterPotentialEnergy[worldData.SurfaceWaterLayer],
-			ConductionCoefficient = WorldData.ConductivityAirWater,
-			SurfaceArea = tempState.SurfaceAreaAirWater,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionAirWaterJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionAirWater,
+			tempState.ConductionAirWater,
+			0,
+			new ConductionBJob()
+			{
+				EnergyDelta = tempState.ConductionAirWater,
+				TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
+				TemperatureB = lastState.WaterTemperature[worldData.SurfaceWaterLayer],
+				EnergyB = tempState.WaterPotentialEnergy[worldData.SurfaceWaterLayer],
+				ConductionCoefficient = WorldData.ConductivityAirWater,
+				SurfaceArea = tempState.SurfaceAreaAirWater,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 		// air to flora
-		var conductionAirFloraJobHandle = SimJob.Schedule(new ConductionBJob()
-		{
-			EnergyDelta = tempState.ConductionAirFlora,
-			TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
-			TemperatureB = lastState.FloraTemperature,
-			ConductionCoefficient = WorldData.ConductivityAirFlora,
-			SurfaceArea = tempState.SurfaceAreaAirFlora,
-			EnergyB = tempState.FloraEnergy,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionAirFloraJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionAirFlora,
+			tempState.ConductionAirFlora,
+			0,
+			new ConductionBJob()
+			{
+				EnergyDelta = tempState.ConductionAirFlora,
+				TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
+				TemperatureB = lastState.FloraTemperature,
+				ConductionCoefficient = WorldData.ConductivityAirFlora,
+				SurfaceArea = tempState.SurfaceAreaAirFlora,
+				EnergyB = tempState.FloraEnergy,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 		// air to terrain
-		var conductionAirTerrainJobHandle = SimJob.Schedule(new ConductionJob()
-		{
-			EnergyDelta = tempState.ConductionAirTerrain,
-			TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
-			TemperatureB = lastState.GroundTemperature,
-			ConductionCoefficient = WorldData.ConductivityAirTerrain,
-			SurfaceArea = tempState.SurfaceAreaAirTerrain,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionAirTerrainJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionAirTerrain,
+			tempState.ConductionAirTerrain,
+			0,
+			new ConductionJob()
+			{
+				EnergyDelta = tempState.ConductionAirTerrain,
+				TemperatureA = tempState.SurfaceAirTemperatureAbsolute,
+				TemperatureB = lastState.GroundTemperature,
+				ConductionCoefficient = WorldData.ConductivityAirTerrain,
+				SurfaceArea = tempState.SurfaceAreaAirTerrain,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 		// ice to water
-		var conductionIceWaterJobHandle = SimJob.Schedule(new ConductionABJob()
-		{
-			EnergyDelta = tempState.ConductionIceWater,
-			TemperatureA = lastState.IceTemperature,
-			TemperatureB = lastState.WaterTemperature[worldData.SurfaceWaterLayer],
-			EnergyA = tempState.IceEnergy,
-			EnergyB = tempState.WaterPotentialEnergy[worldData.SurfaceWaterLayer],
-			ConductionCoefficient = WorldData.ConductivityIceWater,
-			SurfaceArea = tempState.SurfaceAreaIceWater,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionIceWaterJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionIceWater,
+			tempState.ConductionIceWater,
+			0,
+			new ConductionABJob()
+			{
+				EnergyDelta = tempState.ConductionIceWater,
+				TemperatureA = lastState.IceTemperature,
+				TemperatureB = lastState.WaterTemperature[worldData.SurfaceWaterLayer],
+				EnergyA = tempState.IceEnergy,
+				EnergyB = tempState.WaterPotentialEnergy[worldData.SurfaceWaterLayer],
+				ConductionCoefficient = WorldData.ConductivityIceWater,
+				SurfaceArea = tempState.SurfaceAreaIceWater,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 		// ice to flora
-		var conductionIceFloraJobHandle = SimJob.Schedule(new ConductionABJob()
-		{
-			EnergyDelta = tempState.ConductionIceFlora,
-			TemperatureA = lastState.IceTemperature,
-			TemperatureB = lastState.FloraTemperature,
-			EnergyA = tempState.IceEnergy,
-			EnergyB = tempState.FloraEnergy,
-			ConductionCoefficient = WorldData.ConductivityIceFlora,
-			SurfaceArea = tempState.SurfaceAreaIceFlora,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionIceFloraJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionIceFlora,
+			tempState.ConductionIceFlora,
+			0,
+			new ConductionABJob()
+			{
+				EnergyDelta = tempState.ConductionIceFlora,
+				TemperatureA = lastState.IceTemperature,
+				TemperatureB = lastState.FloraTemperature,
+				EnergyA = tempState.IceEnergy,
+				EnergyB = tempState.FloraEnergy,
+				ConductionCoefficient = WorldData.ConductivityIceFlora,
+				SurfaceArea = tempState.SurfaceAreaIceFlora,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 		// ice to terrain
-		var conductionIceTerrainJobHandle = SimJob.Schedule(new ConductionAJob()
-		{
-			EnergyDelta = tempState.ConductionIceTerrain,
-			TemperatureA = lastState.IceTemperature,
-			TemperatureB = lastState.GroundTemperature,
-			EnergyA = tempState.IceEnergy,
-			ConductionCoefficient = WorldData.ConductivityIceTerrain,
-			SurfaceArea = tempState.SurfaceAreaIceTerrain,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionIceTerrainJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionIceTerrain,
+			tempState.ConductionIceTerrain,
+			0,
+			new ConductionAJob()
+			{
+				EnergyDelta = tempState.ConductionIceTerrain,
+				TemperatureA = lastState.IceTemperature,
+				TemperatureB = lastState.GroundTemperature,
+				EnergyA = tempState.IceEnergy,
+				ConductionCoefficient = WorldData.ConductivityIceTerrain,
+				SurfaceArea = tempState.SurfaceAreaIceTerrain,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 		// flora to terrain
-		var conductionFloraTerrainJobHandle = SimJob.Schedule(new ConductionAJob()
-		{
-			EnergyDelta = tempState.ConductionFloraTerrain,
-			TemperatureA = lastState.FloraTemperature,
-			TemperatureB = lastState.GroundTemperature,
-			EnergyA = tempState.FloraEnergy,
-			ConductionCoefficient = WorldData.ConductivityFloraTerrain,
-			SurfaceArea = tempState.SurfaceAreaFloraTerrain,
-			SecondsPerTick = worldData.SecondsPerTick
-		}, lastJobHandle);
+		conductionFloraTerrainJobHandle = SimJob.ScheduleOrMemset(
+			settings.ConductionFloraTerrain,
+			tempState.ConductionFloraTerrain,
+			0,
+			new ConductionAJob()
+			{
+				EnergyDelta = tempState.ConductionFloraTerrain,
+				TemperatureA = lastState.FloraTemperature,
+				TemperatureB = lastState.GroundTemperature,
+				EnergyA = tempState.FloraEnergy,
+				ConductionCoefficient = WorldData.ConductivityFloraTerrain,
+				SurfaceArea = tempState.SurfaceAreaFloraTerrain,
+				SecondsPerTick = worldData.SecondsPerTick
+			}, 
+			lastJobHandle);
 
 
 		// water to terrain
-		JobHandle conductionWaterTerrainJobHandle = lastJobHandle;
+		conductionWaterTerrainJobHandle = lastJobHandle;
 		for (int i = 1; i < worldData.WaterLayers - 1; i++)
 		{
-			conductionWaterTerrainJobHandle = JobHandle.CombineDependencies(conductionWaterTerrainJobHandle, SimJob.Schedule(new ConductionWaterBottomAJob()
-			{
-				EnergyDelta = tempState.ConductionWaterTerrain[i],
-				EnergyDeltaTotal = tempState.ConductionWaterTerrainTotal,
-				TemperatureA = lastState.WaterTemperature[i],
-				TemperatureB = lastState.GroundTemperature,
-				EnergyA = tempState.WaterPotentialEnergy[i],
-				ConductionCoefficient = WorldData.ConductivityWaterTerrain,
-				SurfaceArea = tempState.SurfaceAreaWaterTerrain,
-				Coverage = tempState.WaterCoverage[i],
-				CoverageBelow = tempState.WaterCoverage[i - 1],
-				SecondsPerTick = worldData.SecondsPerTick
-			}, conductionWaterTerrainJobHandle));
+			conductionWaterTerrainJobHandle = JobHandle.CombineDependencies(conductionWaterTerrainJobHandle, 
+				SimJob.ScheduleOrMemset(
+					settings.ConductionWaterTerrain,
+					tempState.ConductionWaterTerrain[i],
+					0,
+					new ConductionWaterBottomAJob()
+					{
+						EnergyDelta = tempState.ConductionWaterTerrain[i],
+						EnergyDeltaTotal = tempState.ConductionWaterTerrainTotal,
+						TemperatureA = lastState.WaterTemperature[i],
+						TemperatureB = lastState.GroundTemperature,
+						EnergyA = tempState.WaterPotentialEnergy[i],
+						ConductionCoefficient = WorldData.ConductivityWaterTerrain,
+						SurfaceArea = tempState.SurfaceAreaWaterTerrain,
+						Coverage = tempState.WaterCoverage[i],
+						CoverageBelow = tempState.WaterCoverage[i - 1],
+						SecondsPerTick = worldData.SecondsPerTick
+					}, 
+					conductionWaterTerrainJobHandle));
 		}
 
 		#endregion
@@ -1620,197 +1824,252 @@ public class WorldSim {
 
 		// surface water
 
+		if (settings.Condensation)
+		{
+			for (int j = 1; j < worldData.AirLayers - 1; j++)
+			{
+				int layerIndex = j + worldData.AirLayer0;
+				energyJobHandles[layerIndex] = SimJob.Schedule(new FluxAirCondensationJob()
+				{
+					LatentHeat = tempState.LatentHeat[layerIndex],
+					CondensationCloudMass = tempState.CondensationCloudMass[j],
+					CondensationGroundMass = tempState.CondensationGroundMass[j],
+
+					TemperaturePotential = nextState.AirTemperaturePotential[j],
+					LastVapor = lastState.AirVapor[j],
+					AirMass = tempState.AirMass[j],
+					AirPressure = tempState.AirPressure[j],
+					CloudElevation = tempState.CloudElevation,
+					LayerElevation = tempState.LayerElevation[j],
+					LayerHeight = tempState.LayerHeight[j],
+					LayerMiddle = tempState.LayerMiddle[j],
+				}, energyJobHandles[layerIndex]);
+			}
+		}
 		for (int j = 1; j < worldData.AirLayers - 1; j++)
 		{
 			int layerIndex = j + worldData.AirLayer0;
-			energyJobHandles[layerIndex] = SimJob.Schedule(new FluxAirJob()
+			energyJobHandles[layerIndex] = SimJob.Schedule(new FluxAirDustJob()
 			{
-				LatentHeat = tempState.LatentHeat[layerIndex],
-				CondensationCloudMass = tempState.CondensationCloudMass[j],
-				CondensationGroundMass = tempState.CondensationGroundMass[j],
 				DustUp = tempState.DustUp[j],
 				DustDown = tempState.DustDown[j],
 
-				TemperaturePotential = nextState.AirTemperaturePotential[j],
-				LastVapor = lastState.AirVapor[j],
-				AirMass = tempState.AirMass[j],
-				AirPressure = tempState.AirPressure[j],
-				CloudElevation = tempState.CloudElevation,
-				LayerElevation = tempState.LayerElevation[j],
 				LayerHeight = tempState.LayerHeight[j],
-				LayerMiddle = tempState.LayerMiddle[j],
 				LastDust = lastState.Dust[j],
 				AirVelocity = lastState.AirVelocity[j],
 				Positions = staticState.SphericalPosition,
 				DustVerticalVelocity = worldData.DustVerticalVelocity,
 				SecondsPerTick = worldData.SecondsPerTick
-
 			}, energyJobHandles[layerIndex]);
 		}
 
-		energyJobHandles[worldData.SurfaceWaterLayerGlobal] = SimJob.Schedule(new FluxWaterJob()
+		if (settings.Evaporation)
 		{
-			EvaporatedWaterMass = tempState.EvaporationMassWater,
-			FrozenMass = tempState.FrozenMass,
-			FrozenTemperature = tempState.FrozenTemperature,
-			LatentHeatWater = tempState.LatentHeat[worldData.SurfaceWaterLayerGlobal],
-			LatentHeatAir = tempState.LatentHeat[worldData.SurfaceAirLayerGlobal],
-			SaltPlume = tempState.SaltPlume,
-			PlanktonMassDelta = tempState.PlanktonMassDelta,
-			PlanktonGlucoseDelta = tempState.PlanktonGlucoseDelta,
-			PlanktonDeath = tempState.PlanktonDeath,
-			WaterCarbonDelta = tempState.WaterCarbonDelta,
+			energyJobHandles[worldData.SurfaceWaterLayerGlobal] = SimJob.Schedule(new FluxWaterEvaporationJob()
+			{
+				EvaporatedWaterMass = tempState.EvaporationMassWater,
+				LatentHeatWater = tempState.LatentHeat[worldData.SurfaceWaterLayerGlobal],
+				LatentHeatAir = tempState.LatentHeat[worldData.SurfaceAirLayerGlobal],
+
+				WaterTemperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				WaterMass = lastState.WaterMass[worldData.SurfaceWaterLayer],
+				IceCoverage = tempState.IceCoverage,
+				WaterCoverage = tempState.WaterCoverage[worldData.SurfaceWaterLayer],
+				SurfaceWind = lastState.AirVelocity[worldData.SurfaceAirLayer],
+				AirMass = tempState.AirMass[worldData.SurfaceAirLayer],
+				AirPressure = tempState.AirPressure[worldData.SurfaceAirLayer],
+				AirVapor = lastState.AirVapor[worldData.SurfaceAirLayer],
+				WaterHeatingDepth = worldData.WaterHeatingDepth,
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+		}
+
+		if (settings.Freezing)
+		{
+			energyJobHandles[worldData.SurfaceWaterLayerGlobal] = SimJob.Schedule(new FluxWaterFreezeJob()
+			{
+				FrozenMass = tempState.FrozenMass,
+				FrozenTemperature = tempState.FrozenTemperature,
+				LatentHeatWater = tempState.LatentHeat[worldData.SurfaceWaterLayerGlobal],
+				SaltPlume = tempState.SaltPlume,
+
+				WaterTemperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				AirTemperaturePotential = nextState.AirTemperaturePotential[worldData.SurfaceAirLayer],
+				WaterMass = lastState.WaterMass[worldData.SurfaceWaterLayer],
+				SaltMass = lastState.SaltMass[worldData.SurfaceWaterLayer],
+				AirLayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+				WaterHeatingDepth = worldData.WaterHeatingDepth,
+				FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+		}
+
+		energyJobHandles[worldData.SurfaceWaterLayerGlobal] = SimJob.Schedule(new FluxFloraWaterConsumeJob()
+		{
 			FloraWaterConsumed = tempState.WaterConsumedByFlora,
 
-			WaterTemperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
-			AirTemperaturePotential = nextState.AirTemperaturePotential[worldData.SurfaceAirLayer],
 			WaterMass = lastState.WaterMass[worldData.SurfaceWaterLayer],
-			SaltMass = lastState.SaltMass[worldData.SurfaceWaterLayer],
-			IceCoverage = tempState.IceCoverage,
-			WaterCoverage = tempState.WaterCoverage[worldData.SurfaceWaterLayer],
-			SurfaceWind = lastState.AirVelocity[worldData.SurfaceAirLayer],
-			AirMass = tempState.AirMass[worldData.SurfaceAirLayer],
-			AirPressure = tempState.AirPressure[worldData.SurfaceAirLayer],
-			AirVapor = lastState.AirVapor[worldData.SurfaceAirLayer],
-			AirLayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
-			SolarRadiation = tempState.SolarRadiationIn[worldData.SurfaceWaterLayerGlobal],
 			FloraMass = lastState.FloraMass,
 			FloraWater = lastState.FloraWater,
-			WaterCarbon = lastState.WaterCarbon[worldData.SurfaceWaterLayer],
-			PlanktonMass = lastState.PlanktonMass[worldData.SurfaceWaterLayer],
-			PlanktonGlucoseMass = lastState.PlanktonGlucose[worldData.SurfaceWaterLayer],
-			PlanktonDensityMax = worldData.PlanktonDensityMax,
-			PlanktonEnergyForPhotosynthesis = worldData.PlanktonEnergyForPhotosynthesis,
-			PlanktonCarbonDioxideExtractionEfficiency = worldData.PlanktonCarbonDioxideExtractionEfficiency,
-			PlanktonPhotosynthesisSpeed = worldData.PlanktonPhotosynthesisSpeed,
-			PlanktonRespirationSpeed = worldData.PlanktonRespirationSpeed,
-			PlanktonRespirationPerDegree = worldData.PlanktonRespirationPerDegree,
-			PlanktonGrowthRate = worldData.PlanktonGrowthRate,
-			PlanktonDeathRate = worldData.PlanktonDeathRate,
-			WaterHeatingDepth = worldData.WaterHeatingDepth,
-			FreezePointReductionPerSalinity = worldData.FreezePointReductionPerSalinity,
 			FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate
 		}, JobHandle.CombineDependencies(energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
 
+		if (settings.Plankton)
+		{
+			energyJobHandles[worldData.SurfaceWaterLayerGlobal] = SimJob.Schedule(new FluxPlanktonJob()
+			{
+				LatentHeatWater = tempState.LatentHeat[worldData.SurfaceWaterLayerGlobal],
+				PlanktonMassDelta = tempState.PlanktonMassDelta,
+				PlanktonGlucoseDelta = tempState.PlanktonGlucoseDelta,
+				PlanktonDeath = tempState.PlanktonDeath,
+				WaterCarbonDelta = tempState.WaterCarbonDelta,
+
+				WaterTemperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				WaterMass = lastState.WaterMass[worldData.SurfaceWaterLayer],
+				SaltMass = lastState.SaltMass[worldData.SurfaceWaterLayer],
+				SolarRadiation = tempState.SolarRadiationIn[worldData.SurfaceWaterLayerGlobal],
+				WaterCarbon = lastState.WaterCarbon[worldData.SurfaceWaterLayer],
+				PlanktonMass = lastState.PlanktonMass[worldData.SurfaceWaterLayer],
+				PlanktonGlucoseMass = lastState.PlanktonGlucose[worldData.SurfaceWaterLayer],
+				PlanktonDensityMax = worldData.PlanktonDensityMax,
+				PlanktonEnergyForPhotosynthesis = worldData.PlanktonEnergyForPhotosynthesis,
+				PlanktonCarbonDioxideExtractionEfficiency = worldData.PlanktonCarbonDioxideExtractionEfficiency,
+				PlanktonPhotosynthesisSpeed = worldData.PlanktonPhotosynthesisSpeed,
+				PlanktonRespirationSpeed = worldData.PlanktonRespirationSpeed,
+				PlanktonRespirationPerDegree = worldData.PlanktonRespirationPerDegree,
+				PlanktonGrowthRate = worldData.PlanktonGrowthRate,
+				PlanktonDeathRate = worldData.PlanktonDeathRate,
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+		}
 
 		// CLOUD
-		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new FluxCloudJob()
+		if (settings.Precipitation)
 		{
-			EvaporationMass = tempState.CloudEvaporationMass,
-			PrecipitationMass = tempState.PrecipitationMass,
-			PrecipitationTemperature = tempState.PrecipitationTemperature,
-			DropletDelta = tempState.DropletDelta,
+			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new FluxCloudJob()
+			{
+				EvaporationMass = tempState.CloudEvaporationMass,
+				PrecipitationMass = tempState.PrecipitationMass,
+				PrecipitationTemperature = tempState.PrecipitationTemperature,
+				DropletDelta = tempState.DropletDelta,
 
-			SurfaceAirTemperaturePotential = nextState.AirTemperaturePotential[worldData.SurfaceAirLayer],
-			SurfaceLayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
-			SurfaceLayerMiddle = tempState.LayerMiddle[worldData.SurfaceAirLayer],
-			SurfaceSaltMass = lastState.SaltMass[worldData.SurfaceWaterLayer],
-			LastCloudMass = lastState.CloudMass,
-			LastVelocity = tempState.CloudVelocity,
-			LastDropletMass = lastState.CloudDropletMass,
-			CloudElevation = tempState.CloudElevation,
-			DewPoint = tempState.DewPoint,
-			AirDensityCloud = tempState.AirDensityCloud,
-			Position = staticState.SphericalPosition,
-			Gravity = lastState.PlanetState.Gravity,
-			RainDropDragCoefficient = worldData.rainDropDragCoefficient,
-			RainDropMaxSize = worldData.rainDropMaxSize,
-			RainDropMinSize = worldData.rainDropMinSize,
-			RainDropGrowthRate = worldData.RainDropGrowthRate,
-			SecondsPerTick = worldData.SecondsPerTick,
-			CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
-			CloudDissapationRateWind = worldData.CloudDissapationRateWind,
-		}, JobHandle.CombineDependencies(energyJobHandles[worldData.CloudLayer], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+				SurfaceAirTemperaturePotential = nextState.AirTemperaturePotential[worldData.SurfaceAirLayer],
+				SurfaceLayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+				SurfaceLayerMiddle = tempState.LayerMiddle[worldData.SurfaceAirLayer],
+				SurfaceSaltMass = lastState.SaltMass[worldData.SurfaceWaterLayer],
+				LastCloudMass = lastState.CloudMass,
+				LastVelocity = tempState.CloudVelocity,
+				LastDropletMass = lastState.CloudDropletMass,
+				CloudElevation = tempState.CloudElevation,
+				DewPoint = tempState.DewPoint,
+				AirDensityCloud = tempState.AirDensityCloud,
+				Position = staticState.SphericalPosition,
+				Gravity = lastState.PlanetState.Gravity,
+				RainDropDragCoefficient = worldData.rainDropDragCoefficient,
+				RainDropMaxSize = worldData.rainDropMaxSize,
+				RainDropMinSize = worldData.rainDropMinSize,
+				RainDropGrowthRate = worldData.RainDropGrowthRate,
+				SecondsPerTick = worldData.SecondsPerTick,
+				CloudDissapationRateDryAir = worldData.CloudDissapationRateDryAir,
+				CloudDissapationRateWind = worldData.CloudDissapationRateWind,
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.CloudLayer], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+		}
 
-		energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(new FluxFloraJob()
+		if (settings.Flora)
 		{
-			LatentHeatAir = tempState.LatentHeat[worldData.SurfaceAirLayerGlobal],
-			LatentHeatFlora = tempState.LatentHeat[worldData.FloraLayer],
-			EvaporatedWaterMass = tempState.FloraRespirationMassVapor,
-			SurfaceWaterDelta = tempState.FloraRespirationMassWater,
-			FloraMassDelta = tempState.FloraMassDelta,
-			FloraWaterDelta = tempState.FloraWaterDelta,
-			FloraGlucoseDelta = tempState.FloraGlucoseDelta,
-			FloraDeath = tempState.FloraDeath,
-			CarbonDioxideDelta = tempState.AirCarbonDelta,
-			OxygenDelta = tempState.OxygenDelta,
+			energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(new FluxFloraJob()
+			{
+				LatentHeatAir = tempState.LatentHeat[worldData.SurfaceAirLayerGlobal],
+				LatentHeatFlora = tempState.LatentHeat[worldData.FloraLayer],
+				EvaporatedWaterMass = tempState.FloraRespirationMassVapor,
+				SurfaceWaterDelta = tempState.FloraRespirationMassWater,
+				FloraMassDelta = tempState.FloraMassDelta,
+				FloraWaterDelta = tempState.FloraWaterDelta,
+				FloraGlucoseDelta = tempState.FloraGlucoseDelta,
+				FloraDeath = tempState.FloraDeath,
+				CarbonDioxideDelta = tempState.AirCarbonDelta,
+				OxygenDelta = tempState.OxygenDelta,
 
-			SolarRadiationIn = tempState.SolarRadiationIn[worldData.FloraLayer],
-			FloraTemperature = nextState.FloraTemperature,
-			FloraMass = lastState.FloraMass,
-			FloraGlucose = lastState.FloraGlucose,
-			FloraWater = lastState.FloraWater,
-			FloraCoverage = tempState.FloraCoverage,
-			CarbonDioxide = lastState.AirCarbon[worldData.SurfaceAirLayer],
-			LayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
-			LayerHeight = tempState.LayerHeight[worldData.SurfaceAirLayer],
-			SurfaceWind = lastState.AirVelocity[worldData.SurfaceAirLayer],
-			AirMass = tempState.AirMass[worldData.SurfaceAirLayer],
-			AirTemperaturePotential = lastState.AirTemperaturePotential[worldData.SurfaceAirLayer],
-			AirPressure = tempState.AirPressure[worldData.SurfaceAirLayer],
-			AirVapor = lastState.AirVapor[worldData.SurfaceAirLayer],
-			SoilFertility = lastState.GroundCarbon,
-			FloraGrowthRate = worldData.FloraGrowthRate,
-			FloraDeathRate = worldData.FloraDeathRate,
-			FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse,
-			FloraEnergyForPhotosynthesis = worldData.FloraEnergyForPhotosynthesis,
-			FloraCarbonDioxideExtractionEfficiency = worldData.FloraCarbonDioxideExtractionEfficiency,
-			FloraOxygenExtractionEfficiency = worldData.FloraOxygenExtractionEfficiency,
-			FloraPhotosynthesisSpeed = worldData.FloraPhotosynthesisSpeed,
-			FloraRespirationSpeed = worldData.FloraRespirationSpeed,
-			FloraRespirationPerDegree = worldData.FloraRespirationPerDegree,
-			OxygenPercent = lastState.PlanetState.Oxygen,
-			Gravity = lastState.PlanetState.Gravity
-		}, JobHandle.CombineDependencies(energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+				SolarRadiationIn = tempState.SolarRadiationIn[worldData.FloraLayer],
+				FloraTemperature = nextState.FloraTemperature,
+				FloraMass = lastState.FloraMass,
+				FloraGlucose = lastState.FloraGlucose,
+				FloraWater = lastState.FloraWater,
+				FloraCoverage = tempState.FloraCoverage,
+				CarbonDioxide = lastState.AirCarbon[worldData.SurfaceAirLayer],
+				LayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+				LayerHeight = tempState.LayerHeight[worldData.SurfaceAirLayer],
+				SurfaceWind = lastState.AirVelocity[worldData.SurfaceAirLayer],
+				AirMass = tempState.AirMass[worldData.SurfaceAirLayer],
+				AirTemperaturePotential = lastState.AirTemperaturePotential[worldData.SurfaceAirLayer],
+				AirPressure = tempState.AirPressure[worldData.SurfaceAirLayer],
+				AirVapor = lastState.AirVapor[worldData.SurfaceAirLayer],
+				SoilFertility = lastState.GroundCarbon,
+				FloraGrowthRate = worldData.FloraGrowthRate,
+				FloraDeathRate = worldData.FloraDeathRate,
+				FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse,
+				FloraEnergyForPhotosynthesis = worldData.FloraEnergyForPhotosynthesis,
+				FloraCarbonDioxideExtractionEfficiency = worldData.FloraCarbonDioxideExtractionEfficiency,
+				FloraOxygenExtractionEfficiency = worldData.FloraOxygenExtractionEfficiency,
+				FloraPhotosynthesisSpeed = worldData.FloraPhotosynthesisSpeed,
+				FloraRespirationSpeed = worldData.FloraRespirationSpeed,
+				FloraRespirationPerDegree = worldData.FloraRespirationPerDegree,
+				OxygenPercent = lastState.PlanetState.Oxygen,
+				Gravity = lastState.PlanetState.Gravity
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.SurfaceWaterLayerGlobal], energyJobHandles[worldData.SurfaceAirLayerGlobal]));
+		}
 
-		energyJobHandles[worldData.IceLayer] = SimJob.Schedule(new FluxIceJob()
+		if (settings.IceMelting)
 		{
-			LatentHeatAir = tempState.LatentHeat[worldData.SurfaceAirLayerGlobal],
-			LatentHeatWater = tempState.LatentHeat[worldData.SurfaceWaterLayerGlobal],
-			LatentHeatTerrain = tempState.LatentHeat[worldData.TerrainLayer],
-			LatentHeatIce = tempState.LatentHeat[worldData.IceLayer],
-			MeltedMass = tempState.IceMeltedMass,
+			energyJobHandles[worldData.IceLayer] = SimJob.Schedule(new FluxIceMeltJob()
+			{
+				LatentHeatAir = tempState.LatentHeat[worldData.SurfaceAirLayerGlobal],
+				LatentHeatWater = tempState.LatentHeat[worldData.SurfaceWaterLayerGlobal],
+				LatentHeatTerrain = tempState.LatentHeat[worldData.TerrainLayer],
+				LatentHeatIce = tempState.LatentHeat[worldData.IceLayer],
+				MeltedMass = tempState.IceMeltedMass,
 
-			Temperature = nextState.IceTemperature,
-			LastMass = lastState.IceMass,
-			IceHeatingDepth = worldData.IceHeatingDepth,
-			AirTemperaturePotential = nextState.AirTemperaturePotential[worldData.SurfaceAirLayer],
-			WaterIceSurfaceArea = tempState.SurfaceAreaIceWater,
-			WaterTemperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
-			TerrainTemperature = nextState.GroundTemperature,
-			LayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+				Temperature = nextState.IceTemperature,
+				LastMass = lastState.IceMass,
+				IceHeatingDepth = worldData.IceHeatingDepth,
+				AirTemperaturePotential = nextState.AirTemperaturePotential[worldData.SurfaceAirLayer],
+				WaterIceSurfaceArea = tempState.SurfaceAreaIceWater,
+				WaterTemperature = nextState.WaterTemperature[worldData.SurfaceWaterLayer],
+				TerrainTemperature = nextState.GroundTemperature,
+				LayerElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
 
-		}, JobHandle.CombineDependencies(energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.IceLayer], energyJobHandles[worldData.TerrainLayer]));
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.IceLayer], energyJobHandles[worldData.TerrainLayer]));
+		}
 
 		energyJobHandles[worldData.LavaLayer] = SimJob.Schedule(new FluxLavaJob()
 		{
 		}, energyJobHandles[worldData.LavaLayer]);
 
-		energyJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new FluxTerrainJob()
+		if (settings.SoilRespiration)
 		{
-			SoilRespiration = tempState.SoilRespiration,
-			CrystalizedMass = tempState.LavaCrystalizedMass,
-			LavaEjected = tempState.LavaEjected,
-			DustEjected = tempState.DustEjected,
-			CrustDelta = tempState.CrustDelta,
-			LatentHeatLava = tempState.LatentHeat[worldData.LavaLayer],
+			energyJobHandles[worldData.TerrainLayer] = SimJob.Schedule(new FluxTerrainJob()
+			{
+				SoilRespiration = tempState.SoilRespiration,
+				CrystalizedMass = tempState.LavaCrystalizedMass,
+				LavaEjected = tempState.LavaEjected,
+				DustEjected = tempState.DustEjected,
+				CrustDelta = tempState.CrustDelta,
+				LatentHeatLava = tempState.LatentHeat[worldData.LavaLayer],
 
-			LavaTemperature = nextState.LavaTemperature,
-			LavaMass = lastState.LavaMass,
-			CrustDepth = lastState.CrustDepth,
-			MagmaMass = lastState.MagmaMass,
-			Elevation = lastState.Elevation,
-			SoilCarbon = nextState.GroundCarbon,
-			WaterCoverage = tempState.WaterCoverage[worldData.SurfaceWaterLayer],
-			LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
-			CrustEruptionDepth = worldData.CrustDepthForEruption,
-			DustPerLavaEjected = worldData.DustPerLavaEjected,
-			MagmaPressureCrustReductionSpeed = worldData.MagmaPressureCrustReductionSpeed,
-			LavaEruptionSpeed = worldData.LavaEruptionSpeed,
-			SecondsPerTick = worldData.SecondsPerTick,
-			SoilRespirationSpeed = worldData.SoilRespirationSpeed,
-			OxygenPercent = lastState.PlanetState.Oxygen
-		}, JobHandle.CombineDependencies(energyJobHandles[worldData.TerrainLayer], energyJobHandles[worldData.LavaLayer]));
+				LavaTemperature = nextState.LavaTemperature,
+				LavaMass = lastState.LavaMass,
+				CrustDepth = lastState.CrustDepth,
+				MagmaMass = lastState.MagmaMass,
+				Elevation = lastState.Elevation,
+				SoilCarbon = nextState.GroundCarbon,
+				WaterCoverage = tempState.WaterCoverage[worldData.SurfaceWaterLayer],
+				LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
+				CrustEruptionDepth = worldData.CrustDepthForEruption,
+				DustPerLavaEjected = worldData.DustPerLavaEjected,
+				MagmaPressureCrustReductionSpeed = worldData.MagmaPressureCrustReductionSpeed,
+				LavaEruptionSpeed = worldData.LavaEruptionSpeed,
+				SecondsPerTick = worldData.SecondsPerTick,
+				SoilRespirationSpeed = worldData.SoilRespirationSpeed,
+				OxygenPercent = lastState.PlanetState.Oxygen
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.TerrainLayer], energyJobHandles[worldData.LavaLayer]));
+		}
 
 		#endregion
 
@@ -2087,69 +2346,73 @@ public class WorldSim {
 		ref SimSettings settings
 		)
 	{
-
-		lastJobHandle = SimJob.Schedule(new GroundWaterFlowJob()
+		if (settings.GroundWater)
 		{
-			GroundWater = nextState.GroundWater,
-			GroundWaterTemperature = nextState.GroundWaterTemperature,
 
-			LastGroundWater = lastState.GroundWater,
-			LastGroundWaterTemperature = lastState.GroundWaterTemperature,
-			SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
-			Neighbors = staticState.Neighbors,
-			NeighborDistInverse = staticState.NeighborDistInverse,
-			FlowSpeed = worldData.GroundWaterFlowSpeed,
-			GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
-		}, JobHandle.CombineDependencies(lastJobHandle, energyJobHandles[worldData.TerrainLayer]));
-
-		lastJobHandle = SimJob.Schedule(new GroundWaterDiffusionJob()
-		{
-			GroundWater = tempState.GroundWaterFlowMass,
-			GroundWaterTemperature = tempState.GroundWaterFlowTemperature,
-
-			LastGroundWater = nextState.GroundWater,
-			LastGroundWaterTemperature = nextState.GroundWaterTemperature,
-			NeighborDist = staticState.NeighborDist,
-			NeighborDistInverse = staticState.NeighborDistInverse,
-			Neighbors = staticState.Neighbors,
-			DiffusionCoefficient = worldData.GroundWaterDiffusionCoefficient
-		}, lastJobHandle);
-
-		for (int i = 1; i < worldData.WaterLayers - 1; i++)
-		{
-			lastJobHandle = SimJob.Schedule(new GroundWaterAbsorptionJob()
+			lastJobHandle = SimJob.Schedule(new GroundWaterFlowJob()
 			{
 				GroundWater = nextState.GroundWater,
 				GroundWaterTemperature = nextState.GroundWaterTemperature,
-				WaterMass = nextState.WaterMass[i],
-				WaterTemperature = nextState.WaterTemperature[i],
 
-				LastGroundWater = tempState.GroundWaterFlowMass,
-				LastGroundWaterTemperature = tempState.GroundWaterFlowTemperature,
-				SaltMass = nextState.SaltMass[i],
-				WaterBelow = nextState.WaterMass[i - 1],
-				GroundWaterAbsorptionRate = worldData.GroundWaterAbsorptionRate * worldData.SecondsPerTick,
+				LastGroundWater = lastState.GroundWater,
+				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
+				SurfaceElevation = tempState.LayerElevation[worldData.SurfaceAirLayer],
+				Neighbors = staticState.Neighbors,
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				FlowSpeed = worldData.GroundWaterFlowSpeed,
 				GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
-				GroundWaterMax = worldData.GroundWaterMax,
-				IsTop = i == worldData.SurfaceWaterLayer
-			},	JobHandle.CombineDependencies(lastJobHandle, energyJobHandles[worldData.SurfaceWaterLayerGlobal],
-				JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0 + i], energyJobHandles[worldData.WaterLayer0 + i - 1])));
+			}, JobHandle.CombineDependencies(lastJobHandle, energyJobHandles[worldData.TerrainLayer]));
+
+			lastJobHandle = SimJob.Schedule(new GroundWaterDiffusionJob()
+			{
+				GroundWater = tempState.GroundWaterFlowMass,
+				GroundWaterTemperature = tempState.GroundWaterFlowTemperature,
+
+				LastGroundWater = nextState.GroundWater,
+				LastGroundWaterTemperature = nextState.GroundWaterTemperature,
+				NeighborDist = staticState.NeighborDist,
+				NeighborDistInverse = staticState.NeighborDistInverse,
+				Neighbors = staticState.Neighbors,
+				DiffusionCoefficient = worldData.GroundWaterDiffusionCoefficient
+			}, lastJobHandle);
+
+			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			{
+				lastJobHandle = SimJob.Schedule(new GroundWaterAbsorptionJob()
+				{
+					GroundWater = nextState.GroundWater,
+					GroundWaterTemperature = nextState.GroundWaterTemperature,
+					WaterMass = nextState.WaterMass[i],
+					WaterTemperature = nextState.WaterTemperature[i],
+
+					LastGroundWater = tempState.GroundWaterFlowMass,
+					LastGroundWaterTemperature = tempState.GroundWaterFlowTemperature,
+					SaltMass = nextState.SaltMass[i],
+					WaterBelow = nextState.WaterMass[i - 1],
+					GroundWaterAbsorptionRate = worldData.GroundWaterAbsorptionRate * worldData.SecondsPerTick,
+					GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
+					GroundWaterMax = worldData.GroundWaterMax,
+					IsTop = i == worldData.SurfaceWaterLayer
+				}, JobHandle.CombineDependencies(lastJobHandle, energyJobHandles[worldData.SurfaceWaterLayerGlobal],
+					JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0 + i], energyJobHandles[worldData.WaterLayer0 + i - 1])));
+				energyJobHandles[worldData.WaterLayer0 + i] = JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0 + i], lastJobHandle);
+			}
+
+			lastJobHandle = SimJob.Schedule(new GroundWaterConductionJob()
+			{
+				GroundWaterTemperature = tempState.GroundWaterFlowTemperature,
+				TerrainTemperature = nextState.GroundTemperature,
+
+				GroundWater = nextState.GroundWater,
+				LastGroundWaterTemperature = nextState.GroundWaterTemperature,
+				SoilFertility = nextState.GroundCarbon,
+				GroundWaterConductionCoefficient = WorldData.ConductivityWaterTerrain,
+				HeatingDepth = worldData.SoilHeatDepth,
+				SecondsPerTick = worldData.SecondsPerTick,
+				GroundWaterSurfaceAreaInverse = worldData.SoilHeatDepth / worldData.GroundWaterMaxDepth
+			}, JobHandle.CombineDependencies(lastJobHandle, energyJobHandles[worldData.TerrainLayer]));
+			energyJobHandles[worldData.TerrainLayer] = JobHandle.CombineDependencies(energyJobHandles[worldData.TerrainLayer], lastJobHandle);
 		}
-
-		lastJobHandle = SimJob.Schedule(new GroundWaterConductionJob()
-		{
-			GroundWaterTemperature = tempState.GroundWaterFlowTemperature,
-			TerrainTemperature = nextState.GroundTemperature,
-
-			GroundWater = nextState.GroundWater,
-			LastGroundWaterTemperature = nextState.GroundWaterTemperature,
-			SoilFertility = nextState.GroundCarbon,
-			GroundWaterConductionCoefficient = WorldData.ConductivityWaterTerrain,
-			HeatingDepth = worldData.SoilHeatDepth,
-			SecondsPerTick = worldData.SecondsPerTick,
-			GroundWaterSurfaceAreaInverse = worldData.SoilHeatDepth / worldData.GroundWaterMaxDepth
-		}, JobHandle.CombineDependencies(lastJobHandle, energyJobHandles[worldData.TerrainLayer]));
-
 		return lastJobHandle;
 	}
 }

@@ -22,6 +22,34 @@ public class WorldSimComponent : MonoBehaviour
 	public SimSettings SimSettings = new SimSettings()
 	{
 		MakeAirIncompressible = true,
+		MakeWaterIncompressible = true,
+		WaterSurfaceFlowEnabled = true,
+
+		Condensation = true,
+		Evaporation = true,
+		Flora = true,
+		Freezing = true,
+		IceMelting = true,
+		Plankton = true,
+		Precipitation = true,
+		SoilRespiration = true,
+		GroundWater = true,
+
+		ConductionAirFlora = true,
+		ConductionAirIce = true,
+		ConductionAirTerrain = true,
+		ConductionAirWater = true,
+		ConductionFloraTerrain = true,
+		ConductionIceFlora = true,
+		ConductionIceTerrain = true,
+		ConductionIceWater = true,
+		ConductionWaterTerrain = true,
+
+		CheckForDegeneracy = false,
+		CollectGlobals = false,
+		CollectOverlay = false,
+		LogState = false,
+		LogStateIndex = 0,
 		
 	};
 

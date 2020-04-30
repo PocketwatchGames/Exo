@@ -1,4 +1,6 @@
-﻿using Unity.Burst;
+﻿#define DISABLE_VERTICAL_DIVERGENCE
+
+using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -93,7 +95,83 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 	}
 }
 
+[BurstCompile]
+public struct ResolveAdvectionConflict : IJobParallelFor {
+	public NativeArray<float3> NewVelocity;
+	[ReadOnly] public NativeArray<float3> Velocity;
+	[ReadOnly] public NativeArray<float3> VelocityAbove;
+	[ReadOnly] public NativeArray<float3> VelocityBelow;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float3> Position;
+	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> LayerHeightAbove;
+	[ReadOnly] public NativeArray<float> LayerHeightBelow;
+	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> MassAbove;
+	[ReadOnly] public NativeArray<float> MassBelow;
+	[ReadOnly] public bool IsBottom;
+	[ReadOnly] public bool IsTop;
+	[ReadOnly] public float SecondsPerTick;
+	public void Execute(int i)
+	{
+		float mass = Mass[i];
+		float3 velocity = Velocity[i];
+#if !DISABLE_VERTICAL_DIVERGENCE
+		if (mass > 0)
+		{
+			float3 position = Position[i];
 
+
+			// extract vertical velocity
+			float layerHeight = LayerHeight[i];
+			float valueVertical;
+			if (layerHeight > 0)
+			{
+				var velVertical = math.dot(velocity, position);
+				valueVertical = math.clamp(velVertical / layerHeight  /* * SecondsPerTick */, -1, 1);
+				float conflict = 0;
+				if (valueVertical > 0)
+				{
+					if (IsTop || LayerHeightAbove[i] == 0)
+					{
+						conflict = 1;
+					}
+					else
+					{
+						var velAboveVertical = math.dot(VelocityAbove[i], position);
+						if (velAboveVertical < 0)
+						{
+							float valueAboveVertical = math.min(1, -velAboveVertical / LayerHeightAbove[i]);
+							conflict = math.min(valueAboveVertical * MassAbove[i] / (mass * valueVertical), 1);
+						}
+					}
+					velocity -= position * conflict * velVertical;
+					valueVertical -= conflict * valueVertical;
+				}
+				else if (valueVertical < 0)
+				{
+					if (IsBottom || LayerHeightBelow[i] == 0)
+					{
+						conflict = 1;
+					}
+					else
+					{
+						var velBelowVertical = math.dot(VelocityBelow[i], position);
+						if (velBelowVertical > 0)
+						{
+							float valueBelowVertical = math.min(1, velBelowVertical / LayerHeightBelow[i]);
+							conflict = math.min(valueBelowVertical * MassBelow[i] / (mass * -valueVertical), 1);
+						}
+					}
+					velocity -= position * conflict * velVertical;
+					valueVertical -= conflict * valueVertical;
+				}
+			}
+		}
+#endif
+		NewVelocity[i] = velocity;
+	}
+}
 
 [BurstCompile]
 public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
@@ -102,69 +180,100 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> MassAbove;
+	[ReadOnly] public NativeArray<float> MassBelow;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float MaxWindMove;
 	public void Execute(int i)
 	{
-		float3 position = Position[i];
-		float3 pos = position * PlanetRadius;
-
-		float3 velocity = Velocity[i];
-
-		// extract vertical velocity
-		float layerHeight = LayerHeight[i];
-		float valueVertical;
-		float valueVerticalComplement;
-		if (layerHeight > 0)
+		float mass = Mass[i];
+		if (mass > 0)
 		{
-			var velVertical = math.dot(velocity, position);
-			valueVertical = math.clamp(velVertical / LayerHeight[i], -1, 1);
-			valueVerticalComplement = 1.0f - math.abs(valueVertical);
-		}
-		else
-		{
-			valueVertical = 0;
-			valueVerticalComplement = 1;
-		}
+			float inverseMass = 1.0f / mass;
+			float3 position = Position[i];
+			float3 pos = position * PlanetRadius;
 
-		// TODO: deal with high wind speeds appropriately and remove this section
-		float3 move = velocity * SecondsPerTick;
-		float windMoveHorizontalSq = math.lengthsq(move);
-		if (windMoveHorizontalSq > MaxWindMove * MaxWindMove)
-		{
-			move = move / math.sqrt(windMoveHorizontalSq) * MaxWindMove;
-		}
+			float3 velocity = Velocity[i];
 
-
-		float3 movePos = pos + move;
-		for (int j = 0; j < 6; j++)
-		{
-			int indexB = Neighbors[i * 6 + j];
-			if (indexB >= 0)
+			float valueVertical;
+#if !DISABLE_VERTICAL_DIVERGENCE
+			// extract vertical velocity
+			float layerHeight = LayerHeight[i];
+			if (layerHeight > 0)
 			{
-				int indexC = Neighbors[i * 6 + (j + 1) % 6];
-				if (indexC < 0)
-				{
-					indexC = Neighbors[i * 6];
-				}
+				var velVertical = math.dot(velocity, position);
+				valueVertical = math.clamp(velVertical / layerHeight  /* * SecondsPerTick */, -1, 1);
+			}
+			else
+#endif
+			{
+				valueVertical = 0;
+			}
 
-				float a;
-				float b;
-				float c;
-				if (Utils.GetBarycentricIntersection(movePos, pos, Position[indexB] * PlanetRadius, Position[indexC] * PlanetRadius, out a, out b, out c))
+			// TODO: deal with high wind speeds appropriately and remove this section
+			float3 move = velocity * SecondsPerTick;
+			float windMoveHorizontalSq = math.lengthsq(move);
+			if (windMoveHorizontalSq > MaxWindMove * MaxWindMove)
+			{
+				move = move / math.sqrt(windMoveHorizontalSq) * MaxWindMove;
+			}
+
+
+			float3 movePos = pos + move;
+			for (int j = 0; j < 6; j++)
+			{
+				int indexB = Neighbors[i * 6 + j];
+				if (indexB >= 0)
 				{
-					Destination[i] = new BarycentricValueVertical
+					int indexC = Neighbors[i * 6 + (j + 1) % 6];
+					if (indexC < 0)
 					{
-						indexA = i,
-						indexB = indexB,
-						indexC = indexC,
-						valueA = a * valueVerticalComplement,
-						valueB = b * valueVerticalComplement,
-						valueC = c * valueVerticalComplement,
-						moveVertical = valueVertical,
-					};
-					return;
+						indexC = Neighbors[i * 6];
+					}
+
+					float3 m;
+					if (Utils.GetBarycentricIntersection(movePos, pos, Position[indexB] * PlanetRadius, Position[indexC] * PlanetRadius, out m.x, out m.y, out m.z))
+					{
+#if !DISABLE_VERTICAL_DIVERGENCE
+						// Make sure we aren't moving too much mass into a cell that can't handle it
+						if (valueVertical > 0)
+						{
+							valueVertical -= math.max(0, valueVertical - MassAbove[i] * inverseMass);
+						}
+						else
+						{
+							valueVertical += math.max(0, -valueVertical - MassBelow[i] * inverseMass);
+						}
+						float valueVerticalComplement = 1.0f - math.abs(valueVertical);
+						m *= valueVerticalComplement;
+#endif
+						if (indexB >= 0)
+						{
+							float excessMass = math.max(0, m.y - Mass[indexB] * inverseMass);
+							m.x += excessMass;
+							m.y -= excessMass;
+						}
+						if (indexC >= 0)
+						{
+							float excessMass = math.max(0, m.z - Mass[indexC] * inverseMass);
+							m.x += excessMass;
+							m.z -= excessMass;
+						}
+
+						Destination[i] = new BarycentricValueVertical
+						{
+							indexA = i,
+							indexB = indexB,
+							indexC = indexC,
+							valueA = m.x,
+							valueB = m.y,
+							valueC = m.z,
+							moveVertical = valueVertical,
+						};
+						return;
+					}
 				}
 			}
 		}
@@ -175,10 +284,10 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 			indexA = i,
 			indexB = -1,
 			indexC = -1,
-			valueA = valueVerticalComplement,
+			valueA = 1,
 			valueB = 0,
 			valueC = 0,
-			moveVertical = valueVertical,
+			moveVertical = 0,
 		};
 	}
 }
@@ -214,7 +323,7 @@ public struct GetDivergenceJob : IJobParallelFor {
 		{
 			value += Destination[i].valueC * mass;
 		}
-		value -= math.abs(Destination[i].moveVertical) * mass;
+#if !DISABLE_VERTICAL_DIVERGENCE
 		if (DestinationAbove[i].moveVertical < 0)
 		{
 			value += -DestinationAbove[i].moveVertical * MassAbove[i];
@@ -223,6 +332,7 @@ public struct GetDivergenceJob : IJobParallelFor {
 		{
 			value += DestinationBelow[i].moveVertical * MassBelow[i];
 		}
+#endif
 
 		for (int j = 0; j < 6; j++)
 		{
@@ -265,6 +375,7 @@ public struct GetDivergencePressureJob : IJobFor {
 		{
 			pressure += Pressure[Neighbors[i * StaticState.MaxNeighbors + k]];
 		}
+#if !DISABLE_VERTICAL_DIVERGENCE
 		if (!IsTop)
 		{
 			pressure += PressureAbove[i];
@@ -275,6 +386,7 @@ public struct GetDivergencePressureJob : IJobFor {
 			pressure += PressureBelow[i];
 			neighborCount++;
 		}
+#endif
 		Pressure[i] = pressure / neighborCount;
 
 	}
@@ -283,12 +395,13 @@ public struct GetDivergencePressureJob : IJobFor {
 
 [BurstCompile]
 public struct GetDivergenceFreeFieldJob : IJobParallelFor {
-	public NativeArray<float3> Velocity;
+	public NativeArray<float3> VelocityOut;
+	[ReadOnly] public NativeArray<float3> VelocityIn;
 	[ReadOnly] public NativeArray<float> Pressure;
 	[ReadOnly] public NativeArray<float> PressureAbove;
 	[ReadOnly] public NativeArray<float> PressureBelow;
 	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> NeighborTangent;
 	[ReadOnly] public NativeArray<float3> Positions;
@@ -307,6 +420,7 @@ public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 			float3 diff = NeighborTangent[nIndex];
 			pressureGradient += (pressure - Pressure[Neighbors[nIndex]]) * diff;
 		}
+#if !DISABLE_VERTICAL_DIVERGENCE
 		float height = LayerHeight[i];
 		if (!IsTop)
 		{
@@ -316,7 +430,8 @@ public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 		{
 			pressureGradient += (PressureBelow[i] - pressure) * up * height;
 		}
-		Velocity[i] -= pressureGradient / AirMass[i] * TicksPerSecond;
+#endif
+		VelocityOut[i] = VelocityIn[i] - pressureGradient / Mass[i] * TicksPerSecond;
 	}
 }
 
