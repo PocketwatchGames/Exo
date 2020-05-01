@@ -51,7 +51,7 @@ public struct UpdateAirVelocityJob : IJobParallelFor {
 }
 
 
-//[BurstCompile]
+[BurstCompile]
 public struct AdvectionAirJob : IJobParallelFor {
 	public NativeArray<DiffusionAir> Delta;
 	[ReadOnly] public NativeArray<float> Temperature;
@@ -174,7 +174,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 }
 
 
-//[BurstCompile]
+[BurstCompile]
 public struct AdvectionWaterJob : IJobParallelFor {
 	public NativeArray<DiffusionWater> Delta;
 	[ReadOnly] public NativeArray<float> Destination;

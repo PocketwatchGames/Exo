@@ -180,11 +180,11 @@ public struct FluxPlanktonJob : IJobParallelFor {
 			float waterCarbon = WaterCarbon[i];
 			if (planktonMass > 0)
 			{
-				float glucose = PlanktonGlucoseMass[i];
 				float inversePlanktonMass = 1.0f / planktonMass;
-				float respirationHealth = 0;
-				if (waterMass > 0)
+				if (!float.IsInfinity(inversePlanktonMass))
 				{
+					float glucose = PlanktonGlucoseMass[i];
+					float respirationHealth = 0;
 
 					// Photosynthesis: Consume solarRadiation, carbon dioxide, to produce glucose (water and oxygen are ignored)
 					// TODO: carbon dioxide extraction should curve to a limit rather than cap
@@ -224,32 +224,30 @@ public struct FluxPlanktonJob : IJobParallelFor {
 							respirationHealth = respiration / PlanktonRespirationSpeed;
 						}
 					}
+
+					// Growth: Consume glucose, produce plant growth
+					float growth = math.min(glucose,
+						PlanktonGrowthRate
+						* planktonMass
+						* respirationHealth
+						* Utils.Sqr(math.min(1, glucose * inversePlanktonMass)));
+
+					glucoseDelta -= growth;
+					planktonMassDelta += growth;
+
+					// Death: Produce carbon dioxide, water
+					float deathPercent = Utils.Sqr(math.max(0, planktonMass - respirationHealth) * inversePlanktonMass) * PlanktonDeathRate;
+					float death = deathPercent * planktonMass;
+					// convert mass back through the respiration process, and dump any stored glucose and water
+					glucoseDelta -= deathPercent * glucose;
+					planktonMassDelta -= death;
+					planktonDeath += death + deathPercent * glucose;
 				}
 
-				// Growth: Consume glucose, produce plant growth
-				float growth = math.min(glucose,
-					PlanktonGrowthRate
-					* planktonMass
-					* respirationHealth
-					* Utils.Sqr(math.min(1, glucose * inversePlanktonMass)));
-
-				glucoseDelta -= growth;
-				planktonMassDelta += growth;
-
-				// Death: Produce carbon dioxide, water
-				float deathPercent = Utils.Sqr(math.max(0, planktonMass - respirationHealth) * inversePlanktonMass) * PlanktonDeathRate;
-				float death = deathPercent * planktonMass;
-				// convert mass back through the respiration process, and dump any stored glucose and water
-				glucoseDelta -= deathPercent * glucose;
-				planktonMassDelta -= death;
-				planktonDeath += death + deathPercent * glucose;
 			}
 
 
-
-
 		}
-
 		LatentHeatWater[i] += energyFlux;
 		WaterCarbonDelta[i] = waterCarbonDelta;
 		PlanktonGlucoseDelta[i] = glucoseDelta;

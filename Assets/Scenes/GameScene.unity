@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 1598314396}
-  m_IndirectSpecularColor: {r: 0.0022178374, g: 0.002123111, b: 0.0020811418, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1003,9 +1003,9 @@ RectTransform:
   m_Father: {fileID: 762181158}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 90.7, y: -16.75}
   m_SizeDelta: {x: 171.4, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &91252324
@@ -1819,9 +1819,9 @@ RectTransform:
   m_Father: {fileID: 762181158}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 105, y: -87.25}
   m_SizeDelta: {x: 200, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &150020847
@@ -3438,9 +3438,9 @@ RectTransform:
   m_Father: {fileID: 601010183}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 90.7, y: -40.25}
   m_SizeDelta: {x: 171.4, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &381720185
@@ -4467,10 +4467,10 @@ RectTransform:
   m_Father: {fileID: 693796723}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 132.5, y: -16.5}
+  m_SizeDelta: {x: 85, y: 23}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &479086147
 MonoBehaviour:
@@ -5065,9 +5065,9 @@ RectTransform:
   m_Father: {fileID: 762181158}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 105, y: -63.75}
   m_SizeDelta: {x: 200, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &520748261
@@ -8044,9 +8044,9 @@ RectTransform:
   m_Father: {fileID: 762181158}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 90.7, y: -40.25}
   m_SizeDelta: {x: 171.4, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &864945930
@@ -9001,10 +9001,10 @@ RectTransform:
   m_Father: {fileID: 693796723}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 47.5, y: -39.5}
+  m_SizeDelta: {x: 85, y: 23}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &952073281
 MonoBehaviour:
@@ -11049,10 +11049,10 @@ RectTransform:
   m_Father: {fileID: 693796723}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 47.5, y: -16.5}
+  m_SizeDelta: {x: 85, y: 23}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1213908850
 MonoBehaviour:
@@ -12703,9 +12703,9 @@ RectTransform:
   m_Father: {fileID: 762181158}
   m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 105, y: -110.75}
   m_SizeDelta: {x: 200, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1388101960
@@ -13621,9 +13621,9 @@ RectTransform:
   m_Father: {fileID: 762181158}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 105, y: -134.25}
   m_SizeDelta: {x: 200, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1495365419
@@ -17551,10 +17551,10 @@ RectTransform:
   m_Father: {fileID: 693796723}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 132.5, y: -39.5}
+  m_SizeDelta: {x: 85, y: 23}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2032495820
 MonoBehaviour:
@@ -18225,9 +18225,9 @@ RectTransform:
   m_Father: {fileID: 601010183}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 90.7, y: -16.75}
   m_SizeDelta: {x: 171.4, y: 23.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2112968461
@@ -19196,7 +19196,7 @@ MonoBehaviour:
   DisplayWindSpeedSurfaceWaterMax: 5
   DisplayWindSpeedDeepWaterMax: 0.5
   DisplayVerticalWindSpeedMax: 0.5
-  DisplayVerticalWindSpeedMin: 0.01
+  DisplayVerticalWindSpeedMin: 0.1
   DisplayRainfallMax: 0.5
   DisplaySalinityMin: 0
   DisplaySalinityMax: 0.005
@@ -19212,7 +19212,7 @@ MonoBehaviour:
   DisplayMagmaMassMax: 1000000
   DisplayCarbonDioxideMax: 0.002
   DisplayOxygenMax: 0.35
-  DisplayDivergenceMax: 100
+  DisplayDivergenceMax: 1
   Sim: {fileID: 7198958402674640978}
   GameplayManager: {fileID: 7198958402674640979}
   Planet: {fileID: 1921819011}
@@ -19294,7 +19294,7 @@ MonoBehaviour:
   TicksPerRealSecond: 1
   SimSettings:
     MakeAirIncompressible: 1
-    MakeWaterIncompressible: 1
+    MakeWaterIncompressible: 0
     WaterSurfaceFlowEnabled: 1
     Condensation: 1
     Evaporation: 1
@@ -19314,6 +19314,7 @@ MonoBehaviour:
     ConductionIceTerrain: 1
     ConductionFloraTerrain: 1
     ConductionWaterTerrain: 1
+    IncompressibilityIterations: 20
     CheckForDegeneracy: 0
     CollectGlobals: 0
     CollectOverlay: 0

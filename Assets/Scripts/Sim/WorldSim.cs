@@ -290,7 +290,7 @@ public class WorldSim {
 			for (int i = 1; i < worldData.AirLayers - 1; i++)
 			{
 				int layer = worldData.AirLayer0 + i;
-				energyJobHandles[layer] = SimJob.Run(new UpdateDivergenceFreeVelocityJob()
+				energyJobHandles[layer] = SimJob.Schedule(new UpdateDivergenceFreeVelocityJob()
 				{
 					Velocity = nextState.AirVelocity[i],
 					Destination = tempState.DestinationAirResolved[i],
@@ -306,7 +306,7 @@ public class WorldSim {
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
 			int layer = worldData.AirLayer0 + i;
-			energyJobHandles[layer] = SimJob.Run(new AdvectionAirJob()
+			energyJobHandles[layer] = SimJob.Schedule(new AdvectionAirJob()
 			{
 				Delta = tempState.AdvectionAir[i],
 				Temperature = nextState.AirTemperaturePotential[i],
@@ -614,7 +614,7 @@ public class WorldSim {
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			int layer = worldData.WaterLayer0 + j;
-			energyJobHandles[layer] = SimJob.Run(new AdvectionWaterJob()
+			energyJobHandles[layer] = SimJob.Schedule(new AdvectionWaterJob()
 			{
 				Delta = tempState.AdvectionWater[j],
 				Destination = tempState.DestinationWater[j],

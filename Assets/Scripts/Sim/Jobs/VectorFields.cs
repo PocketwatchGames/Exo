@@ -393,7 +393,7 @@ public struct CapMassLeavingJob : IJobParallelFor {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct UpdateDivergenceFreeVelocityJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<float> Destination;
