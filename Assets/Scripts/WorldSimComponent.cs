@@ -159,7 +159,6 @@ public class WorldSimComponent : MonoBehaviour
 			}
 
 
-			bool degenerate = false;
 			if (SimSettings.CheckForDegeneracy)
 			{
 				SortedSet<int> degenIndices = new SortedSet<int>();

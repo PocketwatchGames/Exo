@@ -18,6 +18,7 @@ public struct StaticState {
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
+	public NativeArray<int> ReverseNeighbors;
 	public NativeArray<float> NeighborDistInverse;
 	public NativeArray<float> NeighborDist;
 	public NativeArray<float3> NeighborDir;
@@ -34,6 +35,7 @@ public struct StaticState {
 		SphericalPosition = new NativeArray<float3>(Count, Allocator.Persistent);
 		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent);
 		Neighbors = new NativeArray<int>(Count * MaxNeighbors, Allocator.Persistent);
+		ReverseNeighbors = new NativeArray<int>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborDir = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborDistInverse = new NativeArray<float>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborTangent = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
@@ -107,6 +109,23 @@ public struct StaticState {
 			}
 		}
 
+		for (int i = 0; i < Count * MaxNeighbors; i++)
+		{
+			ReverseNeighbors[i] = -1;
+			int cellIndex = i / MaxNeighbors;
+			int nIndex = Neighbors[i];
+			if (nIndex >= 0)
+			{
+				for (int j = 0; j < MaxNeighbors; j++)
+				{
+					if (Neighbors[nIndex * MaxNeighbors + j] == cellIndex)
+					{
+						ReverseNeighbors[i] = nIndex * MaxNeighbors + j;
+					}
+				}
+			}
+		}
+
 		SortedDictionary<float, SortedDictionary<float, int>> vertsByCoord = new SortedDictionary<float, SortedDictionary<float, int>>();
 		for (int i = 0; i < Coordinate.Length; i++)
 		{
@@ -129,6 +148,7 @@ public struct StaticState {
 	public void Dispose()
 	{
 		Neighbors.Dispose();
+		ReverseNeighbors.Dispose();
 		NeighborDir.Dispose();
 		NeighborDist.Dispose();
 		NeighborDistInverse.Dispose();

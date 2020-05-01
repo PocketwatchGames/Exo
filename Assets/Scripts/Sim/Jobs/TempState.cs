@@ -62,10 +62,12 @@ public struct TempState {
 	public NativeArray<DiffusionCloud> DiffusionCloud;
 	public NativeArray<DiffusionCloud> AdvectionCloud;
 	public NativeArray<BarycentricValue> DestinationCloud;
-	public NativeArray<BarycentricValueVertical>[] DestinationAir;
-	public NativeArray<BarycentricValueVertical>[] DestinationWater;
-	public NativeArray<float3>[] AirVelocityConflictFree;
-	public NativeArray<float3>[] WaterVelocityConflictFree;
+	public NativeArray<float>[] AirMassLeaving;
+	public NativeArray<float>[] DestinationAir;
+	public NativeArray<float>[] DestinationAirResolved;
+	public NativeArray<float>[] WaterMassLeaving;
+	public NativeArray<float>[] DestinationWater;
+	public NativeArray<float>[] DestinationWaterResolved;
 	public NativeArray<float>[] DivergencePressureAir;
 	public NativeArray<float>[] DivergencePressureWater;
 	public NativeArray<float3>[] AirAcceleration;
@@ -220,10 +222,11 @@ public struct TempState {
 		}
 		DiffusionAir = new NativeArray<DiffusionAir>[worldData.AirLayers];
 		AdvectionAir = new NativeArray<DiffusionAir>[worldData.AirLayers];
-		DestinationAir = new NativeArray<BarycentricValueVertical>[worldData.AirLayers];
+		AirMassLeaving = new NativeArray<float>[worldData.AirLayers];
+		DestinationAir = new NativeArray<float>[worldData.AirLayers];
+		DestinationAirResolved = new NativeArray<float>[worldData.AirLayers];
 		DivergencePressureAir = new NativeArray<float>[worldData.AirLayers];
 		AirAcceleration = new NativeArray<float3>[worldData.AirLayers];
-		AirVelocityConflictFree = new NativeArray<float3>[worldData.AirLayers];
 		AbsorptivitySolar = new NativeArray<SolarAbsorptivity>[worldData.AirLayers];
 		AbsorptivityThermal = new NativeArray<ThermalAbsorptivity>[worldData.AirLayers];
 		DustUp = new NativeArray<float>[worldData.AirLayers];
@@ -231,12 +234,13 @@ public struct TempState {
 		DivergenceAir = new NativeArray<float>[worldData.AirLayers];
 		for (int i = 0; i < worldData.AirLayers; i++)
 		{
+			AirMassLeaving[i] = new NativeArray<float>(count, Allocator.Persistent);
 			DiffusionAir[i] = new NativeArray<DiffusionAir>(count, Allocator.Persistent);
 			AdvectionAir[i] = new NativeArray<DiffusionAir>(count, Allocator.Persistent);
-			DestinationAir[i] = new NativeArray<BarycentricValueVertical>(count, Allocator.Persistent);
+			DestinationAir[i] = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
+			DestinationAirResolved[i] = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
 			DivergencePressureAir[i] = new NativeArray<float>(count, Allocator.Persistent);
 			AirAcceleration[i] = new NativeArray<float3>(count, Allocator.Persistent);
-			AirVelocityConflictFree[i] = new NativeArray<float3>(count, Allocator.Persistent);
 			AbsorptivitySolar[i] = new NativeArray<SolarAbsorptivity>(count, Allocator.Persistent);
 			AbsorptivityThermal[i] = new NativeArray<ThermalAbsorptivity>(count, Allocator.Persistent);
 			DustUp[i] = new NativeArray<float>(count, Allocator.Persistent);
@@ -245,20 +249,22 @@ public struct TempState {
 		}
 		DiffusionWater = new NativeArray<DiffusionWater>[worldData.WaterLayers];
 		AdvectionWater = new NativeArray<DiffusionWater>[worldData.WaterLayers];
-		DestinationWater = new NativeArray<BarycentricValueVertical>[worldData.WaterLayers];
+		WaterMassLeaving = new NativeArray<float>[worldData.WaterLayers];
+		DestinationWater = new NativeArray<float>[worldData.WaterLayers];
+		DestinationWaterResolved = new NativeArray<float>[worldData.WaterLayers];
 		ConductionWaterTerrain = new NativeArray<float>[worldData.WaterLayers];
 		DivergencePressureWater = new NativeArray<float>[worldData.WaterLayers];
 		DivergenceWater = new NativeArray<float>[worldData.WaterLayers];
-		WaterVelocityConflictFree = new NativeArray<float3>[worldData.AirLayers];
 		for (int i = 0; i < worldData.WaterLayers; i++)
 		{
+			WaterMassLeaving[i] = new NativeArray<float>(count, Allocator.Persistent);
 			DiffusionWater[i] = new NativeArray<DiffusionWater>(count, Allocator.Persistent);
 			AdvectionWater[i] = new NativeArray<DiffusionWater>(count, Allocator.Persistent);
-			DestinationWater[i] = new NativeArray<BarycentricValueVertical>(count, Allocator.Persistent);
+			DestinationWater[i] = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
+			DestinationWaterResolved[i] = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
 			ConductionWaterTerrain[i] = new NativeArray<float>(count, Allocator.Persistent);
 			DivergencePressureWater[i] = new NativeArray<float>(count, Allocator.Persistent);
 			DivergenceWater[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterVelocityConflictFree[i] = new NativeArray<float3>(count, Allocator.Persistent);
 		}
 		FrozenTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		FrozenMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -407,11 +413,12 @@ public struct TempState {
 		}
 		for (int i = 0; i < worldData.AirLayers; i++)
 		{
+			AirMassLeaving[i].Dispose();
 			DiffusionAir[i].Dispose();
 			AdvectionAir[i].Dispose();
 			DestinationAir[i].Dispose();
+			DestinationAirResolved[i].Dispose();
 			AirAcceleration[i].Dispose();
-			AirVelocityConflictFree[i].Dispose();
 			AbsorptivitySolar[i].Dispose();
 			AbsorptivityThermal[i].Dispose();
 			DustUp[i].Dispose();
@@ -421,13 +428,14 @@ public struct TempState {
 		}
 		for (int i = 0; i < worldData.WaterLayers; i++)
 		{
+			WaterMassLeaving[i].Dispose();
 			DiffusionWater[i].Dispose();
 			AdvectionWater[i].Dispose();
 			DestinationWater[i].Dispose();
+			DestinationWaterResolved[i].Dispose();
 			ConductionWaterTerrain[i].Dispose();
 			DivergencePressureWater[i].Dispose();
 			DivergenceWater[i].Dispose();
-			WaterVelocityConflictFree[i].Dispose();
 		}
 		FrozenTemperature.Dispose();
 		FrozenMass.Dispose();

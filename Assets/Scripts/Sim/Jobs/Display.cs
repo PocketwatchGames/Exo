@@ -214,6 +214,40 @@ public struct DisplayState {
 
 		JobHandle initDisplayAirHandle = default(JobHandle);
 		JobHandle initDisplayWaterHandle = default(JobHandle);
+
+		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		{
+			int layer = worldData.AirLayer0 + j;
+			initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJob.Schedule(new GetDivergenceJob()
+			{
+				Divergence = display.DivergenceAir[j],
+				Destination = tempState.DestinationAirResolved[j],
+				DestinationAbove = tempState.DestinationAirResolved[j + 1],
+				DestinationBelow = tempState.DestinationAirResolved[j - 1],
+				Neighbors = staticState.Neighbors,
+				Mass = tempState.AirMass[j],
+				MassAbove = tempState.AirMass[j + 1],
+				MassBelow = tempState.AirMass[j - 1],
+			}));
+		}
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			int layer = worldData.WaterLayer0 + j;
+			initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJob.Schedule(new GetDivergenceJob()
+			{
+				Divergence = display.DivergenceWater[j],
+				Destination = tempState.DestinationWater[j],
+				DestinationAbove = tempState.DestinationWater[j + 1],
+				DestinationBelow = tempState.DestinationWater[j - 1],
+				Neighbors = staticState.Neighbors,
+				Mass = nextState.WaterMass[j],
+				MassAbove = nextState.WaterMass[j + 1],
+				MassBelow = nextState.WaterMass[j - 1],
+			}));
+		}
+
+
+
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
 			tempState.AbsorptivitySolar[i].CopyTo(display.AbsorptionSolar[i]);
@@ -228,6 +262,7 @@ public struct DisplayState {
 				Enthalpy = display.EnthalpyAir[i],
 				DustCoverage = display.DustMass,
 				CarbonDioxidePercent = display.CarbonDioxidePercent[i],
+				Divergence = display.DivergenceAir[i],
 
 				CarbonDioxide = nextState.AirCarbon[i],
 				Gravity = nextState.PlanetState.Gravity,
@@ -255,7 +290,7 @@ public struct DisplayState {
 				SaltMass = nextState.SaltMass[i],
 				WaterMass = nextState.WaterMass[i],
 				WaterCarbon = nextState.WaterCarbon[i]
-			}));
+			}, initDisplayWaterHandle));
 		}
 		var updateDisplayJobHandle = DisplayJob.Schedule(new UpdateDisplayJob()
 		{
@@ -286,42 +321,6 @@ public struct DisplayState {
 			GroundWaterMass = nextState.GroundWater,
 			GroundWaterTemperature = nextState.GroundWaterTemperature
 		});
-
-		for (int j = 1; j < worldData.AirLayers - 1; j++)
-		{
-			int layer = worldData.AirLayer0 + j;
-			updateDisplayJobHandle = JobHandle.CombineDependencies(updateDisplayJobHandle, DisplayJob.Schedule(new GetDivergenceJob()
-			{
-				Divergence = display.DivergenceAir[j],
-				Destination = tempState.DestinationAir[j],
-				DestinationAbove = tempState.DestinationAir[j + 1],
-				DestinationBelow = tempState.DestinationAir[j - 1],
-				Neighbors = staticState.Neighbors,
-				Mass = tempState.AirMass[j],
-				MassAbove = tempState.AirMass[j + 1],
-				MassBelow = tempState.AirMass[j - 1],
-				IsBottom = j == 1,
-				IsTop = j == worldData.AirLayers - 2,
-			}));
-		}
-
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
-		{
-			int layer = worldData.WaterLayer0 + j;
-			updateDisplayJobHandle = JobHandle.CombineDependencies(updateDisplayJobHandle, DisplayJob.Schedule(new GetDivergenceJob()
-			{
-				Divergence = display.DivergenceWater[j],
-				Destination = tempState.DestinationWater[j],
-				DestinationAbove = tempState.DestinationWater[j + 1],
-				DestinationBelow = tempState.DestinationWater[j - 1],
-				Neighbors = staticState.Neighbors,
-				Mass = nextState.WaterMass[j],
-				MassAbove = nextState.WaterMass[j + 1],
-				MassBelow = nextState.WaterMass[j - 1],
-				IsBottom = j == 1,
-				IsTop = j == worldData.SurfaceWaterLayer,
-			}));
-		}
 
 		for (int i = 0; i < worldData.LayerCount; i++)
 		{
@@ -483,6 +482,7 @@ public struct DisplayState {
 		public NativeArray<float> Enthalpy;
 		public NativeArray<float> DustCoverage;
 		public NativeArray<float> CarbonDioxidePercent;
+		public NativeArray<float> Divergence;
 		[ReadOnly] public NativeArray<float> AirTemperaturePotential;
 		[ReadOnly] public NativeArray<float> AirPressure;
 		[ReadOnly] public NativeArray<float> LayerMiddle;
@@ -502,6 +502,7 @@ public struct DisplayState {
 			DisplayCondensationCloud[i] += CondensationGround[i];
 			DustCoverage[i] += DustMass[i];
 			CarbonDioxidePercent[i] += CarbonDioxide[i] / AirMass[i];
+			Divergence[i] /= AirMass[i];
 			if (AirMass[i] > 0)
 			{
 				Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]) + VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);

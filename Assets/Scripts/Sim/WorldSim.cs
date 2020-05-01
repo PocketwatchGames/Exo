@@ -190,64 +190,48 @@ public class WorldSim {
 		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
 		#region Advection
 
+		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		{
+			int layer = worldData.AirLayer0 + j;
+			energyJobHandles[layer] = NeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
+			{
+				Destination = tempState.DestinationAir[j],
+				Neighbors = staticState.Neighbors,
+				Position = staticState.SphericalPosition,
+				Velocity = nextState.AirVelocity[j],
+				Mass = tempState.AirMass[j],
+				PlanetRadius = staticState.PlanetRadius,
+				SecondsPerTick = worldData.SecondsPerTick,
+				MaxWindMove = staticState.CellRadius * 0.9f,
+			}, energyJobHandles[layer]);
+		}
+		for (int j = 1; j < worldData.AirLayers - 1; j++)
+		{
+			int layer = worldData.AirLayer0 + j;
+			energyJobHandles[layer] = NeighborJob.Schedule(new ResolveAdvectionConflict()
+			{
+				ResolvedDestination = tempState.DestinationAirResolved[j],
+				Destination = tempState.DestinationAir[j],
+				ReverseNeighbors = staticState.ReverseNeighbors,
+			}, energyJobHandles[layer]);
+		}
 
 		if (settings.MakeAirIncompressible)
 		{
-			for (int j = 1; j < worldData.AirLayers - 1; j++)
-			{
-				int layer = worldData.AirLayer0 + j;
-				energyJobHandles[layer] = SimJob.Schedule(new ResolveAdvectionConflict()
-				{
-					NewVelocity = tempState.AirVelocityConflictFree[j],
-					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					Velocity = nextState.AirVelocity[j],
-					VelocityAbove = nextState.AirVelocity[j + 1],
-					VelocityBelow = nextState.AirVelocity[j - 1],
-					LayerHeight = tempState.LayerHeight[j],
-					LayerHeightAbove = tempState.LayerHeight[j + 1],
-					LayerHeightBelow = tempState.LayerHeight[j - 1],
-					Mass = tempState.AirMass[j],
-					MassAbove = tempState.AirMass[j + 1],
-					MassBelow = tempState.AirMass[j - 1],
-					IsBottom = j == 1,
-					IsTop = j == worldData.AirLayers - 2,
-					SecondsPerTick = worldData.SecondsPerTick,
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-			}
-			for (int j = 1; j < worldData.AirLayers - 1; j++)
-			{
-				int layer = worldData.AirLayer0 + j;
-				energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
-				{
-					Destination = tempState.DestinationAir[j],
-					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					Velocity = tempState.AirVelocityConflictFree[j],
-					LayerHeight = tempState.LayerHeight[j],
-					Mass = tempState.AirMass[j],
-					MassAbove = tempState.AirMass[j + 1],
-					MassBelow = tempState.AirMass[j - 1],
-					PlanetRadius = staticState.PlanetRadius,
-					SecondsPerTick = worldData.SecondsPerTick,
-					MaxWindMove = staticState.CellRadius * 0.9f,
-				}, energyJobHandles[layer]);
-			}
+
 			for (int j = 1; j < worldData.AirLayers - 1; j++)
 			{
 				int layer = worldData.AirLayer0 + j;
 				energyJobHandles[layer] = SimJob.Schedule(new GetDivergenceJob()
 				{
 					Divergence = tempState.DivergenceAir[j],
-					Destination = tempState.DestinationAir[j],
-					DestinationAbove = tempState.DestinationAir[j + 1],
-					DestinationBelow = tempState.DestinationAir[j - 1],
+					Destination = tempState.DestinationAirResolved[j],
+					DestinationAbove = tempState.DestinationAirResolved[j + 1],
+					DestinationBelow = tempState.DestinationAirResolved[j - 1],
 					Neighbors = staticState.Neighbors,
 					Mass = tempState.AirMass[j],
 					MassAbove = tempState.AirMass[j + 1],
 					MassBelow = tempState.AirMass[j - 1],
-					IsBottom = j == 1,
-					IsTop = j == worldData.AirLayers - 2,
 				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
 			}
 
@@ -261,16 +245,10 @@ public class WorldSim {
 			{
 				for (int i = 1; i < worldData.AirLayers - 1; i++)
 				{
-					bool isTop = i == worldData.AirLayers - 2;
-					bool isBottom = i == 1;
 					var dpj = new GetDivergencePressureJob()
 					{
 						Pressure = tempState.DivergencePressureAir[i],
 						Divergence = tempState.DivergenceAir[i],
-						PressureAbove = tempState.DivergencePressureAir[i + 1],
-						PressureBelow = tempState.DivergencePressureAir[i - 1],
-						IsTop = i == worldData.AirLayers - 2,
-						IsBottom = i == 1,
 						Neighbors = staticState.Neighbors
 					};
 					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
@@ -280,52 +258,55 @@ public class WorldSim {
 			for (int i = 1; i < worldData.AirLayers - 1; i++)
 			{
 				int layer = worldData.AirLayer0 + i;
-				energyJobHandles[worldData.AirLayer0 + i] = SimJob.Schedule(new GetDivergenceFreeFieldJob()
+				energyJobHandles[layer] = NeighborJob.Schedule(new GetDivergenceFreeFieldJob()
 				{
-					VelocityOut = nextState.AirVelocity[i],
-					VelocityIn = tempState.AirVelocityConflictFree[i],
+					Destination = tempState.DestinationAirResolved[i],
 					Pressure = tempState.DivergencePressureAir[i],
-					PressureAbove = tempState.DivergencePressureAir[i + 1],
-					PressureBelow = tempState.DivergencePressureAir[i - 1],
-					LayerHeight = tempState.LayerHeight[i],
 					Neighbors = staticState.Neighbors,
-					NeighborTangent = staticState.NeighborTangent,
-					Positions = staticState.SphericalPosition,
 					Mass = tempState.AirMass[i],
-					IsBottom = i == 1,
-					IsTop = i == worldData.AirLayers - 2,
-					TicksPerSecond = worldData.TicksPerSecond
 				}, divergenceJobHandle);
 			}
-		}
-
-
-		for (int i = 1; i < worldData.AirLayers - 1; i++)
-		{
-			int layer = worldData.AirLayer0 + i;
-			// TODO: we need to deal with coriolis for differently:
-			// either apply it as a true force (although in my experience this causes velocity to spin)
-			// or we deflect it after advecting it
-			energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
+			for (int i = 1; i < worldData.AirLayers - 1; i++)
 			{
-				Destination = tempState.DestinationAir[i],
-				Neighbors = staticState.Neighbors,
-				Position = staticState.SphericalPosition,
-				Velocity = nextState.AirVelocity[i],
-				LayerHeight = tempState.LayerHeight[i],
-				Mass = tempState.AirMass[i],
-				MassAbove = tempState.AirMass[i + 1],
-				MassBelow = tempState.AirMass[i - 1],
-				PlanetRadius = staticState.PlanetRadius,
-				SecondsPerTick = worldData.SecondsPerTick,
-				MaxWindMove = staticState.CellRadius * 0.9f,
-			}, energyJobHandles[layer]);
+				int layer = worldData.AirLayer0 + i;
+				energyJobHandles[layer] = SimJob.Schedule(new SumMassLeavingJob()
+				{
+					MassLeaving = tempState.AirMassLeaving[i],
+					Destination = tempState.DestinationAirResolved[i],
+				}, energyJobHandles[layer]);
+			}
+			for (int i = 1; i < worldData.AirLayers - 1; i++)
+			{
+				int layer = worldData.AirLayer0 + i;
+				energyJobHandles[layer] = NeighborJob.Schedule(new CapMassLeavingJob()
+				{
+					Destination = tempState.DestinationAirResolved[i],
+					MassLeaving = tempState.AirMassLeaving[i],
+					Mass = tempState.AirMass[i],
+					Neighbors = staticState.Neighbors
+				}, energyJobHandles[layer]);
+			}
+
+			for (int i = 1; i < worldData.AirLayers - 1; i++)
+			{
+				int layer = worldData.AirLayer0 + i;
+				energyJobHandles[layer] = SimJob.Run(new UpdateDivergenceFreeVelocityJob()
+				{
+					Velocity = nextState.AirVelocity[i],
+					Destination = tempState.DestinationAirResolved[i],
+					NeighborTangent = staticState.NeighborTangent,
+					Mass = tempState.AirMass[i],
+					TicksPerSecond = worldData.TicksPerSecond
+				}, energyJobHandles[layer]);
+			}
+
 		}
+
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
 			int layer = worldData.AirLayer0 + i;
-			energyJobHandles[layer] = SimJob.Schedule(new AdvectionAirJob()
+			energyJobHandles[layer] = SimJob.Run(new AdvectionAirJob()
 			{
 				Delta = tempState.AdvectionAir[i],
 				Temperature = nextState.AirTemperaturePotential[i],
@@ -347,12 +328,9 @@ public class WorldSim {
 				VelocityAbove = nextState.AirVelocity[i + 1],
 				VelocityBelow = nextState.AirVelocity[i - 1],
 				Neighbors = staticState.Neighbors,
-				Destination = tempState.DestinationAir[i],
-				DestinationAbove = tempState.DestinationAir[i + 1],
-				DestinationBelow = tempState.DestinationAir[i - 1],
-				LayerMiddle = tempState.LayerMiddle[i],
-				LayerMiddleAbove = tempState.LayerMiddle[i + 1],
-				LayerMiddleBelow = tempState.LayerMiddle[i - 1],
+				Destination = tempState.DestinationAirResolved[i],
+				DestinationAbove = tempState.DestinationAirResolved[i + 1],
+				DestinationBelow = tempState.DestinationAirResolved[i - 1],
 				Positions = staticState.SphericalPosition,
 				NeighborDistInverse = staticState.NeighborDistInverse,
 				CoriolisMultiplier = staticState.CoriolisMultiplier,
@@ -518,50 +496,34 @@ public class WorldSim {
 		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
 		#region Advection
 
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			int layer = worldData.WaterLayer0 + j;
+			energyJobHandles[layer] = NeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
+			{
+				Destination = tempState.DestinationWater[j],
+				Neighbors = staticState.Neighbors,
+				Position = staticState.SphericalPosition,
+				Velocity = nextState.WaterVelocity[j],
+				Mass = nextState.WaterMass[j],
+				PlanetRadius = staticState.PlanetRadius,
+				SecondsPerTick = worldData.SecondsPerTick,
+				MaxWindMove = staticState.CellRadius * 0.9f,
+			}, energyJobHandles[layer]);
+		}
+		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		{
+			int layer = worldData.WaterLayer0 + j;
+			energyJobHandles[layer] = NeighborJob.Schedule(new ResolveAdvectionConflict()
+			{
+				ResolvedDestination = tempState.DestinationWaterResolved[j],
+				Destination = tempState.DestinationWater[j],
+				ReverseNeighbors = staticState.ReverseNeighbors,
+			}, energyJobHandles[layer]);
+		}
 
 		if (settings.MakeWaterIncompressible)
 		{
-			for (int j = 1; j < worldData.WaterLayers - 1; j++)
-			{
-				int layer = worldData.WaterLayer0 + j;
-				energyJobHandles[layer] = SimJob.Schedule(new ResolveAdvectionConflict()
-				{
-					NewVelocity = tempState.WaterVelocityConflictFree[j],
-					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					Velocity = nextState.WaterVelocity[j],
-					VelocityAbove = nextState.WaterVelocity[j + 1],
-					VelocityBelow = nextState.WaterVelocity[j - 1],
-					LayerHeight = tempState.WaterLayerHeight[j],
-					LayerHeightAbove = tempState.WaterLayerHeight[j + 1],
-					LayerHeightBelow = tempState.WaterLayerHeight[j - 1],
-					Mass = nextState.WaterMass[j],
-					MassAbove = nextState.WaterMass[j + 1],
-					MassBelow = nextState.WaterMass[j - 1],
-					IsBottom = j == 1,
-					IsTop = j == worldData.WaterLayers - 2,
-					SecondsPerTick = worldData.SecondsPerTick,
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-			}
-
-			for (int j = 1; j < worldData.WaterLayers - 1; j++)
-			{
-				int layer = worldData.WaterLayer0 + j;
-				energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
-				{
-					Destination = tempState.DestinationWater[j],
-					Neighbors = staticState.Neighbors,
-					Position = staticState.SphericalPosition,
-					Velocity = tempState.WaterVelocityConflictFree[j],
-					LayerHeight = tempState.WaterLayerHeight[j],
-					Mass = nextState.WaterMass[j],
-					MassAbove = nextState.WaterMass[j + 1],
-					MassBelow = nextState.WaterMass[j - 1],
-					PlanetRadius = staticState.PlanetRadius,
-					SecondsPerTick = worldData.SecondsPerTick,
-					MaxWindMove = staticState.CellRadius * 0.9f,
-				}, energyJobHandles[layer]);
-			}
 			for (int j = 1; j < worldData.WaterLayers - 1; j++)
 			{
 				int layer = worldData.WaterLayer0 + j;
@@ -575,8 +537,6 @@ public class WorldSim {
 					Mass = nextState.WaterMass[j],
 					MassAbove = nextState.WaterMass[j + 1],
 					MassBelow = nextState.WaterMass[j - 1],
-					IsBottom = j == 1,
-					IsTop = j == worldData.SurfaceWaterLayer,
 				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
 			}
 
@@ -596,10 +556,6 @@ public class WorldSim {
 					{
 						Pressure = tempState.DivergencePressureWater[i],
 						Divergence = tempState.DivergenceWater[i],
-						PressureAbove = tempState.DivergencePressureWater[i + 1],
-						PressureBelow = tempState.DivergencePressureWater[i - 1],
-						IsTop = i == worldData.SurfaceWaterLayer,
-						IsBottom = i == 1,
 						Neighbors = staticState.Neighbors
 					};
 					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
@@ -609,22 +565,47 @@ public class WorldSim {
 			for (int i = 1; i < worldData.WaterLayers - 1; i++)
 			{
 				int layer = worldData.WaterLayer0 + i;
-				energyJobHandles[worldData.WaterLayer0 + i] = SimJob.Schedule(new GetDivergenceFreeFieldJob()
+				energyJobHandles[worldData.WaterLayer0 + i] = NeighborJob.Schedule(new GetDivergenceFreeFieldJob()
 				{
-					VelocityOut = nextState.WaterVelocity[i],
-					VelocityIn = tempState.WaterVelocityConflictFree[i],
+					Destination = tempState.DestinationWater[i],
 					Pressure = tempState.DivergencePressureWater[i],
-					PressureAbove = tempState.DivergencePressureWater[i + 1],
-					PressureBelow = tempState.DivergencePressureWater[i - 1],
-					LayerHeight = tempState.WaterLayerHeight[i],
 					Neighbors = staticState.Neighbors,
-					NeighborTangent = staticState.NeighborTangent,
-					Positions = staticState.SphericalPosition,
 					Mass = nextState.WaterMass[i],
-					IsBottom = i == 1,
-					IsTop = i == worldData.SurfaceWaterLayer,
-					TicksPerSecond = worldData.TicksPerSecond
 				}, divergenceJobHandle);
+			}
+
+			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			{
+				int layer = worldData.WaterLayer0 + i;
+				energyJobHandles[layer] = SimJob.Schedule(new SumMassLeavingJob()
+				{
+					MassLeaving = tempState.WaterMassLeaving[i],
+					Destination = tempState.DestinationWaterResolved[i],
+				}, energyJobHandles[layer]);
+			}
+			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			{
+				int layer = worldData.WaterLayer0 + i;
+				energyJobHandles[layer] = NeighborJob.Schedule(new CapMassLeavingJob()
+				{
+					Destination = tempState.DestinationWaterResolved[i],
+					MassLeaving = tempState.WaterMassLeaving[i],
+					Mass = nextState.WaterMass[i],
+					Neighbors = staticState.Neighbors
+				}, energyJobHandles[layer]);
+			}
+
+			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			{
+				int layer = worldData.WaterLayer0 + i;
+				energyJobHandles[layer] = SimJob.Schedule(new UpdateDivergenceFreeVelocityJob()
+				{
+					Velocity = nextState.WaterVelocity[i],
+					Destination = tempState.DestinationWaterResolved[i],
+					NeighborTangent = staticState.NeighborTangent,
+					Mass = nextState.WaterMass[i],
+					TicksPerSecond = worldData.TicksPerSecond
+				}, energyJobHandles[layer]);
 			}
 		}
 
@@ -633,26 +614,7 @@ public class WorldSim {
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			int layer = worldData.WaterLayer0 + j;
-			energyJobHandles[layer] = SimJob.Schedule(new GetVectorDestCoordsVerticalJob()
-			{
-				Destination = tempState.DestinationWater[j],
-				Neighbors = staticState.Neighbors,
-				Position = staticState.SphericalPosition,
-				Velocity = nextState.WaterVelocity[j],
-				LayerHeight = tempState.WaterLayerHeight[j],
-				Mass = nextState.WaterMass[j],
-				MassAbove = nextState.WaterMass[j + 1],
-				MassBelow = nextState.WaterMass[j - 1],
-				PlanetRadius = staticState.PlanetRadius,
-				SecondsPerTick = worldData.SecondsPerTick,
-				MaxWindMove = staticState.CellRadius * 0.9f,
-			}, energyJobHandles[layer]);
-		}
-
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
-		{
-			int layer = worldData.WaterLayer0 + j;
-			energyJobHandles[layer] = SimJob.Schedule(new AdvectionWaterJob()
+			energyJobHandles[layer] = SimJob.Run(new AdvectionWaterJob()
 			{
 				Delta = tempState.AdvectionWater[j],
 				Destination = tempState.DestinationWater[j],

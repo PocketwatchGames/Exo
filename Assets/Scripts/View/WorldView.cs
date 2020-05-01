@@ -383,8 +383,16 @@ public class WorldView : MonoBehaviour {
 					}
 					circle.localScale = Vector3.one * (1 + math.abs(windVertical));
 					_windArrows[i].transform.localPosition = pos;
-					_windArrows[i].transform.localRotation = Quaternion.LookRotation(windHorizontal / windSpeed, pos);
-					_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(math.pow(windSpeed, 0.25f), 1);
+
+					_windArrows[i].transform.GetChild(1).gameObject.SetActive(windSpeed > 0);
+					if (windSpeed > 0)
+					{
+						_windArrows[i].transform.localRotation = Quaternion.LookRotation(windHorizontal / windSpeed, pos);
+						_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(math.pow(windSpeed*2, 0.5f), 0.5f);
+					} else
+					{
+						_windArrows[i].transform.localRotation = Quaternion.LookRotation(math.cross(pos, Vector3.up), pos);
+					}
 				}
 			}
 		}

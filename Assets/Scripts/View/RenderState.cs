@@ -321,29 +321,6 @@ public struct BuildCloudVertsJob : IJobParallelFor {
 
 }
 
-[BurstCompile]
-struct LerpJobVector3 : IJobParallelFor {
-	public NativeArray<Vector3> Out;
-	[ReadOnly] public NativeArray<Vector3> Start;
-	[ReadOnly] public NativeArray<Vector3> End;
-	[ReadOnly] public float Progress;
-	public void Execute(int i)
-	{
-		Out[i] = Vector3.Lerp(Start[i], End[i], Progress);
-	}
-}
-
-[BurstCompile]
-struct LerpJobVector4 : IJobParallelFor {
-	public NativeArray<Vector4> Out;
-	[ReadOnly] public NativeArray<Vector4> Start;
-	[ReadOnly] public NativeArray<Vector4> End;
-	[ReadOnly] public float Progress;
-	public void Execute(int i)
-	{
-		Out[i] = Vector4.Lerp(Start[i], End[i], Progress);
-	}
-}
 
 [BurstCompile]
 struct LerpJobColor32 : IJobParallelFor {
@@ -381,19 +358,6 @@ struct LerpJobfloat3 : IJobParallelFor {
 		Out[i] = math.lerp(Start[i], End[i], Progress);
 	}
 }
-
-[BurstCompile]
-struct LerpJobfloat2 : IJobParallelFor {
-	public NativeArray<float2> Out;
-	[ReadOnly] public NativeArray<float2> Start;
-	[ReadOnly] public NativeArray<float2> End;
-	[ReadOnly] public float Progress;
-	public void Execute(int i)
-	{
-		Out[i] = math.lerp(Start[i], End[i], Progress);
-	}
-}
-
 
 [BurstCompile]
 struct LerpJobfloat : IJobParallelFor {
