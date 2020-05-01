@@ -299,20 +299,16 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 
 [BurstCompile]
 public struct GetDivergenceJob : IJobParallelFor {
-	public NativeArray<float> Divergence;
-	[ReadOnly] public NativeArray<float> Destination;
-	[ReadOnly] public NativeArray<float> DestinationAbove;
-	[ReadOnly] public NativeArray<float> DestinationBelow;
-	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float> MassAbove;
-	[ReadOnly] public NativeArray<float> MassBelow;
-	[ReadOnly] public NativeArray<int> Neighbors;
+	public NativeSlice<float> Divergence;
+	[ReadOnly] public NativeSlice<float> Destination;
+	[ReadOnly] public NativeSlice<float> Mass;
+	[ReadOnly] public NativeSlice<int> Neighbors;
 	public void Execute(int i)
 	{
 		float value = 0;
-		for (int n = 0; n < StaticState.MaxNeighbors; n++)
+		for (int n = 0; n < StaticState.MaxLayerNeighbors; n++)
 		{
-			int nIndex = i * StaticState.MaxNeighbors + n;
+			int nIndex = i * StaticState.MaxLayerNeighbors + n;
 			value -= Destination[nIndex];
 		}
 
@@ -322,9 +318,9 @@ public struct GetDivergenceJob : IJobParallelFor {
 
 [BurstCompile]
 public struct GetDivergencePressureJob : IJobFor {
-	public NativeArray<float> Pressure;
-	[ReadOnly] public NativeArray<float> Divergence;
-	[ReadOnly] public NativeArray<int> Neighbors;
+	public NativeSlice<float> Pressure;
+	[ReadOnly] public NativeSlice<float> Divergence;
+	[ReadOnly] public NativeSlice<int> Neighbors;
 
 	public void Execute(int i)
 	{

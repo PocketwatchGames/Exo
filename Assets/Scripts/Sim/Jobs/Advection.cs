@@ -53,30 +53,16 @@ public struct UpdateAirVelocityJob : IJobParallelFor {
 
 [BurstCompile]
 public struct AdvectionAirJob : IJobParallelFor {
-	public NativeArray<DiffusionAir> Delta;
-	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float> TemperatureAbove;
-	[ReadOnly] public NativeArray<float> TemperatureBelow;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> AirMassAbove;
-	[ReadOnly] public NativeArray<float> AirMassBelow;
-	[ReadOnly] public NativeArray<float> Vapor;
-	[ReadOnly] public NativeArray<float> VaporAbove;
-	[ReadOnly] public NativeArray<float> VaporBelow;
-	[ReadOnly] public NativeArray<float> CarbonDioxide;
-	[ReadOnly] public NativeArray<float> CarbonDioxideAbove;
-	[ReadOnly] public NativeArray<float> CarbonDioxideBelow;
-	[ReadOnly] public NativeArray<float> Dust;
-	[ReadOnly] public NativeArray<float> DustAbove;
-	[ReadOnly] public NativeArray<float> DustBelow;
-	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> VelocityAbove;
-	[ReadOnly] public NativeArray<float3> VelocityBelow;
-	[ReadOnly] public NativeArray<float3> Positions;
-	[ReadOnly] public NativeArray<float> Destination;
-	[ReadOnly] public NativeArray<float> DestinationAbove;
-	[ReadOnly] public NativeArray<float> DestinationBelow;
-	[ReadOnly] public NativeArray<int> Neighbors;
+	public NativeSlice<DiffusionAir> Delta;
+	[ReadOnly] public NativeSlice<float> Temperature;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> Vapor;
+	[ReadOnly] public NativeSlice<float> CarbonDioxide;
+	[ReadOnly] public NativeSlice<float> Dust;
+	[ReadOnly] public NativeSlice<float3> Velocity;
+	[ReadOnly] public NativeSlice<float3> Positions;
+	[ReadOnly] public NativeSlice<float> Destination;
+	[ReadOnly] public NativeSlice<int> Neighbors;
 	[ReadOnly] public NativeArray<float> NeighborDistInverse;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public float CoriolisTerm;

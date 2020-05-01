@@ -155,7 +155,7 @@ public class WorldSimComponent : MonoBehaviour
 			if (SimSettings.LogState)
 			{
 				CellInfo.PrintState("State", SimSettings.LogStateIndex, ref StaticState, ref _simStates[_activeSimState], ref WorldData, new List<string>());
-				CellInfo.PrintDependentState("Dependent Vars", SimSettings.LogStateIndex, ref _tempStates[_activeTempState], ref WorldData);
+				CellInfo.PrintDependentState("Dependent Vars", SimSettings.LogStateIndex, ref _tempStates[_activeTempState], ref WorldData, ref StaticState);
 			}
 
 
@@ -176,7 +176,7 @@ public class WorldSimComponent : MonoBehaviour
 					foreach (var i in degenIndices)
 					{
 						CellInfo.PrintState("Degenerate", i, ref StaticState, ref _simStates[_activeSimState], ref WorldData, degenVarNames);
-						CellInfo.PrintDependentState("Dependent Vars", i, ref _tempStates[_activeTempState], ref WorldData);
+						CellInfo.PrintDependentState("Dependent Vars", i, ref _tempStates[_activeTempState], ref WorldData, ref StaticState);
 						CellInfo.PrintState("Last State", i, ref StaticState, ref _simStates[_lastTempState], ref WorldData, new List<string>());
 					}
 					TimeScale = 0;
@@ -230,7 +230,7 @@ public class WorldSimComponent : MonoBehaviour
 
 		editSimState(ref lastState, ref nextState);
 
-		TempState.Update(_worldSim.SimJob, ref nextState, ref _tempStates[_lastTempState], ref WorldData, ref StaticState, default(JobHandle)).Complete();
+		_tempStates[_lastTempState].Update(ref nextState, ref WorldData, ref StaticState, default(JobHandle)).Complete();
 		OnTick?.Invoke();
 	}
 

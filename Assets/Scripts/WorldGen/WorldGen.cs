@@ -42,7 +42,7 @@ public static class WorldGen {
 		public NativeArray<float> GroundWater;
 		public NativeArray<float> Roughness;
 		public NativeArray<float> SoilCarbon;
-		public NativeArray<float> LayerElevationBase;
+		public NativeArray<float> SurfaceElevation;
 		public NativeArray<float> Elevation;
 		public NativeArray<float> Flora;
 		public NativeArray<float> FloraWater;
@@ -154,7 +154,7 @@ public static class WorldGen {
 			//LavaMass[i] = 10000;
 			LavaTemperature[i] = LavaEruptionTemperature;
 
-			LayerElevationBase[i] = surfaceElevation;
+			SurfaceElevation[i] = surfaceElevation;
 			Elevation[i] = elevation;
 			Flora[i] = flora;
 			FloraTemperature[i] = airTemperatureSurface;
@@ -224,8 +224,8 @@ public static class WorldGen {
 #endif
 	private struct WorldGenAirLayerJob : IJobParallelFor {
 
-		public NativeArray<float> AirTemperaturePotential;
-		public NativeArray<float> Dust;
+		public NativeSlice<float> AirTemperaturePotential;
+		public NativeSlice<float> Dust;
 
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 
@@ -242,14 +242,14 @@ public static class WorldGen {
 #endif
 	private struct WorldGenWaterVaporJob : IJobParallelFor {
 
-		public NativeArray<float> AirVapor;
-		public NativeArray<float> CarbonDioxide;
+		public NativeSlice<float> AirVapor;
+		public NativeSlice<float> CarbonDioxide;
 
-		[ReadOnly] public NativeArray<float> AirMass;
-		[ReadOnly] public NativeArray<float> Pressure;
-		[ReadOnly] public NativeArray<float> LayerMiddle;
-		[ReadOnly] public NativeArray<float> TemperaturePotential;
-		[ReadOnly] public NativeArray<float> RelativeHumidity;
+		[ReadOnly] public NativeSlice<float> AirMass;
+		[ReadOnly] public NativeSlice<float> Pressure;
+		[ReadOnly] public NativeSlice<float> LayerMiddle;
+		[ReadOnly] public NativeSlice<float> TemperaturePotential;
+		[ReadOnly] public NativeSlice<float> RelativeHumidity;
 		[ReadOnly] public float CarbonDioxidePPM;
 		public void Execute(int i)
 		{
@@ -349,7 +349,7 @@ public static class WorldGen {
 			CloudMass = state.CloudMass,
 			potentialTemperature = temperaturePotential,
 			relativeHumidity = RelativeHumidity,
-			LayerElevationBase = tempState.LayerHeight[0],
+			SurfaceElevation = tempState.SurfaceElevation,
 			GroundWater = state.GroundWater,
 			Elevation = state.Elevation,
 			Flora = state.FloraMass,
@@ -453,8 +453,8 @@ public static class WorldGen {
 		{
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenAirLayerJob()
 			{
-				AirTemperaturePotential = state.AirTemperaturePotential[i],
-				Dust = state.Dust[i],
+				AirTemperaturePotential = staticState.GetSliceAirLayer(state.AirTemperaturePotential, i),
+				Dust = staticState.GetSliceAirLayer(state.Dust, i),
 
 				TemperaturePotential = temperaturePotential,
 			}, worldGenJobHandle);
@@ -463,19 +463,19 @@ public static class WorldGen {
 		worldGenJobHandle.Complete();
 
 		var tempArrays = new List<NativeArray<float>>();
-		TempState.Update(worldGenJobHelper,	ref state, ref tempState, ref worldData, ref staticState, worldGenJobHandle).Complete();
+		tempState.Update(ref state, ref worldData, ref staticState, worldGenJobHandle).Complete();
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterVaporJob()
 			{
-				AirVapor = state.AirVapor[i],
-				CarbonDioxide = state.AirCarbon[i],
+				AirVapor = staticState.GetSliceAirLayer(state.AirVapor,i),
+				CarbonDioxide = staticState.GetSliceAirLayer(state.AirCarbon,i),
 
-				AirMass = tempState.AirMass[i],
-				Pressure = tempState.AirPressure[i],
-				LayerMiddle = tempState.LayerMiddle[i],
-				TemperaturePotential = temperaturePotential,
+				AirMass = staticState.GetSliceAirLayer(tempState.AirMass,i),
+				Pressure = staticState.GetSliceAirLayer(tempState.AirPressure,i),
+				LayerMiddle = staticState.GetSliceAirLayer(tempState.AirLayerMiddle,i),
+				TemperaturePotential = staticState.GetSliceAirLayer(state.AirTemperaturePotential,i),
 				RelativeHumidity = RelativeHumidity,
 				CarbonDioxidePPM = worldGenData.AirCarbonPercent,
 
@@ -486,7 +486,7 @@ public static class WorldGen {
 		///////////////////////////////////
 		// Update dependent variables
 
-		TempState.Update(worldGenJobHelper, ref state, ref tempState, ref worldData, ref staticState, worldGenJobHandle).Complete();
+		tempState.Update(ref state, ref worldData, ref staticState, worldGenJobHandle).Complete();
 
 		waterMassTotal.Dispose();
 		waterDepthTotal.Dispose();

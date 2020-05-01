@@ -97,10 +97,10 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float3> Icosphere;
-	[ReadOnly] public NativeArray<float> MeshOverlayData;
+	[ReadOnly] public NativeSlice<float> MeshOverlayData;
 	[ReadOnly] public NativeArray<CVP> MeshOverlayColors;
 	[ReadOnly] public NativeArray<CVP> WindColors;
-	[ReadOnly] public NativeArray<float3> WindOverlayData;
+	[ReadOnly] public NativeSlice<float3> WindOverlayData;
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> DustCoverage;

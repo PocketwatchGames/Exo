@@ -22,7 +22,7 @@ public static class Utils {
 		}.Schedule(count, 128, dependency);
 	}
 
-	public static JobHandle MemCopy(NativeArray<float> dest, NativeArray<float> src, JobHandle dependencies) {
+	public static JobHandle MemCopy(NativeSlice<float> dest, NativeSlice<float> src, JobHandle dependencies) {
 		return new MemCopyFloat()
 		{
 			Dest = dest,
@@ -220,8 +220,8 @@ public class JobHelper {
 
 [BurstCompile]
 public struct MemCopyFloat : IJobParallelFor {
-	public NativeArray<float> Dest;
-	[ReadOnly] public NativeArray<float> Src;
+	public NativeSlice<float> Dest;
+	[ReadOnly] public NativeSlice<float> Src;
 	public void Execute(int i)
 	{
 		Dest[i] = Src[i];

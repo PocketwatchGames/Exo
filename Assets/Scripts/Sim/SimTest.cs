@@ -23,13 +23,12 @@ public static class SimTest {
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "MagmaMass", state.LavaMass, degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "LavaMass", state.LavaMass, degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "LavaTemperature", state.LavaTemperature, degenVarNames);
-		for (int i = 1; i < worldData.AirLayers - 1; i++)
-		{
-			degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirTemperature" + i, state.AirTemperaturePotential[i], 0, 1200, degenVarNames);
-			degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirVapor" + i, state.AirVapor[i], 0, 10000, degenVarNames);
-			degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonDioxide" + i, state.AirCarbon[i], degenVarNames);
-			degen |= CheckDegen(cellCount, degenIndices, "AirVelocity" + i, state.AirVelocity[i], degenVarNames);
-		}
+
+		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirTemperature", staticState.GetSliceAir(state.AirTemperaturePotential), 0, 1200, degenVarNames);
+		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirVapor", staticState.GetSliceAir(state.AirVapor), 0, 10000, degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonDioxide", staticState.GetSliceAir(state.AirCarbon), degenVarNames);
+		degen |= CheckDegen(cellCount, degenIndices, "AirVelocity", staticState.GetSliceAir(state.AirVelocity), degenVarNames);
+
 		for (int i = worldData.WaterLayers - 2; i >= 1; i--)
 		{
 			degen |= CheckDegenPosValues(cellCount, degenIndices, "WaterMass" + i, state.WaterMass[i], degenVarNames);
@@ -42,7 +41,7 @@ public static class SimTest {
 		return degen;
 	}
 
-	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, List<string> degenVarNames)
+	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeSlice<float> values, List<string> degenVarNames)
 	{
 		for (int i = 0; i < count; i++)
 		{
@@ -56,7 +55,7 @@ public static class SimTest {
 		}
 		return false;
 	}
-	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeArray<float3> values, List<string> degenVarNames)
+	private static bool CheckDegen(int count, SortedSet<int> degenIndices, string name, NativeSlice<float3> values, List<string> degenVarNames)
 	{
 		for (int i = 0; i < count; i++)
 		{
@@ -70,7 +69,7 @@ public static class SimTest {
 		return false;
 	}
 
-	private static bool CheckDegenPosValues(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, List<string> degenVarNames)
+	private static bool CheckDegenPosValues(int count, SortedSet<int> degenIndices, string name, NativeSlice<float> values, List<string> degenVarNames)
 	{
 		for (int i = 0; i < count; i++)
 		{
@@ -84,7 +83,7 @@ public static class SimTest {
 		return false;
 	}
 
-	private static bool CheckDegenMinMaxValues(int count, SortedSet<int> degenIndices, string name, NativeArray<float> values, float min, float max, List<string> degenVarNames)
+	private static bool CheckDegenMinMaxValues(int count, SortedSet<int> degenIndices, string name, NativeSlice<float> values, float min, float max, List<string> degenVarNames)
 	{
 		for (int i = 0; i < count; i++)
 		{

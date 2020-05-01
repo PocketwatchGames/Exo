@@ -146,7 +146,7 @@ public static class CellInfo {
 		s.AppendFormat("RAIN: {0:N3} kg", display.Rainfall[ActiveCellIndex]);
 		s.AppendFormat("\nEVAP: {0:N3} kg", display.Evaporation[ActiveCellIndex]);
 		s.AppendFormat("\nSURFACE TEMP: {0:N3}", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nTROPOPAUSE ELE: {0:N0}m", dependent.LayerElevation[worldData.AirLayers - 1][ActiveCellIndex]);
+		s.AppendFormat("\nTROPOPAUSE ELE: {0:N0}m", dependent.AirLayerElevation[staticState.GetLayerIndexAir(worldData.AirLayers - 1, ActiveCellIndex)]);
 		s.AppendFormat("\nDUST: {0:N3} kg", display.DustMass[ActiveCellIndex]);
 
 		if (cloudMass > 0)
@@ -167,19 +167,20 @@ public static class CellInfo {
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
+			int index = staticState.GetLayerIndexAir(i, ActiveCellIndex);
 			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.AirVelocity[i][ActiveCellIndex]);
 			s.AppendFormat("\nLAYER {0} | TEMP: {1} RH: {2:P1}",
 				i,
-				GetTemperatureString(Atmosphere.GetAbsoluteTemperature(state.AirTemperaturePotential[i][ActiveCellIndex], dependent.LayerMiddle[i][ActiveCellIndex]), ActiveTemperatureUnits, 1),
-				(dependent.AirHumidityRelative[i][ActiveCellIndex]));
+				GetTemperatureString(Atmosphere.GetAbsoluteTemperature(state.AirTemperaturePotential[index], dependent.AirLayerMiddle[index]), ActiveTemperatureUnits, 1),
+				(dependent.AirHumidityRelative[index]));
 			s.AppendFormat("\nELE: {0:N0} m P: {1:N0} Pa WIND: ({2:N1}, {3:N1}, {4:N3})",
-				dependent.LayerElevation[i][ActiveCellIndex],
-				display.Pressure[i][ActiveCellIndex],
+				dependent.AirLayerElevation[index],
+				display.Pressure[index],
 				wind.x, wind.y, wind.z);
-			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[i][ActiveCellIndex], state.AirVapor[i][ActiveCellIndex], display.CarbonDioxidePercent[i][ActiveCellIndex] * 1000000);
-			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow) * display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityAirBelow);
-			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[i][ActiveCellIndex].AbsorptivityCloud, display.AbsorptionSolar[i][ActiveCellIndex].ReflectivityCloud);
-			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirAbove) * display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityAirBelow, display.AbsorptionThermal[i][ActiveCellIndex].AbsorptivityCloud);
+			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[index], state.AirVapor[index], display.CarbonDioxidePercent[index] * 1000000);
+			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[index].AbsorptivityAirAbove) * display.AbsorptionSolar[index].AbsorptivityAirBelow, display.AbsorptionSolar[index].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[index].ReflectivityAirBelow) * display.AbsorptionSolar[index].ReflectivityAirBelow);
+			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityCloud, display.AbsorptionSolar[index].ReflectivityCloud);
+			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[index].AbsorptivityAirAbove) * display.AbsorptionThermal[index].AbsorptivityAirBelow, display.AbsorptionThermal[index].AbsorptivityCloud);
 			s.AppendLine();
 		}
 		return s.ToString();
@@ -328,7 +329,7 @@ public static class CellInfo {
 		s.AppendFormat("IceTemperature: {0}\n", state.IceTemperature[i]);
 		for (int j = 0; j < StaticState.GetMaxNeighbors(i, staticState.Neighbors); j++)
 		{
-			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.FlowWater[i * StaticState.MaxNeighbors + j]);
+			s.AppendFormat("Flow Velocity {0}: {1}\n", j, state.FlowWater[staticState.GetLayerIndexAir(j, i)]);
 		}
 
 		s.AppendFormat("\nLAVA\n");
@@ -353,11 +354,12 @@ public static class CellInfo {
 
 		for (int j = worldData.AirLayers - 2; j >= 1; j--)
 		{
+			int index = staticState.GetLayerIndexAir(j, i);
 			s.AppendFormat("\nAIR LAYER {0}\n", j);
-			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[j][i]);
-			s.AppendFormat("Vapor: {0}\n", state.AirVapor[j][i]);
-			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbon[j][i]);
-			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[j][i]);
+			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[index]);
+			s.AppendFormat("Vapor: {0}\n", state.AirVapor[index]);
+			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbon[index]);
+			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[index]);
 		}
 
 		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
@@ -371,11 +373,11 @@ public static class CellInfo {
 		}
 		Debug.Log(s);
 	}
-	public static void PrintDependentState(string title, int i, ref TempState dependent, ref WorldData worldData)
+	public static void PrintDependentState(string title, int i, ref TempState dependent, ref WorldData worldData, ref StaticState staticState)
 	{
 		StringBuilder s = new StringBuilder();
 		s.AppendFormat("{0} Index: {1}\n", title, i);
-		s.AppendFormat("Surface Elevation: {0}\n", dependent.LayerElevation[worldData.SurfaceAirLayer][i]);
+		s.AppendFormat("Surface Elevation: {0}\n", dependent.AirLayerElevation[worldData.SurfaceAirLayer * staticState.Count + i]);
 		s.AppendFormat("Water Depth: {0}\n", dependent.WaterLayerDepth[1][i]);
 		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
 		s.AppendFormat("Flora Coverage: {0}\n", dependent.FloraCoverage[i]);

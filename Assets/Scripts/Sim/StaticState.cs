@@ -9,6 +9,7 @@ using Unity.Collections;
 public struct StaticState {
 
 	public const int MaxNeighbors = 6;
+	public const int MaxLayerNeighbors = 8;
 
 	public int Count;
 	public float PlanetRadius;
@@ -25,10 +26,12 @@ public struct StaticState {
 	public NativeArray<float3> NeighborTangent;
 	public NativeArray<float3> NeighborDiffInverse;
 	public NativeArray<float> CoriolisMultiplier;
+	private WorldData _worldData;
 
 
 	public void Init(float radius, Icosphere icosphere, ref WorldData worldData)
 	{
+		_worldData = worldData;
 		PlanetRadius = radius;
 		Count = icosphere.Vertices.Length;
 		Coordinate = new NativeArray<float2>(Count, Allocator.Persistent);
@@ -164,8 +167,22 @@ public struct StaticState {
 		return Count * layer + i;
 	}
 
-	public static int GetMaxNeighbors(int cell, NativeArray<int> neighbors)
+	public static int GetMaxNeighbors(int cell, NativeSlice<int> neighbors)
 	{
 		return (neighbors[(cell + 1) * MaxNeighbors - 1] >= 0) ? MaxNeighbors : (MaxNeighbors - 1);
+	}
+
+	public int GetLayerIndexAir(int layer, int index)
+	{
+		return layer * _worldData.AirLayers + index;
+	}
+
+	public NativeSlice<T> GetSliceAir<T>(NativeArray<T> arr) where T : struct
+	{
+		return new NativeSlice<T>(arr, Count, (_worldData.AirLayers - 2) * Count);
+	}
+	public NativeSlice<T> GetSliceAirLayer<T>(NativeArray<T> arr, int layer) where T : struct
+	{
+		return new NativeSlice<T>(arr, layer*Count, Count);
 	}
 }
