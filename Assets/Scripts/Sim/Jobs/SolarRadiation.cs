@@ -46,12 +46,12 @@ public struct SolarRadiationJob : IJobParallelFor {
 
 [BurstCompile]
 public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
-	public NativeArray<float> SolarRadiationAbsorbed;
-	public NativeArray<float> SolarRadiationIncoming;
-	public NativeArray<float> SolarRadiationReflected;
+	public NativeSlice<float> SolarRadiationAbsorbed;
+	public NativeSlice<float> SolarRadiationIncoming;
+	public NativeSlice<float> SolarRadiationReflected;
 	public NativeArray<float> SolarRadiationAbsorbedCloud;
 	public NativeArray<float> SolarRadiationReflectedCloud;
-	[ReadOnly] public NativeArray<SolarAbsorptivity> AbsorptivitySolar;
+	[ReadOnly] public NativeSlice<SolarAbsorptivity> AbsorptivitySolar;
 	public void Execute(int i)
 	{
 		float incomingRadiation = SolarRadiationIncoming[i];

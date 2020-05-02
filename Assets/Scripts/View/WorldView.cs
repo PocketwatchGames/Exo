@@ -523,7 +523,7 @@ public class WorldView : MonoBehaviour {
 			SoilFertilityMax = DisplaySoilFertilityMax,
 			LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 			LavaTemperatureRangeInverse = 1.0f / DisplayLavaTemperatureMax,
-			DustCoverage = display.DustMass,
+			DustCoverage = staticState.GetSliceAir(display.DustMass),
 			DustMaxInverse = 1.0f / DisplayDustMax,
 			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
 			WindColors = _normalizedBlueBlackRed,
@@ -541,6 +541,8 @@ public class WorldView : MonoBehaviour {
 			IceLevels = DisplayIceLevels,
 			WaterTemperatureMax = DisplayWaterTemperatureMax,
 			WaterTemperatureLevels = DisplayWaterTemperatureLevels,
+			AirLayers = worldData.AirLayers - 2,
+			Count = staticState.Count
 		}, dependency);
 
 		return buildRenderStateJobHandle;

@@ -369,12 +369,12 @@ public struct AdvectionCloudJob : IJobParallelFor {
 
 [BurstCompile]
 public struct ApplyAdvectionAirJob : IJobParallelFor {
-	public NativeArray<float> Temperature;
-	public NativeArray<float> Vapor;
-	public NativeArray<float> Dust;
-	public NativeArray<float> CarbonDioxide;
-	public NativeArray<float3> AirVelocity;
-	[ReadOnly] public NativeArray<DiffusionAir> Advection;
+	public NativeSlice<float> Temperature;
+	public NativeSlice<float> Vapor;
+	public NativeSlice<float> Dust;
+	public NativeSlice<float> CarbonDioxide;
+	public NativeSlice<float3> AirVelocity;
+	[ReadOnly] public NativeSlice<DiffusionAir> Advection;
 	public void Execute(int i)
 	{
 		Temperature[i] = Advection[i].Temperature;

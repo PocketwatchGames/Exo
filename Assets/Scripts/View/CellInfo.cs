@@ -147,7 +147,6 @@ public static class CellInfo {
 		s.AppendFormat("\nEVAP: {0:N3} kg", display.Evaporation[ActiveCellIndex]);
 		s.AppendFormat("\nSURFACE TEMP: {0:N3}", GetTemperatureString(dependent.SurfaceAirTemperatureAbsolute[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("\nTROPOPAUSE ELE: {0:N0}m", dependent.AirLayerElevation[staticState.GetLayerIndexAir(worldData.AirLayers - 1, ActiveCellIndex)]);
-		s.AppendFormat("\nDUST: {0:N3} kg", display.DustMass[ActiveCellIndex]);
 
 		if (cloudMass > 0)
 		{
@@ -181,6 +180,7 @@ public static class CellInfo {
 			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[index].AbsorptivityAirAbove) * display.AbsorptionSolar[index].AbsorptivityAirBelow, display.AbsorptionSolar[index].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[index].ReflectivityAirBelow) * display.AbsorptionSolar[index].ReflectivityAirBelow);
 			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityCloud, display.AbsorptionSolar[index].ReflectivityCloud);
 			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[index].AbsorptivityAirAbove) * display.AbsorptionThermal[index].AbsorptivityAirBelow, display.AbsorptionThermal[index].AbsorptivityCloud);
+			s.AppendFormat("\nDUST: {0:N3} kg", display.DustMass[index]);
 			s.AppendLine();
 		}
 		return s.ToString();

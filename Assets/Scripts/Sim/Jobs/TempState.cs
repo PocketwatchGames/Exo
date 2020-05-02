@@ -42,16 +42,23 @@ public struct TempState {
 	public NativeArray<float> AirLayerElevation;
 	public NativeArray<float> AirLayerMiddle;
 
-	public NativeArray<float> EmissivityAir;
-	public NativeArray<float> EmissivityWater;
-	public NativeArray<float> EmissivityTerrain;
-	public NativeArray<float> EmissivityFlora;
-	public NativeArray<float> EmissivityIce;
+	public NativeArray<float> SolarReflectedAir;
+	public NativeArray<float> SolarReflectedWater;
+	public NativeArray<float> SolarReflectedTerrain;
+	public NativeArray<float> SolarReflectedFlora;
+	public NativeArray<float> SolarReflectedIce;
+	public NativeArray<float> SolarReflectedCloud;
 	public NativeArray<float> SolarRadiationInAir;
 	public NativeArray<float> SolarRadiationInWater;
 	public NativeArray<float> SolarRadiationInTerrain;
 	public NativeArray<float> SolarRadiationInFlora;
 	public NativeArray<float> SolarRadiationInIce;
+	public NativeArray<float> SolarRadiationInCloud;
+	public NativeArray<float> EmissivityAir;
+	public NativeArray<float> EmissivityWater;
+	public NativeArray<float> EmissivityTerrain;
+	public NativeArray<float> EmissivityFlora;
+	public NativeArray<float> EmissivityIce;
 	public NativeArray<float> ThermalRadiationEmittedAir;
 	public NativeArray<float> ThermalRadiationEmittedWater;
 	public NativeArray<float> ThermalRadiationEmittedIce;
@@ -62,11 +69,6 @@ public struct TempState {
 	public NativeArray<float> ThermalRadiationDeltaIce;
 	public NativeArray<float> ThermalRadiationDeltaFlora;
 	public NativeArray<float> ThermalRadiationDeltaTerrain;
-	public NativeArray<float> SolarReflectedAir;
-	public NativeArray<float> SolarReflectedWater;
-	public NativeArray<float> SolarReflectedTerrain;
-	public NativeArray<float> SolarReflectedFlora;
-	public NativeArray<float> SolarReflectedIce;
 
 	public NativeArray<float>[] WaterCoverage;
 	public NativeArray<float>[] WaterDensity;
@@ -225,16 +227,23 @@ public struct TempState {
 		AirLayerMiddle = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		AirPotentialEnergy = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 
-		EmissivityAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
-		EmissivityWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
-		EmissivityIce = new NativeArray<float>(count, Allocator.Persistent);
-		EmissivityFlora = new NativeArray<float>(count, Allocator.Persistent);
-		EmissivityTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationInAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		SolarRadiationInWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		SolarRadiationInIce = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationInFlora = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationInTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		SolarRadiationInCloud = new NativeArray<float>(count, Allocator.Persistent);
+		SolarReflectedAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		SolarReflectedWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		SolarReflectedIce = new NativeArray<float>(count, Allocator.Persistent);
+		SolarReflectedFlora = new NativeArray<float>(count, Allocator.Persistent);
+		SolarReflectedTerrain = new NativeArray<float>(count, Allocator.Persistent);
+		SolarReflectedCloud = new NativeArray<float>(count, Allocator.Persistent);
+		EmissivityAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		EmissivityWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		EmissivityIce = new NativeArray<float>(count, Allocator.Persistent);
+		EmissivityFlora = new NativeArray<float>(count, Allocator.Persistent);
+		EmissivityTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		ThermalRadiationEmittedAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		ThermalRadiationEmittedWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		ThermalRadiationEmittedIce = new NativeArray<float>(count, Allocator.Persistent);
@@ -245,11 +254,6 @@ public struct TempState {
 		ThermalRadiationDeltaIce = new NativeArray<float>(count, Allocator.Persistent);
 		ThermalRadiationDeltaFlora = new NativeArray<float>(count, Allocator.Persistent);
 		ThermalRadiationDeltaTerrain = new NativeArray<float>(count, Allocator.Persistent);
-		SolarReflectedAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
-		SolarReflectedWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
-		SolarReflectedIce = new NativeArray<float>(count, Allocator.Persistent);
-		SolarReflectedFlora = new NativeArray<float>(count, Allocator.Persistent);
-		SolarReflectedTerrain = new NativeArray<float>(count, Allocator.Persistent);
 
 		WaterDensity = new NativeArray<float>[worldData.WaterLayers];
 		WaterPressure = new NativeArray<float>[worldData.WaterLayers];
@@ -482,16 +486,23 @@ public struct TempState {
 			DivergenceWater[i].Dispose();
 		}
 
-		EmissivityAir.Dispose();
-		EmissivityWater.Dispose();
-		EmissivityIce.Dispose();
-		EmissivityFlora.Dispose();
-		EmissivityTerrain.Dispose();
 		SolarRadiationInAir.Dispose();
 		SolarRadiationInWater.Dispose();
 		SolarRadiationInIce.Dispose();
 		SolarRadiationInFlora.Dispose();
 		SolarRadiationInTerrain.Dispose();
+		SolarRadiationInCloud.Dispose();
+		SolarReflectedAir.Dispose();
+		SolarReflectedWater.Dispose();
+		SolarReflectedIce.Dispose();
+		SolarReflectedFlora.Dispose();
+		SolarReflectedTerrain.Dispose();
+		SolarReflectedCloud.Dispose();
+		EmissivityAir.Dispose();
+		EmissivityWater.Dispose();
+		EmissivityIce.Dispose();
+		EmissivityFlora.Dispose();
+		EmissivityTerrain.Dispose();
 		ThermalRadiationEmittedAir.Dispose();
 		ThermalRadiationEmittedWater.Dispose();
 		ThermalRadiationEmittedIce.Dispose();
@@ -502,11 +513,6 @@ public struct TempState {
 		ThermalRadiationDeltaIce.Dispose();
 		ThermalRadiationDeltaFlora.Dispose();
 		ThermalRadiationDeltaTerrain.Dispose();
-		SolarReflectedAir.Dispose();
-		SolarReflectedWater.Dispose();
-		SolarReflectedIce.Dispose();
-		SolarReflectedFlora.Dispose();
-		SolarReflectedTerrain.Dispose();
 
 
 

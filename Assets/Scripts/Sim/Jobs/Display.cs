@@ -98,15 +98,12 @@ public struct DisplayState {
 		_initialized = true;
 		SolarRadiationAbsorbedSurface = new NativeArray<float>(count, Allocator.Persistent);
 		Rainfall = new NativeArray<float>(count, Allocator.Persistent);
-		CondensationCloud = new NativeArray<float>(count, Allocator.Persistent);
-		CondensationGround = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyFlora = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyIce = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyCloud = new NativeArray<float>(count, Allocator.Persistent);
 		EnthalpyGroundWater = new NativeArray<float>(count, Allocator.Persistent);
-		DustMass = new NativeArray<float>(count, Allocator.Persistent);
 
 		DivergenceAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		Pressure = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
@@ -116,6 +113,9 @@ public struct DisplayState {
 		AbsorptionSolar = new NativeArray<SolarAbsorptivity>(count * worldData.AirLayers, Allocator.Persistent);
 		AbsorptionThermal = new NativeArray<ThermalAbsorptivity>(count * worldData.AirLayers, Allocator.Persistent);
 		CarbonDioxidePercent = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		CondensationCloud = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		CondensationGround = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		DustMass = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 
 		WaterCarbonDioxidePercent = new NativeArray<float>[worldData.WaterLayers];
 		Salinity = new NativeArray<float>[worldData.WaterLayers];
@@ -194,7 +194,7 @@ public struct DisplayState {
 		if (DisplayJob == null)
 		{
 			DisplayJob = new JobHelper(staticState.Count);
-			DisplayJobAir = new JobHelper(staticState.Count * worldData.AirLayers);
+			DisplayJobAir = new JobHelper(staticState.Count * (worldData.AirLayers - 2));
 		}
 
 		JobHandle initDisplayAirHandle = default(JobHandle);
@@ -342,8 +342,6 @@ public struct DisplayState {
 			display.GlobalSeaLevel += tempState.AirLayerElevation[staticState.GetLayerIndexAir(worldData.SurfaceAirLayer, i)];
 			display.GlobalEvaporation += display.Evaporation[i];
 			display.GlobalRainfall += display.Rainfall[i];
-			display.GlobalCondensationCloud += display.CondensationCloud[i];
-			display.GlobalCondensationGround += display.CondensationGround[i];
 			display.GlobalEnthalpyTerrain += display.EnthalpyTerrain[i];
 			display.GlobalEnthalpyFlora += display.EnthalpyFlora[i];
 			display.GlobalEnthalpyIce += display.EnthalpyIce[i];
@@ -361,6 +359,8 @@ public struct DisplayState {
 				display.GlobalEnthalpyAir += display.EnthalpyAir[index];
 				display.GlobalCloudCoverage += math.min(1, tempState.AbsorptivitySolar[index].AbsorptivityCloud * 100);
 				display.GlobalAirCarbon += nextState.AirCarbon[index];
+				display.GlobalCondensationCloud += display.CondensationCloud[index];
+				display.GlobalCondensationGround += display.CondensationGround[index];
 			}
 			display.EnergySolarAbsorbedOcean += tempState.SolarRadiationInWater[worldData.SurfaceWaterLayer * staticState.Count + i];
 			display.EnergySolarAbsorbedSurface += tempState.SolarRadiationInWater[worldData.SurfaceWaterLayer * staticState.Count + i] + tempState.SolarRadiationInTerrain[i] + tempState.SolarRadiationInIce[i] + tempState.SolarRadiationInFlora[i];

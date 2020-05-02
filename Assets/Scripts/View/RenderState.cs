@@ -103,7 +103,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float3> WindOverlayData;
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
-	[ReadOnly] public NativeArray<float> DustCoverage;
+	[ReadOnly] public NativeSlice<float> DustCoverage;
 	[ReadOnly] public NativeArray<float> PlanktonMass;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float3> WaterCurrent;
@@ -137,6 +137,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public int IceLevels;
 	[ReadOnly] public float WaterTemperatureMax;
 	[ReadOnly] public int WaterTemperatureLevels;
+	[ReadOnly] public int AirLayers;
+	[ReadOnly] public int Count;
 
 	public void Execute(int i)
 	{
@@ -198,7 +200,13 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 		float cloudVolume = CloudMass[i] * 2;
 		float cloudCoverage = math.saturate((math.pow(cloudVolume, 0.6667f) - DisplayCloudMin) * DisplayCloudRangeInverse);
-		float dustCoverage = math.saturate(math.sqrt(DustCoverage[i] * DustMaxInverse));
+
+		float dust = 0;
+		for (int j = 0; j < AirLayers; j++)
+		{
+			dust += DustCoverage[i + j * Count];
+		}
+		float dustCoverage = math.saturate(math.sqrt(dust * DustMaxInverse));
 		cloudColor = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0, 0, 0, 255), dustCoverage);
 		cloudColor.a = (byte)(255 * math.max(dustCoverage, cloudCoverage * 0.75f));
 

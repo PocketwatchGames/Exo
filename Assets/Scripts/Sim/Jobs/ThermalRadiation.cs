@@ -42,12 +42,11 @@ public struct ThermalEnergyRadiatedWaterJob : IJobParallelFor {
 [BurstCompile]
 public struct ThermalEnergyRadiatedAirJob : IJobParallelFor {
 	public NativeSlice<float> ThermalRadiationEmitted;
-	[ReadOnly] public NativeArray<float> TemperaturePotential;
-	[ReadOnly] public NativeArray<float> Energy;
-	[ReadOnly] public NativeArray<float> Emissivity;
-	[ReadOnly] public NativeArray<float> LayerMiddle;
+	[ReadOnly] public NativeSlice<float> TemperaturePotential;
+	[ReadOnly] public NativeSlice<float> Energy;
+	[ReadOnly] public NativeSlice<float> Emissivity;
+	[ReadOnly] public NativeSlice<float> LayerMiddle;
 	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
 		float maxRadiationPercent = 0.01f;
@@ -65,7 +64,6 @@ public struct ThermalEnergyRadiatedConstantEmissivityJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> SurfaceArea;
 	[ReadOnly] public float Emissivity;
 	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
 		// radiate half up and half down

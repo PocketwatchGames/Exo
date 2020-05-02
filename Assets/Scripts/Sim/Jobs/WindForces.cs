@@ -57,8 +57,8 @@ public struct AccelerationAirJob : IJobParallelFor {
 	{
 
 		float3 gradientPressure = 0;
-		float3 position = Positions[i];
 		float pressure = Pressure[i];
+		float layerMiddle = LayerMiddle[i];
 		float3 force = 0;
 		int neighborCount = 0;
 
@@ -67,18 +67,19 @@ public struct AccelerationAirJob : IJobParallelFor {
 		bool isBottom = layer == 0;
 		int cellIndex = i - layer * Count;
 
-		for (int j = 0; j < 6; j++)
+		for (int j = 0; j < StaticState.MaxNeighbors; j++)
 		{
-			int neighborIndex = i * 6 + j;
+			int neighborIndex = cellIndex * StaticState.MaxNeighbors + j;
 			int n = Neighbors[neighborIndex];
 			if (n >= 0)
 			{
+				n += layer * Count;
 				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, TemperaturePotential[n], Pressure[n], LayerMiddle[n], GravityInverse);
-				gradientPressure += NeighborDiffInverse[neighborIndex] * (neighborElevationAtPressure - LayerMiddle[i]);
+				gradientPressure += NeighborDiffInverse[neighborIndex] * (neighborElevationAtPressure - layerMiddle);
 				neighborCount++;
 			}
 		}
-		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerMiddle[i]), AirMass[i], VaporMass[i]);
+		float inverseDensity = Atmosphere.GetInverseAirDensity(pressure, Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], layerMiddle), AirMass[i], VaporMass[i]);
 		force = gradientPressure * Gravity * inverseDensity / neighborCount;
 
 		Force[i] = force;
@@ -143,8 +144,8 @@ public struct AccelerationAirJob : IJobParallelFor {
 public struct WaterSurfaceFrictionJob : IJobParallelFor {
 	public NativeArray<float3> Force;
 	[ReadOnly] public NativeArray<float3> Current;
-	[ReadOnly] public NativeArray<float3> AirVelocityUp;
-	[ReadOnly] public NativeArray<float3> AirVelocityDown;
+	[ReadOnly] public NativeSlice<float3> AirVelocityUp;
+	[ReadOnly] public NativeSlice<float3> AirVelocityDown;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<float> LayerHeight;

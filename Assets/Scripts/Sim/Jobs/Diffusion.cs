@@ -11,38 +11,22 @@ using UnityEngine;
 
 [BurstCompile]
 public struct DiffusionAirJob : IJobParallelFor {
-	public NativeArray<DiffusionAir> Delta;
-	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float> TemperatureAbove;
-	[ReadOnly] public NativeArray<float> TemperatureBelow;
-	[ReadOnly] public NativeArray<float> Vapor;
-	[ReadOnly] public NativeArray<float> VaporAbove;
-	[ReadOnly] public NativeArray<float> VaporBelow;
-	[ReadOnly] public NativeArray<float> CarbonDioxide;
-	[ReadOnly] public NativeArray<float> CarbonDioxideAbove;
-	[ReadOnly] public NativeArray<float> CarbonDioxideBelow;
-	[ReadOnly] public NativeArray<float> Dust;
-	[ReadOnly] public NativeArray<float> DustAbove;
-	[ReadOnly] public NativeArray<float> DustBelow;
-	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> AirVelocityAbove;
-	[ReadOnly] public NativeArray<float3> AirVelocityBelow;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> AirMassAbove;
-	[ReadOnly] public NativeArray<float> AirMassBelow;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> LayerHeightAbove;
-	[ReadOnly] public NativeArray<float> LayerHeightBelow;
-	[ReadOnly] public NativeArray<float> LayerElevationAbove;
-	[ReadOnly] public NativeArray<float> LayerElevationBelow;
+	public NativeSlice<DiffusionAir> Delta;
+	[ReadOnly] public NativeSlice<float> Temperature;
+	[ReadOnly] public NativeSlice<float> Vapor;
+	[ReadOnly] public NativeSlice<float> CarbonDioxide;
+	[ReadOnly] public NativeSlice<float> Dust;
+	[ReadOnly] public NativeSlice<float3> Velocity;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> NeighborDistInverse;
-	[ReadOnly] public bool IsTop;
-	[ReadOnly] public bool IsBottom;
 	[ReadOnly] public float DiffusionCoefficientHorizontal;
 	[ReadOnly] public float DiffusionCoefficientVertical;
 	[ReadOnly] public float CellSurfaceArea;
 	[ReadOnly] public float CellCircumference;
+	[ReadOnly] public int LayerCount;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 		float layerHeight = LayerHeight[i];
@@ -64,15 +48,20 @@ public struct DiffusionAirJob : IJobParallelFor {
 		float neighborCO2 = co2;
 		float3 neighborVelocity = velocity;
 
-#if !DISABLE_AIR_DIFFUSION
+		int layer = i / Count;
+		bool isTop = layer == LayerCount - 1;
+		bool isBottom = layer == 0;
+		int cellIndex = i - layer * Count;
+
 		if (mass > 0)
 		{
-			for (int j = 0; j < 6; j++)
+			for (int j = 0; j < StaticState.MaxNeighbors; j++)
 			{
-				int nIndex = i * 6 + j;
+				int nIndex = cellIndex * 6 + j;
 				int n = Neighbors[nIndex];
 				if (n >= 0)
 				{
+					n += layer * Count;
 					float nMass = AirMass[n];
 					float nInverseMass = 1.0f / nMass;
 					float saToVolume = math.min(layerHeight, LayerHeight[n]) * CellCircumference / (6 * LayerHeight[n] * CellSurfaceArea);
@@ -88,36 +77,35 @@ public struct DiffusionAirJob : IJobParallelFor {
 		}
 
 
-#if !DISABLE_VERTICAL_AIR_MOVEMENT
 
 		// NOTE: we don't diffuse velocity vertically
-		if (!IsTop)
+		if (!isTop)
 		{
-			float nMass = AirMassAbove[i];
+			int n = i + Count;
+			float nMass = AirMass[n];
 			float nInverseMass = 1.0f / nMass;
-			float saToVolume = 1.0f / LayerHeightAbove[i];
+			float saToVolume = 1.0f / LayerHeight[n];
 			float inverseTotalMass = 1.0f / (nMass + mass);
 			float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
-			neighborTemperature += (TemperatureAbove[i] - temperature) * diffusion;
-			neighborVapor += (VaporAbove[i] * nInverseMass - vaporPercent) * diffusion * math.min(nMass, mass);
-			neighborCO2 += (CarbonDioxideAbove[i] * nInverseMass - co2Percent) * diffusion * math.min(nMass, mass);
-			neighborDust += (DustAbove[i] * nInverseMass - dustPercent) * diffusion * math.min(nMass, mass);
+			neighborTemperature += (Temperature[n] - temperature) * diffusion;
+			neighborVapor += (Vapor[n] * nInverseMass - vaporPercent) * diffusion * math.min(nMass, mass);
+			neighborCO2 += (CarbonDioxide[n] * nInverseMass - co2Percent) * diffusion * math.min(nMass, mass);
+			neighborDust += (Dust[n] * nInverseMass - dustPercent) * diffusion * math.min(nMass, mass);
 		}
-		if (!IsBottom)
+		if (!isBottom)
 		{
-			float nMass = AirMassBelow[i];
+			int n = i - Count;
+			float nMass = AirMass[n];
 			float nInverseMass = 1.0f / nMass;
-			float saToVolume = 1.0f / LayerHeightBelow[i];
+			float saToVolume = 1.0f / LayerHeight[n];
 			float inverseTotalMass = 1.0f / (nMass + mass);
 			float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
-			neighborTemperature += (TemperatureBelow[i] - temperature) * diffusion;
-			neighborVapor += (VaporBelow[i] * nInverseMass - vaporPercent) * diffusion * math.min(nMass, mass);
-			neighborCO2 += (CarbonDioxideBelow[i] * nInverseMass - co2Percent) * diffusion * math.min(nMass, mass);
-			neighborDust += (DustBelow[i] * nInverseMass - dustPercent) * diffusion * math.min(nMass, mass);
+			neighborTemperature += (Temperature[n] - temperature) * diffusion;
+			neighborVapor += (Vapor[n] * nInverseMass - vaporPercent) * diffusion * math.min(nMass, mass);
+			neighborCO2 += (CarbonDioxide[n] * nInverseMass - co2Percent) * diffusion * math.min(nMass, mass);
+			neighborDust += (Dust[n] * nInverseMass - dustPercent) * diffusion * math.min(nMass, mass);
 		}
 
-#endif
-#endif
 
 		Delta[i] = new DiffusionAir()
 		{
