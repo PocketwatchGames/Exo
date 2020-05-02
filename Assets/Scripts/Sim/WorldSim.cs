@@ -145,49 +145,36 @@ public class WorldSim {
 			MaxTerrainRoughness = worldData.MaxTerrainRoughnessForWindFriction
 		}, tickJobHandle);
 
-#if !LayerRefactor
 		for (int j = 1; j < worldData.AirLayers - 1; j++)
 		{
 			int layerIndex = worldData.AirLayer0 + j;
 			energyJobHandles[layerIndex] = SimJob.Schedule(new AccelerationAirJob()
 			{
-				Velocity = nextState.AirVelocity[j],
-				Force = tempState.AirAcceleration[j],
+				Velocity = staticState.GetSliceAir(nextState.AirVelocity),
+				Force = staticState.GetSliceAir(tempState.AirAcceleration),
 
-				LastVelocity = lastState.AirVelocity[j],
+				LastVelocity = staticState.GetSliceAir(lastState.AirVelocity),
+				Pressure = staticState.GetSliceAir(tempState.AirPressure),
+				AirMass = staticState.GetSliceAir(tempState.AirMass),
+				TemperaturePotential = staticState.GetSliceAir(lastState.AirTemperaturePotential),
+				NewTemperaturePotential = staticState.GetSliceAir(nextState.AirTemperaturePotential),
+				VaporMass = staticState.GetSliceAir(lastState.AirVapor),
+				LayerMiddle = staticState.GetSliceAir(tempState.AirLayerMiddle),
 				Friction = tempState.WindFriction,
-				Pressure = tempState.AirPressure[j],
-				AirMass = tempState.AirMass[j],
-				TemperaturePotential = lastState.AirTemperaturePotential[j],
-				NewTemperaturePotential = nextState.AirTemperaturePotential[j],
-				VaporMass = lastState.AirVapor[j],
-				LayerMiddle = tempState.LayerMiddle[j],
 				Neighbors = staticState.Neighbors,
 				NeighborDiffInverse = staticState.NeighborDiffInverse,
 				Positions = staticState.SphericalPosition,
 				PlanetRadius = staticState.PlanetRadius,
 				Gravity = lastState.PlanetState.Gravity,
 				GravityInverse = 1.0f / lastState.PlanetState.Gravity,
-				NewUpTemperaturePotential = nextState.AirTemperaturePotential[j + 1],
-				UpTemperaturePotential = lastState.AirTemperaturePotential[j + 1],
-				UpHumidity = lastState.AirVapor[j + 1],
-				UpAirMass = tempState.AirMass[j + 1],
-				UpLayerMiddle = tempState.LayerMiddle[j + 1],
-				NewDownTemperaturePotential = nextState.AirTemperaturePotential[j - 1],
-				DownTemperaturePotential = lastState.AirTemperaturePotential[j - 1],
-				DownHumidity = lastState.AirVapor[j - 1],
-				DownAirMass = tempState.AirMass[j - 1],
-				DownLayerMiddle = tempState.LayerMiddle[j - 1],
-				IsTop = j == worldData.AirLayers - 2,
-				IsBottom = j == 1,
-				FrictionCoefficient = j == 1 ? 1 : 0,
-				SecondsPerTick = worldData.SecondsPerTick
+				SecondsPerTick = worldData.SecondsPerTick,
+				LayerCount = worldData.AirLayers - 2,
+				Count = staticState.Count
 
 			},
 			JobHandle.CombineDependencies(airTerrainFrictionJobHandle, 
 			JobHandle.CombineDependencies(energyJobHandles[layerIndex], energyJobHandles[layerIndex - 1],energyJobHandles[layerIndex + 1])));
 		}
-#endif
 
 #endregion
 

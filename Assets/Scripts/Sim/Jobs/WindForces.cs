@@ -34,36 +34,25 @@ public struct AirTerrainFrictionJob : IJobParallelFor {
 
 [BurstCompile]
 public struct AccelerationAirJob : IJobParallelFor {
-	public NativeArray<float3> Velocity;
-	public NativeArray<float3> Force;
+	public NativeSlice<float3> Velocity;
+	public NativeSlice<float3> Force;
 	[ReadOnly] public NativeArray<float> Friction;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> TemperaturePotential;
-	[ReadOnly] public NativeArray<float> NewTemperaturePotential;
-	[ReadOnly] public NativeArray<float> Pressure;
-	[ReadOnly] public NativeArray<float> LayerMiddle;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> VaporMass;
+	[ReadOnly] public NativeSlice<float> TemperaturePotential;
+	[ReadOnly] public NativeSlice<float> NewTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> Pressure;
+	[ReadOnly] public NativeSlice<float> LayerMiddle;
+	[ReadOnly] public NativeSlice<float3> LastVelocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> NeighborDiffInverse;
 	[ReadOnly] public NativeArray<float3> Positions;
-	[ReadOnly] public NativeArray<float> NewUpTemperaturePotential;
-	[ReadOnly] public NativeArray<float> UpTemperaturePotential;
-	[ReadOnly] public NativeArray<float> UpHumidity;
-	[ReadOnly] public NativeArray<float> UpAirMass;
-	[ReadOnly] public NativeArray<float> UpLayerMiddle;
-	[ReadOnly] public NativeArray<float> NewDownTemperaturePotential;
-	[ReadOnly] public NativeArray<float> DownTemperaturePotential;
-	[ReadOnly] public NativeArray<float> DownHumidity;
-	[ReadOnly] public NativeArray<float> DownAirMass;
-	[ReadOnly] public NativeArray<float> DownLayerMiddle;
-	[ReadOnly] public NativeArray<float3> LastVelocity;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float GravityInverse;
 	[ReadOnly] public float Gravity;
-	[ReadOnly] public bool IsTop;
-	[ReadOnly] public bool IsBottom;
 	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float FrictionCoefficient;
+	[ReadOnly] public int LayerCount;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 
@@ -72,6 +61,11 @@ public struct AccelerationAirJob : IJobParallelFor {
 		float pressure = Pressure[i];
 		float3 force = 0;
 		int neighborCount = 0;
+
+		int layer = i / Count;
+		bool isTop = layer == LayerCount - 1;
+		bool isBottom = layer == 0;
+		int cellIndex = i - layer * Count;
 
 		for (int j = 0; j < 6; j++)
 		{
@@ -92,45 +86,52 @@ public struct AccelerationAirJob : IJobParallelFor {
 
 		// we are leaving out the SecondsPerTick term here
 		// TODO: is there a better way to integrate this over the full time step?
-		vel -= LastVelocity[i] * Friction[i] * FrictionCoefficient;
+		if (isBottom)
+		{
+			vel -= LastVelocity[i] * Friction[cellIndex];
+		}
+
+		float3 pos = Positions[cellIndex];
 
 		// Remove vertical component
 		// TODO: we shouldn't need to do this if we are correctly turning the velocity
-		vel -= Utils.GetVerticalComponent(vel, Positions[i]);
+		vel -= Utils.GetVerticalComponent(vel, pos);
 
 		float buoyancy = 0;
-		if (!IsTop)
+		if (!isTop)
 		{
+			int upIndex = i + Count;
 			// When air is heated, it pushes surrounding air out of the way
-			buoyancy += math.max(0, 1 - NewUpTemperaturePotential[i] / NewTemperaturePotential[i]);
+			buoyancy += math.max(0, 1 - NewTemperaturePotential[upIndex] / NewTemperaturePotential[i]);
 		}
-		if (!IsBottom)
+		if (!isBottom)
 		{
+			int downIndex = i - Count;
 			// Cold air sitting on top of warm air produces a downdraft
 			// Note that if warm air is above cold air, it is stratified but stable, so there's no force
-			buoyancy += math.min(0, 1 - DownTemperaturePotential[i] / TemperaturePotential[i]);
+			buoyancy += math.min(0, 1 - TemperaturePotential[downIndex] / TemperaturePotential[i]);
 		}
 
 		// TODO: I've removed the secondsPerTick term here because it produces massive vertical velocities, but it's not physically accurate
 		// We ARE accelerating over the entire time of the tick, so figure out how the pro ACGMs deal with buoyancy
-		vel += Positions[i] * Gravity * buoyancy;
+		vel += pos * Gravity * buoyancy;
 		//vel += Positions[i] * SecondsPerTick * Gravity * buoyancy;
 
 		// TODO: is there a better way to deal with boundary conditions than this?
-		if (IsTop)
+		if (isTop)
 		{
-			float dotUp = math.dot(Positions[i], vel);
+			float dotUp = math.dot(pos, vel);
 			if (dotUp > 0)
 			{
-				vel -= Positions[i] * dotUp;
+				vel -= pos * dotUp;
 			}
 		}
-		if (IsBottom)
+		if (isBottom)
 		{
-			float dotUp = math.dot(Positions[i], vel);
+			float dotUp = math.dot(pos, vel);
 			if (dotUp < 0)
 			{
-				vel -= Positions[i] * dotUp;
+				vel -= pos * dotUp;
 			}
 		}
 
