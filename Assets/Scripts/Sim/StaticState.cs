@@ -181,8 +181,12 @@ public struct StaticState {
 	{
 		return new NativeSlice<T>(arr, Count, (_worldData.AirLayers - 2) * Count);
 	}
-	public NativeSlice<T> GetSliceAirLayer<T>(NativeArray<T> arr, int layer) where T : struct
+	public NativeSlice<T> GetSliceLayer<T>(NativeArray<T> arr, int layer) where T : struct
 	{
-		return new NativeSlice<T>(arr, layer*Count, Count);
+		return new NativeSlice<T>(arr, layer * Count, Count);
+	}
+	public NativeSlice<T> GetSliceLayers<T>(NativeArray<T> arr, int layer, int layerCount) where T : struct
+	{
+		return new NativeSlice<T>(arr, layer * Count, Count * layerCount);
 	}
 }

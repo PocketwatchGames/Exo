@@ -8,11 +8,11 @@ using Unity.Mathematics;
 [BurstCompile]
 #endif
 public struct EmissivityAirJob : IJobParallelFor {
-	public NativeArray<float> Emissivity;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> Dust;
-	[ReadOnly] public NativeArray<float> CarbonDioxide;
+	public NativeSlice<float> Emissivity;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> VaporMass;
+	[ReadOnly] public NativeSlice<float> Dust;
+	[ReadOnly] public NativeSlice<float> CarbonDioxide;
 	[ReadOnly] public float EmissivityAir;
 	[ReadOnly] public float EmissivityWaterVapor;
 	[ReadOnly] public float EmissivityDust;
@@ -33,7 +33,7 @@ public struct EmissivityAirJob : IJobParallelFor {
 [BurstCompile]
 #endif
 public struct EmissivityWaterJob : IJobParallelFor {
-	public NativeArray<float> Emissivity;
+	public NativeSlice<float> Emissivity;
 	[ReadOnly] public NativeArray<float> SaltMass;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public float EmissivityWater;
@@ -93,14 +93,14 @@ public struct CloudAlbedoJob : IJobParallelFor {
 
 [BurstCompile]
 public struct AbsorptivityAirJob : IJobParallelFor {
-	public NativeArray<SolarAbsorptivity> AbsorptivitySolar;
-	public NativeArray<ThermalAbsorptivity> AbsorptivityThermal;
-	[ReadOnly] public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> Dust;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> AirCarbonDioxide;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
+	public NativeSlice<SolarAbsorptivity> AbsorptivitySolar;
+	public NativeSlice<ThermalAbsorptivity> AbsorptivityThermal;
+	[ReadOnly] public NativeSlice<float> VaporMass;
+	[ReadOnly] public NativeSlice<float> Dust;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> AirCarbonDioxide;
+	[ReadOnly] public NativeSlice<float> LayerElevation;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudAlbedo;
@@ -117,10 +117,12 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 	[ReadOnly] public float ThermalAbsorptivityCarbonDioxide;
 	[ReadOnly] public float ThermalAbsorptivityWaterVapor;
 	[ReadOnly] public float ThermalAbsorptivityDust;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-		float cloudMass = CloudMass[i];
-		float cloudElevation = CloudElevation[i];
+		int cloudIndex = i % Count;
+		float cloudMass = CloudMass[cloudIndex];
+		float cloudElevation = CloudElevation[cloudIndex];
 		float layerElevation = LayerElevation[i];
 		float layerHeight = LayerHeight[i];
 
@@ -133,8 +135,8 @@ public struct AbsorptivityAirJob : IJobParallelFor {
 			if (cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight)
 			{
 				thermalAbsorptivityCloud = math.saturate(1.0f - math.exp10(-ThermalAbsorptivityCloud * cloudMass));
-				solarAbsorptivityCloud = CloudAbsorptivity[i] * (1.0f - CloudAlbedo[i]);
-				albedoCloud = CloudAbsorptivity[i] * CloudAlbedo[i];
+				solarAbsorptivityCloud = CloudAbsorptivity[cloudIndex] * (1.0f - CloudAlbedo[cloudIndex]);
+				albedoCloud = CloudAbsorptivity[cloudIndex] * CloudAlbedo[cloudIndex];
 			}
 		}
 

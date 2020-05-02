@@ -453,8 +453,8 @@ public static class WorldGen {
 		{
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenAirLayerJob()
 			{
-				AirTemperaturePotential = staticState.GetSliceAirLayer(state.AirTemperaturePotential, i),
-				Dust = staticState.GetSliceAirLayer(state.Dust, i),
+				AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, i),
+				Dust = staticState.GetSliceLayer(state.Dust, i),
 
 				TemperaturePotential = temperaturePotential,
 			}, worldGenJobHandle);
@@ -469,13 +469,13 @@ public static class WorldGen {
 		{
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterVaporJob()
 			{
-				AirVapor = staticState.GetSliceAirLayer(state.AirVapor,i),
-				CarbonDioxide = staticState.GetSliceAirLayer(state.AirCarbon,i),
+				AirVapor = staticState.GetSliceLayer(state.AirVapor,i),
+				CarbonDioxide = staticState.GetSliceLayer(state.AirCarbon,i),
 
-				AirMass = staticState.GetSliceAirLayer(tempState.AirMass,i),
-				Pressure = staticState.GetSliceAirLayer(tempState.AirPressure,i),
-				LayerMiddle = staticState.GetSliceAirLayer(tempState.AirLayerMiddle,i),
-				TemperaturePotential = staticState.GetSliceAirLayer(state.AirTemperaturePotential,i),
+				AirMass = staticState.GetSliceLayer(tempState.AirMass,i),
+				Pressure = staticState.GetSliceLayer(tempState.AirPressure,i),
+				LayerMiddle = staticState.GetSliceLayer(tempState.AirLayerMiddle,i),
+				TemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential,i),
 				RelativeHumidity = RelativeHumidity,
 				CarbonDioxidePPM = worldGenData.AirCarbonPercent,
 

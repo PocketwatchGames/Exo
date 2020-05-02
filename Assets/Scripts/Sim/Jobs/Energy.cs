@@ -7,12 +7,12 @@ using Unity.Mathematics;
 
 [BurstCompile]
 public struct EnergyAirSurfaceJob : IJobParallelFor {
-	public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> LastVapor;
-	[ReadOnly] public NativeArray<float> LastTemperaturePotential;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
+	public NativeSlice<float> AirTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> LastVapor;
+	[ReadOnly] public NativeSlice<float> LastTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeSlice<float> SolarRadiationIn;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyFlora;
@@ -33,12 +33,12 @@ public struct EnergyAirSurfaceJob : IJobParallelFor {
 }
 [BurstCompile]
 public struct EnergyAirJob : IJobParallelFor {
-	public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> LastVapor;
-	[ReadOnly] public NativeArray<float> LastTemperaturePotential;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
-	[ReadOnly] public NativeArray<float> SolarRadiationIn;
+	public NativeSlice<float> AirTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> LastVapor;
+	[ReadOnly] public NativeSlice<float> LastTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeSlice<float> SolarRadiationIn;
 	public void Execute(int i)
 	{
 		float energy =
@@ -59,7 +59,7 @@ public struct EnergyWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
-	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeSlice<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;

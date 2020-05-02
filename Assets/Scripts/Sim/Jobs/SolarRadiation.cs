@@ -84,8 +84,8 @@ public struct SolarRadiationAbsorbedAirJob : IJobParallelFor {
 #endif
 public struct SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
-	public NativeArray<float> SolarRadiationIncoming;
 	public NativeArray<float> SolarRadiationReflected;
+	public NativeArray<float> SolarRadiationIncoming;
 	[ReadOnly] public NativeArray<float> AlbedoSlope;
 	[ReadOnly] public NativeArray<float> Coverage;
 	[ReadOnly] public float AlbedoMin;
@@ -107,9 +107,9 @@ public struct SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob : IJobParal
 [BurstCompile]
 #endif
 public struct SolarRadiationAbsorbedSlopeJob : IJobParallelFor {
-	public NativeArray<float> SolarRadiationAbsorbed;
+	public NativeSlice<float> SolarRadiationAbsorbed;
+	public NativeSlice<float> SolarRadiationReflected;
 	public NativeArray<float> SolarRadiationIncoming;
-	public NativeArray<float> SolarRadiationReflected;
 	[ReadOnly] public float AlbedoMin;
 	[ReadOnly] public float AlbedoRange;
 	[ReadOnly] public NativeArray<float> AlbedoSlope;
@@ -132,7 +132,7 @@ public struct SolarRadiationAbsorbedSlopeJob : IJobParallelFor {
 #endif
 public struct SolarRadiationAbsorbedTerrainJob : IJobParallelFor {
 	public NativeArray<float> SolarRadiationAbsorbed;
-	public NativeArray<float> SolarRadiationReflected;
+	public NativeSlice<float> SolarRadiationReflected;
 	[ReadOnly] public NativeArray<float> SolarRadiationIncoming;
 	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public WorldData worldData;

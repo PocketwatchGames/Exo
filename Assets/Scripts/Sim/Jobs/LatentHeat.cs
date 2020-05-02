@@ -8,7 +8,7 @@ using Unity.Mathematics;
 public struct ApplyLatentHeatIceJob : IJobParallelFor {
 	public NativeArray<float> IceTemperature;
 	[ReadOnly] public NativeArray<float> IceMass;
-	[ReadOnly] public NativeArray<float> LatentHeat;
+	[ReadOnly] public NativeSlice<float> LatentHeat;
 	public void Execute(int i)
 	{
 		if (IceMass[i] > 0)
@@ -20,7 +20,7 @@ public struct ApplyLatentHeatIceJob : IJobParallelFor {
 [BurstCompile]
 public struct ApplyLatentHeatTerrainJob : IJobParallelFor {
 	public NativeArray<float> TerrainTemperature;
-	[ReadOnly] public NativeArray<float> LatentHeat;
+	[ReadOnly] public NativeSlice<float> LatentHeat;
 	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public float HeatingDepth;
 	public void Execute(int i)
@@ -43,10 +43,10 @@ public struct ApplyLatentHeatFloraJob : IJobParallelFor {
 
 [BurstCompile]
 public struct ApplyLatentHeatAirJob : IJobParallelFor {
-	public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> AirMass;
-	[ReadOnly] public NativeArray<float> VaporMass;
-	[ReadOnly] public NativeArray<float> LatentHeat;
+	public NativeSlice<float> AirTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> AirMass;
+	[ReadOnly] public NativeSlice<float> VaporMass;
+	[ReadOnly] public NativeSlice<float> LatentHeat;
 	public void Execute(int i)
 	{
 		AirTemperaturePotential[i] += LatentHeat[i] / (AirMass[i] * WorldData.SpecificHeatAtmosphere + VaporMass[i] * WorldData.SpecificHeatWaterVapor);
@@ -58,7 +58,7 @@ public struct ApplyLatentHeatWaterJob : IJobParallelFor {
 	public NativeArray<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
-	[ReadOnly] public NativeArray<float> LatentHeat;
+	[ReadOnly] public NativeSlice<float> LatentHeat;
 	public void Execute(int i)
 	{
 		if (WaterMass[i] > 0)
@@ -71,7 +71,7 @@ public struct ApplyLatentHeatWaterJob : IJobParallelFor {
 [BurstCompile]
 public struct ApplyLatentHeatLavaJob : IJobParallelFor {
 	public NativeArray<float> LavaTemperature;
-	[ReadOnly] public NativeArray<float> LatentHeat;
+	[ReadOnly] public NativeSlice<float> LatentHeat;
 	[ReadOnly] public NativeArray<float> LavaMass;
 	public void Execute(int i)
 	{

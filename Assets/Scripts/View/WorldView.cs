@@ -833,19 +833,19 @@ public class WorldView : MonoBehaviour {
 		switch (activeOverlay)
 		{
 			case MeshOverlay.AbsoluteHumidity:
-				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, staticState.GetSliceAirLayer(dependentState.AirHumidityAbsolute,ActiveMeshLayerAir));
+				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, staticState.GetSliceLayer(dependentState.AirHumidityAbsolute,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.RelativeHumidity:
-				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, staticState.GetSliceAirLayer(dependentState.AirHumidityRelative,ActiveMeshLayerAir));
+				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, staticState.GetSliceLayer(dependentState.AirHumidityRelative,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.TemperatureSurface:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperatureAbsolute);
 				return true;
 			case MeshOverlay.PotentialTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, staticState.GetSliceAirLayer(simState.AirTemperaturePotential,ActiveMeshLayerAir));
+				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, staticState.GetSliceLayer(simState.AirTemperaturePotential,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.Pressure:
-				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, staticState.GetSliceAirLayer(display.Pressure,ActiveMeshLayerAir));
+				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, staticState.GetSliceLayer(display.Pressure,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.WaterTemperature:
 				overlay = new MeshOverlayData(WorldData.FreezingTemperature, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[ActiveMeshLayerWater]);
@@ -860,7 +860,7 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundTemperature);
 				return true;
 			case MeshOverlay.CarbonDioxide:
-				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, staticState.GetSliceAirLayer(display.CarbonDioxidePercent,ActiveMeshLayerAir));
+				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, staticState.GetSliceLayer(display.CarbonDioxidePercent,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.HeatAbsorbed:
 				overlay = new MeshOverlayData(0, DisplayHeatAbsorbedMax, _normalizedRainbow, display.SolarRadiationAbsorbedSurface);
@@ -890,7 +890,7 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(0, DisplayMagmaMassMax, _normalizedRainbow, simState.MagmaMass);
 				return true;
 			case MeshOverlay.DivergenceAir:
-				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceAirLayer(display.DivergenceAir,ActiveMeshLayerAir));
+				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceAir,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.DivergenceWater:
 				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, display.DivergenceWater[ActiveMeshLayerWater]);
@@ -905,13 +905,13 @@ public class WorldView : MonoBehaviour {
 		switch (activeOverlay)
 		{
 			case WindOverlay.Wind:
-				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, staticState.GetSliceAirLayer(simState.AirVelocity,ActiveMeshLayerAir));
+				overlay = new WindOverlayData(DisplayWindSpeedLowerAirMax, false, staticState.GetSliceLayer(simState.AirVelocity,ActiveMeshLayerAir));
 				return true;
 			case WindOverlay.WindCloud:
 				overlay = new WindOverlayData(DisplayWindSpeedUpperAirMax, false, dependentState.CloudVelocity);
 				return true;
 			case WindOverlay.PGF:
-				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, staticState.GetSliceAirLayer(displayState.PressureGradientForce,ActiveMeshLayerAir));
+				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, staticState.GetSliceLayer(displayState.PressureGradientForce,ActiveMeshLayerAir));
 				return true;
 			case WindOverlay.Current:
 				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, simState.WaterVelocity[ActiveMeshLayerWater]);

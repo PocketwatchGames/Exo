@@ -99,27 +99,34 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 public struct UpdateMassCondensationGroundJob : IJobParallelFor {
 	public NativeArray<float> SurfaceWaterMass;
 	public NativeArray<float> SurfaceWaterTemperature;
-	[ReadOnly] public NativeArray<float> AirTemperaturePotential;
-	[ReadOnly] public NativeArray<float> GroundCondensation;
 	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
-	[ReadOnly] public NativeArray<float> LayerMiddle;
+	[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> GroundCondensation;
+	[ReadOnly] public NativeSlice<float> LayerMiddle;
+	[ReadOnly] public int LayerCount;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 		float waterMass = SurfaceWaterMass[i];
-		float newWaterMass = waterMass + GroundCondensation[i];
-		if (newWaterMass <= 0)
+		float newWaterMass = waterMass;
+		float newWaterTemperature = SurfaceWaterTemperature[i];
+		for (int j = 0; j < LayerCount; j++)
 		{
-			SurfaceWaterTemperature[i] = 0;
+			int layerIndex = j * Count + i;
+			float condensation = GroundCondensation[layerIndex];
+			if (condensation > 0)
+			{
+				newWaterMass += condensation;
+				float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[layerIndex], LayerMiddle[layerIndex]);
+				float specificHeatSalt = SurfaceSaltMass[i] * WorldData.SpecificHeatSalt;
+				newWaterTemperature =
+					((waterMass * WorldData.SpecificHeatWater + specificHeatSalt) * newWaterTemperature
+					+ condensation * WorldData.SpecificHeatWater * airTemperatureAbsolute)
+					/ (newWaterMass * WorldData.SpecificHeatWater + specificHeatSalt);
+				waterMass = newWaterMass;
+			}
 		}
-		else
-		{
-			float airTemperatureAbsolute = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], LayerMiddle[i]);
-			float specificHeatSalt = SurfaceSaltMass[i] * WorldData.SpecificHeatSalt;
-			SurfaceWaterTemperature[i] = 
-				((waterMass * WorldData.SpecificHeatWater + specificHeatSalt) * SurfaceWaterTemperature[i] 
-				+ GroundCondensation[i] * WorldData.SpecificHeatWater * airTemperatureAbsolute) 
-				/ (newWaterMass * WorldData.SpecificHeatWater + specificHeatSalt);
-		}
+		SurfaceWaterTemperature[i] = newWaterTemperature;
 		SurfaceWaterMass[i] = newWaterMass;
 	}
 }
@@ -143,28 +150,30 @@ public struct UpdateMassCloudJob : IJobParallelFor {
 
 [BurstCompile]
 public struct UpdateMassAirJob : IJobParallelFor {
-	public NativeArray<float> VaporMass;
-	public NativeArray<float> CarbonDioxideMass;
-	public NativeArray<float> DustMass;
-	[ReadOnly] public NativeArray<float> LastVaporMass;
-	[ReadOnly] public NativeArray<float> LastCarbonDioxideMass;
-	[ReadOnly] public NativeArray<float> LastDustMass;
-	[ReadOnly] public NativeArray<float> CloudCondensation;
-	[ReadOnly] public NativeArray<float> GroundCondensation;
-	[ReadOnly] public NativeArray<float> DustFromAbove;
-	[ReadOnly] public NativeArray<float> DustFromBelow;
+	public NativeSlice<float> VaporMass;
+	public NativeSlice<float> CarbonDioxideMass;
+	public NativeSlice<float> DustMass;
+	[ReadOnly] public NativeSlice<float> LastVaporMass;
+	[ReadOnly] public NativeSlice<float> LastCarbonDioxideMass;
+	[ReadOnly] public NativeSlice<float> LastDustMass;
+	[ReadOnly] public NativeSlice<float> CloudCondensation;
+	[ReadOnly] public NativeSlice<float> GroundCondensation;
 	[ReadOnly] public NativeArray<float> DustUp;
 	[ReadOnly] public NativeArray<float> DustDown;
-	[ReadOnly] public bool IsTop;
-	[ReadOnly] public bool IsBottom;
+	[ReadOnly] public int LayerCount;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
+		int dustLayerIndex = i + Count;
+		int dustLayerIndexDown = i;
+		int dustLayerIndexUp = dustLayerIndex + Count;
 		float newVaporMass = LastVaporMass[i] - CloudCondensation[i] - GroundCondensation[i];
-		float newDustMass = LastDustMass[i] + DustFromAbove[i] + DustFromBelow[i] - DustDown[i];
+		float newDustMass = LastDustMass[i] + DustDown[dustLayerIndexUp] + DustUp[dustLayerIndexDown] - DustDown[dustLayerIndex];
 		float newCarbonDioxide = LastCarbonDioxideMass[i];
-		if (!IsTop)
+		bool isTop = (i / Count) == LayerCount - 1;
+		if (!isTop)
 		{
-			newDustMass -= DustUp[i];
+			newDustMass -= DustUp[dustLayerIndex];
 		}
 
 		VaporMass[i] = newVaporMass;
@@ -180,32 +189,36 @@ public struct UpdateMassCloudCondensationJob : IJobParallelFor {
 	public NativeArray<float> CloudDropletMass;
 	[ReadOnly] public NativeArray<float> CloudEvaporation;
 	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeArray<float> LayerElevation;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> CloudCondensation;
-	[ReadOnly] public NativeArray<float> GroundCondensation;
-	[ReadOnly] public bool IsTop;
-	[ReadOnly] public bool IsBottom;
+	[ReadOnly] public NativeSlice<float> LayerElevation;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public NativeSlice<float> CloudCondensation;
+	[ReadOnly] public NativeSlice<float> GroundCondensation;
+	[ReadOnly] public int LayerCount;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-
 		float cloudMass = CloudMass[i];
-		float cloudEvaporationInLayer = 0;
-		if ((CloudElevation[i] >= LayerElevation[i] || IsBottom) && (CloudElevation[i] < LayerElevation[i] + LayerHeight[i] || IsTop))
-		{
-			cloudEvaporationInLayer = CloudEvaporation[i];
-		}
-		float newCloudMass = cloudMass + CloudCondensation[i];
-		float newDropletSize = 0;
-		if (newCloudMass > 0)
-		{
-			newDropletSize = CloudDropletMass[i] * cloudMass / (cloudMass + CloudCondensation[i]);
-		}
-		else
-		{
-			newDropletSize = 0;
-		}
+		float newCloudMass = cloudMass;
+		float newDropletSize = CloudDropletMass[i];
 
+		for (int j = 0; j < LayerCount; j++)
+		{
+			bool isBottom = j == 0;
+			bool isTop = j == LayerCount - 1;
+			int layerIndex = j * Count + i;
+
+			float cloudEvaporationInLayer = 0;
+			if ((CloudElevation[i] >= LayerElevation[layerIndex] || isBottom) && (CloudElevation[i] < LayerElevation[layerIndex] + LayerHeight[layerIndex] || isTop))
+			{
+				cloudEvaporationInLayer = CloudEvaporation[i];
+			}
+			float condensation = CloudCondensation[layerIndex];
+			if (newCloudMass > 0)
+			{
+				newDropletSize = newDropletSize * newCloudMass / (newCloudMass + condensation);
+			}
+			newCloudMass += condensation;
+		}
 
 		CloudMass[i] = newCloudMass;
 		CloudDropletMass[i] = newDropletSize;
@@ -215,15 +228,15 @@ public struct UpdateMassCloudCondensationJob : IJobParallelFor {
 
 [BurstCompile]
 public struct UpdateMassAirSurfaceJob : IJobParallelFor {
-	public NativeArray<float> AirTemperaturePotential;
-	public NativeArray<float> VaporMass;
-	public NativeArray<float> DustMass;
-	public NativeArray<float> CarbonDioxide;
+	public NativeSlice<float> AirTemperaturePotential;
+	public NativeSlice<float> VaporMass;
+	public NativeSlice<float> DustMass;
+	public NativeSlice<float> CarbonDioxide;
+	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeArray<float> EvaporationWater;
 	[ReadOnly] public NativeArray<float> EvaporationTemperatureWater;
 	[ReadOnly] public NativeArray<float> EvaporationFlora;
 	[ReadOnly] public NativeArray<float> EvaporationTemperatureFlora;
-	[ReadOnly] public NativeArray<float> AirMass;
 	[ReadOnly] public NativeArray<float> DustEjected;
 	[ReadOnly] public NativeArray<float> AirCarbonDelta;
 	[ReadOnly] public NativeArray<float> SoilRespiration;
@@ -299,7 +312,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastCrustDepth;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
-	[ReadOnly] public NativeArray<float> DustSettled;
+	[ReadOnly] public NativeSlice<float> DustSettled;
 	[ReadOnly] public NativeArray<float> LavaCrystalized;
 	[ReadOnly] public NativeArray<float> LavaEjected;
 	[ReadOnly] public NativeArray<float> CrustDelta;
@@ -363,11 +376,11 @@ public struct UpdateFloraJob : IJobParallelFor {
 
 [BurstCompile]
 public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
-	public NativeArray<float> AirCarbon;
+	public NativeSlice<float> AirCarbon;
 	public NativeArray<float> WaterCarbon;
 	[ReadOnly] public NativeArray<float> WaterMass;
 	[ReadOnly] public NativeArray<float> SaltMass;
-	[ReadOnly] public NativeArray<float> AirMass;
+	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeArray<float> WaterDepth;
 	[ReadOnly] public float WaterAirCarbonDiffusionCoefficient;
 	[ReadOnly] public float WaterAirCarbonDiffusionDepth;

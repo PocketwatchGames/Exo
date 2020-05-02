@@ -84,14 +84,12 @@ public struct DisplayState {
 	public NativeArray<float> WindVertical;
 	public NativeArray<SolarAbsorptivity> AbsorptionSolar;
 	public NativeArray<ThermalAbsorptivity> AbsorptionThermal;
+	public NativeArray<float> LatentHeatDelta;
 	public NativeArray<float>[] EnthalpyWater;
 	public NativeArray<float>[] Salinity;
 	public NativeArray<float>[] WaterCarbonDioxidePercent;
 	public NativeArray<float>[] DivergenceWater;
-	public NativeArray<float>[] ThermalDelta;
 	public NativeArray<float>[] ConductionDelta;
-	public NativeArray<float>[] SolarDelta;
-	public NativeArray<float>[] LatentHeatDelta;
 
 	private bool _initialized;
 
@@ -131,17 +129,13 @@ public struct DisplayState {
 			DivergenceWater[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
 
-		ThermalDelta = new NativeArray<float>[worldData.LayerCount];
 		ConductionDelta = new NativeArray<float>[worldData.LayerCount];
-		SolarDelta = new NativeArray<float>[worldData.LayerCount];
-		LatentHeatDelta = new NativeArray<float>[worldData.LayerCount];
 		for (int i = 0; i < worldData.LayerCount; i++)
 		{
-			ThermalDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
 			ConductionDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
-			SolarDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
-			LatentHeatDelta[i] = new NativeArray<float>(count, Allocator.Persistent);
 		}
+
+		LatentHeatDelta = new NativeArray<float>(count* worldData.LayerCount, Allocator.Persistent);
 
 	}
 
@@ -172,6 +166,8 @@ public struct DisplayState {
 		AbsorptionThermal.Dispose();
 		CarbonDioxidePercent.Dispose();
 
+		LatentHeatDelta.Dispose();
+
 		for (int i = 0; i < Salinity.Length; i++)
 		{
 			WaterCarbonDioxidePercent[i].Dispose();
@@ -179,12 +175,9 @@ public struct DisplayState {
 			EnthalpyWater[i].Dispose();
 			DivergenceWater[i].Dispose();
 		}
-		for (int i = 0; i < ThermalDelta.Length; i++)
+		for (int i = 0; i < ConductionDelta.Length; i++)
 		{
-			ThermalDelta[i].Dispose();
 			ConductionDelta[i].Dispose();
-			SolarDelta[i].Dispose();
-			LatentHeatDelta[i].Dispose();
 		}
 	}
 
@@ -282,9 +275,9 @@ public struct DisplayState {
 			EnthalpyIce = display.EnthalpyIce,
 			EnthalpyGroundWater = display.EnthalpyGroundWater,
 
-			SolarRadiationInTerrain = tempState.SolarRadiationIn[worldData.TerrainLayer],
-			SolarRadiationInIce = tempState.SolarRadiationIn[worldData.IceLayer],
-			SolarRadiationInWaterSurface = tempState.SolarRadiationIn[worldData.SurfaceWaterLayerGlobal],
+			SolarRadiationInTerrain = tempState.SolarRadiationInTerrain,
+			SolarRadiationInIce = tempState.SolarRadiationInIce,
+			SolarRadiationInWaterSurface = staticState.GetSliceLayer(tempState.SolarRadiationInWater,worldData.SurfaceWaterLayer),
 			EvaporationWater = tempState.EvaporationMassWater,
 			EvaporationFlora = tempState.FloraRespirationMassVapor,
 			Precipitation = tempState.PrecipitationMass,
@@ -300,12 +293,6 @@ public struct DisplayState {
 			GroundWaterMass = nextState.GroundWater,
 			GroundWaterTemperature = nextState.GroundWaterTemperature
 		});
-
-		for (int i = 0; i < worldData.LayerCount; i++)
-		{
-			tempState.SolarRadiationIn[i].CopyTo(display.SolarDelta[i]);
-			tempState.ThermalRadiationDelta[i].CopyTo(display.ThermalDelta[i]);
-		}
 
 		updateDisplayJobHandle = JobHandle.CombineDependencies(initDisplayAirHandle, initDisplayWaterHandle, updateDisplayJobHandle);
 		if (settings.CollectGlobals)
@@ -369,24 +356,20 @@ public struct DisplayState {
 				display.GlobalAirTemperaturePotential += nextState.AirTemperaturePotential[index] * tempState.AirMass[index];
 				display.GlobalAirMass += tempState.AirMass[index];
 				display.GlobalWaterVapor += nextState.AirVapor[index];
-				display.EnergySolarReflectedAtmosphere += tempState.SolarReflected[j + worldData.AirLayer0][i];
-				display.EnergySolarAbsorbedAtmosphere += tempState.SolarRadiationIn[j + worldData.AirLayer0][i];
+				display.EnergySolarReflectedAtmosphere += tempState.SolarReflectedAir[j * staticState.Count + i];
+				display.EnergySolarAbsorbedAtmosphere += tempState.SolarRadiationInAir[j * staticState.Count + i];
 				display.GlobalEnthalpyAir += display.EnthalpyAir[index];
 				display.GlobalCloudCoverage += math.min(1, tempState.AbsorptivitySolar[index].AbsorptivityCloud * 100);
 				display.GlobalAirCarbon += nextState.AirCarbon[index];
 			}
-			display.EnergySolarAbsorbedSurface += tempState.SolarRadiationIn[worldData.TerrainLayer][i] + tempState.SolarRadiationIn[worldData.IceLayer][i];
-			display.EnergySolarReflectedSurface += tempState.SolarReflected[worldData.TerrainLayer][i] + tempState.SolarReflected[worldData.IceLayer][i];
+			display.EnergySolarAbsorbedOcean += tempState.SolarRadiationInWater[worldData.SurfaceWaterLayer * staticState.Count + i];
+			display.EnergySolarAbsorbedSurface += tempState.SolarRadiationInWater[worldData.SurfaceWaterLayer * staticState.Count + i] + tempState.SolarRadiationInTerrain[i] + tempState.SolarRadiationInIce[i] + tempState.SolarRadiationInFlora[i];
+			display.EnergySolarReflectedSurface += tempState.SolarReflectedWater[worldData.SurfaceWaterLayer * staticState.Count + i] + tempState.SolarReflectedTerrain[i] + tempState.SolarReflectedIce[i] + tempState.SolarReflectedFlora[i];
 			for (int j = 1; j < worldData.WaterLayers - 1; j++)
 			{
 				float waterMass = nextState.WaterMass[j][i];
 				globalWaterMass += waterMass;
 				display.GlobalOceanTemperature += nextState.WaterTemperature[j][i] * waterMass;
-
-				float absorbed = tempState.SolarRadiationIn[j + worldData.WaterLayer0][i];
-				display.EnergySolarAbsorbedOcean += absorbed;
-				display.EnergySolarAbsorbedSurface += absorbed;
-				display.EnergySolarReflectedSurface += tempState.SolarReflected[j + worldData.WaterLayer0][i];
 				display.GlobalEnthalpyWater += display.EnthalpyWater[j][i];
 				display.GlobalOceanMass += nextState.WaterMass[j][i];
 				display.GlobalWaterCarbon += nextState.WaterCarbon[j][i];
@@ -394,12 +377,12 @@ public struct DisplayState {
 			display.EnergySurfaceConduction += tempState.ConductionAirIce[i] + tempState.ConductionAirTerrain[i] + tempState.ConductionAirWater[i];
 			display.EnergyOceanConduction += tempState.ConductionAirWater[i];
 			display.EnergyEvapotranspiration += (tempState.EvaporationMassWater[i] + tempState.FloraRespirationMassVapor[i]) * WorldData.LatentHeatWaterVapor;
-			display.EnergyThermalBackRadiation += tempState.WindowRadiationTransmittedDown[worldData.AirLayer0 + 1][i] + tempState.ThermalRadiationTransmittedDown[worldData.AirLayer0 + 1][i];
-			display.EnergyThermalOceanRadiation += (tempState.WindowRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal][i] + tempState.ThermalRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal][i]) * tempState.WaterCoverage[worldData.SurfaceWaterLayer][i];
+			display.EnergyThermalBackRadiation += tempState.WindowRadiationTransmittedDown[(worldData.AirLayer0 + 1) * staticState.Count + i] + tempState.ThermalRadiationTransmittedDown[(worldData.AirLayer0 + 1) * staticState.Count + i];
+			display.EnergyThermalOceanRadiation += (tempState.WindowRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal * staticState.Count + i] + tempState.ThermalRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal * staticState.Count + i]) * tempState.WaterCoverage[worldData.SurfaceWaterLayer][i];
 
-			float surfaceRadiation = tempState.WindowRadiationTransmittedUp[worldData.IceLayer][i] + tempState.ThermalRadiationTransmittedUp[worldData.IceLayer][i];
-			float surfaceRadiationOutWindow = tempState.WindowRadiationTransmittedUp[worldData.IceLayer][i];
-			float radiationToSpace = tempState.ThermalRadiationTransmittedUp[worldData.AirLayer0 + worldData.AirLayers - 2][i] + tempState.WindowRadiationTransmittedUp[worldData.AirLayer0 + worldData.AirLayers - 2][i] - surfaceRadiationOutWindow;
+			float surfaceRadiation = tempState.WindowRadiationTransmittedUp[worldData.IceLayer * staticState.Count + i] + tempState.ThermalRadiationTransmittedUp[worldData.IceLayer * staticState.Count + i];
+			float surfaceRadiationOutWindow = tempState.WindowRadiationTransmittedUp[worldData.IceLayer * staticState.Count + i];
+			float radiationToSpace = tempState.ThermalRadiationTransmittedUp[(worldData.AirLayer0 + worldData.AirLayers - 2) * staticState.Count + i] + tempState.WindowRadiationTransmittedUp[(worldData.AirLayer0 + worldData.AirLayers - 2) * staticState.Count + i] - surfaceRadiationOutWindow;
 			display.EnergyThermalAbsorbedAtmosphere += surfaceRadiation - surfaceRadiationOutWindow;
 			display.EnergyThermalOutAtmosphere += radiationToSpace;
 			display.EnergyThermalSurfaceOutAtmosphericWindow += surfaceRadiationOutWindow;
@@ -425,7 +408,7 @@ public struct DisplayState {
 		public NativeArray<float> EnthalpyGroundWater;
 		[ReadOnly] public NativeArray<float> SolarRadiationInTerrain;
 		[ReadOnly] public NativeArray<float> SolarRadiationInIce;
-		[ReadOnly] public NativeArray<float> SolarRadiationInWaterSurface;
+		[ReadOnly] public NativeSlice<float> SolarRadiationInWaterSurface;
 		[ReadOnly] public NativeArray<float> Precipitation;
 		[ReadOnly] public NativeArray<float> EvaporationWater;
 		[ReadOnly] public NativeArray<float> EvaporationFlora;
