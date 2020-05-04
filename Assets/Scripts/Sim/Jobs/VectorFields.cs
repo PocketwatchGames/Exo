@@ -4,6 +4,7 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
+using UnityEngine;
 
 public struct BarycentricValue {
 	public int indexA;
@@ -17,19 +18,24 @@ public struct BarycentricValue {
 
 [BurstCompile]
 public struct GetVectorDestCoordsJob : IJobParallelFor {
-	public NativeArray<BarycentricValue> Destination;
+	public NativeSlice<BarycentricValue> Destination;
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float MaxWindMove;
-	public void Execute(int i)
+	[ReadOnly] public int CellsPerLayer;
+	public void Execute(int e)
 	{
-		float3 position = Position[i];
+		Debug.Assert(CellsPerLayer > 0);
+		int cellIndex = e / StaticState.MaxNeighbors;
+		int columnIndex = cellIndex % CellsPerLayer;
+		int fullRangeEdgeIndex = e + CellsPerLayer * StaticState.MaxNeighbors;
+		float3 position = Position[columnIndex];
 		float3 pos = position * PlanetRadius;
 
-		float3 velocity = Velocity[i];
+		float3 velocity = Velocity[cellIndex];
 
 		float3 move = velocity * SecondsPerTick;
 		float windMoveHorizontalSq = math.lengthsq(move);
@@ -42,15 +48,15 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 
 		// TODO: move around arc/circumference instead of along a tangent
 		float3 movePos = pos + move;
-		for (int j = 0; j < 6; j++)
+		for (int j = 0; j < StaticState.MaxNeighbors; j++)
 		{
-			int indexB = Neighbors[i * 6 + j];
+			int indexB = Neighbors[cellIndex * StaticState.MaxNeighbors + j];
 			if (indexB >= 0)
 			{
-				int indexC = Neighbors[i * 6 + (j + 1) % 6];
+				int indexC = Neighbors[cellIndex * StaticState.MaxNeighbors + (j + 1) % StaticState.MaxNeighbors];
 				if (indexC < 0)
 				{
-					indexC = Neighbors[i * 6];
+					indexC = Neighbors[cellIndex * StaticState.MaxNeighbors];
 				}
 
 				float a;
@@ -58,9 +64,9 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 				float c;
 				if (Utils.GetBarycentricIntersection(movePos, pos, Position[indexB] * PlanetRadius, Position[indexC] * PlanetRadius, out a, out b, out c))
 				{
-					Destination[i] = new BarycentricValue
+					Destination[e] = new BarycentricValue
 					{
-						indexA = i,
+						indexA = cellIndex,
 						indexB = indexB,
 						indexC = indexC,
 						valueA = a,
@@ -73,9 +79,9 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 		}
 
 		// TODO: this means the velocity is too high and has skipped over our neighbors!
-		Destination[i] = new BarycentricValue
+		Destination[e] = new BarycentricValue
 		{
-			indexA = i,
+			indexA = cellIndex,
 			indexB = -1,
 			indexC = -1,
 			valueA = 1,
@@ -86,74 +92,66 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 }
 
 [BurstCompile]
-public struct ResolveAdvectionConflict : IJobParallelFor {
-	public NativeArray<float> ResolvedDestination;
+public struct ResolveAdvectionConflictVert : IJobParallelFor {
+	public NativeSlice<float> ResolvedDestination;
 	[ReadOnly] public NativeArray<float> Destination;
-	[ReadOnly] public NativeArray<int> ReverseNeighbors;
-	public void Execute(int i)
+	[ReadOnly] public NativeArray<int> ReverseNeighborsVert;
+	[ReadOnly] public int CellsPerLayer;
+	public void Execute(int e)
 	{
-		int n = ReverseNeighbors[i];
+		Debug.Assert(CellsPerLayer > 0);
+		int fullRangeEdgeIndex = e + CellsPerLayer * StaticState.MaxNeighborsVert;
+		int n = ReverseNeighborsVert[fullRangeEdgeIndex];
 		if (n >= 0)
 		{
-			ResolvedDestination[i] = Destination[i] - Destination[n];
+			ResolvedDestination[e] = Destination[fullRangeEdgeIndex] - Destination[n];
 		}
 	}
 }
 
 [BurstCompile]
 public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
-	public NativeArray<float> Destination;
+	public NativeSlice<float> Destination;
 	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<int> NeighborsVert;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
-	[ReadOnly] public float MaxWindMove;
-	public void Execute(int i)
+	[ReadOnly] public int CellsPerLayer;
+	public void Execute(int e)
 	{
-		int cellIndex = i / StaticState.MaxNeighbors;
+		Debug.Assert(CellsPerLayer > 0);
 		float moveValue = 0;
-		int indexB = Neighbors[i];
+		int cellIndex = StaticState.GetCellIndexFromEdgeVert(e);
+		int columnIndex = cellIndex % CellsPerLayer;
+		int fullRangeEdgeIndex = e + CellsPerLayer * StaticState.MaxNeighborsVert;
+		int edgeIndex = e % StaticState.MaxNeighborsVert;
 
-		if (indexB >= 0)
+		if (edgeIndex == StaticState.NeighborUp)
 		{
-			int indexC = Neighbors[cellIndex * StaticState.MaxNeighbors + (i + 1) % StaticState.MaxNeighbors];
-			if (indexC < 0)
-			{
-				indexC = Neighbors[cellIndex * StaticState.MaxNeighbors];
-			}
 
-			float3 m;
-			var pos = Position[cellIndex] * PlanetRadius;
-			if (Utils.GetBarycentricIntersection(
-				pos + Velocity[cellIndex] * SecondsPerTick, 
-				pos, 
-				Position[indexB] * PlanetRadius, 
-				Position[indexC] * PlanetRadius, 
-				out m.x, out m.y, out m.z))
-			{
-				float mass = Mass[cellIndex];
-				if (mass == 0)
-				{
-					moveValue = 0;
-				} else
-				{
-					moveValue = m.y * mass;
-				}
-			} else
-			{
-				indexC = Neighbors[cellIndex * StaticState.MaxNeighbors + (i + StaticState.MaxNeighbors - 1) % StaticState.MaxNeighbors];
-				if (indexC < 0)
-				{
-					indexC = Neighbors[cellIndex * StaticState.MaxNeighbors + (i + StaticState.MaxNeighbors - 2) % StaticState.MaxNeighbors];
-				}
+		}
+		else if (edgeIndex == StaticState.NeighborDown)
+		{
 
+		}
+		else
+		{
+			int indexB = NeighborsVert[fullRangeEdgeIndex];
+			int columnIndexB = indexB % CellsPerLayer;
+			if (indexB >= 0)
+			{
+				int indexC = StaticState.GetNextHorizontalNeighborVert(NeighborsVert, fullRangeEdgeIndex);
+				int columnIndexC = indexC % CellsPerLayer;
+
+				float3 m;
+				var pos = Position[columnIndex] * PlanetRadius;
 				if (Utils.GetBarycentricIntersection(
 					pos + Velocity[cellIndex] * SecondsPerTick,
 					pos,
-					Position[indexB] * PlanetRadius,
-					Position[indexC] * PlanetRadius,
+					Position[columnIndexB] * PlanetRadius,
+					Position[columnIndexC] * PlanetRadius,
 					out m.x, out m.y, out m.z))
 				{
 					float mass = Mass[cellIndex];
@@ -166,17 +164,39 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 						moveValue = m.y * mass;
 					}
 				}
+				else
+				{
+					indexC = StaticState.GetPrevHorizontalNeighborVert(NeighborsVert, fullRangeEdgeIndex);
+					columnIndexC = indexC % CellsPerLayer;
 
+					if (Utils.GetBarycentricIntersection(
+						pos + Velocity[cellIndex] * SecondsPerTick,
+						pos,
+						Position[columnIndexB] * PlanetRadius,
+						Position[columnIndexC] * PlanetRadius,
+						out m.x, out m.y, out m.z))
+					{
+						float mass = Mass[cellIndex];
+						if (mass == 0)
+						{
+							moveValue = 0;
+						}
+						else
+						{
+							moveValue = m.y * mass;
+						}
+					}
+
+				}
 			}
-
-
 		}
 
 		// TODO: this means the velocity is too high and has skipped over our neighbors!
-		Destination[i] = moveValue;
-	
+		Destination[e] = moveValue;
+
 	}
 }
+
 
 //[BurstCompile]
 //public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
@@ -300,16 +320,17 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 [BurstCompile]
 public struct GetDivergenceJob : IJobParallelFor {
 	public NativeSlice<float> Divergence;
-	[ReadOnly] public NativeSlice<float> Destination;
-	[ReadOnly] public NativeSlice<float> Mass;
-	[ReadOnly] public NativeSlice<int> Neighbors;
+	[ReadOnly] public NativeArray<float> Destination;
+	[ReadOnly] public int CellsPerLayer;
 	public void Execute(int i)
 	{
+		Debug.Assert(CellsPerLayer > 0);
 		float value = 0;
-		for (int n = 0; n < StaticState.MaxLayerNeighbors; n++)
+		int fullRangeIndex = i + CellsPerLayer;
+		int nIndex = fullRangeIndex * StaticState.MaxNeighborsVert;
+		for (int n = nIndex; n < nIndex + StaticState.MaxNeighborsVert; n++)
 		{
-			int nIndex = i * StaticState.MaxLayerNeighbors + n;
-			value -= Destination[nIndex];
+			value -= Destination[n];
 		}
 
 		Divergence[i] = value;
@@ -319,16 +340,24 @@ public struct GetDivergenceJob : IJobParallelFor {
 [BurstCompile]
 public struct GetDivergencePressureJob : IJobFor {
 	public NativeSlice<float> Pressure;
-	[ReadOnly] public NativeSlice<float> Divergence;
-	[ReadOnly] public NativeSlice<int> Neighbors;
+	[ReadOnly] public NativeArray<float> Divergence;
+	[ReadOnly] public NativeArray<int> NeighborsVert;
+	[ReadOnly] public int CellsPerLayer;
 
 	public void Execute(int i)
 	{
-		float pressure = Divergence[i];
-		int neighborCount = StaticState.GetMaxNeighbors(i, Neighbors);
-		for (int k = 0; k < neighborCount; k++)
+		Debug.Assert(CellsPerLayer > 0);
+		int fullRangeIndex = i + CellsPerLayer;
+		float pressure = Divergence[fullRangeIndex];
+		int neighborCount = 0;
+		for (int k = 0; k < StaticState.MaxNeighborsVert; k++)
 		{
-			pressure += Pressure[Neighbors[i * StaticState.MaxNeighbors + k]];
+			int n = NeighborsVert[fullRangeIndex * StaticState.MaxNeighborsVert + k];
+			if (n >= 0)
+			{
+				neighborCount++;
+				pressure += Pressure[n];
+			}
 		}
 		Pressure[i] = pressure / neighborCount;
 
@@ -342,28 +371,33 @@ public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Pressure;
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<int> Neighbors;
-	public void Execute(int i)
+	[ReadOnly] public int CellsPerLayer;
+	public void Execute(int e)
 	{
-		int cellIndex = i / StaticState.MaxNeighbors;
+		Debug.Assert(CellsPerLayer > 0);
+		int cellIndex = StaticState.GetCellIndexFromEdgeVert(e);
+		int fullRangeIndex = e + CellsPerLayer * StaticState.MaxNeighborsVert;
 		float mass = Mass[cellIndex];
-		int nIndex = Neighbors[i];
+		int nIndex = Neighbors[fullRangeIndex];
 		if (mass > 0 && nIndex >= 0)
 		{
 			float pressureGradient = Pressure[cellIndex] - Pressure[nIndex];
-			Destination[i] += pressureGradient;
+			Destination[e] += pressureGradient;
 		}
 	}
 }
 [BurstCompile]
 public struct SumMassLeavingJob : IJobParallelFor {
-	public NativeArray<float> MassLeaving;
+	public NativeSlice<float> MassLeaving;
 	[ReadOnly] public NativeArray<float> Destination;
+	[ReadOnly] public int CellsPerLayer;
 	public void Execute(int i)
 	{
+		int fullRangeIndex = i + CellsPerLayer;
 		float massLeaving = 0;
 		for (int j = 0; j < StaticState.MaxNeighbors; j++)
 		{
-			massLeaving += math.max(0, Destination[i]);
+			massLeaving += math.max(0, Destination[fullRangeIndex]);
 		}
 		MassLeaving[i] = massLeaving;
 	}
@@ -373,17 +407,19 @@ public struct CapMassLeavingJob : IJobParallelFor {
 	public NativeArray<float> Destination;
 	[ReadOnly] public NativeArray<float> MassLeaving;
 	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<int> NeighborsVert;
+	[ReadOnly] public int CellsPerLayer;
 	public void Execute(int i)
 	{
-		int cellIndex = i / StaticState.MaxNeighbors;
+		Debug.Assert(CellsPerLayer > 0);
+		int fullRangeIndex = i + CellsPerLayer * StaticState.MaxNeighborsVert;
 		float dest = Destination[i];
 		if (dest < 0)
 		{
-			cellIndex = Neighbors[i];
+			fullRangeIndex = NeighborsVert[fullRangeIndex];
 		}
-		float mass = Mass[cellIndex];
-		float massLeaving = math.max(mass, MassLeaving[cellIndex]);
+		float mass = Mass[fullRangeIndex];
+		float massLeaving = math.max(mass, MassLeaving[fullRangeIndex]);
 		dest *= mass / massLeaving;
 		Destination[i] = dest;
 	}
@@ -392,19 +428,25 @@ public struct CapMassLeavingJob : IJobParallelFor {
 [BurstCompile]
 public struct UpdateDivergenceFreeVelocityJob : IJobParallelFor {
 	public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float> Destination;
+	[ReadOnly] public NativeArray<float> DestinationVert;
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float3> NeighborTangent;
 	[ReadOnly] public float TicksPerSecond;
+	[ReadOnly] public int CellsPerLayer;
 	public void Execute(int i)
 	{
+		Debug.Assert(CellsPerLayer > 0);
 		float3 vel = 0;
 		if (Mass[i] > 0)
 		{
+			// Update horizontal vel
 			for (int j = 0; j < StaticState.MaxNeighbors; j++)
 			{
-				vel += -NeighborTangent[i * StaticState.MaxNeighbors + j] * math.max(0, Destination[i * StaticState.MaxNeighbors + j]);
+				vel += -NeighborTangent[i * StaticState.MaxNeighbors + j] * math.max(0, DestinationVert[i * StaticState.MaxNeighborsVert + j]);
 			}
+
+			// TODO: update vertical velocity?
+
 			vel *= TicksPerSecond / Mass[i];
 		}
 		Velocity[i] = vel;

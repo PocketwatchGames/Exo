@@ -200,15 +200,14 @@ public struct DisplayState {
 		JobHandle initDisplayAirHandle = default(JobHandle);
 		JobHandle initDisplayWaterHandle = default(JobHandle);
 
-#if !LayerRefactor
 		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(new GetDivergenceJob()
 		{
-			Divergence = display.DivergenceAir,
+			Divergence = staticState.GetSliceAir(display.DivergenceAir),
 			Destination = tempState.DestinationAirResolved,
-			Neighbors = staticState.NeighborsAir,
-			Mass = tempState.AirMass,
+			CellsPerLayer = staticState.Count
 		}));
 
+#if !LayerRefactor
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			int layer = worldData.WaterLayer0 + j;
@@ -221,7 +220,6 @@ public struct DisplayState {
 			}));
 		}
 #endif
-
 
 
 		tempState.AbsorptivitySolar.CopyTo(display.AbsorptionSolar);
@@ -377,6 +375,7 @@ public struct DisplayState {
 			display.EnergySurfaceConduction += tempState.ConductionAirIce[i] + tempState.ConductionAirTerrain[i] + tempState.ConductionAirWater[i];
 			display.EnergyOceanConduction += tempState.ConductionAirWater[i];
 			display.EnergyEvapotranspiration += (tempState.EvaporationMassWater[i] + tempState.FloraRespirationMassVapor[i]) * WorldData.LatentHeatWaterVapor;
+#if !LayerRefactor
 			display.EnergyThermalBackRadiation += tempState.WindowRadiationTransmittedDown[(worldData.AirLayer0 + 1) * staticState.Count + i] + tempState.ThermalRadiationTransmittedDown[(worldData.AirLayer0 + 1) * staticState.Count + i];
 			display.EnergyThermalOceanRadiation += (tempState.WindowRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal * staticState.Count + i] + tempState.ThermalRadiationTransmittedUp[worldData.SurfaceWaterLayerGlobal * staticState.Count + i]) * tempState.WaterCoverage[worldData.SurfaceWaterLayer][i];
 
@@ -387,7 +386,7 @@ public struct DisplayState {
 			display.EnergyThermalOutAtmosphere += radiationToSpace;
 			display.EnergyThermalSurfaceOutAtmosphericWindow += surfaceRadiationOutWindow;
 			display.EnergyThermalSurfaceRadiation += surfaceRadiation;
-
+#endif
 		}
 		display.GlobalAirTemperaturePotential /= display.GlobalAirMass;
 		display.GlobalOceanSurfaceTemperature /= globalWaterSurfaceMass;

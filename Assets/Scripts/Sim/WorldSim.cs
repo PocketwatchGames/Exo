@@ -19,6 +19,7 @@ public class WorldSim {
 	public JobHelper NeighborJob;
 	public JobHelper AirJob;
 	public JobHelper UpperAirJob;
+	public JobHelper AirNeighborJob;
 
 
 	private int _cellCount;
@@ -36,6 +37,7 @@ public class WorldSim {
 		NeighborJob = new JobHelper(_cellCount * 6);
 		AirJob = new JobHelper(_cellCount * (worldData.AirLayers - 2));
 		UpperAirJob = new JobHelper(_cellCount * (worldData.AirLayers - 3));
+		AirNeighborJob = new JobHelper(_cellCount * (worldData.AirLayers - 2) * StaticState.MaxNeighborsVert);
 
 		applyAdvectionWaterJobHandles = new NativeArray<JobHandle>(worldData.WaterLayers, Allocator.Persistent);
 		energyJobHandles = new NativeArray<JobHandle>(worldData.LayerCount, Allocator.Persistent);
@@ -176,34 +178,28 @@ public class WorldSim {
 // TODO: Dot product doesn't actually work given the hexagonal nature of the grid
 #region Advection
 
+
+		energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
+		{
+			Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAir),
+			NeighborsVert = staticState.NeighborsVert,
+			Position = staticState.SphericalPosition,
+			Velocity = nextState.AirVelocity,
+			Mass = tempState.AirMass,
+			PlanetRadius = staticState.PlanetRadius,
+			SecondsPerTick = worldData.SecondsPerTick,
+			CellsPerLayer = staticState.Count
+		}, energyJobHandles[worldData.AirLayer0]);
+
+		energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Schedule(new ResolveAdvectionConflictVert()
+		{
+			ResolvedDestination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+			Destination = tempState.DestinationAir,
+			ReverseNeighborsVert = staticState.ReverseNeighborsVert,
+			CellsPerLayer = staticState.Count
+		}, energyJobHandles[worldData.AirLayer0]);
+
 #if !LayerRefactor
-
-		for (int j = 1; j < worldData.AirLayers - 1; j++)
-		{
-			int layer = worldData.AirLayer0 + j;
-			energyJobHandles[layer] = NeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
-			{
-				Destination = tempState.DestinationAir[j],
-				Neighbors = staticState.Neighbors,
-				Position = staticState.SphericalPosition,
-				Velocity = nextState.AirVelocity[j],
-				Mass = tempState.AirMass[j],
-				PlanetRadius = staticState.PlanetRadius,
-				SecondsPerTick = worldData.SecondsPerTick,
-				MaxWindMove = staticState.CellRadius * 0.9f,
-			}, energyJobHandles[layer]);
-		}
-		for (int j = 1; j < worldData.AirLayers - 1; j++)
-		{
-			int layer = worldData.AirLayer0 + j;
-			energyJobHandles[layer] = NeighborJob.Schedule(new ResolveAdvectionConflict()
-			{
-				ResolvedDestination = tempState.DestinationAirResolved[j],
-				Destination = tempState.DestinationAir[j],
-				ReverseNeighbors = staticState.ReverseNeighbors,
-			}, energyJobHandles[layer]);
-		}
-
 		if (settings.MakeAirIncompressible)
 		{
 
@@ -290,68 +286,41 @@ public class WorldSim {
 
 		}
 
-
-		for (int i = 1; i < worldData.AirLayers - 1; i++)
-		{
-			int layer = worldData.AirLayer0 + i;
-			energyJobHandles[layer] = SimJob.Schedule(new AdvectionAirJob()
-			{
-				Delta = tempState.AdvectionAir[i],
-				Temperature = nextState.AirTemperaturePotential[i],
-				TemperatureAbove = nextState.AirTemperaturePotential[i + 1],
-				TemperatureBelow = nextState.AirTemperaturePotential[i - 1],
-				AirMass = tempState.AirMass[i],
-				AirMassAbove = tempState.AirMass[i + 1],
-				AirMassBelow = tempState.AirMass[i - 1],
-				Vapor = nextState.AirVapor[i],
-				VaporAbove = nextState.AirVapor[i + 1],
-				VaporBelow = nextState.AirVapor[i - 1],
-				CarbonDioxide = nextState.AirCarbon[i],
-				CarbonDioxideAbove = nextState.AirCarbon[i + 1],
-				CarbonDioxideBelow = nextState.AirCarbon[i - 1],
-				Dust = nextState.Dust[i],
-				DustAbove = nextState.Dust[i + 1],
-				DustBelow = nextState.Dust[i - 1],
-				Velocity = nextState.AirVelocity[i],
-				VelocityAbove = nextState.AirVelocity[i + 1],
-				VelocityBelow = nextState.AirVelocity[i - 1],
-				Neighbors = staticState.Neighbors,
-				Destination = tempState.DestinationAirResolved[i],
-				DestinationAbove = tempState.DestinationAirResolved[i + 1],
-				DestinationBelow = tempState.DestinationAirResolved[i - 1],
-				Positions = staticState.SphericalPosition,
-				NeighborDistInverse = staticState.NeighborDistInverse,
-				CoriolisMultiplier = staticState.CoriolisMultiplier,
-				CoriolisTerm = coriolisTerm,
-				SecondsPerTick = worldData.SecondsPerTick,
-				TicksPerSecond = worldData.TicksPerSecond
-			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-		}
-
-		for (int i = 1; i < worldData.AirLayers - 1; i++)
-		{
-			int layer = worldData.AirLayer0 + i;
-			applyAdvectionAirJobHandles[i] = SimJob.Schedule(new ApplyAdvectionAirJob()
-			{
-				Advection = tempState.AdvectionAir[i],
-				Vapor = nextState.AirVapor[i],
-				Dust = nextState.Dust[i],
-				CarbonDioxide = nextState.AirCarbon[i],
-				Temperature = nextState.AirTemperaturePotential[i],
-				AirVelocity = nextState.AirVelocity[i],
-			}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-		}
-		for (int i = 1; i < worldData.AirLayers - 1; i++)
-		{
-			energyJobHandles[worldData.AirLayer0 + i] = applyAdvectionAirJobHandles[i];
-		}
 #endif
 
-#endregion
+		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new AdvectionAirJob()
+		{
+			Delta = staticState.GetSliceAir(tempState.AdvectionAir),
+			Temperature = nextState.AirTemperaturePotential,
+			AirMass = tempState.AirMass,
+			Vapor = nextState.AirVapor,
+			CarbonDioxide = nextState.AirCarbon,
+			Dust = nextState.Dust,
+			Velocity = nextState.AirVelocity,
+			NeighborsVert = staticState.NeighborsVert,
+			Destination = tempState.DestinationAirResolved,
+			Positions = staticState.SphericalPosition,
+			CoriolisMultiplier = staticState.CoriolisMultiplier,
+			CoriolisTerm = coriolisTerm,
+			SecondsPerTick = worldData.SecondsPerTick,
+			CellsPerLayer = staticState.Count
+		}, energyJobHandles[worldData.AirLayer0]);
 
-// Diffuse from last time step
-// Air, Water, Cloud
-#region Diffusion
+		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new ApplyAdvectionAirJob()
+		{
+			Advection = tempState.AdvectionAir,
+			Vapor = nextState.AirVapor,
+			Dust = nextState.Dust,
+			CarbonDioxide = nextState.AirCarbon,
+			Temperature = nextState.AirTemperaturePotential,
+			AirVelocity = nextState.AirVelocity,
+		}, energyJobHandles[worldData.AirLayer0]);
+
+		#endregion
+
+		// Diffuse from last time step
+		// Air, Water, Cloud
+		#region Diffusion
 
 		// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new DiffusionAirJob()
@@ -451,36 +420,39 @@ public class WorldSim {
 		}
 
 
-#endregion
+		#endregion
 
 		// Wind and currents move temperature and trace elements horizontally
 		// Air, Water, Cloud
 		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-#region Advection
+		#region Advection
 
+#if !LayerRefactor
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			int layer = worldData.WaterLayer0 + j;
 			energyJobHandles[layer] = NeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
 			{
 				Destination = tempState.DestinationWater[j],
-				Neighbors = staticState.Neighbors,
+				NeighborsVert = staticState.NeighborsVert,
 				Position = staticState.SphericalPosition,
 				Velocity = nextState.WaterVelocity[j],
 				Mass = nextState.WaterMass[j],
 				PlanetRadius = staticState.PlanetRadius,
 				SecondsPerTick = worldData.SecondsPerTick,
-				MaxWindMove = staticState.CellRadius * 0.9f,
+				CellsPerLayer = staticState.Count
 			}, energyJobHandles[layer]);
 		}
+
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
 			int layer = worldData.WaterLayer0 + j;
-			energyJobHandles[layer] = NeighborJob.Schedule(new ResolveAdvectionConflict()
+			energyJobHandles[layer] = NeighborJob.Schedule(new ResolveAdvectionConflictVert()
 			{
 				ResolvedDestination = tempState.DestinationWaterResolved[j],
 				Destination = tempState.DestinationWater[j],
-				ReverseNeighbors = staticState.ReverseNeighbors,
+				ReverseNeighborsVert = staticState.ReverseNeighbors,
+				CellsPerLayer = staticState.Count
 			}, energyJobHandles[layer]);
 		}
 
@@ -493,8 +465,7 @@ public class WorldSim {
 				{
 					Divergence = tempState.DivergenceWater[j],
 					Destination = tempState.DestinationWater[j],
-					Neighbors = staticState.Neighbors,
-					Mass = nextState.WaterMass[j],
+					CellsPerLayer = staticState.Count
 				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
 			}
 
@@ -514,7 +485,8 @@ public class WorldSim {
 					{
 						Pressure = tempState.DivergencePressureWater[i],
 						Divergence = tempState.DivergenceWater[i],
-						Neighbors = staticState.Neighbors
+						NeighborsVert = staticState.NeighborsVert,
+						CellsPerLayer = staticState.Count
 					};
 					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
 				}
@@ -529,6 +501,7 @@ public class WorldSim {
 					Pressure = tempState.DivergencePressureWater[i],
 					Neighbors = staticState.Neighbors,
 					Mass = nextState.WaterMass[i],
+					CellsPerLayer = staticState.Count
 				}, divergenceJobHandle);
 			}
 
@@ -539,6 +512,7 @@ public class WorldSim {
 				{
 					MassLeaving = tempState.WaterMassLeaving[i],
 					Destination = tempState.DestinationWaterResolved[i],
+					CellsPerLayer = staticState.Count
 				}, energyJobHandles[layer]);
 			}
 			for (int i = 1; i < worldData.WaterLayers - 1; i++)
@@ -549,7 +523,8 @@ public class WorldSim {
 					Destination = tempState.DestinationWaterResolved[i],
 					MassLeaving = tempState.WaterMassLeaving[i],
 					Mass = nextState.WaterMass[i],
-					Neighbors = staticState.Neighbors
+					NeighborsVert = staticState.NeighborsVert,
+					CellsPerLayer = staticState.Count
 				}, energyJobHandles[layer]);
 			}
 
@@ -559,14 +534,14 @@ public class WorldSim {
 				energyJobHandles[layer] = SimJob.Schedule(new UpdateDivergenceFreeVelocityJob()
 				{
 					Velocity = nextState.WaterVelocity[i],
-					Destination = tempState.DestinationWaterResolved[i],
+					DestinationVert = tempState.DestinationWaterResolved[i],
 					NeighborTangent = staticState.NeighborTangent,
 					Mass = nextState.WaterMass[i],
-					TicksPerSecond = worldData.TicksPerSecond
+					TicksPerSecond = worldData.TicksPerSecond,
+					CellsPerLayer = staticState.Count
 				}, energyJobHandles[layer]);
 			}
 		}
-
 
 
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
@@ -603,6 +578,7 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies(groundWaterJob,
 				JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1])));
 		}
+#endif
 
 		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new GetVectorDestCoordsJob()
 		{
@@ -613,6 +589,7 @@ public class WorldSim {
 			PlanetRadius = staticState.PlanetRadius,
 			SecondsPerTick = worldData.SecondsPerTick,
 			MaxWindMove = staticState.CellRadius * 0.9f,
+			CellsPerLayer = staticState.Count,
 		}, energyJobHandles[worldData.CloudLayer]);
 		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new AdvectionCloudJob()
 		{
@@ -974,10 +951,10 @@ public class WorldSim {
 			EmissivitySand = worldData.ThermalEmissivitySand,
 		}, lastJobHandle));
 
-		#endregion
+#endregion
 
 		// Calculate how much thermal radition is being emitted out of each layer
-		#region Thermal Radiation
+#region Thermal Radiation
 		JobHandle thermalOutJobHandle = default(JobHandle);
 
 		// ICE
@@ -1046,10 +1023,10 @@ public class WorldSim {
 				SecondsPerTick = worldData.SecondsPerTick
 			}, emissivityJobHandle));
 		}
-		#endregion
+#endregion
 
 
-		#region absorptivity
+#region absorptivity
 
 		solarInJobHandle = SimJob.Schedule(new CloudAlbedoJob()
 		{
@@ -1096,11 +1073,11 @@ public class WorldSim {
 			Count = staticState.Count
 		}, solarInJobHandle);
 
-		#endregion
+#endregion
 
 
 		// Follow the solar radiation down from the top of the atmosphere to ther terrain, and absorb some as it passes through each layer
-		#region Solar Radiation Absorbed
+#region Solar Radiation Absorbed
 
 		// process each vertical layer in order
 
@@ -1167,11 +1144,11 @@ public class WorldSim {
 			worldData = worldData,
 			SoilFertility = lastState.GroundCarbon,
 		}, solarInJobHandle);
-		#endregion
+#endregion
 
 
 		// Thermal radiation travels upwards, partially reflecting downwards (clouds), partially absorbed, and partially lost to space
-		#region Thermal Radiation Absorbed Up
+#region Thermal Radiation Absorbed Up
 
 		// transmit up from land
 		for (int j = 0; j < worldData.LayerCount; j++)
@@ -1663,7 +1640,7 @@ public class WorldSim {
 		ref SimSettings settings
 		)
 	{
-		#region State Change (Flux)
+#region State Change (Flux)
 
 		// surface water
 

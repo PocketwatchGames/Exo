@@ -5,11 +5,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Unity.Mathematics;
 using Unity.Collections;
+using UnityEngine;
 
 public struct StaticState {
 
 	public const int MaxNeighbors = 6;
-	public const int MaxLayerNeighbors = 8;
+	public const int MaxNeighborsVert = 8;
+	public const int NeighborUp = MaxNeighborsVert - 1;
+	public const int NeighborDown = MaxNeighborsVert - 2;
 
 	public int Count;
 	public float PlanetRadius;
@@ -20,6 +23,8 @@ public struct StaticState {
 	public NativeArray<float3> SphericalPosition;
 	public NativeArray<int> Neighbors;
 	public NativeArray<int> ReverseNeighbors;
+	public NativeArray<int> NeighborsVert;
+	public NativeArray<int> ReverseNeighborsVert;
 	public NativeArray<float> NeighborDistInverse;
 	public NativeArray<float> NeighborDist;
 	public NativeArray<float3> NeighborDir;
@@ -39,6 +44,8 @@ public struct StaticState {
 		CoriolisMultiplier = new NativeArray<float>(Count, Allocator.Persistent);
 		Neighbors = new NativeArray<int>(Count * MaxNeighbors, Allocator.Persistent);
 		ReverseNeighbors = new NativeArray<int>(Count * MaxNeighbors, Allocator.Persistent);
+		NeighborsVert = new NativeArray<int>(Count * MaxNeighborsVert * worldData.AirLayers, Allocator.Persistent);
+		ReverseNeighborsVert = new NativeArray<int>(Count * MaxNeighborsVert * worldData.AirLayers, Allocator.Persistent);
 		NeighborDir = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborDistInverse = new NativeArray<float>(Count * MaxNeighbors, Allocator.Persistent);
 		NeighborTangent = new NativeArray<float3>(Count * MaxNeighbors, Allocator.Persistent);
@@ -126,8 +133,103 @@ public struct StaticState {
 						ReverseNeighbors[i] = nIndex * MaxNeighbors + j;
 					}
 				}
+				Debug.Assert(Neighbors[ReverseNeighbors[i]] == cellIndex);
 			}
 		}
+
+		for (int i = 0; i < NeighborsVert.Length; i++)
+		{
+			int cellIndex = i / MaxNeighborsVert;
+			int columnIndex = cellIndex % Count;
+			int n = i - cellIndex * MaxNeighborsVert;
+			int layer = cellIndex / Count;
+			if (n == NeighborUp)
+			{
+				if (layer == worldData.AirLayers - 1)
+				{
+					NeighborsVert[i] = -1;
+				}
+				else
+				{
+					NeighborsVert[i] = cellIndex + Count;
+				}
+			}
+			else if (n == NeighborDown)
+			{
+				if (layer == 0)
+				{
+					NeighborsVert[i] = -1;
+				}
+				else
+				{
+					NeighborsVert[i] = cellIndex - Count;
+				}
+			}
+			else
+			{
+				int neighbor = Neighbors[columnIndex * MaxNeighbors + n];
+				if (neighbor >= 0)
+				{
+					NeighborsVert[i] = neighbor + layer * Count;
+				}
+				else
+				{
+					NeighborsVert[i] = -1;
+				}
+
+			}
+			Debug.Assert(NeighborsVert[i] < Count * worldData.AirLayers);
+		}
+
+		for (int i = 0; i < NeighborsVert.Length; i++)
+		{
+			int cellIndex = i / MaxNeighborsVert;
+			int columnIndex = cellIndex % Count;
+			int n = i - cellIndex * MaxNeighborsVert;
+			int layer = cellIndex / Count;
+			if (n == NeighborUp)
+			{
+				if (layer == worldData.AirLayers - 1)
+				{
+					ReverseNeighborsVert[i] = -1;
+				}
+				else
+				{
+					ReverseNeighborsVert[i] = i + Count * MaxNeighborsVert - 1;
+				}
+			}
+			else if (n == NeighborDown)
+			{
+				if (layer == 0)
+				{
+					ReverseNeighborsVert[i] = -1;
+				}
+				else
+				{
+					ReverseNeighborsVert[i] = i - Count * MaxNeighborsVert + 1;
+				}
+			}
+			else
+			{
+				int neighbor = Neighbors[columnIndex * MaxNeighbors + n];
+				if (neighbor >= 0)
+				{
+					int reverseNeighbor = ReverseNeighbors[columnIndex * MaxNeighbors + n];
+					ReverseNeighborsVert[i] = (reverseNeighbor / MaxNeighbors) * MaxNeighborsVert + reverseNeighbor % MaxNeighbors + layer * Count * MaxNeighborsVert;
+				}
+				else
+				{
+					ReverseNeighborsVert[i] = -1;
+				}
+
+			}
+			if (ReverseNeighborsVert[i] >= 0 && NeighborsVert[ReverseNeighborsVert[i]] != cellIndex)
+			{
+				int j = 0;
+			}
+			Debug.Assert(ReverseNeighborsVert[i] < 0 || NeighborsVert[ReverseNeighborsVert[i]] == cellIndex);
+		}
+
 
 		SortedDictionary<float, SortedDictionary<float, int>> vertsByCoord = new SortedDictionary<float, SortedDictionary<float, int>>();
 		for (int i = 0; i < Coordinate.Length; i++)
@@ -152,6 +254,8 @@ public struct StaticState {
 	{
 		Neighbors.Dispose();
 		ReverseNeighbors.Dispose();
+		NeighborsVert.Dispose();
+		ReverseNeighborsVert.Dispose();
 		NeighborDir.Dispose();
 		NeighborDist.Dispose();
 		NeighborDistInverse.Dispose();
@@ -181,6 +285,10 @@ public struct StaticState {
 	{
 		return new NativeSlice<T>(arr, Count, (_worldData.AirLayers - 2) * Count);
 	}
+	public NativeSlice<T> GetSliceAirNeighbors<T>(NativeArray<T> arr) where T : struct
+	{
+		return new NativeSlice<T>(arr, Count * StaticState.MaxNeighborsVert, (_worldData.AirLayers - 2) * Count * StaticState.MaxNeighborsVert);
+	}
 	public NativeSlice<T> GetSliceLayer<T>(NativeArray<T> arr, int layer) where T : struct
 	{
 		return new NativeSlice<T>(arr, layer * Count, Count);
@@ -188,5 +296,33 @@ public struct StaticState {
 	public NativeSlice<T> GetSliceLayers<T>(NativeArray<T> arr, int layer, int layerCount) where T : struct
 	{
 		return new NativeSlice<T>(arr, layer * Count, Count * layerCount);
+	}
+
+	public static int GetCellIndexFromEdgeVert(int index)
+	{
+		return index / MaxNeighborsVert;
+	}
+
+
+	public static int GetNextHorizontalNeighborVert(NativeArray<int> neighbors, int edgeIndex)
+	{
+		int cellIndex = edgeIndex / MaxNeighborsVert;
+		int nIndex = neighbors[cellIndex * MaxNeighborsVert + (edgeIndex + 1) % StaticState.MaxNeighbors];
+		if (nIndex < 0)
+		{
+			nIndex = neighbors[cellIndex * MaxNeighborsVert + (edgeIndex + 2) % StaticState.MaxNeighbors];
+		}
+		return nIndex;
+	}
+
+	public static int GetPrevHorizontalNeighborVert(NativeArray<int> neighbors, int edgeIndex)
+	{
+		int cellIndex = edgeIndex / MaxNeighborsVert;
+		int nIndex = neighbors[cellIndex * MaxNeighborsVert + (edgeIndex + StaticState.MaxNeighbors - 1) % StaticState.MaxNeighbors];
+		if (nIndex < 0)
+		{
+			nIndex = neighbors[cellIndex * MaxNeighborsVert + (edgeIndex + StaticState.MaxNeighbors - 2) % StaticState.MaxNeighbors];
+		}
+		return nIndex;
 	}
 }

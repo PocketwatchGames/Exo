@@ -62,14 +62,17 @@ public struct AdvectionAirJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeSlice<float3> Positions;
 	[ReadOnly] public NativeSlice<float> Destination;
-	[ReadOnly] public NativeSlice<int> Neighbors;
-	[ReadOnly] public NativeArray<float> NeighborDistInverse;
+	[ReadOnly] public NativeSlice<int> NeighborsVert;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float TicksPerSecond;
+	[ReadOnly] public int CellsPerLayer;
 	public void Execute(int i)
 	{
+		Debug.Assert(CellsPerLayer > 0);
+		int columnIndex = i % CellsPerLayer;
+		int fullRangeIndex = i + CellsPerLayer;
+
 		float newTemperature = 0;
 		float newWaterVapor = 0;
 		float newCO2 = 0;
@@ -79,28 +82,28 @@ public struct AdvectionAirJob : IJobParallelFor {
 		// TODO: remove this when we have incompressibility
 		float totalMass = 0;
 
-		float massRemaining = AirMass[i];
+		float massRemaining = AirMass[fullRangeIndex];
 		for (int j=0;j<StaticState.MaxNeighbors;j++)
 		{
-			massRemaining -= math.max(0, Destination[i * StaticState.MaxNeighbors + j]);
+			massRemaining -= math.max(0, Destination[fullRangeIndex * StaticState.MaxNeighbors + j]);
 		}
 
-		float remaining = massRemaining / AirMass[i]; 
+		float remaining = massRemaining / AirMass[fullRangeIndex]; 
 		totalMass += massRemaining;
-		newTemperature += Temperature[i] * massRemaining;
-		newVelocity += Velocity[i] * massRemaining;
-		newWaterVapor += Vapor[i] * remaining;
-		newCO2 += CarbonDioxide[i] * remaining;
-		newDust += Dust[i] * remaining;
+		newTemperature += Temperature[fullRangeIndex] * massRemaining;
+		newVelocity += Velocity[fullRangeIndex] * massRemaining;
+		newWaterVapor += Vapor[fullRangeIndex] * remaining;
+		newCO2 += CarbonDioxide[fullRangeIndex] * remaining;
+		newDust += Dust[fullRangeIndex] * remaining;
 
 		// TODO: subtract vertical motion first before applying horizontal motion (right now it adds up to more than 1)
 		// Wait, does it? is this comment outdated?
-		for (int j = 0; j < StaticState.MaxNeighbors; j++)
+		for (int j = 0; j < StaticState.MaxNeighborsVert; j++)
 		{
-			int n = Neighbors[i * StaticState.MaxNeighbors + j];
+			int n = NeighborsVert[fullRangeIndex * StaticState.MaxNeighborsVert + j];
 			if (n >= 0)
 			{
-				float incomingMass = math.max(0, -Destination[i * StaticState.MaxNeighbors + j]);
+				float incomingMass = math.max(0, -Destination[fullRangeIndex * StaticState.MaxNeighborsVert + j]);
 				float incoming = incomingMass / AirMass[n];
 				totalMass += incomingMass;
 				newTemperature += Temperature[n] * incomingMass;
@@ -109,14 +112,18 @@ public struct AdvectionAirJob : IJobParallelFor {
 				newDust += Dust[n] * incoming;
 
 				// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
-				var deflectedVelocity = Velocity[n] + math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
+				var deflectedVelocity = Velocity[n];
 
-				// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-				var deflectedVertical = math.dot(deflectedVelocity, Positions[n]);
-				deflectedVelocity -= Positions[n] * deflectedVertical;
-				deflectedVelocity -= Positions[i] * math.dot(Positions[i], deflectedVelocity);
-				deflectedVelocity += deflectedVertical * Positions[i];
+				if (j != StaticState.NeighborDown && j != StaticState.NeighborUp) {
+					int nColumnIndex = n % CellsPerLayer;
+					deflectedVelocity += math.cross(Positions[nColumnIndex], Velocity[n]) * CoriolisMultiplier[nColumnIndex] * CoriolisTerm * SecondsPerTick;
 
+					// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+					var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
+					deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
+					deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
+					deflectedVelocity += deflectedVertical * Positions[columnIndex];
+				}
 
 
 				// adjust vertical wind velocity when we hit a mountain or go down a valley
@@ -141,8 +148,8 @@ public struct AdvectionAirJob : IJobParallelFor {
 		else
 		{
 			// TODO: remove once we have incompressibility
-			newTemperature = Temperature[i];
-			newVelocity = Velocity[i];
+			newTemperature = Temperature[fullRangeIndex];
+			newVelocity = Velocity[fullRangeIndex];
 		}
 
 		Delta[i] = new DiffusionAir()

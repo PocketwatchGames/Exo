@@ -280,8 +280,8 @@ public struct TempState {
 		AirMassLeaving = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		DiffusionAir = new NativeArray<DiffusionAir>(count * worldData.AirLayers, Allocator.Persistent);
 		AdvectionAir = new NativeArray<DiffusionAir>(count * worldData.AirLayers, Allocator.Persistent);
-		DestinationAir = new NativeArray<float>(count * worldData.AirLayers * StaticState.MaxNeighbors, Allocator.Persistent);
-		DestinationAirResolved = new NativeArray<float>(count * worldData.AirLayers * StaticState.MaxNeighbors, Allocator.Persistent);
+		DestinationAir = new NativeArray<float>(count * worldData.AirLayers * StaticState.MaxNeighborsVert, Allocator.Persistent);
+		DestinationAirResolved = new NativeArray<float>(count * worldData.AirLayers * StaticState.MaxNeighborsVert, Allocator.Persistent);
 		DivergencePressureAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		AirAcceleration = new NativeArray<float3>(count * worldData.AirLayers, Allocator.Persistent);
 		AbsorptivitySolar = new NativeArray<SolarAbsorptivity>(count * worldData.AirLayers, Allocator.Persistent);
