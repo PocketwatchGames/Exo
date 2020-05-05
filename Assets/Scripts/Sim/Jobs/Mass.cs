@@ -7,41 +7,49 @@ using UnityEngine;
 
 [BurstCompile]
 public struct UpdateMassWaterJob : IJobParallelFor {
-	public NativeArray<float> WaterMass;
-	public NativeArray<float> SaltMass;
-	public NativeArray<float> CarbonMass;
-	public NativeArray<float> WaterTemperature;
+	public NativeSlice<float> WaterMass;
+	public NativeSlice<float> SaltMass;
+	public NativeSlice<float> CarbonMass;
+	public NativeSlice<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> SoilRespiration;
 	[ReadOnly] public NativeArray<float> SaltPlume;
 	[ReadOnly] public NativeArray<float> SaltPlumeTemperature;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float> LastWaterMass;
 	[ReadOnly] public NativeArray<float> LastCarbonMass;
-	[ReadOnly] public NativeArray<float> DownLastWaterMass;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
-	[ReadOnly] public NativeArray<float> WaterCoverageBelow;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-		WaterMass[i] = LastWaterMass[i];
-		SaltMass[i] = LastSaltMass[i];
-		CarbonMass[i] = LastCarbonMass[i] + SoilRespiration[i] * math.max(0, WaterCoverage[i] - WaterCoverageBelow[i]);
-		if (DownLastWaterMass[i] == 0 && LastWaterMass[i] > 0)
+		int columnIndex = i % Count;
+		int index = i + Count;
+		int downIndex = i;
+		float waterMass = LastWaterMass[index];
+		float saltMass = LastSaltMass[index];
+		WaterMass[i] = waterMass;
+		SaltMass[i] = saltMass;
+		CarbonMass[i] = LastCarbonMass[index] + SoilRespiration[columnIndex] * math.max(0, WaterCoverage[index] - WaterCoverage[downIndex]);
+		if (LastWaterMass[downIndex] == 0 && waterMass > 0)
 		{
-			WaterTemperature[i] = (WaterTemperature[i] * (LastWaterMass[i] * WorldData.SpecificHeatWater + LastSaltMass[i] * WorldData.SpecificHeatSalt) + SaltPlumeTemperature[i] * SaltPlume[i] * WorldData.SpecificHeatSalt) / (LastWaterMass[i] * WorldData.SpecificHeatWater + (LastSaltMass[i] + SaltPlume[i]) * WorldData.SpecificHeatSalt);
-			SaltMass[i] += SaltPlume[i];
+			float saltPlume = SaltPlume[columnIndex];
+			WaterTemperature[i] = 
+				(WaterTemperature[i] * (waterMass * WorldData.SpecificHeatWater + saltMass * WorldData.SpecificHeatSalt) + 
+				SaltPlumeTemperature[columnIndex] * saltPlume * WorldData.SpecificHeatSalt)
+				/ (waterMass * WorldData.SpecificHeatWater + (saltMass + saltPlume) * WorldData.SpecificHeatSalt);
+			SaltMass[i] += saltPlume;
 		}
 	}
 }
 [BurstCompile]
 public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
-	public NativeArray<float> WaterTemperature;
-	public NativeArray<float> WaterMass;
-	public NativeArray<float> SaltMass;
-	public NativeArray<float> PlanktonMass;
-	public NativeArray<float> PlanktonGlucose;
-	public NativeArray<float> CarbonMass;
-	[ReadOnly] public NativeArray<float> LastPlanktonMass;
-	[ReadOnly] public NativeArray<float> LastPlanktonGlucose;
+	public NativeSlice<float> WaterTemperature;
+	public NativeSlice<float> WaterMass;
+	public NativeSlice<float> SaltMass;
+	public NativeSlice<float> PlanktonMass;
+	public NativeSlice<float> PlanktonGlucose;
+	public NativeSlice<float> CarbonMass;
+	[ReadOnly] public NativeSlice<float> LastPlanktonMass;
+	[ReadOnly] public NativeSlice<float> LastPlanktonGlucose;
 	[ReadOnly] public NativeArray<float> Evaporation;
 	[ReadOnly] public NativeArray<float> IceMelted;
 	[ReadOnly] public NativeArray<float> Precipitation;
@@ -97,9 +105,9 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 
 [BurstCompile]
 public struct UpdateMassCondensationGroundJob : IJobParallelFor {
-	public NativeArray<float> SurfaceWaterMass;
-	public NativeArray<float> SurfaceWaterTemperature;
-	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
+	public NativeSlice<float> SurfaceWaterMass;
+	public NativeSlice<float> SurfaceWaterTemperature;
+	[ReadOnly] public NativeSlice<float> SurfaceSaltMass;
 	[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> GroundCondensation;
 	[ReadOnly] public NativeSlice<float> LayerMiddle;
@@ -234,13 +242,13 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 	public NativeSlice<float> CarbonDioxide;
 	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeArray<float> EvaporationWater;
-	[ReadOnly] public NativeArray<float> EvaporationTemperatureWater;
+	[ReadOnly] public NativeSlice<float> EvaporationTemperatureWater;
 	[ReadOnly] public NativeArray<float> EvaporationFlora;
 	[ReadOnly] public NativeArray<float> EvaporationTemperatureFlora;
 	[ReadOnly] public NativeArray<float> DustEjected;
 	[ReadOnly] public NativeArray<float> AirCarbonDelta;
 	[ReadOnly] public NativeArray<float> SoilRespiration;
-	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> Elevation;
 	public void Execute(int i)
 	{
@@ -311,7 +319,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastMagmaMass;
 	[ReadOnly] public NativeArray<float> LastCrustDepth;
 	[ReadOnly] public NativeArray<float> GroundWaterConsumed;
-	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeSlice<float> DustSettled;
 	[ReadOnly] public NativeArray<float> LavaCrystalized;
 	[ReadOnly] public NativeArray<float> LavaEjected;
@@ -377,11 +385,11 @@ public struct UpdateFloraJob : IJobParallelFor {
 [BurstCompile]
 public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 	public NativeSlice<float> AirCarbon;
-	public NativeArray<float> WaterCarbon;
-	[ReadOnly] public NativeArray<float> WaterMass;
-	[ReadOnly] public NativeArray<float> SaltMass;
+	public NativeSlice<float> WaterCarbon;
+	[ReadOnly] public NativeSlice<float> WaterMass;
+	[ReadOnly] public NativeSlice<float> SaltMass;
 	[ReadOnly] public NativeSlice<float> AirMass;
-	[ReadOnly] public NativeArray<float> WaterDepth;
+	[ReadOnly] public NativeSlice<float> WaterDepth;
 	[ReadOnly] public float WaterAirCarbonDiffusionCoefficient;
 	[ReadOnly] public float WaterAirCarbonDiffusionDepth;
 	public void Execute(int i)

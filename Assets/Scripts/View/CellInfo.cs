@@ -227,13 +227,13 @@ public static class CellInfo {
 		{
 			s.AppendFormat("ICE: 0 m");
 		}
-		float depth = dependent.WaterLayerDepth[1][ActiveCellIndex];
+		float depth = dependent.WaterLayerDepth[staticState.GetLayerIndexWater(worldData.BottomWaterLayer, ActiveCellIndex)];
 		var nfi = new NumberFormatInfo() { NumberDecimalDigits = (depth >= 1) ? 0 : 3 };
 		s.AppendFormat(nfi, "\nDEPTH: {0:N} m", depth);
 
-		if (state.WaterMass[worldData.WaterLayers - 2][ActiveCellIndex] > 0)
+		if (state.WaterMass[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, ActiveCellIndex)] > 0)
 		{
-			s.AppendFormat(nfi, "\nPLANKTON: {0:N2} kg", state.PlanktonMass[worldData.WaterLayers - 2][ActiveCellIndex]);
+			s.AppendFormat(nfi, "\nPLANKTON: {0:N2} kg", state.PlanktonMass[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, ActiveCellIndex)]);
 		}
 		s.AppendLine();
 
@@ -241,24 +241,25 @@ public static class CellInfo {
 		for (int i = worldData.WaterLayers - 2; i >= 1; i--)
 		{
 			int layerIndex = (worldData.WaterLayers - 2 - i);
-			if (state.WaterMass[i][ActiveCellIndex] > 0)
+			int index = staticState.GetLayerIndexWater(i, ActiveCellIndex);
+			if (state.WaterMass[index] > 0)
 			{
 				var current = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.WaterVelocity[i][ActiveCellIndex]);
 				s.AppendFormat("\nLAYER {0} | TEMP: {1} SALT: {2:P4}",
 					layerIndex,
-					GetTemperatureString(state.WaterTemperature[i][ActiveCellIndex], ActiveTemperatureUnits, 2),
-					display.Salinity[i][ActiveCellIndex]);
+					GetTemperatureString(state.WaterTemperature[index], ActiveTemperatureUnits, 2),
+					display.Salinity[index]);
 				s.AppendFormat("\nVEL: ({0:N3}, {1:N3}, {2:N3})",
 					current.x, current.y, current.z);
 
 				s.AppendFormat("\nCO2: {0:N3}",
-					state.WaterCarbon[i][ActiveCellIndex]);
+					state.WaterCarbon[index]);
 				s.AppendFormat("\nP: {0} D: {1}",
-					dependent.WaterPressure[i][ActiveCellIndex],
-					Atmosphere.GetWaterDensity(display.Salinity[i][ActiveCellIndex], state.WaterTemperature[i][ActiveCellIndex]));
+					dependent.WaterPressure[index],
+					Atmosphere.GetWaterDensity(display.Salinity[index], state.WaterTemperature[index]));
 				s.AppendFormat(nfi, "\nDEPTH: {0:N} m HEIGHT: {1:N} m",
-					dependent.WaterLayerDepth[i][ActiveCellIndex],
-					dependent.WaterLayerHeight[i][ActiveCellIndex]
+					dependent.WaterLayerDepth[index],
+					dependent.WaterLayerHeight[index]
 					);
 				s.AppendLine();
 			}
@@ -345,8 +346,8 @@ public static class CellInfo {
 		s.AppendFormat("Temperature: {0}\n", state.FloraTemperature[i]);
 
 		s.AppendFormat("\nPLANKTON\n");
-		s.AppendFormat("Mass: {0}\n", state.PlanktonMass[worldData.SurfaceWaterLayer][i]);
-		s.AppendFormat("Glucose: {0}\n", state.PlanktonGlucose[worldData.SurfaceWaterLayer][i]);
+		s.AppendFormat("Mass: {0}\n", state.PlanktonMass[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, i)]);
+		s.AppendFormat("Glucose: {0}\n", state.PlanktonGlucose[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, i)]);
 
 		s.AppendFormat("\nCLOUD\n");
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);
@@ -364,12 +365,13 @@ public static class CellInfo {
 
 		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
 		{
+			int index = staticState.GetLayerIndexWater(j, i);
 			s.AppendFormat("\nWATER LAYER {0}\n", j);
-			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[j][i]);
-			s.AppendFormat("SaltMass: {0}\n", state.SaltMass[j][i]);
-			s.AppendFormat("Temperature: {0}\n", state.WaterTemperature[j][i]);
-			s.AppendFormat("Carbon: {0}\n", state.WaterCarbon[j][i]);
-			s.AppendFormat("Velocity: {0}\n", state.WaterVelocity[j][i]);
+			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[index]);
+			s.AppendFormat("SaltMass: {0}\n", state.SaltMass[index]);
+			s.AppendFormat("Temperature: {0}\n", state.WaterTemperature[index]);
+			s.AppendFormat("Carbon: {0}\n", state.WaterCarbon[index]);
+			s.AppendFormat("Velocity: {0}\n", state.WaterVelocity[index]);
 		}
 		Debug.Log(s);
 	}
@@ -378,7 +380,7 @@ public static class CellInfo {
 		StringBuilder s = new StringBuilder();
 		s.AppendFormat("{0} Index: {1}\n", title, i);
 		s.AppendFormat("Surface Elevation: {0}\n", dependent.AirLayerElevation[worldData.SurfaceAirLayer * staticState.Count + i]);
-		s.AppendFormat("Water Depth: {0}\n", dependent.WaterLayerDepth[1][i]);
+		s.AppendFormat("Water Depth: {0}\n", dependent.WaterLayerDepth[staticState.GetLayerIndexWater(worldData.BottomWaterLayer, i)]);
 		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
 		s.AppendFormat("Flora Coverage: {0}\n", dependent.FloraCoverage[i]);
 		s.AppendFormat("Ice Terrain SA: {0}\n", dependent.SurfaceAreaIceTerrain[i]);
@@ -388,7 +390,8 @@ public static class CellInfo {
 		s.AppendFormat("Cloud Elevation: {0}\n", dependent.CloudElevation[i]);
 		for (int j = 1; j < worldData.WaterLayers - 1; j++)
 		{
-			s.AppendFormat("Water Coverage: {0}\n", dependent.WaterCoverage[j][i]);
+			int index = staticState.GetLayerIndexWater(j, i);
+			s.AppendFormat("Water Coverage: {0}\n", dependent.WaterCoverage[index]);
 		}
 		for (int j = 1; j < worldData.AirLayers - 1; j++)
 		{

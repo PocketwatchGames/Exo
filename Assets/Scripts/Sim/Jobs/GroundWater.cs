@@ -127,16 +127,17 @@ public struct GroundWaterConductionJob : IJobParallelFor {
 public struct GroundWaterAbsorptionJob : IJobParallelFor {
 	public NativeArray<float> GroundWater;
 	public NativeArray<float> GroundWaterTemperature;
-	public NativeArray<float> WaterMass;
-	public NativeArray<float> WaterTemperature;
+	public NativeSlice<float> WaterMass;
+	public NativeSlice<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> LastGroundWater;
 	[ReadOnly] public NativeArray<float> LastGroundWaterTemperature;
-	[ReadOnly] public NativeArray<float> WaterBelow;
-	[ReadOnly] public NativeArray<float> SaltMass;
+	[ReadOnly] public NativeSlice<float> SaltMass;
+	[ReadOnly] public NativeSlice<float> WaterCoverageBelow;
 	[ReadOnly] public float GroundWaterAbsorptionRate;
 	[ReadOnly] public float GroundWaterMax;
 	[ReadOnly] public float GroundWaterMaxInverse;
 	[ReadOnly] public bool IsTop;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 		float waterMass = WaterMass[i];
@@ -148,11 +149,10 @@ public struct GroundWaterAbsorptionJob : IJobParallelFor {
 
 #if !DISABLE_GROUND_WATER_ABSORPTION
 		// Check if we are the floor layer
-		// TODO: if we put all water layers into one large array, we can access any layer at any time (but may sacrifice ability to process different layers in parallel?)
 		// TODO: we can probably find a way to shortcut all of this if a large number of our cells are fully saturated
 		if (newGroundWater > GroundWaterMax)
 		{
-			if ((waterMass > 0 || IsTop) && WaterBelow[i] == 0)
+			if ((waterMass > 0 || IsTop) && WaterCoverageBelow[i] == 0)
 			{
 				float waterEmerged = newGroundWater - GroundWaterMax;
 				newWaterTemperature = (newWaterTemperature * (newWaterMass * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt) + newGroundWaterTemperature * waterEmerged * WorldData.SpecificHeatWater) / ((newWaterMass + waterEmerged) * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt);
@@ -160,7 +160,7 @@ public struct GroundWaterAbsorptionJob : IJobParallelFor {
 				newGroundWater = GroundWaterMax;
 			}
 		}
-		else if (waterMass > 0 && WaterBelow[i] == 0)
+		else if (waterMass > 0 && WaterCoverageBelow[i] == 0)
 		{
 			float groundWaterAbsorbed = math.min(waterMass, math.max(0, (1.0f - lastGroundWater * GroundWaterMaxInverse) * GroundWaterAbsorptionRate));
 

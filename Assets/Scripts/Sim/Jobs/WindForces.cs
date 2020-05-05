@@ -3,13 +3,13 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
-
+using UnityEngine;
 
 [BurstCompile]
 public struct AirTerrainFrictionJob : IJobParallelFor {
 	public NativeArray<float> Force;
 	[ReadOnly] public NativeArray<float> Roughness;
-	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> FloraCoverage;
 	[ReadOnly] public float IceFriction;
@@ -143,12 +143,12 @@ public struct AccelerationAirJob : IJobParallelFor {
 [BurstCompile]
 public struct WaterSurfaceFrictionJob : IJobParallelFor {
 	public NativeArray<float3> Force;
-	[ReadOnly] public NativeArray<float3> Current;
+	[ReadOnly] public NativeSlice<float3> Current;
 	[ReadOnly] public NativeSlice<float3> AirVelocityUp;
 	[ReadOnly] public NativeSlice<float3> AirVelocityDown;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
-	[ReadOnly] public NativeArray<float> LayerHeight;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
 	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float FrictionCoefficientUp;
 	[ReadOnly] public float FrictionCoefficientDown;
@@ -176,45 +176,42 @@ public struct WaterSurfaceFrictionJob : IJobParallelFor {
 
 [BurstCompile]
 public struct AccelerationWaterJob : IJobParallelFor {
-	public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> LastVelocity;
-	[ReadOnly] public NativeArray<float3> Friction;
+	public NativeSlice<float3> Velocity;
+	[ReadOnly] public NativeSlice<float3> LastVelocity;
+	[ReadOnly] public NativeSlice<float3> Friction;
+	[ReadOnly] public NativeSlice<float> WaterDensity;
+	[ReadOnly] public NativeSlice<float> WaterPressure;
+	[ReadOnly] public NativeSlice<float> LayerDepth;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float3> NeighborDiffInverse;
 	[ReadOnly] public NativeArray<float3> Positions;
-	[ReadOnly] public NativeArray<float> WaterDensity;
-	[ReadOnly] public NativeArray<float> WaterPressure;
-	[ReadOnly] public NativeArray<float> LayerDepth;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<float> UpLayerDepth;
-	[ReadOnly] public NativeArray<float> UpLayerHeight;
-	[ReadOnly] public NativeArray<float> UpWaterDensity;
-	[ReadOnly] public NativeArray<float> UpWaterPressure;
-	[ReadOnly] public NativeArray<float> DownLayerDepth;
-	[ReadOnly] public NativeArray<float> DownLayerHeight;
-	[ReadOnly] public NativeArray<float> DownWaterDensity;
-	[ReadOnly] public NativeArray<float> DownWaterPressure;
-	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float Gravity;
-	[ReadOnly] public float FrictionCoefficient;
 	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public int Count;
+	[ReadOnly] public int LayerCount;
 	public void Execute(int i)
 	{
+		Debug.Assert(Count > 0 && LayerCount > 0);
+		int layerIndex = i / Count;
+		int columnIndex = i - layerIndex * Count;
 		var density = WaterDensity[i];
 		if (density > 0)
 		{
 			float3 pressureGradient = 0;
-			var pos = Positions[i];
-			float midDepthElevation = SurfaceElevation[i] - (LayerDepth[i] - LayerHeight[i] / 2);
+			var pos = Positions[columnIndex];
+			float midDepthElevation = SurfaceElevation[columnIndex] - (LayerDepth[i] - LayerHeight[i] / 2);
 			float pressure = WaterPressure[i];
 			for (int j = 0; j < 6; j++)
 			{
-				int neighborIndex = i * 6 + j;
-				var n = Neighbors[neighborIndex];
-				if (n >= 0 && WaterDensity[n] > 0)
+				int neighborIndex = columnIndex * 6 + j;
+				int nColumnIndex = Neighbors[neighborIndex];
+				int nCellIndex = nColumnIndex + layerIndex * Count;
+				if (nColumnIndex >= 0 && WaterDensity[nCellIndex] > 0)
 				{
-					float neighborElevationAtPressure = SurfaceElevation[n] - Atmosphere.GetDepthAtPressure(pressure, WaterPressure[n], LayerDepth[n] - LayerHeight[n] / 2, WaterDensity[n], Gravity);
+					float neighborElevationAtPressure = SurfaceElevation[nColumnIndex] - Atmosphere.GetDepthAtPressure(pressure, WaterPressure[nCellIndex], LayerDepth[nCellIndex] - LayerHeight[nCellIndex] / 2, WaterDensity[nCellIndex], Gravity);
 					pressureGradient += NeighborDiffInverse[neighborIndex] * (neighborElevationAtPressure - midDepthElevation);
 				}
 			}
@@ -229,7 +226,8 @@ public struct AccelerationWaterJob : IJobParallelFor {
 			//	{
 			//		Force[i] += pos * Gravity * (1 - UpWaterDensity[i] / density)/* / (LayerHeight[i] + UpLayerHeight[i]) * 0.5f*/;
 			//	}
-			Velocity[i] = LastVelocity[i] + (force + Friction[i] * FrictionCoefficient) * SecondsPerTick;
+			float frictionCoefficient = (layerIndex == LayerCount - 1) ? 1 : 0;
+			Velocity[i] = LastVelocity[i] + (force + Friction[i] * frictionCoefficient) * SecondsPerTick;
 		}
 
 	}

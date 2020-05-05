@@ -4,11 +4,12 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
-
+using UnityEngine;
 
 public struct DisplayState {
 	public static JobHelper DisplayJob;
 	public static JobHelper DisplayJobAir;
+	public static JobHelper DisplayJobWater;
 
 	public float SolarRadiation;
 	public float GeothermalRadiation;
@@ -85,10 +86,10 @@ public struct DisplayState {
 	public NativeArray<SolarAbsorptivity> AbsorptionSolar;
 	public NativeArray<ThermalAbsorptivity> AbsorptionThermal;
 	public NativeArray<float> LatentHeatDelta;
-	public NativeArray<float>[] EnthalpyWater;
-	public NativeArray<float>[] Salinity;
-	public NativeArray<float>[] WaterCarbonDioxidePercent;
-	public NativeArray<float>[] DivergenceWater;
+	public NativeArray<float> EnthalpyWater;
+	public NativeArray<float> Salinity;
+	public NativeArray<float> WaterCarbonDioxidePercent;
+	public NativeArray<float> DivergenceWater;
 	public NativeArray<float>[] ConductionDelta;
 
 	private bool _initialized;
@@ -117,17 +118,10 @@ public struct DisplayState {
 		CondensationGround = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		DustMass = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 
-		WaterCarbonDioxidePercent = new NativeArray<float>[worldData.WaterLayers];
-		Salinity = new NativeArray<float>[worldData.WaterLayers];
-		EnthalpyWater = new NativeArray<float>[worldData.WaterLayers];
-		DivergenceWater = new NativeArray<float>[worldData.WaterLayers];
-		for (int i = 0; i < worldData.WaterLayers; i++)
-		{
-			WaterCarbonDioxidePercent[i] = new NativeArray<float>(count, Allocator.Persistent);
-			Salinity[i] = new NativeArray<float>(count, Allocator.Persistent);
-			EnthalpyWater[i] = new NativeArray<float>(count, Allocator.Persistent);
-			DivergenceWater[i] = new NativeArray<float>(count, Allocator.Persistent);
-		}
+		WaterCarbonDioxidePercent = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		Salinity = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		EnthalpyWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		DivergenceWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 
 		ConductionDelta = new NativeArray<float>[worldData.LayerCount];
 		for (int i = 0; i < worldData.LayerCount; i++)
@@ -168,13 +162,11 @@ public struct DisplayState {
 
 		LatentHeatDelta.Dispose();
 
-		for (int i = 0; i < Salinity.Length; i++)
-		{
-			WaterCarbonDioxidePercent[i].Dispose();
-			Salinity[i].Dispose();
-			EnthalpyWater[i].Dispose();
-			DivergenceWater[i].Dispose();
-		}
+		WaterCarbonDioxidePercent.Dispose();
+		Salinity.Dispose();
+		EnthalpyWater.Dispose();
+		DivergenceWater.Dispose();
+
 		for (int i = 0; i < ConductionDelta.Length; i++)
 		{
 			ConductionDelta[i].Dispose();
@@ -195,6 +187,7 @@ public struct DisplayState {
 		{
 			DisplayJob = new JobHelper(staticState.Count);
 			DisplayJobAir = new JobHelper(staticState.Count * (worldData.AirLayers - 2));
+			DisplayJobWater = new JobHelper(staticState.Count * (worldData.WaterLayers - 2));
 		}
 
 		JobHandle initDisplayAirHandle = default(JobHandle);
@@ -248,20 +241,19 @@ public struct DisplayState {
 			Gravity = nextState.PlanetState.Gravity,
 		}, initDisplayAirHandle));
 
-		for (int i = 1; i < worldData.WaterLayers - 1; i++)
+		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(new InitDisplayWaterLayerJob()
 		{
-			initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJob.Schedule(new InitDisplayWaterLayerJob()
-			{
-				Enthalpy = display.EnthalpyWater[i],
-				Salinity = display.Salinity[i],
-				CarbonPercent = display.WaterCarbonDioxidePercent[i],
+			Enthalpy = staticState.GetSliceWater(display.EnthalpyWater),
+			Salinity = staticState.GetSliceWater(display.Salinity),
+			CarbonPercent = staticState.GetSliceWater(display.WaterCarbonDioxidePercent),
 
-				WaterTemperature = nextState.WaterTemperature[i],
-				SaltMass = nextState.SaltMass[i],
-				WaterMass = nextState.WaterMass[i],
-				WaterCarbon = nextState.WaterCarbon[i]
-			}, initDisplayWaterHandle));
-		}
+			WaterTemperature = nextState.WaterTemperature,
+			SaltMass = nextState.SaltMass,
+			WaterMass = nextState.WaterMass,
+			WaterCarbon = nextState.WaterCarbon,
+			CountPerLayer = staticState.Count,
+		}, initDisplayWaterHandle));
+
 		var updateDisplayJobHandle = DisplayJob.Schedule(new UpdateDisplayJob()
 		{
 			SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
@@ -275,7 +267,7 @@ public struct DisplayState {
 
 			SolarRadiationInTerrain = tempState.SolarRadiationInTerrain,
 			SolarRadiationInIce = tempState.SolarRadiationInIce,
-			SolarRadiationInWaterSurface = staticState.GetSliceLayer(tempState.SolarRadiationInWater,worldData.SurfaceWaterLayer),
+			SolarRadiationInWaterSurface = tempState.SolarRadiationInWater,
 			EvaporationWater = tempState.EvaporationMassWater,
 			EvaporationFlora = tempState.FloraRespirationMassVapor,
 			Precipitation = tempState.PrecipitationMass,
@@ -325,17 +317,18 @@ public struct DisplayState {
 		float globalWaterSurfaceMass = 0;
 		for (int i = 0; i < staticState.Count; i++)
 		{
-			float waterMassSurface = nextState.WaterMass[worldData.SurfaceWaterLayer][i];
+			int surfaceWaterIndex = staticState.GetWaterIndex(worldData.SurfaceWaterLayer, i);
+			float waterMassSurface = nextState.WaterMass[surfaceWaterIndex];
 			globalWaterSurfaceMass += waterMassSurface;
 			display.GlobalFloraMass += nextState.FloraMass[i];
-			display.GlobalPlanktonMass += nextState.PlanktonMass[worldData.SurfaceWaterLayer][i];
+			display.GlobalPlanktonMass += nextState.PlanktonMass[surfaceWaterIndex];
 			display.GlobalSoilFertility += nextState.GroundCarbon[i];
-			display.GlobalOceanSurfaceTemperature += nextState.WaterTemperature[worldData.SurfaceWaterLayer][i] * waterMassSurface;
+			display.GlobalOceanSurfaceTemperature += nextState.WaterTemperature[surfaceWaterIndex] * waterMassSurface;
 			display.SolarRadiation += tempState.DisplaySolarRadiation[i];
 			display.GeothermalRadiation += tempState.GeothermalRadiation[i];
 			display.GlobalCloudMass += nextState.CloudMass[i];
 			display.GlobalIceMass += nextState.IceMass[i];
-			display.GlobalOceanCoverage += tempState.WaterCoverage[worldData.SurfaceWaterLayer][i];
+			display.GlobalOceanCoverage += tempState.WaterCoverage[staticState.GetWaterIndex(worldData.SurfaceWaterLayer,i)];
 			display.GlobalSurfaceTemperature += tempState.SurfaceAirTemperatureAbsolute[i];
 			display.GlobalSeaLevel += tempState.AirLayerElevation[staticState.GetLayerIndexAir(worldData.SurfaceAirLayer, i)];
 			display.GlobalEvaporation += display.Evaporation[i];
@@ -360,17 +353,18 @@ public struct DisplayState {
 				display.GlobalCondensationCloud += display.CondensationCloud[index];
 				display.GlobalCondensationGround += display.CondensationGround[index];
 			}
-			display.EnergySolarAbsorbedOcean += tempState.SolarRadiationInWater[worldData.SurfaceWaterLayer * staticState.Count + i];
-			display.EnergySolarAbsorbedSurface += tempState.SolarRadiationInWater[worldData.SurfaceWaterLayer * staticState.Count + i] + tempState.SolarRadiationInTerrain[i] + tempState.SolarRadiationInIce[i] + tempState.SolarRadiationInFlora[i];
-			display.EnergySolarReflectedSurface += tempState.SolarReflectedWater[worldData.SurfaceWaterLayer * staticState.Count + i] + tempState.SolarReflectedTerrain[i] + tempState.SolarReflectedIce[i] + tempState.SolarReflectedFlora[i];
+			display.EnergySolarAbsorbedOcean += tempState.SolarRadiationInWater[i];
+			display.EnergySolarAbsorbedSurface += tempState.SolarRadiationInWater[i] + tempState.SolarRadiationInTerrain[i] + tempState.SolarRadiationInIce[i] + tempState.SolarRadiationInFlora[i];
+			display.EnergySolarReflectedSurface += tempState.SolarReflectedWater[i] + tempState.SolarReflectedTerrain[i] + tempState.SolarReflectedIce[i] + tempState.SolarReflectedFlora[i];
 			for (int j = 1; j < worldData.WaterLayers - 1; j++)
 			{
-				float waterMass = nextState.WaterMass[j][i];
+				int index = staticState.GetLayerIndexWater(j, i);
+				float waterMass = nextState.WaterMass[index];
 				globalWaterMass += waterMass;
-				display.GlobalOceanTemperature += nextState.WaterTemperature[j][i] * waterMass;
-				display.GlobalEnthalpyWater += display.EnthalpyWater[j][i];
-				display.GlobalOceanMass += nextState.WaterMass[j][i];
-				display.GlobalWaterCarbon += nextState.WaterCarbon[j][i];
+				display.GlobalOceanTemperature += nextState.WaterTemperature[index] * waterMass;
+				display.GlobalEnthalpyWater += display.EnthalpyWater[index];
+				display.GlobalOceanMass += nextState.WaterMass[index];
+				display.GlobalWaterCarbon += nextState.WaterCarbon[index];
 			}
 			display.EnergySurfaceConduction += tempState.ConductionAirIce[i] + tempState.ConductionAirTerrain[i] + tempState.ConductionAirWater[i];
 			display.EnergyOceanConduction += tempState.ConductionAirWater[i];
@@ -407,7 +401,7 @@ public struct DisplayState {
 		public NativeArray<float> EnthalpyGroundWater;
 		[ReadOnly] public NativeArray<float> SolarRadiationInTerrain;
 		[ReadOnly] public NativeArray<float> SolarRadiationInIce;
-		[ReadOnly] public NativeSlice<float> SolarRadiationInWaterSurface;
+		[ReadOnly] public NativeArray<float> SolarRadiationInWaterSurface;
 		[ReadOnly] public NativeArray<float> Precipitation;
 		[ReadOnly] public NativeArray<float> EvaporationWater;
 		[ReadOnly] public NativeArray<float> EvaporationFlora;
@@ -473,20 +467,23 @@ public struct DisplayState {
 	}
 	[BurstCompile]
 	private struct InitDisplayWaterLayerJob : IJobParallelFor {
-		public NativeArray<float> Enthalpy;
-		public NativeArray<float> Salinity;
-		public NativeArray<float> CarbonPercent;
+		public NativeSlice<float> Enthalpy;
+		public NativeSlice<float> Salinity;
+		public NativeSlice<float> CarbonPercent;
 		[ReadOnly] public NativeArray<float> WaterTemperature;
 		[ReadOnly] public NativeArray<float> WaterMass;
 		[ReadOnly] public NativeArray<float> SaltMass;
 		[ReadOnly] public NativeArray<float> WaterCarbon;
+		[ReadOnly] public int CountPerLayer;
 		public void Execute(int i)
 		{
-			Salinity[i] = Atmosphere.GetWaterSalinity(WaterMass[i], SaltMass[i]);
-			if (WaterMass[i] > 0)
+			Debug.Assert(CountPerLayer > 0);
+			int index = i + CountPerLayer;
+			Salinity[i] = Atmosphere.GetWaterSalinity(WaterMass[index], SaltMass[index]);
+			if (WaterMass[index] > 0)
 			{
-				Enthalpy[i] = WaterTemperature[i] * (WorldData.SpecificHeatWater * WaterMass[i] + WorldData.SpecificHeatSalt * SaltMass[i]) + WaterMass[i] * WorldData.LatentHeatWaterLiquid;
-				CarbonPercent[i] = WaterCarbon[i] / (WaterMass[i] + SaltMass[i] + WaterCarbon[i]);
+				Enthalpy[i] = WaterTemperature[index] * (WorldData.SpecificHeatWater * WaterMass[index] + WorldData.SpecificHeatSalt * SaltMass[index]) + WaterMass[index] * WorldData.LatentHeatWaterLiquid;
+				CarbonPercent[i] = WaterCarbon[index] / (WaterMass[index] + SaltMass[index] + WaterCarbon[index]);
 			}
 		}
 	}

@@ -208,6 +208,7 @@ public class JobHelper {
 	}
 	public JobHandle ScheduleOrMemset<S, T>(bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
 	{
+		// TODO: we need a version of this for slices
 		if (schedule)
 		{
 			return Schedule(job, dependencies);

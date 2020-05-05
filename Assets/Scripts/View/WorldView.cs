@@ -468,7 +468,7 @@ public class WorldView : MonoBehaviour {
 		bool useMeshOverlay = GetMeshOverlayData(ActiveMeshOverlay, ref from, ref tempState, ref display, ref staticState, out meshOverlay);
 
 		WindOverlayData windOverlayData;
-		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref tempState, ref display, ref staticState, out windOverlayData);
+		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref tempState, ref display, ref staticState, ref worldData, out windOverlayData);
 
 		var buildRenderStateJobHandle = _renderJobHelper.Schedule(new BuildRenderStateCellJob()
 		{
@@ -508,10 +508,11 @@ public class WorldView : MonoBehaviour {
 			CloudAbsorption = tempState.CloudAbsorptivity,
 			IceCoverage = tempState.IceCoverage,
 			FloraCoverage = tempState.FloraCoverage,
-			WaterCoverage = tempState.WaterCoverage[Sim.WorldData.SurfaceWaterLayer],
-			WaterDepth = tempState.WaterLayerDepth[1],
-			WaterTemperature = from.WaterTemperature[Sim.WorldData.SurfaceWaterLayer],
-			PlanktonMass = from.PlanktonMass[Sim.WorldData.SurfaceWaterLayer],
+			WaterCoverage = staticState.GetSliceLayer(tempState.WaterCoverage,Sim.WorldData.SurfaceWaterLayer),
+			WaterTemperature = staticState.GetSliceLayer(from.WaterTemperature,Sim.WorldData.SurfaceWaterLayer),
+			PlanktonMass = staticState.GetSliceLayer(from.PlanktonMass,Sim.WorldData.SurfaceWaterLayer),
+			WaterCurrent = staticState.GetSliceLayer(from.WaterVelocity, Sim.WorldData.SurfaceWaterLayer),
+			WaterDepth = staticState.GetSliceLayer(tempState.WaterLayerDepth, Sim.WorldData.BottomWaterLayer),
 			LavaMass = from.LavaMass,
 			LavaTemperature = from.LavaTemperature,
 			SurfaceElevation = tempState.SurfaceElevation,
@@ -527,7 +528,6 @@ public class WorldView : MonoBehaviour {
 			DustMaxInverse = 1.0f / DisplayDustMax,
 			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
 			WindColors = _normalizedBlueBlackRed,
-			WaterCurrent = from.WaterVelocity[Sim.WorldData.SurfaceWaterLayer],
 			Positions = staticState.SphericalPosition,
 			DisplayFloraWeight = DisplayFloraWeight,
 			DisplaySandWeight = DisplaySandWeight,
@@ -850,13 +850,13 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, staticState.GetSliceLayer(display.Pressure,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.WaterTemperature:
-				overlay = new MeshOverlayData(WorldData.FreezingTemperature, DisplayTemperatureMax, _normalizedRainbow, simState.WaterTemperature[ActiveMeshLayerWater]);
+				overlay = new MeshOverlayData(WorldData.FreezingTemperature, DisplayTemperatureMax, _normalizedRainbow, staticState.GetSliceLayer(simState.WaterTemperature,ActiveMeshLayerWater));
 				return true;
 			case MeshOverlay.WaterCarbonDioxide:
-				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, display.WaterCarbonDioxidePercent[ActiveMeshLayerWater]);
+				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, staticState.GetSliceLayer(display.WaterCarbonDioxidePercent,ActiveMeshLayerWater));
 				return true;
 			case MeshOverlay.Salinity:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, display.Salinity[ActiveMeshLayerWater]);
+				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, staticState.GetSliceLayer(display.Salinity,ActiveMeshLayerWater));
 				return true;
 			case MeshOverlay.GroundTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundTemperature);
@@ -895,14 +895,14 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceAir,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.DivergenceWater:
-				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, display.DivergenceWater[ActiveMeshLayerWater]);
+				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceWater,ActiveMeshLayerWater));
 				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
 		return false;
 
 	}
-	private bool GetWindOverlayData(WindOverlay activeOverlay, ref SimState simState, ref TempState dependentState, ref DisplayState displayState, ref StaticState staticState, out WindOverlayData overlay)
+	private bool GetWindOverlayData(WindOverlay activeOverlay, ref SimState simState, ref TempState dependentState, ref DisplayState displayState, ref StaticState staticState, ref WorldData worldData, out WindOverlayData overlay)
 	{
 		switch (activeOverlay)
 		{
@@ -916,10 +916,10 @@ public class WorldView : MonoBehaviour {
 				overlay = new WindOverlayData(DisplayPressureGradientForceMax, false, staticState.GetSliceLayer(displayState.PressureGradientForce,ActiveMeshLayerAir));
 				return true;
 			case WindOverlay.Current:
-				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, simState.WaterVelocity[ActiveMeshLayerWater]);
+				overlay = new WindOverlayData(DisplayWindSpeedSurfaceWaterMax, true, staticState.GetSliceLayer(simState.WaterVelocity,ActiveMeshLayerWater));
 				return true;
 		}
-		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, simState.WaterVelocity[1]);
+		overlay = new WindOverlayData(DisplayWindSpeedDeepWaterMax, false, staticState.GetSliceLayer(simState.WaterVelocity, worldData.BottomWaterLayer));
 		return false;
 	}
 

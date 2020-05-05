@@ -12,7 +12,7 @@ public class ToolAddWater : GameTool {
 
 	override public void OnDragMove(Vector3 worldPos, int cellIndex, Vector2 direction) {
 		Gameplay.SetActiveCell(cellIndex, false);
-		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.LastTempState); });
+		Gameplay.Sim.Edit((ref SimState last, ref SimState next) => { Activate(ref last, ref next, cellIndex, ref Gameplay.Sim.WorldData, ref Gameplay.Sim.LastTempState, ref Gameplay.Sim.StaticState); });
 	}
 	public override void OnUpdate(Vector3 worldPos, int cellIndex)
 	{
@@ -20,18 +20,19 @@ public class ToolAddWater : GameTool {
 		Gameplay.SetActiveCell(cellIndex, false);
 	}
 
-	private void Activate(ref SimState lastState, ref SimState nextState, int cell, ref WorldData worldData, ref TempState tempState)
+	private void Activate(ref SimState lastState, ref SimState nextState, int cell, ref WorldData worldData, ref TempState tempState, ref StaticState staticState)
 	{
 		nextState.CopyFrom(ref lastState);
 
 		if (cell >= 0)
 		{
+			int index = staticState.GetWaterIndex(worldData.SurfaceAirLayer, cell);
 			float waterAdded = MetersPerSecond * WorldData.MassWater * Time.deltaTime;
-			float waterMass = lastState.WaterMass[worldData.SurfaceWaterLayer][cell];
-			float saltMass = lastState.SaltMass[worldData.SurfaceWaterLayer][cell];
-			nextState.WaterMass[worldData.SurfaceWaterLayer][cell] = waterMass + waterAdded;
-			nextState.WaterTemperature[worldData.SurfaceWaterLayer][cell] =
-				(lastState.WaterTemperature[worldData.SurfaceWaterLayer][cell] * (waterMass + saltMass)
+			float waterMass = lastState.WaterMass[index];
+			float saltMass = lastState.SaltMass[index];
+			nextState.WaterMass[index] = waterMass + waterAdded;
+			nextState.WaterTemperature[index] =
+				(lastState.WaterTemperature[index] * (waterMass + saltMass)
 				+ tempState.SurfaceAirTemperatureAbsolute[cell] * waterAdded)
 				/ (waterMass + saltMass + waterAdded);
 		}

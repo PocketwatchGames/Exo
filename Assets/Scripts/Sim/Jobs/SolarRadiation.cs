@@ -113,7 +113,7 @@ public struct SolarRadiationAbsorbedSlopeJob : IJobParallelFor {
 	[ReadOnly] public float AlbedoMin;
 	[ReadOnly] public float AlbedoRange;
 	[ReadOnly] public NativeArray<float> AlbedoSlope;
-	[ReadOnly] public NativeArray<float> Coverage;
+	[ReadOnly] public NativeSlice<float> Coverage;
 	public void Execute(int i)
 	{
 		float incoming = SolarRadiationIncoming[i];

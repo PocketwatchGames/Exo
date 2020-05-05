@@ -53,32 +53,36 @@ public struct EnergyAirJob : IJobParallelFor {
 
 [BurstCompile]
 public struct EnergyWaterJob : IJobParallelFor {
-	public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float> CoverageUp;
-	[ReadOnly] public NativeArray<float> CoverageDown;
+	public NativeSlice<float> Temperature;
+	[ReadOnly] public NativeArray<float> Coverage;
 	[ReadOnly] public NativeArray<float> LastTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
-	[ReadOnly] public NativeSlice<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeArray<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeArray<float> ConductionEnergyAir;
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-		if (LastMass[i] > 0)
+		int columnIndex = i % Count;
+		int index = i + Count;
+		int indexDown = i;
+		int indexUp = index + Count;
+		if (LastMass[index] > 0)
 		{
-			float energy = ThermalRadiationDelta[i];
+			float energy = ThermalRadiationDelta[columnIndex];
 
-			energy += (1.0f - CoverageDown[i]) * (
-				+ ConductionEnergyTerrain[i]
+			energy += (1.0f - Coverage[indexDown]) * (
+				+ ConductionEnergyTerrain[columnIndex]
 				);
-			energy += (1.0f - CoverageUp[i]) * (
-				- ConductionEnergyAir[i]
-				- ConductionEnergyIce[i]
+			energy += (1.0f - Coverage[indexUp]) * (
+				- ConductionEnergyAir[columnIndex]
+				- ConductionEnergyIce[columnIndex]
 				);
 
-			float specificHeat = WorldData.SpecificHeatWater * LastMass[i] + WorldData.SpecificHeatSalt * LastSaltMass[i];
-			Temperature[i] = LastTemperature[i] + energy / specificHeat;
+			float specificHeat = WorldData.SpecificHeatWater * LastMass[index] + WorldData.SpecificHeatSalt * LastSaltMass[index];
+			Temperature[i] = LastTemperature[index] + energy / specificHeat;
 		}
 		else
 		{

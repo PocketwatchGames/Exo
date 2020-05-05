@@ -38,13 +38,13 @@ public struct SimState {
 	public NativeArray<float> AirCarbon;
 	public NativeArray<float3> AirVelocity;
 	public NativeArray<float> Dust;
-	public NativeArray<float>[] WaterTemperature;
-	public NativeArray<float>[] WaterMass;
-	public NativeArray<float>[] WaterCarbon;
-	public NativeArray<float3>[] WaterVelocity;
-	public NativeArray<float>[] SaltMass;
-	public NativeArray<float>[] PlanktonMass;
-	public NativeArray<float>[] PlanktonGlucose;
+	public NativeArray<float> WaterTemperature;
+	public NativeArray<float> WaterMass;
+	public NativeArray<float> WaterCarbon;
+	public NativeArray<float3> WaterVelocity;
+	public NativeArray<float> SaltMass;
+	public NativeArray<float> PlanktonMass;
+	public NativeArray<float> PlanktonGlucose;
 
 	public void Init(int count, ref WorldData worldData)
 	{
@@ -77,23 +77,13 @@ public struct SimState {
 		AirVelocity = new NativeArray<float3>(count * worldData.AirLayers, Allocator.Persistent);
 		Dust = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 
-		WaterTemperature = new NativeArray<float>[worldData.WaterLayers];
-		WaterMass = new NativeArray<float>[worldData.WaterLayers];
-		SaltMass = new NativeArray<float>[worldData.WaterLayers];
-		WaterCarbon = new NativeArray<float>[worldData.WaterLayers];
-		PlanktonMass = new NativeArray<float>[worldData.WaterLayers];
-		PlanktonGlucose = new NativeArray<float>[worldData.WaterLayers];
-		WaterVelocity = new NativeArray<float3>[worldData.WaterLayers];
-		for (int i = 0; i < worldData.WaterLayers; i++)
-		{
-			WaterTemperature[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterMass[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterCarbon[i] = new NativeArray<float>(count, Allocator.Persistent);
-			PlanktonMass[i] = new NativeArray<float>(count, Allocator.Persistent);
-			PlanktonGlucose[i] = new NativeArray<float>(count, Allocator.Persistent);
-			SaltMass[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterVelocity[i] = new NativeArray<float3>(count, Allocator.Persistent);
-		}
+		WaterTemperature = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterMass = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterCarbon = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		PlanktonMass = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		PlanktonGlucose = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		SaltMass = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterVelocity = new NativeArray<float3>(count * worldData.WaterLayers, Allocator.Persistent);
 	}
 
 	public void CopyFrom(ref SimState from)
@@ -127,16 +117,13 @@ public struct SimState {
 		AirVelocity.CopyFrom(from.AirVelocity);
 		Dust.CopyFrom(from.Dust);
 		
-		for (int i = 0; i < from.WaterTemperature.Length; i++)
-		{
-			WaterTemperature[i].CopyFrom(from.WaterTemperature[i]);
-			WaterMass[i].CopyFrom(from.WaterMass[i]);
-			WaterCarbon[i].CopyFrom(from.WaterCarbon[i]);
-			PlanktonMass[i].CopyFrom(from.PlanktonMass[i]);
-			PlanktonGlucose[i].CopyFrom(from.PlanktonGlucose[i]);
-			SaltMass[i].CopyFrom(from.SaltMass[i]);
-			WaterVelocity[i].CopyFrom(from.WaterVelocity[i]);
-		}
+		WaterTemperature.CopyFrom(from.WaterTemperature);
+		WaterMass.CopyFrom(from.WaterMass);
+		WaterCarbon.CopyFrom(from.WaterCarbon);
+		PlanktonMass.CopyFrom(from.PlanktonMass);
+		PlanktonGlucose.CopyFrom(from.PlanktonGlucose);
+		SaltMass.CopyFrom(from.SaltMass);
+		WaterVelocity.CopyFrom(from.WaterVelocity);
 	}
 
 	public void Dispose()
@@ -169,16 +156,13 @@ public struct SimState {
 		AirVelocity.Dispose();
 		Dust.Dispose();
 
-		for (int i = 0; i < WaterTemperature.Length; i++)
-		{
-			WaterTemperature[i].Dispose();
-			WaterMass[i].Dispose();
-			PlanktonMass[i].Dispose();
-			PlanktonGlucose[i].Dispose();
-			WaterCarbon[i].Dispose();
-			SaltMass[i].Dispose();
-			WaterVelocity[i].Dispose();
-		}
+		WaterTemperature.Dispose();
+		WaterMass.Dispose();
+		PlanktonMass.Dispose();
+		PlanktonGlucose.Dispose();
+		WaterCarbon.Dispose();
+		SaltMass.Dispose();
+		WaterVelocity.Dispose();
 	}
 }
 

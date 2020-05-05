@@ -21,8 +21,8 @@ public struct StaticState {
 	public float CellCircumference;
 	public NativeArray<float2> Coordinate;
 	public NativeArray<float3> SphericalPosition;
-	public NativeArray<int> Neighbors;
-	public NativeArray<int> ReverseNeighbors;
+	public NativeArray<int> Neighbors; // The cell that each edge points to
+	public NativeArray<int> ReverseNeighbors; // the index in the edge array that points BACK to the indexed cell
 	public NativeArray<int> NeighborsVert;
 	public NativeArray<int> ReverseNeighborsVert;
 	public NativeArray<float> NeighborDistInverse;
@@ -223,10 +223,6 @@ public struct StaticState {
 				}
 
 			}
-			if (ReverseNeighborsVert[i] >= 0 && NeighborsVert[ReverseNeighborsVert[i]] != cellIndex)
-			{
-				int j = 0;
-			}
 			Debug.Assert(ReverseNeighborsVert[i] < 0 || NeighborsVert[ReverseNeighborsVert[i]] == cellIndex);
 		}
 
@@ -280,14 +276,26 @@ public struct StaticState {
 	{
 		return layer * _worldData.AirLayers + index;
 	}
+	public int GetLayerIndexWater(int layer, int index)
+	{
+		return layer * _worldData.WaterLayers + index;
+	}
 
 	public NativeSlice<T> GetSliceAir<T>(NativeArray<T> arr) where T : struct
 	{
 		return new NativeSlice<T>(arr, Count, (_worldData.AirLayers - 2) * Count);
 	}
+	public NativeSlice<T> GetSliceWater<T>(NativeArray<T> arr) where T : struct
+	{
+		return new NativeSlice<T>(arr, Count, (_worldData.WaterLayers - 2) * Count);
+	}
 	public NativeSlice<T> GetSliceAirNeighbors<T>(NativeArray<T> arr) where T : struct
 	{
 		return new NativeSlice<T>(arr, Count * StaticState.MaxNeighborsVert, (_worldData.AirLayers - 2) * Count * StaticState.MaxNeighborsVert);
+	}
+	public NativeSlice<T> GetSliceWaterNeighbors<T>(NativeArray<T> arr) where T : struct
+	{
+		return new NativeSlice<T>(arr, Count * StaticState.MaxNeighborsVert, (_worldData.WaterLayers - 2) * Count * StaticState.MaxNeighborsVert);
 	}
 	public NativeSlice<T> GetSliceLayer<T>(NativeArray<T> arr, int layer) where T : struct
 	{

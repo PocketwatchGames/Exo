@@ -34,8 +34,8 @@ public struct EmissivityAirJob : IJobParallelFor {
 #endif
 public struct EmissivityWaterJob : IJobParallelFor {
 	public NativeSlice<float> Emissivity;
-	[ReadOnly] public NativeArray<float> SaltMass;
-	[ReadOnly] public NativeArray<float> WaterMass;
+	[ReadOnly] public NativeSlice<float> SaltMass;
+	[ReadOnly] public NativeSlice<float> WaterMass;
 	[ReadOnly] public float EmissivityWater;
 	[ReadOnly] public float EmissivitySalt;
 	public void Execute(int i)

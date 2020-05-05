@@ -92,9 +92,11 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> IceCoverage;
 	[ReadOnly] public NativeArray<float> GroundWater;
 	[ReadOnly] public NativeArray<float> FloraCoverage;
-	[ReadOnly] public NativeArray<float> WaterCoverage;
-	[ReadOnly] public NativeArray<float> WaterDepth;
-	[ReadOnly] public NativeArray<float> WaterTemperature;
+	[ReadOnly] public NativeSlice<float> WaterCoverage;
+	[ReadOnly] public NativeSlice<float> WaterDepth;
+	[ReadOnly] public NativeSlice<float> WaterTemperature;
+	[ReadOnly] public NativeSlice<float3> WaterCurrent;
+	[ReadOnly] public NativeSlice<float> PlanktonMass;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float3> Icosphere;
 	[ReadOnly] public NativeSlice<float> MeshOverlayData;
@@ -104,9 +106,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeSlice<float> DustCoverage;
-	[ReadOnly] public NativeArray<float> PlanktonMass;
 	[ReadOnly] public NativeArray<float3> Positions;
-	[ReadOnly] public NativeArray<float3> WaterCurrent;
 	[ReadOnly] public bool MeshOverlayActive;
 	[ReadOnly] public float MeshOverlayMin;
 	[ReadOnly] public float MeshOverlayInverseRange;

@@ -13,7 +13,7 @@ public struct UpdateFlowVelocityJob : IJobParallelFor {
 
 	[ReadOnly] public NativeArray<float> LastFlow;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
-	[ReadOnly] public NativeArray<float> WaterDepth;
+	[ReadOnly] public NativeSlice<float> WaterDepth;
 	[ReadOnly] public NativeArray<float> NeighborDistInverse;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public float SecondsPerTick;
@@ -60,7 +60,7 @@ public struct LimitOutgoingFlowJob : IJobParallelFor {
 	public NativeArray<float> Flow;
 	public NativeArray<float> FlowPercent;
 	[ReadOnly] public NativeArray<float> OutgoingFlow;
-	[ReadOnly] public NativeArray<float> WaterDepth;
+	[ReadOnly] public NativeSlice<float> WaterDepth;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	public void Execute(int i)
 	{
@@ -113,14 +113,14 @@ public struct LimitOutgoingFlowJob : IJobParallelFor {
 [BurstCompile]
 public struct ApplyFlowWaterJob : IJobParallelFor {
 
-	public NativeArray<DiffusionWater> Delta;
-	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float> Salt;
-	[ReadOnly] public NativeArray<float> Carbon;
-	[ReadOnly] public NativeArray<float> PlanktonMass;
-	[ReadOnly] public NativeArray<float> PlanktonGlucose;
-	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float3> Velocity;
+	public NativeSlice<DiffusionWater> Delta;
+	[ReadOnly] public NativeSlice<float> Mass;
+	[ReadOnly] public NativeSlice<float> Salt;
+	[ReadOnly] public NativeSlice<float> Carbon;
+	[ReadOnly] public NativeSlice<float> PlanktonMass;
+	[ReadOnly] public NativeSlice<float> PlanktonGlucose;
+	[ReadOnly] public NativeSlice<float> Temperature;
+	[ReadOnly] public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<int> Neighbors;
 	[ReadOnly] public NativeArray<float> FlowPercent;

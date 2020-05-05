@@ -395,14 +395,14 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 
 [BurstCompile]
 public struct ApplyAdvectionWaterJob : IJobParallelFor {
-	public NativeArray<float> WaterMass;
-	public NativeArray<float> SaltMass;
-	public NativeArray<float> CarbonMass;
-	public NativeArray<float> PlanktonMass;
-	public NativeArray<float> PlanktonGlucose;
-	public NativeArray<float> Temperature;
-	public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<DiffusionWater> Advection;
+	public NativeSlice<float> WaterMass;
+	public NativeSlice<float> SaltMass;
+	public NativeSlice<float> CarbonMass;
+	public NativeSlice<float> PlanktonMass;
+	public NativeSlice<float> PlanktonGlucose;
+	public NativeSlice<float> Temperature;
+	public NativeSlice<float3> Velocity;
+	[ReadOnly] public NativeSlice<DiffusionWater> Advection;
 	public void Execute(int i)
 	{
 		WaterMass[i] = Advection[i].WaterMass;

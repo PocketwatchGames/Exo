@@ -70,12 +70,12 @@ public struct TempState {
 	public NativeArray<float> ThermalRadiationDeltaFlora;
 	public NativeArray<float> ThermalRadiationDeltaTerrain;
 
-	public NativeArray<float>[] WaterCoverage;
-	public NativeArray<float>[] WaterDensity;
-	public NativeArray<float>[] WaterPressure;
-	public NativeArray<float>[] WaterLayerDepth;
-	public NativeArray<float>[] WaterLayerHeight;
-	public NativeArray<float>[] WaterPotentialEnergy;
+	public NativeArray<float> WaterCoverage;
+	public NativeArray<float> WaterDensity;
+	public NativeArray<float> WaterPressure;
+	public NativeArray<float> WaterLayerDepth;
+	public NativeArray<float> WaterLayerHeight;
+	public NativeArray<float> WaterPotentialEnergy;
 	public NativeArray<float> CloudAbsorptivity;
 	public NativeArray<float> CloudElevation;
 	public NativeArray<float3> CloudVelocity;
@@ -110,12 +110,12 @@ public struct TempState {
 	public NativeArray<float> LatentHeatTerrain;
 	public NativeArray<float> LatentHeatLava;
 
-	public NativeArray<DiffusionWater>[] DiffusionWater;
-	public NativeArray<DiffusionWater>[] AdvectionWater;
-	public NativeArray<float>[] WaterMassLeaving;
-	public NativeArray<float>[] DestinationWater;
-	public NativeArray<float>[] DestinationWaterResolved;
-	public NativeArray<float>[] DivergencePressureWater;
+	public NativeArray<DiffusionWater> DiffusionWater;
+	public NativeArray<DiffusionWater> AdvectionWater;
+	public NativeArray<float> WaterMassLeaving;
+	public NativeArray<float> DestinationWater;
+	public NativeArray<float> DestinationWaterResolved;
+	public NativeArray<float> DivergencePressureWater;
 	public NativeArray<float3> CloudVelocityDeflected;
 	public NativeArray<float> TerrainGradient;
 	public NativeArray<float> WindFriction;
@@ -128,7 +128,7 @@ public struct TempState {
 	public NativeArray<float> ConductionIceFlora;
 	public NativeArray<float> ConductionIceTerrain;
 	public NativeArray<float> ConductionFloraTerrain;
-	public NativeArray<float>[] ConductionWaterTerrain;
+	public NativeArray<float> ConductionWaterTerrain;
 	public NativeArray<float> FrozenTemperature;
 	public NativeArray<float> FrozenMass;
 	public NativeArray<float> SaltPlume;
@@ -158,7 +158,7 @@ public struct TempState {
 	public NativeArray<float> WaterCarbonDelta;
 	public NativeArray<float> AirCarbonDelta;
 	public NativeArray<float> OxygenDelta;
-	public NativeArray<float>[] DivergenceWater;
+	public NativeArray<float> DivergenceWater;
 	public NativeArray<float> DisplaySolarRadiation;
 
 	public NativeArray<float> ConductionWaterTerrainTotal;
@@ -170,6 +170,7 @@ public struct TempState {
 	public NativeArray<float> AtmosphericWindowDown;
 	public NativeArray<float> AirMassTotal;
 	public NativeArray<float> WaterMassTotal;
+	public NativeArray<float> WaterDepthTotal;
 	public NativeArray<float> StandardLayerElevation;
 
 	public NativeArray<float> OutgoingFlowWater;
@@ -186,7 +187,7 @@ public struct TempState {
 
 	private NativeArray<AirLayerHeights> _airLayerHeights;
 
-	private JobHelper _jobHelper, _jobHelperAir;
+	private JobHelper _jobHelper, _jobHelperAir, _jobHelperWater;
 
 
 	public void Init(int count, ref WorldData worldData)
@@ -228,13 +229,13 @@ public struct TempState {
 		AirPotentialEnergy = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 
 		SolarRadiationInAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
-		SolarRadiationInWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		SolarRadiationInWater = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationInIce = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationInFlora = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationInTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationInCloud = new NativeArray<float>(count, Allocator.Persistent);
 		SolarReflectedAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
-		SolarReflectedWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		SolarReflectedWater = new NativeArray<float>(count, Allocator.Persistent);
 		SolarReflectedIce = new NativeArray<float>(count, Allocator.Persistent);
 		SolarReflectedFlora = new NativeArray<float>(count, Allocator.Persistent);
 		SolarReflectedTerrain = new NativeArray<float>(count, Allocator.Persistent);
@@ -255,27 +256,25 @@ public struct TempState {
 		ThermalRadiationDeltaFlora = new NativeArray<float>(count, Allocator.Persistent);
 		ThermalRadiationDeltaTerrain = new NativeArray<float>(count, Allocator.Persistent);
 
-		WaterDensity = new NativeArray<float>[worldData.WaterLayers];
-		WaterPressure = new NativeArray<float>[worldData.WaterLayers];
-		WaterLayerDepth = new NativeArray<float>[worldData.WaterLayers];
-		WaterLayerHeight = new NativeArray<float>[worldData.WaterLayers];
-		WaterCoverage = new NativeArray<float>[worldData.WaterLayers];
-		WaterPotentialEnergy = new NativeArray<float>[worldData.WaterLayers];
-		for (int i = 0; i < worldData.WaterLayers; i++)
-		{
-			WaterCoverage[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterDensity[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterPressure[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterLayerDepth[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterLayerHeight[i] = new NativeArray<float>(count, Allocator.Persistent);
-			WaterPotentialEnergy[i] = new NativeArray<float>(count, Allocator.Persistent);
-		}
-
-
-
 		SolarRadiation = new NativeArray<float>(count, Allocator.Persistent);
 		AlbedoSlope = new NativeArray<float>(count, Allocator.Persistent);
 		CloudAlbedo = new NativeArray<float>(count, Allocator.Persistent);
+
+
+		WaterCoverage = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterDensity = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterPressure = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterLayerDepth = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterLayerHeight = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterPotentialEnergy = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		WaterMassLeaving = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		DiffusionWater = new NativeArray<DiffusionWater>(count * worldData.WaterLayers, Allocator.Persistent);
+		AdvectionWater = new NativeArray<DiffusionWater>(count * worldData.WaterLayers, Allocator.Persistent);
+		ConductionWaterTerrain = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		DivergencePressureWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		DivergenceWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
+		DestinationWater = new NativeArray<float>(count * worldData.WaterLayers * StaticState.MaxNeighbors, Allocator.Persistent);
+		DestinationWaterResolved = new NativeArray<float>(count * worldData.WaterLayers * StaticState.MaxNeighbors, Allocator.Persistent);
 
 		AirMassLeaving = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		DiffusionAir = new NativeArray<DiffusionAir>(count * worldData.AirLayers, Allocator.Persistent);
@@ -299,25 +298,6 @@ public struct TempState {
 		LatentHeatLava = new NativeArray<float>(count, Allocator.Persistent);
 		LatentHeatTerrain = new NativeArray<float>(count, Allocator.Persistent);
 
-		DiffusionWater = new NativeArray<DiffusionWater>[worldData.WaterLayers];
-		AdvectionWater = new NativeArray<DiffusionWater>[worldData.WaterLayers];
-		WaterMassLeaving = new NativeArray<float>[worldData.WaterLayers];
-		DestinationWater = new NativeArray<float>[worldData.WaterLayers];
-		DestinationWaterResolved = new NativeArray<float>[worldData.WaterLayers];
-		ConductionWaterTerrain = new NativeArray<float>[worldData.WaterLayers];
-		DivergencePressureWater = new NativeArray<float>[worldData.WaterLayers];
-		DivergenceWater = new NativeArray<float>[worldData.WaterLayers];
-		for (int i = 0; i < worldData.WaterLayers; i++)
-		{
-			WaterMassLeaving[i] = new NativeArray<float>(count, Allocator.Persistent);
-			DiffusionWater[i] = new NativeArray<DiffusionWater>(count, Allocator.Persistent);
-			AdvectionWater[i] = new NativeArray<DiffusionWater>(count, Allocator.Persistent);
-			DestinationWater[i] = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
-			DestinationWaterResolved[i] = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
-			ConductionWaterTerrain[i] = new NativeArray<float>(count, Allocator.Persistent);
-			DivergencePressureWater[i] = new NativeArray<float>(count, Allocator.Persistent);
-			DivergenceWater[i] = new NativeArray<float>(count, Allocator.Persistent);
-		}
 		FrozenTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		FrozenMass = new NativeArray<float>(count, Allocator.Persistent);
 		SaltPlume = new NativeArray<float>(count, Allocator.Persistent);
@@ -371,6 +351,7 @@ public struct TempState {
 		AtmosphericWindowDown = new NativeArray<float>(count, Allocator.Persistent);
 		AirMassTotal = new NativeArray<float>(count, Allocator.Persistent);
 		WaterMassTotal = new NativeArray<float>(count, Allocator.Persistent);
+		WaterDepthTotal = new NativeArray<float>(count, Allocator.Persistent);
 
 
 		OutgoingFlowWater = new NativeArray<float>(count * StaticState.MaxNeighbors, Allocator.Persistent);
@@ -408,6 +389,7 @@ public struct TempState {
 		}
 		_jobHelper = new JobHelper(count);
 		_jobHelperAir = new JobHelper(count * (worldData.AirLayers - 2));
+		_jobHelperWater = new JobHelper(count * (worldData.WaterLayers - 2));
 	}
 
 	public void Dispose(ref WorldData worldData)
@@ -468,23 +450,20 @@ public struct TempState {
 		LatentHeatFlora.Dispose();
 		LatentHeatLava.Dispose();
 
-		for (int i = 0; i < WaterCoverage.Length; i++)
-		{
-			WaterCoverage[i].Dispose();
-			WaterDensity[i].Dispose();
-			WaterPressure[i].Dispose();
-			WaterLayerDepth[i].Dispose();
-			WaterLayerHeight[i].Dispose();
-			WaterPotentialEnergy[i].Dispose();
-			WaterMassLeaving[i].Dispose();
-			DiffusionWater[i].Dispose();
-			AdvectionWater[i].Dispose();
-			DestinationWater[i].Dispose();
-			DestinationWaterResolved[i].Dispose();
-			ConductionWaterTerrain[i].Dispose();
-			DivergencePressureWater[i].Dispose();
-			DivergenceWater[i].Dispose();
-		}
+		WaterCoverage.Dispose();
+		WaterDensity.Dispose();
+		WaterPressure.Dispose();
+		WaterLayerDepth.Dispose();
+		WaterLayerHeight.Dispose();
+		WaterPotentialEnergy.Dispose();
+		WaterMassLeaving.Dispose();
+		DiffusionWater.Dispose();
+		AdvectionWater.Dispose();
+		DestinationWater.Dispose();
+		DestinationWaterResolved.Dispose();
+		ConductionWaterTerrain.Dispose();
+		DivergencePressureWater.Dispose();
+		DivergenceWater.Dispose();
 
 		SolarRadiationInAir.Dispose();
 		SolarRadiationInWater.Dispose();
@@ -574,6 +553,7 @@ public struct TempState {
 		AtmosphericWindowDown.Dispose();
 		AirMassTotal.Dispose();
 		WaterMassTotal.Dispose();
+		WaterDepthTotal.Dispose();
 		StandardLayerElevation.Dispose();
 		DropletDelta.Dispose();
 		PrecipitationMass.Dispose();
@@ -601,15 +581,15 @@ public struct TempState {
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, AtmosphericWindowUp, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, AtmosphericWindowDown, 0));
 
+		// tHIS IS WAASTEFUL AS WE DON'T NEED TO CLEAR THE TOP AND BOTTOM LAYERS, THEY ARE UNUSED.
+		// But there's no memsetarray method for slices, so we have to just clear the whole array
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, DivergencePressureAir, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, CondensationGroundMass, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, CondensationCloudMass, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, LatentHeatAir, 0));
 
-		for (int i = 1; i < worldData.WaterLayers - 1; i++)
-		{
-			h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, DivergencePressureWater[i], 0));
-		}
+		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.WaterLayers, dependency, DivergencePressureWater, 0));
+
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, LatentHeatWater, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, LatentHeatIce, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, ThermalRadiationTransmittedUp, 0));
@@ -623,7 +603,7 @@ public struct TempState {
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, ThermalRadiationDeltaFlora, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, ThermalRadiationDeltaTerrain, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, SolarReflectedAir, 0));
-		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.WaterLayers, dependency, SolarReflectedWater, 0));
+		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, SolarReflectedWater, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, SolarReflectedIce, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, SolarReflectedFlora, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, SolarReflectedTerrain, 0));
@@ -635,29 +615,37 @@ public struct TempState {
 	{
 		dependencies = Utils.MemCopy(WaterMassTotal, state.IceMass, dependencies);
 		dependencies = Utils.MemsetArray(staticState.Count, dependencies, AirMassTotal, 0);
-		for (int j = worldData.WaterLayers - 2; j >= 1; j--)
+		dependencies = Utils.MemsetArray(staticState.Count, dependencies, WaterDepthTotal, 0);
+
+		dependencies = _jobHelperWater.Schedule(new UpdateWaterJob()
+		{
+			Density = staticState.GetSliceWater(WaterDensity),
+			LayerHeight = staticState.GetSliceWater(WaterLayerHeight),
+			PotentialEnergy = staticState.GetSliceWater(WaterPotentialEnergy),
+
+			Temperature = state.WaterTemperature,
+			SaltMass = state.SaltMass,
+			WaterMass = state.WaterMass,
+			Count = staticState.Count
+		}, dependencies);
+
+		for (int j = worldData.SurfaceWaterLayer; j >= worldData.BottomWaterLayer; j--)
 		{
 			dependencies = _jobHelper.Schedule(new UpdateWaterDepthJob()
 			{
-				Density = WaterDensity[j],
-				LayerDepth = WaterLayerDepth[j],
-				LayerHeight = WaterLayerHeight[j],
 				WaterMassTotal = WaterMassTotal,
-				WaterCoverage = WaterCoverage[j],
-				PotentialEnergy = WaterPotentialEnergy[j],
-				Pressure = WaterPressure[j],
+				WaterDepthTotal = WaterDepthTotal,
+				Pressure = staticState.GetSliceLayer(WaterPressure,j),
+				LayerDepth = staticState.GetSliceLayer(WaterLayerDepth,j),
+				WaterCoverage = staticState.GetSliceLayer(WaterCoverage,j),
 
-				Temperature = state.WaterTemperature[j],
-				SaltMass = state.SaltMass[j],
-				WaterMass = state.WaterMass[j],
+				LayerHeight = WaterLayerHeight,
+				SaltMass = staticState.GetSliceLayer(state.SaltMass,j),
+				WaterMass = staticState.GetSliceLayer(state.WaterMass,j),
 				Roughness = state.Roughness,
-				LayerDepthUp = WaterLayerDepth[j + 1],
-				LayerHeightUp = WaterLayerHeight[j + 1],
-				LayerHeightDown = WaterLayerHeight[j - 1],
-				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
-				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
 				Gravity = state.PlanetState.Gravity,
-
+				LayerIndex = j,
+				Count = staticState.Count
 			}, dependencies);
 		}
 
@@ -671,7 +659,7 @@ public struct TempState {
 			LavaDepth = LavaDepth,
 			SurfaceElevation = SurfaceElevation,
 
-			WaterDepth = WaterLayerDepth[1],
+			WaterDepth = staticState.GetSliceLayer(WaterLayerDepth, worldData.BottomWaterLayer),
 			Elevation = state.Elevation,
 			FloraMass = state.FloraMass,
 			FloraWater = state.FloraWater,
@@ -772,7 +760,7 @@ public struct TempState {
 			FloraCoverage = FloraCoverage,
 			IceCoverage = IceCoverage,
 
-			WaterCoverage = WaterCoverage[worldData.SurfaceWaterLayer],
+			WaterCoverage = staticState.GetSliceLayer(WaterCoverage, worldData.SurfaceWaterLayer),
 			FloraMass = state.FloraMass,
 			IceMass = state.IceMass,
 			AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, worldData.SurfaceAirLayer),
@@ -796,7 +784,7 @@ public struct TempState {
 		public NativeArray<float> FloraEnergy;
 		public NativeArray<float> LavaEnergy;
 		public NativeArray<float> LavaDepth;
-		[ReadOnly] public NativeArray<float> WaterDepth;
+		[ReadOnly] public NativeSlice<float> WaterDepth;
 		[ReadOnly] public NativeArray<float> FloraMass;
 		[ReadOnly] public NativeArray<float> FloraWater;
 		[ReadOnly] public NativeArray<float> FloraTemperature;
@@ -1006,49 +994,64 @@ public struct TempState {
 
 
 	[BurstCompile]
-	public struct UpdateWaterDepthJob : IJobParallelFor {
-		public NativeArray<float> LayerDepth;
-		public NativeArray<float> LayerHeight;
-		public NativeArray<float> Density;
-		public NativeArray<float> WaterMassTotal;
-		public NativeArray<float> WaterCoverage;
-		public NativeArray<float> PotentialEnergy;
-		public NativeArray<float> Pressure;
-		[ReadOnly] public NativeArray<float> LayerDepthUp;
-		[ReadOnly] public NativeArray<float> LayerHeightUp;
-		[ReadOnly] public NativeArray<float> LayerHeightDown;
+	public struct UpdateWaterJob : IJobParallelFor {
+		public NativeSlice<float> LayerHeight;
+		public NativeSlice<float> Density;
+		public NativeSlice<float> PotentialEnergy;
 		[ReadOnly] public NativeArray<float> WaterMass;
 		[ReadOnly] public NativeArray<float> SaltMass;
 		[ReadOnly] public NativeArray<float> Temperature;
-		[ReadOnly] public NativeArray<float> Roughness;
-		[ReadOnly] public float WaterDensityPerDegree;
-		[ReadOnly] public float WaterDensityPerSalinity;
-		[ReadOnly] public float Gravity;
+		[ReadOnly] public int Count;
 		public void Execute(int i)
 		{
-			if (WaterMass[i] > 0)
+			int index = i + Count;
+			if (WaterMass[index] > 0)
 			{
-				float waterMass = WaterMass[i];
-				float saltMass = SaltMass[i];
-				Density[i] = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(waterMass, saltMass), Temperature[i]);
-				float waterDepth = (waterMass + saltMass) / Density[i];
-				LayerDepth[i] = LayerDepthUp[i] + waterDepth;
-				LayerHeight[i] = waterDepth;
-				WaterCoverage[i] = math.min(1, (LayerHeight[i] + LayerHeightDown[i]) / math.max(1, Roughness[i]));
-				PotentialEnergy[i] = (WaterMass[i] * WorldData.SpecificHeatWater + SaltMass[i] * WorldData.SpecificHeatSalt) * Temperature[i];
-				float layerMass = WaterMass[i] + SaltMass[i];
-				Pressure[i] = (WaterMassTotal[i] + layerMass / 2) * Gravity;
-				WaterMassTotal[i] += layerMass;
+				float waterMass = WaterMass[index];
+				float saltMass = SaltMass[index];
+				float density = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(waterMass, saltMass), Temperature[index]);
+				Density[i] = Density[i];
+				LayerHeight[i] = (waterMass + saltMass) / density;
+				PotentialEnergy[i] = (WaterMass[index] * WorldData.SpecificHeatWater + SaltMass[index] * WorldData.SpecificHeatSalt) * Temperature[index];
 			}
 			else
 			{
-				LayerDepth[i] = LayerDepthUp[i];
 				LayerHeight[i] = 0;
 				Density[i] = 0;
-				Pressure[i] = 0;
-				WaterCoverage[i] = 0;
 				PotentialEnergy[i] = 0;
 			}
+		}
+	}
+
+	[BurstCompile]
+	public struct UpdateWaterDepthJob : IJobParallelFor {
+		public NativeSlice<float> LayerDepth;
+		public NativeSlice<float> WaterCoverage;
+		public NativeSlice<float> WaterMassTotal;
+		public NativeSlice<float> WaterDepthTotal;
+		public NativeSlice<float> Pressure;
+		[ReadOnly] public NativeArray<float> LayerHeight;
+		[ReadOnly] public NativeSlice<float> WaterMass;
+		[ReadOnly] public NativeSlice<float> SaltMass;
+		[ReadOnly] public NativeArray<float> Roughness;
+		[ReadOnly] public float Gravity;
+		[ReadOnly] public int LayerIndex;
+		[ReadOnly] public int Count;
+		public void Execute(int i)
+		{
+			float layerMass = 0;
+			if (WaterMass[i] > 0)
+			{
+				layerMass = WaterMass[i] + SaltMass[i];
+			}
+			int index = LayerIndex * Count + i;
+			int indexDown = index - Count;
+			float layerHeight = LayerHeight[index];
+			WaterCoverage[i] = math.min(1, (layerHeight + LayerHeight[indexDown]) / math.max(1, Roughness[i]));
+			WaterMassTotal[i] += layerMass;
+			LayerDepth[i] = WaterDepthTotal[i] + layerHeight;
+			WaterDepthTotal[i] += layerHeight;
+			Pressure[i] = (WaterMassTotal[i] + layerMass / 2) * Gravity;
 		}
 	}
 
@@ -1070,7 +1073,7 @@ public struct TempState {
 		public NativeArray<float> IceCoverage;
 		[ReadOnly] public NativeArray<float> IceMass;
 		[ReadOnly] public NativeArray<float> FloraMass;
-		[ReadOnly] public NativeArray<float> WaterCoverage;
+		[ReadOnly] public NativeSlice<float> WaterCoverage;
 		[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
 		[ReadOnly] public NativeSlice<float> SurfaceLayerElevation;
 		[ReadOnly] public NativeArray<float> Roughness;

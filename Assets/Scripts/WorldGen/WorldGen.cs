@@ -265,12 +265,12 @@ public static class WorldGen {
 #endif
 	private struct WorldGenWaterLayerJob : IJobParallelFor {
 
-		public NativeArray<float> WaterMass;
-		public NativeArray<float> CarbonMass;
-		public NativeArray<float> SaltMass;
-		public NativeArray<float> PlanktonMass;
-		public NativeArray<float> PlanktonGlucose;
-		public NativeArray<float> WaterTemperature;
+		public NativeSlice<float> WaterMass;
+		public NativeSlice<float> CarbonMass;
+		public NativeSlice<float> SaltMass;
+		public NativeSlice<float> PlanktonMass;
+		public NativeSlice<float> PlanktonGlucose;
+		public NativeSlice<float> WaterTemperature;
 		public NativeArray<float> ElevationTop;
 
 		[ReadOnly] public NativeArray<float> WaterTemperatureSurface;
@@ -406,13 +406,13 @@ public static class WorldGen {
 			float layerDepthMax;
 			float layerCount;
 			float plankton;
-			if (i== worldData.WaterLayers - 2)
+			if (i== worldData.SurfaceWaterLayer)
 			{
 				layerDepthMax = worldData.SurfaceWaterDepth;
 				layerCount = 1;
 				plankton = worldGenData.PlanktonMass;
 			}
-			else if (i == worldData.WaterLayers - 3)
+			else if (i == worldData.SurfaceWaterLayer - 1)
 			{
 				layerDepthMax = worldData.ThermoclineDepth;
 				layerCount = 1;
@@ -426,12 +426,12 @@ public static class WorldGen {
 			}
 			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterLayerJob()
 			{
-				WaterTemperature = state.WaterTemperature[i],
-				SaltMass = state.SaltMass[i],
-				WaterMass = state.WaterMass[i],
-				CarbonMass = state.WaterCarbon[i],
-				PlanktonMass = state.PlanktonMass[i],
-				PlanktonGlucose = state.PlanktonGlucose[i],
+				WaterTemperature = staticState.GetSliceLayer(state.WaterTemperature, i),
+				SaltMass = staticState.GetSliceLayer(state.SaltMass, i),
+				WaterMass = staticState.GetSliceLayer(state.WaterMass, i),
+				CarbonMass = staticState.GetSliceLayer(state.WaterCarbon, i),
+				PlanktonMass = staticState.GetSliceLayer(state.PlanktonMass, i),
+				PlanktonGlucose = staticState.GetSliceLayer(state.PlanktonGlucose, i),
 				ElevationTop = WaterLayerElevation,
 
 				LayerCount = layerCount,

@@ -11,10 +11,10 @@ public struct FluxWaterEvaporationJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeSlice<float> LatentHeatWater;
 	public NativeSlice<float> LatentHeatAir;
-	[ReadOnly] public NativeArray<float> WaterTemperature;
-	[ReadOnly] public NativeArray<float> WaterMass;
+	[ReadOnly] public NativeSlice<float> WaterTemperature;
+	[ReadOnly] public NativeSlice<float> WaterMass;
 	[ReadOnly] public NativeArray<float> IceCoverage;
-	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeSlice<float> AirVapor;
 	[ReadOnly] public NativeSlice<float> AirPressure;
@@ -66,9 +66,9 @@ public struct FluxWaterFreezeJob : IJobParallelFor {
 	public NativeArray<float> FrozenTemperature;
 	public NativeArray<float> SaltPlume;
 	public NativeSlice<float> LatentHeatWater;
-	[ReadOnly] public NativeArray<float> WaterTemperature;
-	[ReadOnly] public NativeArray<float> WaterMass;
-	[ReadOnly] public NativeArray<float> SaltMass;
+	[ReadOnly] public NativeSlice<float> WaterTemperature;
+	[ReadOnly] public NativeSlice<float> WaterMass;
+	[ReadOnly] public NativeSlice<float> SaltMass;
 	[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> AirLayerElevation;
 	[ReadOnly] public float WaterHeatingDepth;
@@ -121,7 +121,7 @@ public struct FluxWaterFreezeJob : IJobParallelFor {
 [BurstCompile]
 public struct FluxFloraWaterConsumeJob : IJobParallelFor {
 	public NativeArray<float> FloraWaterConsumed;
-	[ReadOnly] public NativeArray<float> WaterMass;
+	[ReadOnly] public NativeSlice<float> WaterMass;
 	[ReadOnly] public NativeArray<float> FloraMass;
 	[ReadOnly] public NativeArray<float> FloraWater;
 	[ReadOnly] public float FloraWaterConsumptionRate;
@@ -146,13 +146,13 @@ public struct FluxPlanktonJob : IJobParallelFor {
 	public NativeArray<float> PlanktonGlucoseDelta;
 	public NativeArray<float> PlanktonDeath;
 	public NativeArray<float> WaterCarbonDelta;
-	[ReadOnly] public NativeSlice<float> SolarRadiation;
-	[ReadOnly] public NativeArray<float> WaterTemperature;
-	[ReadOnly] public NativeArray<float> WaterMass;
-	[ReadOnly] public NativeArray<float> SaltMass;
-	[ReadOnly] public NativeArray<float> WaterCarbon;
-	[ReadOnly] public NativeArray<float> PlanktonMass;
-	[ReadOnly] public NativeArray<float> PlanktonGlucoseMass;
+	[ReadOnly] public NativeArray<float> SolarRadiation;
+	[ReadOnly] public NativeSlice<float> WaterTemperature;
+	[ReadOnly] public NativeSlice<float> WaterMass;
+	[ReadOnly] public NativeSlice<float> SaltMass;
+	[ReadOnly] public NativeSlice<float> WaterCarbon;
+	[ReadOnly] public NativeSlice<float> PlanktonMass;
+	[ReadOnly] public NativeSlice<float> PlanktonGlucoseMass;
 	[ReadOnly] public float PlanktonEnergyForPhotosynthesis;
 	[ReadOnly] public float PlanktonDensityMax;
 	[ReadOnly] public float PlanktonPhotosynthesisSpeed;
@@ -269,7 +269,7 @@ public struct FluxCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LastDropletMass;
 	[ReadOnly] public NativeArray<float> LastCloudMass;
 	[ReadOnly] public NativeArray<float> AirDensityCloud;
-	[ReadOnly] public NativeArray<float> SurfaceSaltMass;
+	[ReadOnly] public NativeSlice<float> SurfaceSaltMass;
 	[ReadOnly] public NativeSlice<float> SurfaceAirTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> SurfaceLayerElevation;
 	[ReadOnly] public NativeSlice<float> SurfaceLayerMiddle;
@@ -439,7 +439,7 @@ public struct FluxIceMeltJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> WaterIceSurfaceArea;
-	[ReadOnly] public NativeArray<float> WaterTemperature;
+	[ReadOnly] public NativeSlice<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
 	[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
@@ -696,7 +696,7 @@ public struct FluxTerrainJob : IJobParallelFor {
 	public NativeArray<float> SoilRespiration;
 	public NativeSlice<float> LatentHeatLava;
 	[ReadOnly] public NativeArray<float> SoilCarbon;
-	[ReadOnly] public NativeArray<float> WaterCoverage;
+	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> LavaMass;
 	[ReadOnly] public NativeArray<float> MagmaMass;
