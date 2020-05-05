@@ -121,6 +121,146 @@ public struct DiffusionAirJob : IJobParallelFor {
 
 
 [BurstCompile]
+public struct DiffusionWaterJob : IJobParallelFor {
+	public NativeSlice<DiffusionWater> Delta;
+	[ReadOnly] public NativeSlice<float> WaterMass;
+	[ReadOnly] public NativeSlice<float> Temperature;
+	[ReadOnly] public NativeSlice<float> SaltMass;
+	[ReadOnly] public NativeSlice<float> CarbonMass;
+	[ReadOnly] public NativeSlice<float> PlanktonMass;
+	[ReadOnly] public NativeSlice<float> PlanktonGlucose;
+	[ReadOnly] public NativeSlice<float3> Velocity;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<float> NeighborDistInverse;
+	[ReadOnly] public float DiffusionCoefficientHorizontal;
+	[ReadOnly] public float DiffusionCoefficientVertical;
+	[ReadOnly] public float CellSurfaceArea;
+	[ReadOnly] public float CellCircumference;
+	[ReadOnly] public int Count;
+	[ReadOnly] public int LayerCount;
+	public void Execute(int i)
+	{
+		int indexUp = i + Count;
+		int indexDown = i - Count;
+
+		float mass = WaterMass[i];
+		float layerHeight = LayerHeight[i];
+		float temperature = Temperature[i];
+		float saltMass = SaltMass[i];
+		float carbonMass = CarbonMass[i];
+		float plankton = PlanktonMass[i];
+		float glucose = PlanktonGlucose[i];
+		float3 velocity = Velocity[i];
+
+		float neighborTemperature = temperature;
+		float neighborSaltMass = saltMass;
+		float neighborCarbonMass = carbonMass;
+		float neighborPlankton = plankton;
+		float neighborGlucose = glucose;
+		float3 neighborVelocity = velocity;
+
+		int layer = i / Count;
+		bool isTop = layer == LayerCount - 1;
+		bool isBottom = layer == 0;
+		int cellIndex = i - layer * Count;
+
+
+		if (mass > 0)
+		{
+			float inverseMass = 1.0f / mass;
+			float saltPercent = saltMass * inverseMass;
+			float carbonPercent = carbonMass * inverseMass;
+			float planktonPercent = plankton * inverseMass;
+			float glucosePercent = glucose * inverseMass;
+
+
+			for (int j = 0; j < StaticState.MaxNeighbors; j++)
+			{
+				int nIndex = cellIndex * 6 + j;
+				int n = Neighbors[nIndex];
+				if (n >= 0)
+				{
+					float nHeight = LayerHeight[n];
+					if (nHeight > 0)
+					{
+						float nMass = WaterMass[n];
+						if (nMass > 0)
+						{
+							float saToVolume = math.min(layerHeight, nHeight) * CellCircumference / (6 * nHeight * CellSurfaceArea);
+							float inverseTotalMass = 1.0f / (nMass + mass);
+							float inverseNMass = 1.0f / nMass;
+							float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientHorizontal;
+							neighborTemperature += (Temperature[n] - temperature) * diffusion;
+							neighborVelocity += (Velocity[n] - velocity) * diffusion;
+							neighborSaltMass += (SaltMass[n] * inverseNMass - saltPercent) * diffusion * math.min(nMass, mass);
+							neighborPlankton += (PlanktonMass[n] * inverseNMass - planktonPercent) * diffusion * math.min(nMass, mass);
+							neighborGlucose += (PlanktonGlucose[n] * inverseNMass - glucosePercent) * diffusion * math.min(nMass, mass);
+							neighborCarbonMass += (CarbonMass[n] * inverseNMass - carbonPercent) * diffusion * math.min(nMass, mass);
+						}
+					}
+				}
+			}
+
+
+			// NOTE: we don't diffuse velocity vertically
+			// NOTE: we are ignoring adibatic processes in the water -- at 10km, the total lapse is less than 1.5 degrees celsius
+			if (!isTop)
+			{
+				float nMass = WaterMass[indexUp];
+				if (nMass > 0)
+				{
+					float nLayerHeight = LayerHeight[indexUp];
+					if (nLayerHeight > 0)
+					{
+						float inverseNMass = 1.0f / nMass;
+						float saToVolume = 1.0f / nLayerHeight;
+						float inverseTotalMass = 1.0f / (nMass + mass);
+						float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
+						neighborTemperature += (Temperature[indexUp] - temperature) * diffusion;
+						neighborSaltMass += (SaltMass[indexUp] * inverseNMass - saltPercent) * diffusion * math.min(nMass, mass);
+						neighborCarbonMass += (CarbonMass[indexUp] * inverseNMass - carbonPercent) * diffusion * math.min(nMass, mass);
+					}
+				}
+			}
+
+			if (!isBottom)
+			{
+				float nMass = WaterMass[indexDown];
+				if (nMass > 0)
+				{
+					float nLayerHeight = LayerHeight[indexDown];
+					if (nLayerHeight > 0)
+					{
+						float inverseNMass = 1.0f / nMass;
+						float saToVolume = 1.0f / nLayerHeight;
+						float inverseTotalMass = 1.0f / (nMass + mass);
+						float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
+						neighborTemperature += (Temperature[indexDown] - temperature) * diffusion;
+						neighborSaltMass += (SaltMass[indexDown] * inverseNMass - saltPercent) * diffusion * math.min(nMass, mass);
+						neighborCarbonMass += (CarbonMass[indexDown] * inverseNMass - carbonPercent) * diffusion * math.min(nMass, mass);
+					}
+				}
+			}
+
+		}
+
+		Delta[i] = new DiffusionWater()
+		{
+			WaterMass = mass,
+			SaltMass = neighborSaltMass,
+			CarbonMass = neighborCarbonMass,
+			Plankton = neighborPlankton,
+			PlanktonGlucose = neighborGlucose,
+			Temperature = neighborTemperature,
+			Velocity = neighborVelocity,
+		};
+	}
+
+}
+
+
+[BurstCompile]
 public struct DiffusionCloudJob : IJobParallelFor {
 	public NativeArray<DiffusionCloud> Delta;
 	[ReadOnly] public NativeArray<float> LastMass;
@@ -168,133 +308,3 @@ public struct DiffusionCloudJob : IJobParallelFor {
 
 	}
 }
-
-[BurstCompile]
-public struct DiffusionWaterJob : IJobParallelFor {
-	public NativeSlice<DiffusionWater> Delta;
-	[ReadOnly] public NativeArray<float> WaterMass;
-	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float> SaltMass;
-	[ReadOnly] public NativeArray<float> CarbonMass;
-	[ReadOnly] public NativeArray<float> PlanktonMass;
-	[ReadOnly] public NativeArray<float> PlanktonGlucose;
-	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float> LayerHeight;
-	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public NativeArray<float> NeighborDistInverse;
-	[ReadOnly] public float DiffusionCoefficientHorizontal;
-	[ReadOnly] public float DiffusionCoefficientVertical;
-	[ReadOnly] public float CellSurfaceArea;
-	[ReadOnly] public float CellCircumference;
-	[ReadOnly] public int Count;
-	public void Execute(int i)
-	{
-		int index = i + Count;
-		int indexUp = index + Count;
-		int indexDown = i;
-
-		float mass = WaterMass[index];
-		float neighborTemperature = Temperature[index];
-		float neighborSaltMass = SaltMass[index];
-		float neighborCarbonMass = CarbonMass[index];
-		float neighborPlankton = PlanktonMass[index];
-		float neighborGlucose = PlanktonGlucose[index];
-		float3 neighborVelocity = Velocity[index];
-
-
-#if !DISABLE_WATER_DIFFUSION
-		if (mass > 0)
-		{
-			float layerHeight = LayerHeight[index];
-			float temperature = Temperature[index];
-			float saltMass = SaltMass[index];
-			float carbonMass = CarbonMass[index];
-			float plankton = PlanktonMass[index];
-			float glucose = PlanktonGlucose[index];
-			float3 velocity = Velocity[index];
-			float saltPercent = saltMass / mass;
-			float carbonPercent = carbonMass / mass;
-			float planktonPercent = plankton / mass;
-			float glucosePercent = glucose / mass;
-
-
-			for (int j = 0; j < 6; j++)
-			{
-				int nIndex = i * 6 + j;
-				int n = Neighbors[nIndex];
-				if (n >= 0)
-				{
-					float nHeight = LayerHeight[n];
-					if (nHeight > 0)
-					{
-						float nMass = WaterMass[n];
-						if (nMass > 0)
-						{
-							float saToVolume = math.min(layerHeight, nHeight) * CellCircumference / (6 * nHeight * CellSurfaceArea);
-							float inverseTotalMass = 1.0f / (nMass + mass);
-							float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientHorizontal;
-							neighborTemperature += (Temperature[n] - temperature) * diffusion;
-							neighborVelocity += (Velocity[n] - velocity) * diffusion;
-							neighborSaltMass += (SaltMass[n] / nMass - saltPercent) * diffusion * math.min(nMass, mass);
-							neighborPlankton += (PlanktonMass[n] / nMass - planktonPercent) * diffusion * math.min(nMass, mass);
-							neighborGlucose += (PlanktonGlucose[n] / nMass - glucosePercent) * diffusion * math.min(nMass, mass);
-							neighborCarbonMass += (CarbonMass[n] / nMass - carbonPercent) * diffusion * math.min(nMass, mass);
-						}
-					}
-				}
-			}
-
-
-			// NOTE: we don't diffuse velocity vertically
-			// NOTE: we are ignoring adibatic processes in the water -- at 10km, the total lapse is less than 1.5 degrees celsius
-			{
-				float nMass = WaterMass[indexUp];
-				if (nMass > 0)
-				{
-					float nLayerHeight = LayerHeight[indexUp];
-					if (nLayerHeight > 0)
-					{
-						float saToVolume = 1.0f / nLayerHeight;
-						float inverseTotalMass = 1.0f / (nMass + mass);
-						float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
-						neighborTemperature += (Temperature[indexUp] - temperature) * diffusion;
-						neighborSaltMass += (SaltMass[indexUp] / nMass - saltPercent) * diffusion * math.min(nMass, mass);
-						neighborCarbonMass += (CarbonMass[indexUp] / nMass - carbonPercent) * diffusion * math.min(nMass, mass);
-					}
-				}
-			}
-
-			{
-				float nMass = WaterMass[indexDown];
-				if (nMass > 0)
-				{
-					float nLayerHeight = LayerHeight[indexDown];
-					if (nLayerHeight > 0)
-					{
-						float saToVolume = 1.0f / nLayerHeight;
-						float inverseTotalMass = 1.0f / (nMass + mass);
-						float diffusion = saToVolume * nMass * inverseTotalMass * DiffusionCoefficientVertical;
-						neighborTemperature += (Temperature[indexDown] - temperature) * diffusion;
-						neighborSaltMass += (SaltMass[indexDown] / nMass - saltPercent) * diffusion * math.min(nMass, mass);
-						neighborCarbonMass += (CarbonMass[indexDown] / nMass - carbonPercent) * diffusion * math.min(nMass, mass);
-					}
-				}
-			}
-
-		}
-#endif
-
-		Delta[i] = new DiffusionWater()
-		{
-			WaterMass = mass,
-			SaltMass = neighborSaltMass,
-			CarbonMass = neighborCarbonMass,
-			Plankton = neighborPlankton,
-			PlanktonGlucose = neighborGlucose,
-			Temperature = neighborTemperature,
-			Velocity = neighborVelocity,
-		};
-	}
-
-}
-

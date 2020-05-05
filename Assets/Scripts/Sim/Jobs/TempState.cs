@@ -112,6 +112,8 @@ public struct TempState {
 
 	public NativeArray<DiffusionWater> DiffusionWater;
 	public NativeArray<DiffusionWater> AdvectionWater;
+	public NativeArray<DiffusionWater> RebalanceWater1;
+	public NativeArray<DiffusionWater> RebalanceWater2;
 	public NativeArray<float> WaterMassLeaving;
 	public NativeArray<float> DestinationWater;
 	public NativeArray<float> DestinationWaterResolved;
@@ -270,11 +272,13 @@ public struct TempState {
 		WaterMassLeaving = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		DiffusionWater = new NativeArray<DiffusionWater>(count * worldData.WaterLayers, Allocator.Persistent);
 		AdvectionWater = new NativeArray<DiffusionWater>(count * worldData.WaterLayers, Allocator.Persistent);
+		RebalanceWater1 = new NativeArray<DiffusionWater>(count, Allocator.Persistent);
+		RebalanceWater2 = new NativeArray<DiffusionWater>(count, Allocator.Persistent);
 		ConductionWaterTerrain = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		DivergencePressureWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		DivergenceWater = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
-		DestinationWater = new NativeArray<float>(count * worldData.WaterLayers * StaticState.MaxNeighbors, Allocator.Persistent);
-		DestinationWaterResolved = new NativeArray<float>(count * worldData.WaterLayers * StaticState.MaxNeighbors, Allocator.Persistent);
+		DestinationWater = new NativeArray<float>(count * worldData.WaterLayers * StaticState.MaxNeighborsVert, Allocator.Persistent);
+		DestinationWaterResolved = new NativeArray<float>(count * worldData.WaterLayers * StaticState.MaxNeighborsVert, Allocator.Persistent);
 
 		AirMassLeaving = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		DiffusionAir = new NativeArray<DiffusionAir>(count * worldData.AirLayers, Allocator.Persistent);
@@ -459,6 +463,8 @@ public struct TempState {
 		WaterMassLeaving.Dispose();
 		DiffusionWater.Dispose();
 		AdvectionWater.Dispose();
+		RebalanceWater1.Dispose();
+		RebalanceWater2.Dispose();
 		DestinationWater.Dispose();
 		DestinationWaterResolved.Dispose();
 		ConductionWaterTerrain.Dispose();

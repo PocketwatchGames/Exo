@@ -235,31 +235,31 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 
 	public NativeArray<DiffusionWater> Delta1;
 	public NativeArray<DiffusionWater> Delta2;
-	[ReadOnly] public NativeArray<float> Mass1;
-	[ReadOnly] public NativeArray<float> Salt1;
-	[ReadOnly] public NativeArray<float> Carbon1;
-	[ReadOnly] public NativeArray<float> PlanktonMass1;
-	[ReadOnly] public NativeArray<float> PlanktonGlucose1;
-	[ReadOnly] public NativeArray<float> Temperature1;
-	[ReadOnly] public NativeArray<float3> Velocity1;
-	[ReadOnly] public NativeArray<float> Mass2;
-	[ReadOnly] public NativeArray<float> Salt2;
-	[ReadOnly] public NativeArray<float> Carbon2;
-	[ReadOnly] public NativeArray<float> Temperature2;
-	[ReadOnly] public NativeArray<float3> Velocity2;
+	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> Salt;
+	[ReadOnly] public NativeArray<float> Carbon;
+	[ReadOnly] public NativeArray<float> PlanktonMass;
+	[ReadOnly] public NativeArray<float> PlanktonGlucose;
+	[ReadOnly] public NativeArray<float> Temperature;
+	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public float MaxDepth1;
 	[ReadOnly] public float MinDepth1;
+	[ReadOnly] public int Layer1;
+	[ReadOnly] public int Layer2;
+	[ReadOnly] public int Count;
 
 	public void Execute(int i)
 	{
-		float mass1 = Mass1[i];
-		float salt1 = Salt1[i];
-		float mass2 = Mass2[i];
-		float salt2 = Salt2[i];
-		float temperature1 = Temperature1[i];
-		float temperature2 = Temperature2[i];
-		float3 velocity1 = Velocity1[i];
-		float3 velocity2 = Velocity2[i];
+		int index1 = Layer1 * Count;
+		int index2 = Layer2 * Count;
+		float mass1 = Mass[index1];
+		float salt1 = Salt[index1];
+		float mass2 = Mass[index2];
+		float salt2 = Salt[index2];
+		float temperature1 = Temperature[index1];
+		float temperature2 = Temperature[index2];
+		float3 velocity1 = Velocity[index1];
+		float3 velocity2 = Velocity[index2];
 
 		float density1 = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(mass1, salt1), temperature1);
 		float density2 = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(mass2, salt2), temperature2);
@@ -271,14 +271,14 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			float move = 1.0f - MaxDepth1 / depth1;
 			float moveMass = mass1 * move;
 			float moveSalt = salt1 * move;
-			float moveCarbon = Carbon1[i] * move;
+			float moveCarbon = Carbon[index1] * move;
 			Delta1[i] = new DiffusionWater()
 			{
 				WaterMass = mass1 - moveMass,
 				SaltMass = salt1 - moveSalt,
-				CarbonMass = Carbon1[i] - moveCarbon,
-				Plankton = PlanktonMass1[i],
-				PlanktonGlucose = PlanktonGlucose1[i],
+				CarbonMass = Carbon[index1] - moveCarbon,
+				Plankton = PlanktonMass[index1],
+				PlanktonGlucose = PlanktonGlucose[index1],
 				Temperature = temperature1,
 				Velocity = velocity1
 			};
@@ -287,7 +287,7 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			{
 				WaterMass = mass2 + moveMass,
 				SaltMass = salt2 + moveSalt,
-				CarbonMass = Carbon2[i] + moveCarbon,
+				CarbonMass = Carbon[index2] + moveCarbon,
 				Plankton = 0,
 				PlanktonGlucose = 0,
 				Temperature = (temperature2 * (mass2 + salt2) + temperature1 * (moveMass + moveSalt)) * inverseTotalMass,
@@ -299,15 +299,15 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			float move = math.min(1.0f, math.min(depth2, MinDepth1 - depth1) / depth2);
 			float moveMass = mass2 * move;
 			float moveSalt = salt2 * move;
-			float moveCarbon = Carbon2[i] * move;
+			float moveCarbon = Carbon[index2] * move;
 			float inverseTotalMass = 1.0f / (moveMass + moveSalt + mass1 + salt1);
 			Delta1[i] = new DiffusionWater()
 			{
 				WaterMass = mass1 + moveMass,
 				SaltMass = salt1 + moveSalt,
-				CarbonMass = Carbon1[i] + moveCarbon,
-				Plankton = PlanktonMass1[i],
-				PlanktonGlucose = PlanktonGlucose1[i],
+				CarbonMass = Carbon[index1] + moveCarbon,
+				Plankton = PlanktonMass[index1],
+				PlanktonGlucose = PlanktonGlucose[index1],
 				Temperature = (temperature1 * (mass1 + salt1) + temperature2 * (moveMass + moveSalt)) * inverseTotalMass,
 				Velocity = (velocity1 * (mass1 + salt1) + velocity2 * (moveMass + moveSalt)) * inverseTotalMass,
 			};
@@ -316,7 +316,7 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			{
 				WaterMass = mass2 - moveMass,
 				SaltMass = salt2 - moveSalt,
-				CarbonMass = Carbon2[i] - moveCarbon,
+				CarbonMass = Carbon[index2] - moveCarbon,
 				Plankton = 0,
 				PlanktonGlucose = 0,
 				Temperature = temperature2 * anyMassRemaining,
@@ -329,9 +329,9 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			{
 				WaterMass = mass1,
 				SaltMass = salt1,
-				CarbonMass = Carbon1[i],
-				Plankton = PlanktonMass1[i],
-				PlanktonGlucose = PlanktonGlucose1[i],
+				CarbonMass = Carbon[index1],
+				Plankton = PlanktonMass[index1],
+				PlanktonGlucose = PlanktonGlucose[index1],
 				Temperature = temperature1,
 				Velocity = velocity1
 			};
@@ -339,7 +339,7 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			{
 				WaterMass = mass2,
 				SaltMass = salt2,
-				CarbonMass = Carbon2[i],
+				CarbonMass = Carbon[index2],
 				Plankton = 0,
 				PlanktonGlucose = 0,
 				Temperature = temperature2,

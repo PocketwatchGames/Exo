@@ -20,6 +20,7 @@ public class WorldSim {
 	public JobHelper AirJob;
 	public JobHelper UpperAirJob;
 	public JobHelper AirNeighborJob;
+	public JobHelper WaterNeighborJob;
 	public JobHelper WaterJob;
 
 
@@ -39,7 +40,7 @@ public class WorldSim {
 		AirJob = new JobHelper(_cellCount * (worldData.AirLayers - 2));
 		UpperAirJob = new JobHelper(_cellCount * (worldData.AirLayers - 3));
 		AirNeighborJob = new JobHelper(_cellCount * (worldData.AirLayers - 2) * StaticState.MaxNeighborsVert);
-
+		WaterNeighborJob = new JobHelper(_cellCount * (worldData.WaterLayers - 2) * StaticState.MaxNeighborsVert);
 		energyJobHandles = new NativeArray<JobHandle>(worldData.LayerCount, Allocator.Persistent);
 
 	}
@@ -416,35 +417,27 @@ public class WorldSim {
 		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
 		#region Advection
 
+		energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
+		{
+			Destination = staticState.GetSliceWaterNeighbors(tempState.DestinationWater),
+			NeighborsVert = staticState.NeighborsVert,
+			Position = staticState.SphericalPosition,
+			Velocity = nextState.WaterVelocity,
+			Mass = nextState.WaterMass,
+			PlanetRadius = staticState.PlanetRadius,
+			SecondsPerTick = worldData.SecondsPerTick,
+			CellsPerLayer = staticState.Count
+		}, energyJobHandles[worldData.WaterLayer0]);
+
+		energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(new ResolveAdvectionConflictVert()
+		{
+			ResolvedDestination = staticState.GetSliceWaterNeighbors(tempState.DestinationWaterResolved),
+			Destination = tempState.DestinationWater,
+			ReverseNeighborsVert = staticState.ReverseNeighborsVert,
+			CellsPerLayer = staticState.Count
+		}, energyJobHandles[worldData.WaterLayer0]);
+
 #if !LayerRefactor
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
-		{
-			int layer = worldData.WaterLayer0 + j;
-			energyJobHandles[layer] = NeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
-			{
-				Destination = tempState.DestinationWater[j],
-				NeighborsVert = staticState.NeighborsVert,
-				Position = staticState.SphericalPosition,
-				Velocity = nextState.WaterVelocity[j],
-				Mass = nextState.WaterMass[j],
-				PlanetRadius = staticState.PlanetRadius,
-				SecondsPerTick = worldData.SecondsPerTick,
-				CellsPerLayer = staticState.Count
-			}, energyJobHandles[layer]);
-		}
-
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
-		{
-			int layer = worldData.WaterLayer0 + j;
-			energyJobHandles[layer] = NeighborJob.Schedule(new ResolveAdvectionConflictVert()
-			{
-				ResolvedDestination = tempState.DestinationWaterResolved[j],
-				Destination = tempState.DestinationWater[j],
-				ReverseNeighborsVert = staticState.ReverseNeighbors,
-				CellsPerLayer = staticState.Count
-			}, energyJobHandles[layer]);
-		}
-
 		if (settings.MakeWaterIncompressible)
 		{
 			for (int j = 1; j < worldData.WaterLayers - 1; j++)
@@ -531,43 +524,27 @@ public class WorldSim {
 				}, energyJobHandles[layer]);
 			}
 		}
-
-
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
-		{
-			int layer = worldData.WaterLayer0 + j;
-			energyJobHandles[layer] = SimJob.Schedule(new AdvectionWaterJob()
-			{
-				Delta = tempState.AdvectionWater[j],
-				Destination = tempState.DestinationWater[j],
-				DestinationAbove = tempState.DestinationWater[j + 1],
-				DestinationBelow = tempState.DestinationWater[j - 1],
-				Velocity = nextState.WaterVelocity[j],
-				VelocityAbove = nextState.WaterVelocity[j + 1],
-				VelocityBelow = nextState.WaterVelocity[j - 1],
-				Temperature = nextState.WaterTemperature[j],
-				TemperatureAbove = nextState.WaterTemperature[j + 1],
-				TemperatureBelow = nextState.WaterTemperature[j - 1],
-				Mass = nextState.WaterMass[j],
-				MassAbove = nextState.WaterMass[j + 1],
-				MassBelow = nextState.WaterMass[j - 1],
-				Salt = nextState.SaltMass[j],
-				SaltAbove = nextState.SaltMass[j + 1],
-				SaltBelow = nextState.SaltMass[j - 1],
-				Carbon = nextState.WaterCarbon[j],
-				CarbonAbove = nextState.WaterCarbon[j + 1],
-				CarbonBelow = nextState.WaterCarbon[j - 1],
-				PlanktonMass = nextState.PlanktonMass[j],
-				PlanktonGlucose = nextState.PlanktonGlucose[j],
-				Positions = staticState.SphericalPosition,
-				Neighbors = staticState.Neighbors,
-				CoriolisMultiplier = staticState.CoriolisMultiplier,
-				CoriolisTerm = coriolisTerm,
-				SecondsPerTick = worldData.SecondsPerTick
-			}, JobHandle.CombineDependencies(groundWaterJob,
-				JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer + 1], energyJobHandles[layer - 1])));
-		}
 #endif
+
+
+		energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(new AdvectionWaterJob()
+		{
+			Delta = staticState.GetSliceWater(tempState.AdvectionWater),
+			Destination = tempState.DestinationWater,
+			Velocity = nextState.WaterVelocity,
+			Temperature = nextState.WaterTemperature,
+			Mass = nextState.WaterMass,
+			Salt = nextState.SaltMass,
+			Carbon = nextState.WaterCarbon,
+			PlanktonMass = nextState.PlanktonMass,
+			PlanktonGlucose = nextState.PlanktonGlucose,
+			Positions = staticState.SphericalPosition,
+			NeighborsVert = staticState.NeighborsVert,
+			CoriolisMultiplier = staticState.CoriolisMultiplier,
+			CoriolisTerm = coriolisTerm,
+			SecondsPerTick = worldData.SecondsPerTick,
+			CellsPerLayer = staticState.Count
+		}, JobHandle.CombineDependencies(groundWaterJob, energyJobHandles[worldData.WaterLayer0]));
 
 		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new GetVectorDestCoordsJob()
 		{
@@ -620,20 +597,22 @@ public class WorldSim {
 		{
 			Delta = staticState.GetSliceWater(tempState.DiffusionWater),
 
-			Temperature = nextState.WaterTemperature,
-			SaltMass = nextState.SaltMass,
-			PlanktonMass = nextState.PlanktonMass,
-			PlanktonGlucose = nextState.PlanktonGlucose,
-			CarbonMass = nextState.WaterCarbon,
-			Velocity = nextState.WaterVelocity,
-			WaterMass = nextState.WaterMass,
-			LayerHeight = tempState.WaterLayerHeight,
+			Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
+			SaltMass = staticState.GetSliceWater(nextState.SaltMass),
+			PlanktonMass = staticState.GetSliceWater(nextState.PlanktonMass),
+			PlanktonGlucose = staticState.GetSliceWater(nextState.PlanktonGlucose),
+			CarbonMass = staticState.GetSliceWater(nextState.WaterCarbon),
+			Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
+			WaterMass = staticState.GetSliceWater(nextState.WaterMass),
+			LayerHeight = staticState.GetSliceWater(tempState.WaterLayerHeight),
 			NeighborDistInverse = staticState.NeighborDistInverse,
 			Neighbors = staticState.Neighbors,
 			DiffusionCoefficientHorizontal = worldData.WaterDiffusionCoefficientHorizontal,
 			DiffusionCoefficientVertical = worldData.WaterDiffusionCoefficientVertical,
 			CellSurfaceArea = staticState.CellSurfaceArea,
-			CellCircumference = staticState.CellCircumference
+			CellCircumference = staticState.CellCircumference,
+			Count = staticState.Count,
+			LayerCount = worldData.WaterLayers-2
 		}, energyJobHandles[worldData.WaterLayer0]);
 
 		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new DiffusionCloudJob()
@@ -759,7 +738,6 @@ public class WorldSim {
 
 #region Rebalance
 
-#if !LayerRefactor
 		for (int i = worldData.SurfaceWaterLayer; i >= 2; i--)
 		{
 
@@ -775,56 +753,53 @@ public class WorldSim {
 				maxDepth = worldData.ThermoclineDepth;
 				minDepth = worldData.ThermoclineDepth - 10;
 			}
-			var h = SimJob.Schedule(new RebalanceWaterLayersLimitJob()
+			tickJobHandle = SimJob.Schedule(new RebalanceWaterLayersLimitJob()
 			{
-				Delta1 = tempState.DiffusionWater[i],
-				Delta2 = tempState.DiffusionWater[i - 1],
+				Delta1 = tempState.RebalanceWater1,
+				Delta2 = tempState.RebalanceWater2,
 
-				Mass1 = nextState.WaterMass[i],
-				Salt1 = nextState.SaltMass[i],
-				Carbon1 = nextState.WaterCarbon[i],
-				PlanktonMass1 = nextState.PlanktonMass[i],
-				PlanktonGlucose1 = nextState.PlanktonGlucose[i],
-				Temperature1 = nextState.WaterTemperature[i],
-				Velocity1 = nextState.WaterVelocity[i],
-
-				Mass2 = nextState.WaterMass[i - 1],
-				Salt2 = nextState.SaltMass[i - 1],
-				Carbon2 = nextState.WaterCarbon[i - 1],
-				Temperature2 = nextState.WaterTemperature[i - 1],
-				Velocity2 = nextState.WaterVelocity[i - 1],
+				Mass = nextState.WaterMass,
+				Salt = nextState.SaltMass,
+				Carbon = nextState.WaterCarbon,
+				PlanktonMass = nextState.PlanktonMass,
+				PlanktonGlucose = nextState.PlanktonGlucose,
+				Temperature = nextState.WaterTemperature,
+				Velocity = nextState.WaterVelocity,
+				
+				Layer1 = i,
+				Layer2 = i - 1,
 
 				MaxDepth1 = maxDepth,
 				MinDepth1 = minDepth,
+
+				Count = staticState.Count
 			}, tickJobHandle);
-			var rebalanceWaterJobHandle1 = SimJob.Schedule(new ApplyAdvectionWaterJob()
+			tickJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
 			{
-				WaterMass = nextState.WaterMass[i],
-				SaltMass = nextState.SaltMass[i],
-				CarbonMass = nextState.WaterCarbon[i],
-				PlanktonMass = nextState.PlanktonMass[i],
-				PlanktonGlucose = nextState.PlanktonGlucose[i],
-				Temperature = nextState.WaterTemperature[i],
-				Velocity = nextState.WaterVelocity[i],
+				WaterMass = staticState.GetSliceLayer(nextState.WaterMass,i),
+				SaltMass = staticState.GetSliceLayer(nextState.SaltMass, i),
+				CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbon, i),
+				PlanktonMass = staticState.GetSliceLayer(nextState.PlanktonMass, i),
+				PlanktonGlucose = staticState.GetSliceLayer(nextState.PlanktonGlucose, i),
+				Temperature = staticState.GetSliceLayer(nextState.WaterTemperature, i),
+				Velocity = staticState.GetSliceLayer(nextState.WaterVelocity, i),
 
-				Advection = tempState.DiffusionWater[i],
-			}, h);
-			var rebalanceWaterJobHandle2 = SimJob.Schedule(new ApplyAdvectionWaterJob()
+				Advection = tempState.RebalanceWater1,
+			}, tickJobHandle);
+			tickJobHandle = SimJob.Schedule(new ApplyAdvectionWaterJob()
 			{
-				WaterMass = nextState.WaterMass[i - 1],
-				SaltMass = nextState.SaltMass[i - 1],
-				CarbonMass = nextState.WaterCarbon[i - 1],
-				PlanktonMass = nextState.PlanktonMass[i - 1],
-				PlanktonGlucose = nextState.PlanktonGlucose[i - 1],
-				Temperature = nextState.WaterTemperature[i - 1],
-				Velocity = nextState.WaterVelocity[i - 1],
+				WaterMass = staticState.GetSliceLayer(nextState.WaterMass, i - 1),
+				SaltMass = staticState.GetSliceLayer(nextState.SaltMass, i - 1),
+				CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbon, i - 1),
+				PlanktonMass = staticState.GetSliceLayer(nextState.PlanktonMass, i - 1),
+				PlanktonGlucose = staticState.GetSliceLayer(nextState.PlanktonGlucose, i - 1),
+				Temperature = staticState.GetSliceLayer(nextState.WaterTemperature, i - 1),
+				Velocity = staticState.GetSliceLayer(nextState.WaterVelocity, i - 1),
 
-				Advection = tempState.DiffusionWater[i - 1],
-			}, h);
+				Advection = tempState.RebalanceWater2,
+			}, tickJobHandle);
 
-			tickJobHandle = JobHandle.CombineDependencies(rebalanceWaterJobHandle1, rebalanceWaterJobHandle2);
 		}
-#endif
 
 #endregion
 

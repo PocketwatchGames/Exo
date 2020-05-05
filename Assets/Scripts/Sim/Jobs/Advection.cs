@@ -169,34 +169,27 @@ public struct AdvectionAirJob : IJobParallelFor {
 
 [BurstCompile]
 public struct AdvectionWaterJob : IJobParallelFor {
-	public NativeArray<DiffusionWater> Delta;
+	public NativeSlice<DiffusionWater> Delta;
 	[ReadOnly] public NativeArray<float> Destination;
-	[ReadOnly] public NativeArray<float> DestinationAbove;
-	[ReadOnly] public NativeArray<float> DestinationBelow;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float3> VelocityAbove;
-	[ReadOnly] public NativeArray<float3> VelocityBelow;
 	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float> MassAbove;
-	[ReadOnly] public NativeArray<float> MassBelow;
 	[ReadOnly] public NativeArray<float> Temperature;
-	[ReadOnly] public NativeArray<float> TemperatureAbove;
-	[ReadOnly] public NativeArray<float> TemperatureBelow;
 	[ReadOnly] public NativeArray<float> Salt;
-	[ReadOnly] public NativeArray<float> SaltAbove;
-	[ReadOnly] public NativeArray<float> SaltBelow;
 	[ReadOnly] public NativeArray<float> Carbon;
-	[ReadOnly] public NativeArray<float> CarbonAbove;
-	[ReadOnly] public NativeArray<float> CarbonBelow;
 	[ReadOnly] public NativeArray<float> PlanktonMass;
 	[ReadOnly] public NativeArray<float> PlanktonGlucose;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
-	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<int> NeighborsVert;
 	[ReadOnly] public float CoriolisTerm;
 	[ReadOnly] public float SecondsPerTick;
+	[ReadOnly] public int CellsPerLayer;
 	public void Execute(int i)
 	{
+		Debug.Assert(CellsPerLayer > 0);
+		int columnIndex = i % CellsPerLayer;
+		int fullRangeIndex = i + CellsPerLayer;
+
 		float waterMass = Mass[i];
 
 		float newMass = waterMass;
@@ -209,25 +202,26 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 		if (waterMass > 0)
 		{
-			for (int j = 0; j < StaticState.MaxNeighbors; j++)
+			for (int j = 0; j < StaticState.MaxNeighborsVert; j++)
 			{
-				newMass -= math.max(0, Destination[i * StaticState.MaxNeighbors + j]);
+				newMass -= math.max(0, Destination[fullRangeIndex * StaticState.MaxNeighborsVert + j]);
 			}
 			float percentRemaining = newMass / waterMass;
 
-			newPlankton = PlanktonMass[i] * percentRemaining;
-			newGlucose = PlanktonGlucose[i] * percentRemaining;
-			newSaltMass += Salt[i] * percentRemaining;
-			newCarbon += Carbon[i] * percentRemaining;
-			newTemperature += Temperature[i] * newMass;
-			newVelocity += Velocity[i] * newMass;
+			newPlankton = PlanktonMass[fullRangeIndex] * percentRemaining;
+			newGlucose = PlanktonGlucose[fullRangeIndex] * percentRemaining;
+			newSaltMass += Salt[fullRangeIndex] * percentRemaining;
+			newCarbon += Carbon[fullRangeIndex] * percentRemaining;
+			newTemperature += Temperature[fullRangeIndex] * newMass;
+			newVelocity += Velocity[fullRangeIndex] * newMass;
 
-			for (int j = 0; j < StaticState.MaxNeighbors; j++)
+			for (int j = 0; j < StaticState.MaxNeighborsVert; j++)
 			{
-				int n = Neighbors[i * StaticState.MaxNeighbors + j];
+				int n = NeighborsVert[fullRangeIndex * StaticState.MaxNeighborsVert + j];
 				if (n >= 0)
 				{
-					float incomingMass = math.max(0, -Destination[j]);
+					int nColumnIndex = n % CellsPerLayer;
+					float incomingMass = math.max(0, -Destination[fullRangeIndex * StaticState.MaxNeighborsVert + j]);
 					float incoming;
 					if (Mass[n] > 0)
 					{
@@ -246,13 +240,13 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					newTemperature += Temperature[n] * incomingMass;
 
 					// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
-					var deflectedVelocity = Velocity[n] + math.cross(Positions[n], Velocity[n]) * CoriolisMultiplier[n] * CoriolisTerm * SecondsPerTick;
+					var deflectedVelocity = Velocity[n] + math.cross(Positions[nColumnIndex], Velocity[n]) * CoriolisMultiplier[nColumnIndex] * CoriolisTerm * SecondsPerTick;
 
 					// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-					var deflectedVertical = math.dot(deflectedVelocity, Positions[n]);
-					deflectedVelocity -= Positions[n] * deflectedVertical;
-					deflectedVelocity -= Positions[i] * math.dot(Positions[i], deflectedVelocity);
-					deflectedVelocity += deflectedVertical * Positions[i];
+					var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
+					deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
+					deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
+					deflectedVelocity += deflectedVertical * Positions[columnIndex];
 
 
 
@@ -278,8 +272,8 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			else
 			{
 				// TODO: remove once we have incompressibility
-				newTemperature = Temperature[i];
-				newVelocity = Velocity[i];
+				newTemperature = Temperature[fullRangeIndex];
+				newVelocity = Velocity[fullRangeIndex];
 			}
 		}
 
