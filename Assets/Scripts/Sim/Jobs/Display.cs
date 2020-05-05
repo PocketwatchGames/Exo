@@ -196,23 +196,14 @@ public struct DisplayState {
 		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(new GetDivergenceJob()
 		{
 			Divergence = staticState.GetSliceAir(display.DivergenceAir),
-			Destination = tempState.DestinationAirResolved,
-			CellsPerLayer = staticState.Count
+			Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
 		}));
 
-#if !LayerRefactor
-		for (int j = 1; j < worldData.WaterLayers - 1; j++)
+		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(new GetDivergenceJob()
 		{
-			int layer = worldData.WaterLayer0 + j;
-			initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJob.Schedule(new GetDivergenceJob()
-			{
-				Divergence = display.DivergenceWater[j],
-				Destination = tempState.DestinationWater[j],
-				Neighbors = staticState.Neighbors,
-				Mass = nextState.WaterMass[j],
-			}));
-		}
-#endif
+			Divergence = staticState.GetSliceWater(display.DivergenceWater),
+			Destination = staticState.GetSliceAirNeighbors(tempState.DestinationWater),
+		}));
 
 
 		tempState.AbsorptivitySolar.CopyTo(display.AbsorptionSolar);

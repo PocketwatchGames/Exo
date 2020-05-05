@@ -194,99 +194,69 @@ public class WorldSim {
 		energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Schedule(new ResolveAdvectionConflictVert()
 		{
 			ResolvedDestination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
-			Destination = tempState.DestinationAir,
-			ReverseNeighborsVert = staticState.ReverseNeighborsVert,
-			CellsPerLayer = staticState.Count
+			Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAir),
+			ReverseNeighborsVert = staticState.GetSliceAirNeighbors(staticState.ReverseNeighborsVert),
+			Count = staticState.Count,
 		}, energyJobHandles[worldData.AirLayer0]);
 
-#if !LayerRefactor
 		if (settings.MakeAirIncompressible)
 		{
 
-			for (int j = 1; j < worldData.AirLayers - 1; j++)
+			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new GetDivergenceJob()
 			{
-				int layer = worldData.AirLayer0 + j;
-				energyJobHandles[layer] = SimJob.Schedule(new GetDivergenceJob()
-				{
-					Divergence = tempState.DivergenceAir[j],
-					Destination = tempState.DestinationAirResolved[j],
-					DestinationAbove = tempState.DestinationAirResolved[j + 1],
-					DestinationBelow = tempState.DestinationAirResolved[j - 1],
-					Neighbors = staticState.Neighbors,
-					Mass = tempState.AirMass[j],
-					MassAbove = tempState.AirMass[j + 1],
-					MassBelow = tempState.AirMass[j - 1],
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-			}
+				Divergence = staticState.GetSliceAir(tempState.DivergenceAir),
+				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+			}, energyJobHandles[worldData.AirLayer0]);
 
 			// Calculate Pressure gradient field
-			var divergenceJobHandle = default(JobHandle);
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
-			{
-				divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, energyJobHandles[worldData.AirLayer0 + i]);
-			}
 			for (int a = 0; a < settings.IncompressibilityIterations; a++)
 			{
-				for (int i = 1; i < worldData.AirLayers - 1; i++)
+				var dpj = new GetDivergencePressureJob()
 				{
-					var dpj = new GetDivergencePressureJob()
-					{
-						Pressure = tempState.DivergencePressureAir[i],
-						Divergence = tempState.DivergenceAir[i],
-						Neighbors = staticState.Neighbors
-					};
-					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
-				}
+					Pressure = staticState.GetSliceAir(tempState.DivergencePressureAir),
+					Divergence = staticState.GetSliceAir(tempState.DivergenceAir),
+					NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
+					Count = staticState.Count
+				};
+				energyJobHandles[worldData.AirLayer0] = dpj.Schedule(_cellCount * (worldData.AirLayers - 2), energyJobHandles[worldData.AirLayer0]);
 			}
 
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
+			energyJobHandles[worldData.AirLayer0] = NeighborJob.Schedule(new GetDivergenceFreeFieldJob()
 			{
-				int layer = worldData.AirLayer0 + i;
-				energyJobHandles[layer] = NeighborJob.Schedule(new GetDivergenceFreeFieldJob()
-				{
-					Destination = tempState.DestinationAirResolved[i],
-					Pressure = tempState.DivergencePressureAir[i],
-					Neighbors = staticState.Neighbors,
-					Mass = tempState.AirMass[i],
-				}, divergenceJobHandle);
-			}
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
-			{
-				int layer = worldData.AirLayer0 + i;
-				energyJobHandles[layer] = SimJob.Schedule(new SumMassLeavingJob()
-				{
-					MassLeaving = tempState.AirMassLeaving[i],
-					Destination = tempState.DestinationAirResolved[i],
-				}, energyJobHandles[layer]);
-			}
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
-			{
-				int layer = worldData.AirLayer0 + i;
-				energyJobHandles[layer] = NeighborJob.Schedule(new CapMassLeavingJob()
-				{
-					Destination = tempState.DestinationAirResolved[i],
-					MassLeaving = tempState.AirMassLeaving[i],
-					Mass = tempState.AirMass[i],
-					Neighbors = staticState.Neighbors
-				}, energyJobHandles[layer]);
-			}
+				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+				NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
+				Pressure = staticState.GetSliceAir(tempState.DivergencePressureAir),
+				Mass = staticState.GetSliceAir(tempState.AirMass),
+				Count = staticState.Count
+			}, energyJobHandles[worldData.AirLayer0]);
 
-			for (int i = 1; i < worldData.AirLayers - 1; i++)
+			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new SumMassLeavingJob()
 			{
-				int layer = worldData.AirLayer0 + i;
-				energyJobHandles[layer] = SimJob.Schedule(new UpdateDivergenceFreeVelocityJob()
-				{
-					Velocity = nextState.AirVelocity[i],
-					Destination = tempState.DestinationAirResolved[i],
-					NeighborTangent = staticState.NeighborTangent,
-					Mass = tempState.AirMass[i],
-					TicksPerSecond = worldData.TicksPerSecond
-				}, energyJobHandles[layer]);
-			}
+				MassLeaving = staticState.GetSliceAir(tempState.AirMassLeaving),
+				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+			}, energyJobHandles[worldData.AirLayer0]);
 
+			energyJobHandles[worldData.AirLayer0] = NeighborJob.Schedule(new CapMassLeavingJob()
+			{
+				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+				NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
+				MassLeaving = staticState.GetSliceAir(tempState.AirMassLeaving),
+				Mass = staticState.GetSliceAir(tempState.AirMass),
+				Count = staticState.Count
+			}, energyJobHandles[worldData.AirLayer0]);
+
+#if !LayerRefactor
+			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new UpdateDivergenceFreeVelocityJob()
+			{
+				Velocity = staticState.GetSliceAir(nextState.AirVelocity),
+				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+				NeighborTangent = staticState.GetSliceNeighbors(staticState.NeighborTangent),
+				Mass = staticState.GetSliceAir(tempState.AirMass),
+				TicksPerSecond = worldData.TicksPerSecond
+			}, energyJobHandles[worldData.AirLayer0]);
+#endif
 		}
 
-#endif
 
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new AdvectionAirJob()
 		{
@@ -316,11 +286,11 @@ public class WorldSim {
 			AirVelocity = nextState.AirVelocity,
 		}, energyJobHandles[worldData.AirLayer0]);
 
-		#endregion
+#endregion
 
 		// Diffuse from last time step
 		// Air, Water, Cloud
-		#region Diffusion
+#region Diffusion
 
 		// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new DiffusionAirJob()
@@ -410,12 +380,12 @@ public class WorldSim {
 		}, energyJobHandles[worldData.WaterLayer0]);
 
 
-		#endregion
+#endregion
 
 		// Wind and currents move temperature and trace elements horizontally
 		// Air, Water, Cloud
 		// TODO: Dot product doesn't actually work given the hexagonal nature of the grid
-		#region Advection
+#region Advection
 
 		energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(new GetVectorDestCoordsVerticalJob()
 		{
@@ -432,9 +402,9 @@ public class WorldSim {
 		energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(new ResolveAdvectionConflictVert()
 		{
 			ResolvedDestination = staticState.GetSliceWaterNeighbors(tempState.DestinationWaterResolved),
-			Destination = tempState.DestinationWater,
-			ReverseNeighborsVert = staticState.ReverseNeighborsVert,
-			CellsPerLayer = staticState.Count
+			Destination = staticState.GetSliceWaterNeighbors(tempState.DestinationWater),
+			ReverseNeighborsVert = staticState.GetSliceWaterNeighbors(staticState.ReverseNeighborsVert),
+			Count = staticState.Count
 		}, energyJobHandles[worldData.WaterLayer0]);
 
 #if !LayerRefactor
@@ -467,8 +437,7 @@ public class WorldSim {
 					{
 						Pressure = tempState.DivergencePressureWater[i],
 						Divergence = tempState.DivergenceWater[i],
-						NeighborsVert = staticState.NeighborsVert,
-						CellsPerLayer = staticState.Count
+						NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
 					};
 					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
 				}
@@ -734,7 +703,7 @@ public class WorldSim {
 			}, tickJobHandle);
 		}
 
-		#endregion
+#endregion
 
 #region Rebalance
 

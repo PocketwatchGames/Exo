@@ -94,17 +94,15 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 [BurstCompile]
 public struct ResolveAdvectionConflictVert : IJobParallelFor {
 	public NativeSlice<float> ResolvedDestination;
-	[ReadOnly] public NativeArray<float> Destination;
-	[ReadOnly] public NativeArray<int> ReverseNeighborsVert;
-	[ReadOnly] public int CellsPerLayer;
+	[ReadOnly] public NativeSlice<float> Destination;
+	[ReadOnly] public NativeSlice<int> ReverseNeighborsVert;
+	[ReadOnly] public int Count;
 	public void Execute(int e)
 	{
-		Debug.Assert(CellsPerLayer > 0);
-		int fullRangeEdgeIndex = e + CellsPerLayer * StaticState.MaxNeighborsVert;
-		int n = ReverseNeighborsVert[fullRangeEdgeIndex];
+		int n = ReverseNeighborsVert[e];
 		if (n >= 0)
 		{
-			ResolvedDestination[e] = Destination[fullRangeEdgeIndex] - Destination[n];
+			ResolvedDestination[e] = Destination[e] - Destination[n - Count * StaticState.MaxNeighborsVert];
 		}
 	}
 }
@@ -320,14 +318,11 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 [BurstCompile]
 public struct GetDivergenceJob : IJobParallelFor {
 	public NativeSlice<float> Divergence;
-	[ReadOnly] public NativeArray<float> Destination;
-	[ReadOnly] public int CellsPerLayer;
+	[ReadOnly] public NativeSlice<float> Destination;
 	public void Execute(int i)
 	{
-		Debug.Assert(CellsPerLayer > 0);
 		float value = 0;
-		int fullRangeIndex = i + CellsPerLayer;
-		int nIndex = fullRangeIndex * StaticState.MaxNeighborsVert;
+		int nIndex = i * StaticState.MaxNeighborsVert;
 		for (int n = nIndex; n < nIndex + StaticState.MaxNeighborsVert; n++)
 		{
 			value -= Destination[n];
@@ -340,23 +335,21 @@ public struct GetDivergenceJob : IJobParallelFor {
 [BurstCompile]
 public struct GetDivergencePressureJob : IJobFor {
 	public NativeSlice<float> Pressure;
-	[ReadOnly] public NativeArray<float> Divergence;
-	[ReadOnly] public NativeArray<int> NeighborsVert;
-	[ReadOnly] public int CellsPerLayer;
+	[ReadOnly] public NativeSlice<float> Divergence;
+	[ReadOnly] public NativeSlice<int> NeighborsVert;
+	[ReadOnly] public int Count;
 
 	public void Execute(int i)
 	{
-		Debug.Assert(CellsPerLayer > 0);
-		int fullRangeIndex = i + CellsPerLayer;
-		float pressure = Divergence[fullRangeIndex];
+		float pressure = Divergence[i];
 		int neighborCount = 0;
 		for (int k = 0; k < StaticState.MaxNeighborsVert; k++)
 		{
-			int n = NeighborsVert[fullRangeIndex * StaticState.MaxNeighborsVert + k];
+			int n = NeighborsVert[i * StaticState.MaxNeighborsVert + k];
 			if (n >= 0)
 			{
 				neighborCount++;
-				pressure += Pressure[n];
+				pressure += Pressure[n - Count];
 			}
 		}
 		Pressure[i] = pressure / neighborCount;
@@ -367,21 +360,19 @@ public struct GetDivergencePressureJob : IJobFor {
 
 [BurstCompile]
 public struct GetDivergenceFreeFieldJob : IJobParallelFor {
-	public NativeArray<float> Destination;
-	[ReadOnly] public NativeArray<float> Pressure;
-	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<int> Neighbors;
-	[ReadOnly] public int CellsPerLayer;
+	public NativeSlice<float> Destination;
+	[ReadOnly] public NativeSlice<float> Pressure;
+	[ReadOnly] public NativeSlice<float> Mass;
+	[ReadOnly] public NativeSlice<int> NeighborsVert;
+	[ReadOnly] public int Count;
 	public void Execute(int e)
 	{
-		Debug.Assert(CellsPerLayer > 0);
 		int cellIndex = StaticState.GetCellIndexFromEdgeVert(e);
-		int fullRangeIndex = e + CellsPerLayer * StaticState.MaxNeighborsVert;
 		float mass = Mass[cellIndex];
-		int nIndex = Neighbors[fullRangeIndex];
+		int nIndex = NeighborsVert[e];
 		if (mass > 0 && nIndex >= 0)
 		{
-			float pressureGradient = Pressure[cellIndex] - Pressure[nIndex];
+			float pressureGradient = Pressure[cellIndex] - Pressure[nIndex - Count];
 			Destination[e] += pressureGradient;
 		}
 	}
@@ -389,37 +380,34 @@ public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 [BurstCompile]
 public struct SumMassLeavingJob : IJobParallelFor {
 	public NativeSlice<float> MassLeaving;
-	[ReadOnly] public NativeArray<float> Destination;
-	[ReadOnly] public int CellsPerLayer;
+	[ReadOnly] public NativeSlice<float> Destination;
 	public void Execute(int i)
 	{
-		int fullRangeIndex = i + CellsPerLayer;
 		float massLeaving = 0;
 		for (int j = 0; j < StaticState.MaxNeighbors; j++)
 		{
-			massLeaving += math.max(0, Destination[fullRangeIndex]);
+			massLeaving += math.max(0, Destination[i * StaticState.MaxNeighborsVert + j]);
 		}
 		MassLeaving[i] = massLeaving;
 	}
 }
 [BurstCompile]
 public struct CapMassLeavingJob : IJobParallelFor {
-	public NativeArray<float> Destination;
-	[ReadOnly] public NativeArray<float> MassLeaving;
-	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<int> NeighborsVert;
-	[ReadOnly] public int CellsPerLayer;
+	public NativeSlice<float> Destination;
+	[ReadOnly] public NativeSlice<float> MassLeaving;
+	[ReadOnly] public NativeSlice<float> Mass;
+	[ReadOnly] public NativeSlice<int> NeighborsVert;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-		Debug.Assert(CellsPerLayer > 0);
-		int fullRangeIndex = i + CellsPerLayer * StaticState.MaxNeighborsVert;
 		float dest = Destination[i];
+		int from = i / StaticState.MaxNeighborsVert;
 		if (dest < 0)
 		{
-			fullRangeIndex = NeighborsVert[fullRangeIndex];
+			from = NeighborsVert[i] - Count;
 		}
-		float mass = Mass[fullRangeIndex];
-		float massLeaving = math.max(mass, MassLeaving[fullRangeIndex]);
+		float mass = Mass[from];
+		float massLeaving = math.max(mass, MassLeaving[from]);
 		dest *= mass / massLeaving;
 		Destination[i] = dest;
 	}
@@ -427,15 +415,13 @@ public struct CapMassLeavingJob : IJobParallelFor {
 
 [BurstCompile]
 public struct UpdateDivergenceFreeVelocityJob : IJobParallelFor {
-	public NativeArray<float3> Velocity;
-	[ReadOnly] public NativeArray<float> DestinationVert;
-	[ReadOnly] public NativeArray<float> Mass;
-	[ReadOnly] public NativeArray<float3> NeighborTangent;
+	public NativeSlice<float3> Velocity;
+	[ReadOnly] public NativeSlice<float> DestinationVert;
+	[ReadOnly] public NativeSlice<float> Mass;
+	[ReadOnly] public NativeSlice<float3> NeighborTangent;
 	[ReadOnly] public float TicksPerSecond;
-	[ReadOnly] public int CellsPerLayer;
 	public void Execute(int i)
 	{
-		Debug.Assert(CellsPerLayer > 0);
 		float3 vel = 0;
 		if (Mass[i] > 0)
 		{
