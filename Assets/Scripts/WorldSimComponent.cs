@@ -24,6 +24,13 @@ public class WorldSimComponent : MonoBehaviour
 		MakeAirIncompressible = true,
 		MakeWaterIncompressible = true,
 		WaterSurfaceFlowEnabled = true,
+		RebalanceWaterLayers = true,
+		AdvectionAir = true,
+		DiffusionAir = true,
+		AdvectionWater = true,
+		DiffusionWater = true,
+		AdvectionCloud = true,
+		DiffusionCloud = true,
 
 		Condensation = true,
 		Evaporation = true,

@@ -9,6 +9,13 @@ public struct SimSettings {
 	public bool MakeAirIncompressible;
 	public bool MakeWaterIncompressible;
 	public bool WaterSurfaceFlowEnabled;
+	public bool RebalanceWaterLayers;
+	public bool AdvectionAir;
+	public bool DiffusionAir;
+	public bool AdvectionWater;
+	public bool DiffusionWater;
+	public bool AdvectionCloud;
+	public bool DiffusionCloud;
 	public bool Condensation;
 	public bool Evaporation;
 	public bool Freezing;

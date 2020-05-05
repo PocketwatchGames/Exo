@@ -241,15 +241,19 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					newTemperature += Temperature[n] * incomingMass;
 
 					// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
-					var deflectedVelocity = Velocity[n] + math.cross(Positions[nColumnIndex], Velocity[n]) * CoriolisMultiplier[nColumnIndex] * CoriolisTerm * SecondsPerTick;
+					var deflectedVelocity = Velocity[n];
 
-					// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-					var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
-					deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
-					deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
-					deflectedVelocity += deflectedVertical * Positions[columnIndex];
+					if (j != StaticState.NeighborDown && j != StaticState.NeighborUp)
+					{
 
+						deflectedVelocity += math.cross(Positions[nColumnIndex], Velocity[n]) * CoriolisMultiplier[nColumnIndex] * CoriolisTerm * SecondsPerTick;
 
+						// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+						var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
+						deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
+						deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
+						deflectedVelocity += deflectedVertical * Positions[columnIndex];
+					}
 
 					// TODO: adjust vertical wind velocity when we hit a mountain or go down a valley
 					// deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;

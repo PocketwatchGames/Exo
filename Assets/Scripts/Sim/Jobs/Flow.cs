@@ -123,6 +123,7 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeArray<int> Neighbors;
+	[ReadOnly] public NativeArray<int> ReverseNeighbors;
 	[ReadOnly] public NativeArray<float> FlowPercent;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public float CoriolisTerm;
@@ -154,36 +155,31 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 				}
 				else
 				{
-					// TODO: cache the neighbor's neighbor inverse
-					for (int k = 0; k < StaticState.MaxNeighbors; k++)
+					int incomingNIndex = ReverseNeighbors[n];
+					if (Neighbors[incomingNIndex] == i)
 					{
-						int incomingNIndex = nIndex * StaticState.MaxNeighbors + k;
-						if (Neighbors[incomingNIndex] == i)
-						{
-							float massIncoming = Mass[nIndex] * flowPercent;
-							float saltIncoming = Salt[nIndex] * flowPercent;
-							mass += massIncoming;
-							salt += saltIncoming;
-							carbon += Carbon[nIndex] * flowPercent;
-							planktonMass += PlanktonMass[nIndex] * flowPercent;
-							planktonGlucose += PlanktonGlucose[nIndex] * flowPercent;
-							temperature += Temperature[nIndex] * (massIncoming + saltIncoming);
+						float massIncoming = Mass[nIndex] * flowPercent;
+						float saltIncoming = Salt[nIndex] * flowPercent;
+						mass += massIncoming;
+						salt += saltIncoming;
+						carbon += Carbon[nIndex] * flowPercent;
+						planktonMass += PlanktonMass[nIndex] * flowPercent;
+						planktonGlucose += PlanktonGlucose[nIndex] * flowPercent;
+						temperature += Temperature[nIndex] * (massIncoming + saltIncoming);
 
-							// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
-							var deflectedVelocity = Velocity[nIndex] + math.cross(Positions[nIndex], Velocity[nIndex]) * CoriolisMultiplier[nIndex] * CoriolisTerm * SecondsPerTick;
+						// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
+						var deflectedVelocity = Velocity[nIndex] + math.cross(Positions[nIndex], Velocity[nIndex]) * CoriolisMultiplier[nIndex] * CoriolisTerm * SecondsPerTick;
 
-							// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-							var deflectedVertical = math.dot(deflectedVelocity, Positions[nIndex]);
-							deflectedVelocity -= Positions[nIndex] * deflectedVertical;
-							deflectedVelocity -= Positions[i] * math.dot(Positions[i], deflectedVelocity);
-							deflectedVelocity += deflectedVertical * Positions[i];
+						// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+						var deflectedVertical = math.dot(deflectedVelocity, Positions[nIndex]);
+						deflectedVelocity -= Positions[nIndex] * deflectedVertical;
+						deflectedVelocity -= Positions[i] * math.dot(Positions[i], deflectedVelocity);
+						deflectedVelocity += deflectedVertical * Positions[i];
 
 
-							velocity += deflectedVelocity * (massIncoming + saltIncoming);
+						velocity += deflectedVelocity * (massIncoming + saltIncoming);
 
 
-							break;
-						}
 					}
 				}
 			}
