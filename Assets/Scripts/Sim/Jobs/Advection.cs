@@ -190,7 +190,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		int columnIndex = i % CellsPerLayer;
 		int fullRangeIndex = i + CellsPerLayer;
 
-		float waterMass = Mass[i];
+		float waterMass = Mass[fullRangeIndex];
 
 		float newMass = waterMass;
 		float newSaltMass = 0;
@@ -210,18 +210,19 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 			newPlankton = PlanktonMass[fullRangeIndex] * percentRemaining;
 			newGlucose = PlanktonGlucose[fullRangeIndex] * percentRemaining;
-			newSaltMass += Salt[fullRangeIndex] * percentRemaining;
-			newCarbon += Carbon[fullRangeIndex] * percentRemaining;
-			newTemperature += Temperature[fullRangeIndex] * newMass;
-			newVelocity += Velocity[fullRangeIndex] * newMass;
+			newSaltMass = Salt[fullRangeIndex] * percentRemaining;
+			newCarbon = Carbon[fullRangeIndex] * percentRemaining;
+			newTemperature = Temperature[fullRangeIndex] * newMass;
+			newVelocity = Velocity[fullRangeIndex] * newMass;
 
 			for (int j = 0; j < StaticState.MaxNeighborsVert; j++)
 			{
-				int n = NeighborsVert[fullRangeIndex * StaticState.MaxNeighborsVert + j];
+				int edgeIndex = fullRangeIndex * StaticState.MaxNeighborsVert + j;
+				int n = NeighborsVert[edgeIndex];
 				if (n >= 0)
 				{
 					int nColumnIndex = n % CellsPerLayer;
-					float incomingMass = math.max(0, -Destination[fullRangeIndex * StaticState.MaxNeighborsVert + j]);
+					float incomingMass = math.max(0, -Destination[edgeIndex]);
 					float incoming;
 					if (Mass[n] > 0)
 					{

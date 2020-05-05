@@ -250,8 +250,8 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 
 	public void Execute(int i)
 	{
-		int index1 = Layer1 * Count;
-		int index2 = Layer2 * Count;
+		int index1 = Layer1 * Count + i;
+		int index2 = Layer2 * Count + i;
 		float mass1 = Mass[index1];
 		float salt1 = Salt[index1];
 		float mass2 = Mass[index2];

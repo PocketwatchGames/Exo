@@ -31,6 +31,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 	{
 		float layerHeight = LayerHeight[i];
 		float mass = AirMass[i];
+		Debug.Assert(mass > 0);
 		float temperature = Temperature[i];
 		float vapor = Vapor[i];
 		float co2 = CarbonDioxide[i];
@@ -63,6 +64,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 				{
 					n += layer * Count;
 					float nMass = AirMass[n];
+					Debug.Assert(nMass > 0);
 					float nInverseMass = 1.0f / nMass;
 					float saToVolume = math.min(layerHeight, LayerHeight[n]) * CellCircumference / (6 * LayerHeight[n] * CellSurfaceArea);
 					float inverseTotalMass = 1.0f / (nMass + mass);
@@ -83,6 +85,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 		{
 			int n = i + Count;
 			float nMass = AirMass[n];
+			Debug.Assert(nMass > 0);
 			float nInverseMass = 1.0f / nMass;
 			float saToVolume = 1.0f / LayerHeight[n];
 			float inverseTotalMass = 1.0f / (nMass + mass);
@@ -96,6 +99,7 @@ public struct DiffusionAirJob : IJobParallelFor {
 		{
 			int n = i - Count;
 			float nMass = AirMass[n];
+			Debug.Assert(nMass > 0);
 			float nInverseMass = 1.0f / nMass;
 			float saToVolume = 1.0f / LayerHeight[n];
 			float inverseTotalMass = 1.0f / (nMass + mass);

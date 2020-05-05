@@ -145,7 +145,7 @@ public struct StaticState {
 			int layer = cellIndex / Count;
 			if (n == NeighborUp)
 			{
-				if (layer == worldData.AirLayers - 1)
+				if (layer >= worldData.AirLayers - 2 || layer  == 0)
 				{
 					NeighborsVert[i] = -1;
 				}
@@ -156,7 +156,7 @@ public struct StaticState {
 			}
 			else if (n == NeighborDown)
 			{
-				if (layer == 0)
+				if (layer <= 1 || layer == worldData.AirLayers - 1)
 				{
 					NeighborsVert[i] = -1;
 				}
@@ -189,7 +189,7 @@ public struct StaticState {
 			int layer = cellIndex / Count;
 			if (n == NeighborUp)
 			{
-				if (layer == worldData.AirLayers - 1)
+				if (layer >= worldData.AirLayers - 2 || layer == 0)
 				{
 					ReverseNeighborsVert[i] = -1;
 				}
@@ -200,7 +200,7 @@ public struct StaticState {
 			}
 			else if (n == NeighborDown)
 			{
-				if (layer == 0)
+				if (layer <= 1 || layer == worldData.AirLayers-1)
 				{
 					ReverseNeighborsVert[i] = -1;
 				}
@@ -222,6 +222,10 @@ public struct StaticState {
 					ReverseNeighborsVert[i] = -1;
 				}
 
+			}
+			if (!(ReverseNeighborsVert[i] < 0 || NeighborsVert[ReverseNeighborsVert[i]] == cellIndex))
+			{
+				int j = 0;
 			}
 			Debug.Assert(ReverseNeighborsVert[i] < 0 || NeighborsVert[ReverseNeighborsVert[i]] == cellIndex);
 		}
@@ -274,11 +278,11 @@ public struct StaticState {
 
 	public int GetLayerIndexAir(int layer, int index)
 	{
-		return layer * _worldData.AirLayers + index;
+		return layer * Count + index;
 	}
 	public int GetLayerIndexWater(int layer, int index)
 	{
-		return layer * _worldData.WaterLayers + index;
+		return layer * Count + index;
 	}
 
 	public NativeSlice<T> GetSliceAir<T>(NativeArray<T> arr) where T : struct

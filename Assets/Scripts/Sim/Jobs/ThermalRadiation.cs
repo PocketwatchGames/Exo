@@ -104,7 +104,7 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 		float cloudElevation = CloudElevation[i];
 		float layerElevation = LayerElevation[i];
 		float layerHeight = LayerHeight[i];
-		float beforeCloud = math.min(1, (cloudElevation - layerElevation) / layerHeight);
+		float beforeCloud = math.saturate((cloudElevation - layerElevation) / layerHeight);
 		float thermalRadiationDelta = ThermalRadiationDelta[i];
 
 		float absorptivityBefore;

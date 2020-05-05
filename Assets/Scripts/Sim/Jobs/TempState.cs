@@ -679,7 +679,7 @@ public struct TempState {
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(AirLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(StandardLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 
-		dependencies = _jobHelperAir.Run(new UpdateAirLayerHeightsJob()
+		dependencies = _jobHelperAir.Schedule(new UpdateAirLayerHeightsJob()
 		{
 			StandardLayerElevation = staticState.GetSliceAir(StandardLayerElevation),
 			LayerHeight = staticState.GetSliceAir(AirLayerHeight),
@@ -815,7 +815,7 @@ public struct TempState {
 	}
 
 
-	//[BurstCompile]
+	[BurstCompile]
 	public struct UpdateAirLayerHeightsJob : IJobParallelFor {
 		public NativeSlice<float> AirMass;
 		public NativeSlice<float> LayerElevation;

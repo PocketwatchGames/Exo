@@ -167,7 +167,7 @@ public static class CellInfo {
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
 			int index = staticState.GetLayerIndexAir(i, ActiveCellIndex);
-			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.AirVelocity[i][ActiveCellIndex]);
+			var wind = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.AirVelocity[index]);
 			s.AppendFormat("\nLAYER {0} | TEMP: {1} RH: {2:P1}",
 				i,
 				GetTemperatureString(Atmosphere.GetAbsoluteTemperature(state.AirTemperaturePotential[index], dependent.AirLayerMiddle[index]), ActiveTemperatureUnits, 1),
@@ -244,7 +244,7 @@ public static class CellInfo {
 			int index = staticState.GetLayerIndexWater(i, ActiveCellIndex);
 			if (state.WaterMass[index] > 0)
 			{
-				var current = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.WaterVelocity[i][ActiveCellIndex]);
+				var current = Utils.GetPolarCoordinates(staticState.SphericalPosition[ActiveCellIndex], state.WaterVelocity[index]);
 				s.AppendFormat("\nLAYER {0} | TEMP: {1} SALT: {2:P4}",
 					layerIndex,
 					GetTemperatureString(state.WaterTemperature[index], ActiveTemperatureUnits, 2),

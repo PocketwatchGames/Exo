@@ -851,7 +851,7 @@ public class WorldSim {
 		JobHandle emissivityJobHandle = default(JobHandle);
 		emissivityJobHandle = JobHandle.CombineDependencies(emissivityJobHandle, AirJob.Schedule(new EmissivityAirJob()
 		{
-			Emissivity = staticState.GetSliceLayers(tempState.EmissivityAir, 1, worldData.AirLayers - 2),
+			Emissivity = staticState.GetSliceAir(tempState.EmissivityAir),
 			AirMass = staticState.GetSliceAir(tempState.AirMass),
 			VaporMass = staticState.GetSliceAir(lastState.AirVapor),
 			Dust = staticState.GetSliceAir(lastState.Dust),

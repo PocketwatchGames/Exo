@@ -9,20 +9,17 @@ using UnityEngine;
 
 public static class Atmosphere {
 
-	[BurstCompile]
 	static public float GetPotentialTemperature(float temperature, float elevation)
 	{
 		return temperature - WorldData.TemperatureLapseRate * elevation;
 	}
 
-	[BurstCompile]
 	static public float GetAbsoluteTemperature(float potentialTemperature, float elevation)
 	{
 		return potentialTemperature + WorldData.TemperatureLapseRate * elevation;
 	}
 
 
-	[BurstCompile]
 	static public float GetPressureAtElevation(float elevation, float gravity, float referencePressure, float potentialTemperature, float referenceElevation)
 	{
 
@@ -30,7 +27,6 @@ public static class Atmosphere {
 		return pressure;
 	}
 
-	[BurstCompile]
 	static public float GetAbsolutePressureAtElevation(float elevation, float gravity, float seaLevelPressure, float potentialTemperature)
 	{
 		float pressure = seaLevelPressure * math.pow(1 + WorldData.TemperatureLapseRate / potentialTemperature * elevation, -gravity * WorldData.PressureExponent * WorldData.MolarMassAir);
@@ -38,21 +34,18 @@ public static class Atmosphere {
 	}
 
 
-	[BurstCompile]
 	static public float GetElevationAtPressure(float pressure, float temperaturePotential, float referencePressure, float referenceElevation, float inverseGravity)
 	{
 		float elevation = referenceElevation + (temperaturePotential * WorldData.TemperatureLapseRateInverse + referenceElevation) * (math.pow(pressure / referencePressure, -inverseGravity * WorldData.UniversalGasConstant * WorldData.TemperatureLapseRate * WorldData.MolarMassAirInverse) - 1);
 		return elevation;
 	}
 
-	[BurstCompile]
 	static public float GetStandardPressureAtElevation(float elevation, float potentialTemperature, float gravity)
 	{
 		float pressure = Atmosphere.GetPressureAtElevation(elevation, gravity, WorldData.StandardPressure, potentialTemperature, 0);
 		return pressure;
 	}
 
-	//[BurstCompile]
 	//static public float GetStandardAirMass(float elevation, float layerHeight, float gravity)
 	//{
 	//	float temperatureLapseA = -WorldData.TemperatureLapseRate * elevation;
@@ -63,31 +56,26 @@ public static class Atmosphere {
 	//	return massA - massB;
 	//}
 
-	[BurstCompile]
 	static public float GetMolarMassMoistAir(float airMass, float vaporMass)
 	{
 		return (airMass * WorldData.MolarMassAir + vaporMass * WorldData.MolarMassWater) / (airMass + vaporMass);
 	}
 
-	[BurstCompile]
 	static public float GetAirDensity(float absolutePressure, float absoluteTemperature, float airMass, float vaporMass)
 	{
 		return absolutePressure * GetMolarMassMoistAir(airMass, vaporMass) / (WorldData.UniversalGasConstant * absoluteTemperature);
 	}
 
-	[BurstCompile]
 	static public float GetInverseAirDensity(float absolutePressure, float temperature, float airMass, float vaporMass)
 	{
 		return (WorldData.UniversalGasConstant * temperature) / (absolutePressure * GetMolarMassMoistAir(airMass, vaporMass));
 	}
 
-	[BurstCompile]
 	static public float GetWaterDensityAtElevation(float temperature, float elevation)
 	{
 		return WorldData.DensityWater;
 	}
 
-	[BurstCompile]
 	static public float GetDepthAtPressure(float pressure, float referencePressure, float referenceDepth, float referenceDensity, float gravity)
 	{
 		return referenceDepth + (pressure - referencePressure) / (gravity * referenceDensity);
@@ -95,7 +83,6 @@ public static class Atmosphere {
 
 
 
-	[BurstCompile]
 	static public float GetWaterDensity(float salinity, float temperature)
 	{
 		// https://link.springer.com/content/pdf/bbm%3A978-3-319-18908-6%2F1.pdf
@@ -130,7 +117,6 @@ public static class Atmosphere {
 	//	return WorldData.DensityWater + (waterDensityPerSalinity * saltMass / (waterMass + saltMass) + waterDensityPerDegree * (temperature - WorldData.FreezingTemperature));
 	}
 
-	[BurstCompile]
 	static public float GetWaterSalinity(float waterMass, float saltMass)
 	{
 		if (waterMass <= 0)
@@ -141,7 +127,6 @@ public static class Atmosphere {
 	}
 
 
-	[BurstCompile]
 	static public float GetFreezingPoint(float salinity, float freezePointReductionPerSalinity)
 	{
 		return WorldData.FreezingTemperature - salinity * freezePointReductionPerSalinity;
@@ -159,7 +144,6 @@ public static class Atmosphere {
 	//}
 
 	//https://en.wikipedia.org/wiki/Dew_point
-	[BurstCompile]
 	static public float GetDewPoint(float relativeHumidity, float referenceTemperature)
 	{
 		if (relativeHumidity == 0)
@@ -169,13 +153,11 @@ public static class Atmosphere {
 		return math.log(math.min(1, relativeHumidity)) + (18.678f * (referenceTemperature - WorldData.FreezingTemperature)) / (referenceTemperature - 16.01f) + WorldData.FreezingTemperature;
 	}
 
-	[BurstCompile]
 	static public float GetElevationAtDewPoint(float dewPoint, float potentialTemperature)
 	{
 		return (dewPoint - potentialTemperature) * WorldData.TemperatureLapseRateInverse;
 	}
 
-	[BurstCompile]
 	static public float GetRelativeHumidity(float airMass, float waterVaporMass, float temperature, float pressure)
 	{
 		float maxWaterVapor = GetMaxVaporAtTemperature(airMass, temperature, pressure);
@@ -187,7 +169,6 @@ public static class Atmosphere {
 		return relativeHumidity;
 	}
 
-	[BurstCompile]
 	static public float GetMaxVaporAtTemperature(float airMass, float temperatureAbsolute, float pressure)
 	{
 		// https://www.engineeringtoolbox.com/water-vapor-saturation-pressure-air-d_689.html
@@ -199,7 +180,6 @@ public static class Atmosphere {
 		return airMass * 0.62198f * saturationPressureOfWaterVapor / (pressure - saturationPressureOfWaterVapor);
 	}
 
-	[BurstCompile]
 	static public float GetEvaporationMass(float airMass, float airPressure, float airVapor, float3 wind, float waterTemperature, float maxMass)
 	{
 		// evap formula from here:
@@ -210,13 +190,11 @@ public static class Atmosphere {
 		return math.clamp(evaporationCoefficient * (Atmosphere.GetMaxVaporAtTemperature(airMass, waterTemperature, airPressure) - airVapor) / airMass, 0, maxMass);
 	}
 
-	//	[BurstCompile]
 	//static public float GetAirTemperature(float energy, float mass, float waterMass, float waterVaporMass)
 	//{
 	//	return energy / (mass * WorldData.SpecificHeatAtmosphere + waterMass * WorldData.SpecificHeatWater + waterVaporMass * WorldData.SpecificHeatWaterVapor);
 	//}
 
-	[BurstCompile]
 	static public float GetWaterTemperature(float energy, float waterMass, float saltMass)
 	{
 		if (waterMass == 0)
@@ -226,35 +204,31 @@ public static class Atmosphere {
 		return math.max(0, energy / (waterMass * WorldData.SpecificHeatWater + saltMass * WorldData.SpecificHeatSalt));
 	}
 
-	[BurstCompile]
 	static public float GetAlbedo(float surfaceAlbedo, float slope)
 	{
 		return surfaceAlbedo + (1.0f - surfaceAlbedo) * slope;
 	}
-	[BurstCompile]
+
 	static public float GetDewPoint(float dewPointTemperaturePerRelativeHumidity, float airTemperature, float relativeHumidity)
 	{
 		return airTemperature - (1.0f - relativeHumidity) * dewPointTemperaturePerRelativeHumidity;
 	}
-	[BurstCompile]
+
 	static public float GetCloudElevation(float dewPointElevationPerDegree, float airTemperature, float dewPoint, float elevationOrSeaLevel)
 	{
 		return elevationOrSeaLevel + math.max(0, (airTemperature - dewPoint) * dewPointElevationPerDegree);
 	}
 
-	[BurstCompile]
 	static public float GetSpecificHeatOfWater(float waterMass, float saltMass)
 	{
 		return (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass) / (waterMass + saltMass);
 	}
 
-	[BurstCompile]
 	static public float GetSpecificHeatOfAir(float airMass, float vaporMass)
 	{
 		return (WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWater * vaporMass) / (airMass + vaporMass);
 	}
 
-	[BurstCompile]
 	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility)
 	{
 		float sandMass = math.max(0, heatingDepth - soilFertility / WorldData.MassSoil) * WorldData.MassSand;
@@ -262,25 +236,22 @@ public static class Atmosphere {
 	}
 
 
-	[BurstCompile]
 	static public float GetRadiationRate(float temperature, float emissivity)
 	{
 		return temperature * temperature * temperature * temperature * emissivity * 0.001f * WorldData.StefanBoltzmannConstant;
 	}
 
-	[BurstCompile]
 	static public float GetDropletRadius(float mass, float waterDensity)
 	{
 		const float ThreeQuarterInversePi = 3 / (4 * math.PI);
 		return math.pow(mass / waterDensity * ThreeQuarterInversePi, 0.333f);
 	}
 
-	[BurstCompile]
 	public static float GetDiffusionAmount(float massA, float massB, float diffusionCoefficient, float surfaceAreaA, float surfaceAreaB, float distInverse)
 	{
 		return massB * diffusionCoefficient * (surfaceAreaA + surfaceAreaB) * distInverse / (2 * (massA + massB));
 	}
-	[BurstCompile]
+
 	public static float GetDiffusionAmount(float massA, float massB, float diffusionCoefficient, float dist)
 	{
 		return massB * diffusionCoefficient / (dist * (massA + massB));
