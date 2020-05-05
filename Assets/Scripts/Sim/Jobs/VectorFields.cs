@@ -413,25 +413,31 @@ public struct CapMassLeavingJob : IJobParallelFor {
 	}
 }
 
-[BurstCompile]
+//[BurstCompile]
 public struct UpdateDivergenceFreeVelocityJob : IJobParallelFor {
 	public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeSlice<float> DestinationVert;
+	[ReadOnly] public NativeArray<float3> NeighborTangent;
+	[ReadOnly] public NativeArray<float3> Positions;
 	[ReadOnly] public NativeSlice<float> Mass;
-	[ReadOnly] public NativeSlice<float3> NeighborTangent;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
 	[ReadOnly] public float TicksPerSecond;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 		float3 vel = 0;
 		if (Mass[i] > 0)
 		{
+			int columnIndex = i % Count;
 			// Update horizontal vel
 			for (int j = 0; j < StaticState.MaxNeighbors; j++)
 			{
-				vel += -NeighborTangent[i * StaticState.MaxNeighbors + j] * math.max(0, DestinationVert[i * StaticState.MaxNeighborsVert + j]);
+				vel += -NeighborTangent[columnIndex * StaticState.MaxNeighbors + j] * math.max(0, DestinationVert[i * StaticState.MaxNeighborsVert + j]);
 			}
 
-			// TODO: update vertical velocity?
+			float3 vertTravel = Positions[columnIndex] * LayerHeight[columnIndex];
+			vel += vertTravel * math.max(0, DestinationVert[i * StaticState.MaxNeighborsVert + StaticState.NeighborUp]);
+			vel -= vertTravel * math.max(0, DestinationVert[i * StaticState.MaxNeighborsVert + StaticState.NeighborDown]);
 
 			vel *= TicksPerSecond / Mass[i];
 		}

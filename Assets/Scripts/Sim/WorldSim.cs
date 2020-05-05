@@ -1,5 +1,4 @@
-﻿#define LayerRefactor
-
+﻿
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -202,7 +201,7 @@ public class WorldSim {
 		if (settings.MakeAirIncompressible)
 		{
 
-			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new GetDivergenceJob()
+			energyJobHandles[worldData.AirLayer0] = AirJob.Run(new GetDivergenceJob()
 			{
 				Divergence = staticState.GetSliceAir(tempState.DivergenceAir),
 				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
@@ -221,7 +220,7 @@ public class WorldSim {
 				energyJobHandles[worldData.AirLayer0] = dpj.Schedule(_cellCount * (worldData.AirLayers - 2), energyJobHandles[worldData.AirLayer0]);
 			}
 
-			energyJobHandles[worldData.AirLayer0] = NeighborJob.Schedule(new GetDivergenceFreeFieldJob()
+			energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Run(new GetDivergenceFreeFieldJob()
 			{
 				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
 				NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
@@ -230,13 +229,13 @@ public class WorldSim {
 				Count = staticState.Count
 			}, energyJobHandles[worldData.AirLayer0]);
 
-			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new SumMassLeavingJob()
+			energyJobHandles[worldData.AirLayer0] = AirJob.Run(new SumMassLeavingJob()
 			{
 				MassLeaving = staticState.GetSliceAir(tempState.AirMassLeaving),
 				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
 			}, energyJobHandles[worldData.AirLayer0]);
 
-			energyJobHandles[worldData.AirLayer0] = NeighborJob.Schedule(new CapMassLeavingJob()
+			energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Run(new CapMassLeavingJob()
 			{
 				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
 				NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
@@ -245,16 +244,17 @@ public class WorldSim {
 				Count = staticState.Count
 			}, energyJobHandles[worldData.AirLayer0]);
 
-#if !LayerRefactor
-			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(new UpdateDivergenceFreeVelocityJob()
+			energyJobHandles[worldData.AirLayer0] = AirJob.Run(new UpdateDivergenceFreeVelocityJob()
 			{
 				Velocity = staticState.GetSliceAir(nextState.AirVelocity),
-				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
-				NeighborTangent = staticState.GetSliceNeighbors(staticState.NeighborTangent),
+				DestinationVert = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+				NeighborTangent = staticState.NeighborTangent,
+				Positions = staticState.SphericalPosition,
 				Mass = staticState.GetSliceAir(tempState.AirMass),
-				TicksPerSecond = worldData.TicksPerSecond
+				LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
+				TicksPerSecond = worldData.TicksPerSecond,
+				Count = staticState.Count,
 			}, energyJobHandles[worldData.AirLayer0]);
-#endif
 		}
 
 
@@ -407,93 +407,63 @@ public class WorldSim {
 			Count = staticState.Count
 		}, energyJobHandles[worldData.WaterLayer0]);
 
-#if !LayerRefactor
 		if (settings.MakeWaterIncompressible)
 		{
-			for (int j = 1; j < worldData.WaterLayers - 1; j++)
+			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(new GetDivergenceJob()
 			{
-				int layer = worldData.WaterLayer0 + j;
-				energyJobHandles[layer] = SimJob.Schedule(new GetDivergenceJob()
-				{
-					Divergence = tempState.DivergenceWater[j],
-					Destination = tempState.DestinationWater[j],
-					CellsPerLayer = staticState.Count
-				}, JobHandle.CombineDependencies(energyJobHandles[layer], energyJobHandles[layer - 1], energyJobHandles[layer + 1]));
-			}
+				Divergence = tempState.DivergenceWater,
+				Destination = tempState.DestinationWater,
+			}, energyJobHandles[worldData.WaterLayer0]);
 
 			// Calculate Pressure gradient field
-			var divergenceJobHandle = default(JobHandle);
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
-			{
-				divergenceJobHandle = JobHandle.CombineDependencies(divergenceJobHandle, energyJobHandles[worldData.WaterLayer0 + i]);
-			}
 			for (int a = 0; a < 20; a++)
 			{
-				for (int i = 1; i < worldData.WaterLayers - 1; i++)
+				var dpj = new GetDivergencePressureJob()
 				{
-					bool isTop = i == worldData.WaterLayers - 2;
-					bool isBottom = i == 1;
-					var dpj = new GetDivergencePressureJob()
-					{
-						Pressure = tempState.DivergencePressureWater[i],
-						Divergence = tempState.DivergenceWater[i],
-						NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
-					};
-					divergenceJobHandle = dpj.Schedule(_cellCount, divergenceJobHandle);
-				}
+					Pressure = tempState.DivergencePressureWater,
+					Divergence = tempState.DivergenceWater,
+					NeighborsVert = staticState.GetSliceAirNeighbors(staticState.NeighborsVert),
+					Count = staticState.Count
+				};
+				energyJobHandles[worldData.WaterLayer0] = dpj.Schedule(_cellCount * (worldData.WaterLayers - 2), energyJobHandles[worldData.WaterLayer0]);
 			}
 
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(new GetDivergenceFreeFieldJob()
 			{
-				int layer = worldData.WaterLayer0 + i;
-				energyJobHandles[worldData.WaterLayer0 + i] = NeighborJob.Schedule(new GetDivergenceFreeFieldJob()
-				{
-					Destination = tempState.DestinationWater[i],
-					Pressure = tempState.DivergencePressureWater[i],
-					Neighbors = staticState.Neighbors,
-					Mass = nextState.WaterMass[i],
-					CellsPerLayer = staticState.Count
-				}, divergenceJobHandle);
-			}
+				Destination = tempState.DestinationWater,
+				Pressure = tempState.DivergencePressureWater,
+				NeighborsVert = staticState.NeighborsVert,
+				Mass = nextState.WaterMass,
+				Count = staticState.Count
+			}, energyJobHandles[worldData.WaterLayer0]);
 
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(new SumMassLeavingJob()
 			{
-				int layer = worldData.WaterLayer0 + i;
-				energyJobHandles[layer] = SimJob.Schedule(new SumMassLeavingJob()
-				{
-					MassLeaving = tempState.WaterMassLeaving[i],
-					Destination = tempState.DestinationWaterResolved[i],
-					CellsPerLayer = staticState.Count
-				}, energyJobHandles[layer]);
-			}
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
-			{
-				int layer = worldData.WaterLayer0 + i;
-				energyJobHandles[layer] = NeighborJob.Schedule(new CapMassLeavingJob()
-				{
-					Destination = tempState.DestinationWaterResolved[i],
-					MassLeaving = tempState.WaterMassLeaving[i],
-					Mass = nextState.WaterMass[i],
-					NeighborsVert = staticState.NeighborsVert,
-					CellsPerLayer = staticState.Count
-				}, energyJobHandles[layer]);
-			}
+				MassLeaving = tempState.WaterMassLeaving,
+				Destination = tempState.DestinationWaterResolved,
+			}, energyJobHandles[worldData.WaterLayer0]);
 
-			for (int i = 1; i < worldData.WaterLayers - 1; i++)
+			energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(new CapMassLeavingJob()
 			{
-				int layer = worldData.WaterLayer0 + i;
-				energyJobHandles[layer] = SimJob.Schedule(new UpdateDivergenceFreeVelocityJob()
-				{
-					Velocity = nextState.WaterVelocity[i],
-					DestinationVert = tempState.DestinationWaterResolved[i],
-					NeighborTangent = staticState.NeighborTangent,
-					Mass = nextState.WaterMass[i],
-					TicksPerSecond = worldData.TicksPerSecond,
-					CellsPerLayer = staticState.Count
-				}, energyJobHandles[layer]);
-			}
+				Destination = tempState.DestinationWaterResolved,
+				MassLeaving = tempState.WaterMassLeaving,
+				Mass = nextState.WaterMass,
+				NeighborsVert = staticState.NeighborsVert,
+				Count = staticState.Count
+			}, energyJobHandles[worldData.WaterLayer0]);
+
+			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(new UpdateDivergenceFreeVelocityJob()
+			{
+				Velocity = nextState.WaterVelocity,
+				DestinationVert = tempState.DestinationWaterResolved,
+				NeighborTangent = staticState.NeighborTangent,
+				Positions = staticState.SphericalPosition,
+				LayerHeight = tempState.WaterLayerHeight,
+				Mass = nextState.WaterMass,
+				TicksPerSecond = worldData.TicksPerSecond,
+				Count = staticState.Count
+			}, energyJobHandles[worldData.WaterLayer0]);
 		}
-#endif
 
 
 		energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(new AdvectionWaterJob()
