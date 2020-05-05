@@ -417,7 +417,7 @@ public class WorldSim {
 				energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(new GetDivergenceJob()
 				{
 					Divergence = tempState.DivergenceWater,
-					Destination = tempState.DestinationWater,
+					Destination = tempState.DestinationWaterResolved,
 				}, energyJobHandles[worldData.WaterLayer0]);
 
 				// Calculate Pressure gradient field
@@ -435,7 +435,7 @@ public class WorldSim {
 
 				energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(new GetDivergenceFreeFieldJob()
 				{
-					Destination = tempState.DestinationWater,
+					Destination = tempState.DestinationWaterResolved,
 					Pressure = tempState.DivergencePressureWater,
 					NeighborsVert = staticState.NeighborsVert,
 					Mass = nextState.WaterMass,
@@ -471,10 +471,10 @@ public class WorldSim {
 			}
 
 
-			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(new AdvectionWaterJob()
+			energyJobHandles[worldData.WaterLayer0] = WaterJob.Run(new AdvectionWaterJob()
 			{
 				Delta = staticState.GetSliceWater(tempState.AdvectionWater),
-				Destination = tempState.DestinationWater,
+				Destination = tempState.DestinationWaterResolved,
 				Velocity = nextState.WaterVelocity,
 				Temperature = nextState.WaterTemperature,
 				Mass = nextState.WaterMass,
@@ -501,6 +501,10 @@ public class WorldSim {
 				Advection = staticState.GetSliceWater(tempState.AdvectionWater),
 			}, energyJobHandles[worldData.WaterLayer0]);
 
+		}
+
+		if (settings.AdvectionCloud)
+		{
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new GetVectorDestCoordsJob()
 			{
 				Destination = tempState.DestinationCloud,
@@ -513,10 +517,6 @@ public class WorldSim {
 				CellsPerLayer = staticState.Count,
 			}, energyJobHandles[worldData.CloudLayer]);
 
-		}
-
-		if (settings.AdvectionCloud)
-		{
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(new AdvectionCloudJob()
 			{
 				Delta = tempState.AdvectionCloud,
