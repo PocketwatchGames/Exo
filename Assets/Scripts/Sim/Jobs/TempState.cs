@@ -1011,14 +1011,15 @@ public struct TempState {
 		public void Execute(int i)
 		{
 			int index = i + Count;
-			if (WaterMass[index] > 0)
+			float waterMass = WaterMass[index];
+			if (waterMass > 0)
 			{
-				float waterMass = WaterMass[index];
 				float saltMass = SaltMass[index];
-				float density = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(waterMass, saltMass), Temperature[index]);
-				Density[i] = Density[i];
+				float temperature = Temperature[index];
+				float density = Atmosphere.GetWaterDensity(Atmosphere.GetWaterSalinity(waterMass, saltMass), temperature);
+				Density[i] = density;
 				LayerHeight[i] = (waterMass + saltMass) / density;
-				PotentialEnergy[i] = (WaterMass[index] * WorldData.SpecificHeatWater + SaltMass[index] * WorldData.SpecificHeatSalt) * Temperature[index];
+				PotentialEnergy[i] = (waterMass * WorldData.SpecificHeatWater + saltMass * WorldData.SpecificHeatSalt) * temperature;
 			}
 			else
 			{

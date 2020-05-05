@@ -227,7 +227,7 @@ public struct AccelerationWaterJob : IJobParallelFor {
 			//		Force[i] += pos * Gravity * (1 - UpWaterDensity[i] / density)/* / (LayerHeight[i] + UpLayerHeight[i]) * 0.5f*/;
 			//	}
 			float frictionCoefficient = (layerIndex == LayerCount - 1) ? 1 : 0;
-			Velocity[i] = LastVelocity[i] + (force + Friction[i] * frictionCoefficient) * SecondsPerTick;
+			Velocity[i] = LastVelocity[i] + (force + Friction[columnIndex] * frictionCoefficient) * SecondsPerTick;
 		}
 
 	}
