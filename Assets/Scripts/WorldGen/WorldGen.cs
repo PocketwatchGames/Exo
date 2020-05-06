@@ -382,24 +382,26 @@ public static class WorldGen {
 		};
 		worldGenInitJob.Run(staticState.Count);
 
-		var worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenJob()
-		{
-			Elevation = state.Elevation,
-			TerrainTemperature = state.GroundTemperature,
-			CloudDropletMass = state.CloudDropletMass,
-			CloudTemperature = state.CloudTemperature,
-			IceMass = state.IceMass,
-			IceTemperature = state.IceTemperature,
-			WaterTemperatureBottom = WaterTemperatureBottom,
-			WaterTemperatureSurface = WaterTemperatureTop,
-			GroundWaterTemperature = state.GroundWaterTemperature,
+		var worldGenJobHandle = worldGenJobHelper.Schedule(
+			true, 64,
+			new WorldGenJob()
+			{
+				Elevation = state.Elevation,
+				TerrainTemperature = state.GroundTemperature,
+				CloudDropletMass = state.CloudDropletMass,
+				CloudTemperature = state.CloudTemperature,
+				IceMass = state.IceMass,
+				IceTemperature = state.IceTemperature,
+				WaterTemperatureBottom = WaterTemperatureBottom,
+				WaterTemperatureSurface = WaterTemperatureTop,
+				GroundWaterTemperature = state.GroundWaterTemperature,
 
-			TemperaturePotential = temperaturePotential,
-			FullWaterCoverage = worldData.FullCoverageWater,
-			inversePI = inversePI,
-			rainDropMinSize = worldData.rainDropMinSize,
-			WaterTemperatureDepthFalloff = worldGenData.WaterTemperatureDepthFalloff,
-		});
+				TemperaturePotential = temperaturePotential,
+				FullWaterCoverage = worldData.FullCoverageWater,
+				inversePI = inversePI,
+				rainDropMinSize = worldData.rainDropMinSize,
+				WaterTemperatureDepthFalloff = worldGenData.WaterTemperatureDepthFalloff,
+			});
 
 		for (int i = worldData.WaterLayers - 2; i >= 1; i--)
 		{
@@ -424,40 +426,44 @@ public static class WorldGen {
 				layerCount = i;
 				plankton = 0;
 			}
-			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterLayerJob()
-			{
-				WaterTemperature = staticState.GetSliceLayer(state.WaterTemperature, i),
-				SaltMass = staticState.GetSliceLayer(state.SaltMass, i),
-				WaterMass = staticState.GetSliceLayer(state.WaterMass, i),
-				CarbonMass = staticState.GetSliceLayer(state.WaterCarbon, i),
-				PlanktonMass = staticState.GetSliceLayer(state.PlanktonMass, i),
-				PlanktonGlucose = staticState.GetSliceLayer(state.PlanktonGlucose, i),
-				ElevationTop = WaterLayerElevation,
+			worldGenJobHandle = worldGenJobHelper.Schedule(
+				true, 64,
+				new WorldGenWaterLayerJob()
+				{
+					WaterTemperature = staticState.GetSliceLayer(state.WaterTemperature, i),
+					SaltMass = staticState.GetSliceLayer(state.SaltMass, i),
+					WaterMass = staticState.GetSliceLayer(state.WaterMass, i),
+					CarbonMass = staticState.GetSliceLayer(state.WaterCarbon, i),
+					PlanktonMass = staticState.GetSliceLayer(state.PlanktonMass, i),
+					PlanktonGlucose = staticState.GetSliceLayer(state.PlanktonGlucose, i),
+					ElevationTop = WaterLayerElevation,
 
-				LayerCount = layerCount,
-				LayerDepthMax = layerDepthMax,
-				coord = staticState.Coordinate,
-				MaxSalinity = worldGenData.MaxSalinity,
-				MinSalinity = worldGenData.MinSalinity,
-				Elevation = state.Elevation,
-				CarbonPercent = worldGenData.WaterCarbonPercent,
-				WaterDensityPerDegree = worldData.WaterDensityPerDegree,
-				WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
-				WaterTemperatureBottom = WaterTemperatureBottom,
-				WaterTemperatureSurface = WaterTemperatureTop,
-				PlanktonInLayer = plankton
-			}, worldGenJobHandle);
+					LayerCount = layerCount,
+					LayerDepthMax = layerDepthMax,
+					coord = staticState.Coordinate,
+					MaxSalinity = worldGenData.MaxSalinity,
+					MinSalinity = worldGenData.MinSalinity,
+					Elevation = state.Elevation,
+					CarbonPercent = worldGenData.WaterCarbonPercent,
+					WaterDensityPerDegree = worldData.WaterDensityPerDegree,
+					WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
+					WaterTemperatureBottom = WaterTemperatureBottom,
+					WaterTemperatureSurface = WaterTemperatureTop,
+					PlanktonInLayer = plankton
+				}, worldGenJobHandle);
 		}
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
-			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenAirLayerJob()
-			{
-				AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, i),
-				Dust = staticState.GetSliceLayer(state.Dust, i),
+			worldGenJobHandle = worldGenJobHelper.Schedule(
+				true, 64,
+				new WorldGenAirLayerJob()
+				{
+					AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, i),
+					Dust = staticState.GetSliceLayer(state.Dust, i),
 
-				TemperaturePotential = temperaturePotential,
-			}, worldGenJobHandle);
+					TemperaturePotential = temperaturePotential,
+				}, worldGenJobHandle);
 		}
 
 		worldGenJobHandle.Complete();
@@ -467,19 +473,21 @@ public static class WorldGen {
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
-			worldGenJobHandle = worldGenJobHelper.Schedule(new WorldGenWaterVaporJob()
-			{
-				AirVapor = staticState.GetSliceLayer(state.AirVapor,i),
-				CarbonDioxide = staticState.GetSliceLayer(state.AirCarbon,i),
+			worldGenJobHandle = worldGenJobHelper.Schedule(
+				true, 64,
+				new WorldGenWaterVaporJob()
+				{
+					AirVapor = staticState.GetSliceLayer(state.AirVapor,i),
+					CarbonDioxide = staticState.GetSliceLayer(state.AirCarbon,i),
 
-				AirMass = staticState.GetSliceLayer(tempState.AirMass,i),
-				Pressure = staticState.GetSliceLayer(tempState.AirPressure,i),
-				LayerMiddle = staticState.GetSliceLayer(tempState.AirLayerMiddle,i),
-				TemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential,i),
-				RelativeHumidity = RelativeHumidity,
-				CarbonDioxidePPM = worldGenData.AirCarbonPercent,
+					AirMass = staticState.GetSliceLayer(tempState.AirMass,i),
+					Pressure = staticState.GetSliceLayer(tempState.AirPressure,i),
+					LayerMiddle = staticState.GetSliceLayer(tempState.AirLayerMiddle,i),
+					TemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential,i),
+					RelativeHumidity = RelativeHumidity,
+					CarbonDioxidePPM = worldGenData.AirCarbonPercent,
 
-			}, worldGenJobHandle);
+				}, worldGenJobHandle);
 		}
 
 

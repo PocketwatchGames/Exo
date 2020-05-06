@@ -190,6 +190,11 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		int columnIndex = i % CellsPerLayer;
 		int fullRangeIndex = i + CellsPerLayer;
 
+		if (i == 1878 + CellsPerLayer)
+		{
+			int j = 0;
+		}
+
 		float waterMass = Mass[fullRangeIndex];
 
 		float newMass = waterMass;
@@ -206,6 +211,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			{
 				newMass -= math.max(0, Destination[fullRangeIndex * StaticState.MaxNeighborsVert + j]);
 			}
+
 			float percentRemaining = newMass / waterMass;
 
 			newPlankton = PlanktonMass[fullRangeIndex] * percentRemaining;
@@ -231,7 +237,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					{
 						incoming = 0;
 					}
-
+					if ((j==6 || j==7) && Destination[edgeIndex] != 0)
+					{
+						int k = 0;
+					}
 
 					newMass += incomingMass;
 					newSaltMass += Salt[n] * incoming;

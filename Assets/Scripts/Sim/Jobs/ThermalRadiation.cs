@@ -153,9 +153,10 @@ public struct ThermalEnergyAbsorbedTerrainJob : IJobParallelFor {
 	public NativeSlice<float> ThermalRadiationAbsorbed;
 	[ReadOnly] public NativeSlice<float> WindowRadiationIncoming;
 	[ReadOnly] public NativeSlice<float> ThermalRadiationIncoming;
+	[ReadOnly] public NativeSlice<float> ThermalRadiationEmitted;
 	public void Execute(int i)
 	{
-		ThermalRadiationAbsorbed[i] += ThermalRadiationIncoming[i] + WindowRadiationIncoming[i];
+		ThermalRadiationAbsorbed[i] += ThermalRadiationIncoming[i] + WindowRadiationIncoming[i] - ThermalRadiationEmitted[i];
 	}
 }
 

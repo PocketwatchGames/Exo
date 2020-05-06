@@ -19296,6 +19296,13 @@ MonoBehaviour:
     MakeAirIncompressible: 1
     MakeWaterIncompressible: 0
     WaterSurfaceFlowEnabled: 1
+    RebalanceWaterLayers: 1
+    AdvectionAir: 1
+    DiffusionAir: 1
+    AdvectionWater: 1
+    DiffusionWater: 1
+    AdvectionCloud: 1
+    DiffusionCloud: 1
     Condensation: 1
     Evaporation: 1
     Freezing: 1

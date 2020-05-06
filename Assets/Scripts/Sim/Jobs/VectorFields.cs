@@ -121,10 +121,15 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 	{
 		Debug.Assert(CellsPerLayer > 0);
 		float moveValue = 0;
-		int cellIndex = StaticState.GetCellIndexFromEdgeVert(e);
+		int cellIndex = StaticState.GetCellIndexFromEdgeVert(e) + CellsPerLayer;
 		int columnIndex = cellIndex % CellsPerLayer;
 		int fullRangeEdgeIndex = e + CellsPerLayer * StaticState.MaxNeighborsVert;
 		int edgeIndex = e % StaticState.MaxNeighborsVert;
+
+		if (columnIndex == 5254- CellsPerLayer*2)
+		{
+			int k = 0;
+		}
 
 		if (edgeIndex == StaticState.NeighborUp)
 		{
@@ -413,7 +418,7 @@ public struct CapMassLeavingJob : IJobParallelFor {
 	}
 }
 
-//[BurstCompile]
+[BurstCompile]
 public struct UpdateDivergenceFreeVelocityJob : IJobParallelFor {
 	public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeSlice<float> DestinationVert;

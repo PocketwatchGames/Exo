@@ -193,87 +193,97 @@ public struct DisplayState {
 		JobHandle initDisplayAirHandle = default(JobHandle);
 		JobHandle initDisplayWaterHandle = default(JobHandle);
 
-		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(new GetDivergenceJob()
-		{
-			Divergence = staticState.GetSliceAir(display.DivergenceAir),
-			Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
-		}));
+		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(
+			true, 64,
+			new GetDivergenceJob()
+			{
+				Divergence = staticState.GetSliceAir(display.DivergenceAir),
+				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
+			}));
 
-		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(new GetDivergenceJob()
-		{
-			Divergence = staticState.GetSliceWater(display.DivergenceWater),
-			Destination = staticState.GetSliceAirNeighbors(tempState.DestinationWater),
-		}));
+		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(
+			true, 64,
+			new GetDivergenceJob()
+			{
+				Divergence = staticState.GetSliceWater(display.DivergenceWater),
+				Destination = staticState.GetSliceAirNeighbors(tempState.DestinationWater),
+			}));
 
 
 		tempState.AbsorptivitySolar.CopyTo(display.AbsorptionSolar);
 		tempState.AbsorptivityThermal.CopyTo(display.AbsorptionThermal);
-		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(new InitDisplayAirLayerJob()
-		{
-			DisplayPressure = staticState.GetSliceAir(display.Pressure),
-			DisplayPressureGradientForce = staticState.GetSliceAir(display.PressureGradientForce),
-			DisplayCondensationGround = staticState.GetSliceAir(display.CondensationGround),
-			DisplayCondensationCloud = staticState.GetSliceAir(display.CondensationCloud),
-			Enthalpy = staticState.GetSliceAir(display.EnthalpyAir),
-			DustCoverage = staticState.GetSliceAir(display.DustMass),
-			CarbonDioxidePercent = staticState.GetSliceAir(display.CarbonDioxidePercent),
-			Divergence = staticState.GetSliceAir(display.DivergenceAir),
+		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(
+			true, 64,
+			new InitDisplayAirLayerJob()
+			{
+				DisplayPressure = staticState.GetSliceAir(display.Pressure),
+				DisplayPressureGradientForce = staticState.GetSliceAir(display.PressureGradientForce),
+				DisplayCondensationGround = staticState.GetSliceAir(display.CondensationGround),
+				DisplayCondensationCloud = staticState.GetSliceAir(display.CondensationCloud),
+				Enthalpy = staticState.GetSliceAir(display.EnthalpyAir),
+				DustCoverage = staticState.GetSliceAir(display.DustMass),
+				CarbonDioxidePercent = staticState.GetSliceAir(display.CarbonDioxidePercent),
+				Divergence = staticState.GetSliceAir(display.DivergenceAir),
 
-			CarbonDioxide = staticState.GetSliceAir(nextState.AirCarbon),
-			AirTemperaturePotential = staticState.GetSliceAir(nextState.AirTemperaturePotential),
-			AirPressure = staticState.GetSliceAir(tempState.AirPressure),
-			LayerMiddle = staticState.GetSliceAir(tempState.AirLayerMiddle),
-			PressureGradientForce = staticState.GetSliceAir(tempState.AirAcceleration),
-			CondensationCloud = staticState.GetSliceAir(tempState.CondensationCloudMass),
-			CondensationGround = staticState.GetSliceAir(tempState.CondensationGroundMass),
-			AirMass = staticState.GetSliceAir(tempState.AirMass),
-			VaporMass = staticState.GetSliceAir(nextState.AirVapor),
-			DustMass = staticState.GetSliceAir(nextState.Dust),
-			Gravity = nextState.PlanetState.Gravity,
-		}, initDisplayAirHandle));
+				CarbonDioxide = staticState.GetSliceAir(nextState.AirCarbon),
+				AirTemperaturePotential = staticState.GetSliceAir(nextState.AirTemperaturePotential),
+				AirPressure = staticState.GetSliceAir(tempState.AirPressure),
+				LayerMiddle = staticState.GetSliceAir(tempState.AirLayerMiddle),
+				PressureGradientForce = staticState.GetSliceAir(tempState.AirAcceleration),
+				CondensationCloud = staticState.GetSliceAir(tempState.CondensationCloudMass),
+				CondensationGround = staticState.GetSliceAir(tempState.CondensationGroundMass),
+				AirMass = staticState.GetSliceAir(tempState.AirMass),
+				VaporMass = staticState.GetSliceAir(nextState.AirVapor),
+				DustMass = staticState.GetSliceAir(nextState.Dust),
+				Gravity = nextState.PlanetState.Gravity,
+			}, initDisplayAirHandle));
 
-		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(new InitDisplayWaterLayerJob()
-		{
-			Enthalpy = staticState.GetSliceWater(display.EnthalpyWater),
-			Salinity = staticState.GetSliceWater(display.Salinity),
-			CarbonPercent = staticState.GetSliceWater(display.WaterCarbonDioxidePercent),
+		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(
+			true, 64,
+			new InitDisplayWaterLayerJob()
+			{
+				Enthalpy = staticState.GetSliceWater(display.EnthalpyWater),
+				Salinity = staticState.GetSliceWater(display.Salinity),
+				CarbonPercent = staticState.GetSliceWater(display.WaterCarbonDioxidePercent),
 
-			WaterTemperature = nextState.WaterTemperature,
-			SaltMass = nextState.SaltMass,
-			WaterMass = nextState.WaterMass,
-			WaterCarbon = nextState.WaterCarbon,
-			CountPerLayer = staticState.Count,
-		}, initDisplayWaterHandle));
+				WaterTemperature = nextState.WaterTemperature,
+				SaltMass = nextState.SaltMass,
+				WaterMass = nextState.WaterMass,
+				WaterCarbon = nextState.WaterCarbon,
+				CountPerLayer = staticState.Count,
+			}, initDisplayWaterHandle));
 
-		var updateDisplayJobHandle = DisplayJob.Schedule(new UpdateDisplayJob()
-		{
-			SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
-			DisplayEvaporation = display.Evaporation,
-			DisplayPrecipitation = display.Rainfall,
-			EnthalpyTerrain = display.EnthalpyTerrain,
-			EnthalpyCloud = display.EnthalpyCloud,
-			EnthalpyFlora = display.EnthalpyFlora,
-			EnthalpyIce = display.EnthalpyIce,
-			EnthalpyGroundWater = display.EnthalpyGroundWater,
+		var updateDisplayJobHandle = DisplayJob.Schedule(
+			true, 64,
+			new UpdateDisplayJob()
+			{
+				SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
+				DisplayEvaporation = display.Evaporation,
+				DisplayPrecipitation = display.Rainfall,
+				EnthalpyTerrain = display.EnthalpyTerrain,
+				EnthalpyCloud = display.EnthalpyCloud,
+				EnthalpyFlora = display.EnthalpyFlora,
+				EnthalpyIce = display.EnthalpyIce,
+				EnthalpyGroundWater = display.EnthalpyGroundWater,
 
-			SolarRadiationInTerrain = tempState.SolarRadiationInTerrain,
-			SolarRadiationInIce = tempState.SolarRadiationInIce,
-			SolarRadiationInWaterSurface = tempState.SolarRadiationInWater,
-			EvaporationWater = tempState.EvaporationMassWater,
-			EvaporationFlora = tempState.FloraRespirationMassVapor,
-			Precipitation = tempState.PrecipitationMass,
-			SoilFertility = nextState.GroundCarbon,
-			TerrainTemperature = nextState.GroundTemperature,
-			Flora = nextState.FloraMass,
-			FloraWater = nextState.FloraWater,
-			FloraTemperature = nextState.FloraTemperature,
-			HeatingDepth = worldData.SoilHeatDepth,
-			CloudMass = nextState.CloudMass,
-			IceMass = nextState.IceMass,
-			IceTemperature = nextState.IceTemperature,
-			GroundWaterMass = nextState.GroundWater,
-			GroundWaterTemperature = nextState.GroundWaterTemperature
-		});
+				SolarRadiationInTerrain = tempState.SolarRadiationInTerrain,
+				SolarRadiationInIce = tempState.SolarRadiationInIce,
+				SolarRadiationInWaterSurface = tempState.SolarRadiationInWater,
+				EvaporationWater = tempState.EvaporationMassWater,
+				EvaporationFlora = tempState.FloraRespirationMassVapor,
+				Precipitation = tempState.PrecipitationMass,
+				SoilFertility = nextState.GroundCarbon,
+				TerrainTemperature = nextState.GroundTemperature,
+				Flora = nextState.FloraMass,
+				FloraWater = nextState.FloraWater,
+				FloraTemperature = nextState.FloraTemperature,
+				HeatingDepth = worldData.SoilHeatDepth,
+				CloudMass = nextState.CloudMass,
+				IceMass = nextState.IceMass,
+				IceTemperature = nextState.IceTemperature,
+				GroundWaterMass = nextState.GroundWater,
+				GroundWaterTemperature = nextState.GroundWaterTemperature
+			});
 
 		updateDisplayJobHandle = JobHandle.CombineDependencies(initDisplayAirHandle, initDisplayWaterHandle, updateDisplayJobHandle);
 		if (settings.CollectGlobals)

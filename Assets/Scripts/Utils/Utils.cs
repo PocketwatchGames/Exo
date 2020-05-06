@@ -195,23 +195,16 @@ public class JobHelper {
 		_cellCount = cellCount;
 	}
 
-	public static int DefaultBatchCount = 16;
-	public JobHandle Run<T>(T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor
+	public JobHandle Schedule<T>(bool async, int batchCount, T job, JobHandle dependences = default(JobHandle)) where T : struct, IJobParallelFor
 	{
-		dependencies.Complete();
-		job.Run(_cellCount);
-		return default(JobHandle);
+		return job.Schedule(_cellCount, batchCount, dependences);
 	}
-	public JobHandle Schedule<T>(T job, JobHandle dependences = default(JobHandle)) where T : struct, IJobParallelFor
-	{
-		return job.Schedule(_cellCount, DefaultBatchCount, dependences);
-	}
-	public JobHandle ScheduleOrMemset<S, T>(bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
+	public JobHandle ScheduleOrMemset<S, T>(bool async, int batchCount, bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
 	{
 		// TODO: we need a version of this for slices
 		if (schedule)
 		{
-			return Schedule(job, dependencies);
+			return Schedule(async, batchCount, job, dependencies);
 		} else
 		{
 			return Utils.MemsetArray<S>(_cellCount, dependencies, arrayToSet, setVal);

@@ -623,159 +623,175 @@ public struct TempState {
 		dependencies = Utils.MemsetArray(staticState.Count, dependencies, AirMassTotal, 0);
 		dependencies = Utils.MemsetArray(staticState.Count, dependencies, WaterDepthTotal, 0);
 
-		dependencies = _jobHelperWater.Schedule(new UpdateWaterJob()
-		{
-			Density = staticState.GetSliceWater(WaterDensity),
-			LayerHeight = staticState.GetSliceWater(WaterLayerHeight),
-			PotentialEnergy = staticState.GetSliceWater(WaterPotentialEnergy),
+		dependencies = _jobHelperWater.Schedule(
+			true, 64,
+			new UpdateWaterJob()
+			{
+				Density = staticState.GetSliceWater(WaterDensity),
+				LayerHeight = staticState.GetSliceWater(WaterLayerHeight),
+				PotentialEnergy = staticState.GetSliceWater(WaterPotentialEnergy),
 
-			Temperature = state.WaterTemperature,
-			SaltMass = state.SaltMass,
-			WaterMass = state.WaterMass,
-			Count = staticState.Count
-		}, dependencies);
+				Temperature = state.WaterTemperature,
+				SaltMass = state.SaltMass,
+				WaterMass = state.WaterMass,
+				Count = staticState.Count
+			}, dependencies);
 
 		for (int j = worldData.SurfaceWaterLayer; j >= worldData.BottomWaterLayer; j--)
 		{
-			dependencies = _jobHelper.Schedule(new UpdateWaterDepthJob()
-			{
-				WaterMassTotal = WaterMassTotal,
-				WaterDepthTotal = WaterDepthTotal,
-				Pressure = staticState.GetSliceLayer(WaterPressure,j),
-				LayerDepth = staticState.GetSliceLayer(WaterLayerDepth,j),
-				WaterCoverage = staticState.GetSliceLayer(WaterCoverage,j),
+			dependencies = _jobHelper.Schedule(
+				true, 64,
+				new UpdateWaterDepthJob()
+				{
+					WaterMassTotal = WaterMassTotal,
+					WaterDepthTotal = WaterDepthTotal,
+					Pressure = staticState.GetSliceLayer(WaterPressure,j),
+					LayerDepth = staticState.GetSliceLayer(WaterLayerDepth,j),
+					WaterCoverage = staticState.GetSliceLayer(WaterCoverage,j),
 
-				LayerHeight = WaterLayerHeight,
-				SaltMass = staticState.GetSliceLayer(state.SaltMass,j),
-				WaterMass = staticState.GetSliceLayer(state.WaterMass,j),
-				Roughness = state.Roughness,
-				Gravity = state.PlanetState.Gravity,
-				LayerIndex = j,
-				Count = staticState.Count
-			}, dependencies);
+					LayerHeight = WaterLayerHeight,
+					SaltMass = staticState.GetSliceLayer(state.SaltMass,j),
+					WaterMass = staticState.GetSliceLayer(state.WaterMass,j),
+					Roughness = state.Roughness,
+					Gravity = state.PlanetState.Gravity,
+					LayerIndex = j,
+					Count = staticState.Count
+				}, dependencies);
 		}
 
 
 
-		dependencies = _jobHelper.Schedule(new UpdateTempStateJob()
-		{
-			IceEnergy = IceEnergy,
-			FloraEnergy = FloraEnergy,
-			LavaEnergy = LavaEnergy,
-			LavaDepth = LavaDepth,
-			SurfaceElevation = SurfaceElevation,
+		dependencies = _jobHelper.Schedule(
+			true, 64,
+			new UpdateTempStateJob()
+			{
+				IceEnergy = IceEnergy,
+				FloraEnergy = FloraEnergy,
+				LavaEnergy = LavaEnergy,
+				LavaDepth = LavaDepth,
+				SurfaceElevation = SurfaceElevation,
 
-			WaterDepth = staticState.GetSliceLayer(WaterLayerDepth, worldData.BottomWaterLayer),
-			Elevation = state.Elevation,
-			FloraMass = state.FloraMass,
-			FloraWater = state.FloraWater,
-			FloraTemperature = state.FloraTemperature,
-			LavaMass = state.LavaMass,
-			LavaTemperature = state.LavaTemperature,
-			IceMass = state.IceMass,
-			IceTemperature = state.IceTemperature,
-			LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
-		}, dependencies);
+				WaterDepth = staticState.GetSliceLayer(WaterLayerDepth, worldData.BottomWaterLayer),
+				Elevation = state.Elevation,
+				FloraMass = state.FloraMass,
+				FloraWater = state.FloraWater,
+				FloraTemperature = state.FloraTemperature,
+				LavaMass = state.LavaMass,
+				LavaTemperature = state.LavaTemperature,
+				IceMass = state.IceMass,
+				IceTemperature = state.IceTemperature,
+				LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
+			}, dependencies);
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(AirLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(StandardLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 
-		dependencies = _jobHelperAir.Schedule(new UpdateAirLayerHeightsJob()
-		{
-			StandardLayerElevation = staticState.GetSliceAir(StandardLayerElevation),
-			LayerHeight = staticState.GetSliceAir(AirLayerHeight),
-			LayerElevation = staticState.GetSliceAir(AirLayerElevation),
-			AirMass = staticState.GetSliceAir(AirMass),
-			LayerMiddle = staticState.GetSliceAir(AirLayerMiddle),
+		dependencies = _jobHelperAir.Schedule(
+			true, 64,
+			new UpdateAirLayerHeightsJob()
+			{
+				StandardLayerElevation = staticState.GetSliceAir(StandardLayerElevation),
+				LayerHeight = staticState.GetSliceAir(AirLayerHeight),
+				LayerElevation = staticState.GetSliceAir(AirLayerElevation),
+				AirMass = staticState.GetSliceAir(AirMass),
+				LayerMiddle = staticState.GetSliceAir(AirLayerMiddle),
 
-			AirTemperaturePotential = staticState.GetSliceAir(state.AirTemperaturePotential),
-			AirLayerHeights = new NativeSlice<AirLayerHeights>(_airLayerHeights, 1, worldData.AirLayers-2),
-			SurfaceElevation = SurfaceElevation,
-			TropopauseElevation = worldData.TropopauseElevation,
-			Gravity = state.PlanetState.Gravity,
-			Count = staticState.Count
-		}, dependencies);
+				AirTemperaturePotential = staticState.GetSliceAir(state.AirTemperaturePotential),
+				AirLayerHeights = new NativeSlice<AirLayerHeights>(_airLayerHeights, 1, worldData.AirLayers-2),
+				SurfaceElevation = SurfaceElevation,
+				TropopauseElevation = worldData.TropopauseElevation,
+				Gravity = state.PlanetState.Gravity,
+				Count = staticState.Count
+			}, dependencies);
 
-		dependencies = _jobHelper.Schedule(new UpdateStratosphereJob()
-		{
-			StratosphereMass = AirMassTotal,
+		dependencies = _jobHelper.Schedule(
+			true, 64,
+			new UpdateStratosphereJob()
+			{
+				StratosphereMass = AirMassTotal,
 
-			TropopauseElevation = staticState.GetSliceLayer(AirLayerElevation,worldData.AirLayers - 2),
-			TropopauseHeight = staticState.GetSliceLayer(AirLayerHeight,worldData.AirLayers - 2),
-			Gravity = state.PlanetState.Gravity
-		}, dependencies);
+				TropopauseElevation = staticState.GetSliceLayer(AirLayerElevation,worldData.AirLayers - 2),
+				TropopauseHeight = staticState.GetSliceLayer(AirLayerHeight,worldData.AirLayers - 2),
+				Gravity = state.PlanetState.Gravity
+			}, dependencies);
 
 
 		for (int j = worldData.AirLayers - 2; j > 0; j--)
 		{
-			dependencies = _jobHelper.Schedule(new UpdateAirPressureJob()
-			{
-				Pressure = staticState.GetSliceLayer(AirPressure, j),
-				PressureInverse = staticState.GetSliceLayer(AirPressureInverse, j),
-				AirMassTotal = AirMassTotal,
-				RelativeHumidity = staticState.GetSliceLayer(AirHumidityRelative, j),
-				AbsoluteHumidity = staticState.GetSliceLayer(AirHumidityAbsolute, j),
-				AirMass = staticState.GetSliceLayer(AirMass, j),
-				PotentialEnergy = staticState.GetSliceLayer(AirPotentialEnergy, j),
+			dependencies = _jobHelper.Schedule(
+				true, 64,
+				new UpdateAirPressureJob()
+				{
+					Pressure = staticState.GetSliceLayer(AirPressure, j),
+					PressureInverse = staticState.GetSliceLayer(AirPressureInverse, j),
+					AirMassTotal = AirMassTotal,
+					RelativeHumidity = staticState.GetSliceLayer(AirHumidityRelative, j),
+					AbsoluteHumidity = staticState.GetSliceLayer(AirHumidityAbsolute, j),
+					AirMass = staticState.GetSliceLayer(AirMass, j),
+					PotentialEnergy = staticState.GetSliceLayer(AirPotentialEnergy, j),
 
-				CloudMass = state.CloudMass,
-				VaporMass = staticState.GetSliceLayer(state.AirVapor, j),
-				AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, j),
-				LayerElevation = staticState.GetSliceLayer(AirLayerElevation, j),
-				LayerMiddle = staticState.GetSliceLayer(AirLayerMiddle, j),
-				LayerHeight = staticState.GetSliceLayer(AirLayerHeight, j),
-				SurfaceElevation = SurfaceElevation,
-				Gravity = state.PlanetState.Gravity,
-			}, dependencies);
+					CloudMass = state.CloudMass,
+					VaporMass = staticState.GetSliceLayer(state.AirVapor, j),
+					AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, j),
+					LayerElevation = staticState.GetSliceLayer(AirLayerElevation, j),
+					LayerMiddle = staticState.GetSliceLayer(AirLayerMiddle, j),
+					LayerHeight = staticState.GetSliceLayer(AirLayerHeight, j),
+					SurfaceElevation = SurfaceElevation,
+					Gravity = state.PlanetState.Gravity,
+				}, dependencies);
 		}
 
-		dependencies = _jobHelper.Schedule(new UpdateCloudJob()
-		{
-			CloudVelocity = CloudVelocity,
-			CloudElevation = CloudElevation,
-			AirDensityCloud = AirDensityCloud,
-			DewPoint = DewPoint,
+		dependencies = _jobHelper.Schedule(
+			true, 64,
+			new UpdateCloudJob()
+			{
+				CloudVelocity = CloudVelocity,
+				CloudElevation = CloudElevation,
+				AirDensityCloud = AirDensityCloud,
+				DewPoint = DewPoint,
 
-			AirMass = AirMass,
-			VaporMass = state.AirVapor,
-			RelativeHumidity = AirHumidityRelative,
-			Pressure = AirPressure,
-			AirTemperaturePotential = state.AirTemperaturePotential,
-			LayerMiddle = AirLayerMiddle,
-			LayerElevation = AirLayerElevation,
-			LayerHeight = AirLayerHeight,
-			AirVelocity = state.AirVelocity,
-			Gravity = state.PlanetState.Gravity,
-			AirLayerCount = worldData.AirLayers,
-			Count = staticState.Count
+				AirMass = AirMass,
+				VaporMass = state.AirVapor,
+				RelativeHumidity = AirHumidityRelative,
+				Pressure = AirPressure,
+				AirTemperaturePotential = state.AirTemperaturePotential,
+				LayerMiddle = AirLayerMiddle,
+				LayerElevation = AirLayerElevation,
+				LayerHeight = AirLayerHeight,
+				AirVelocity = state.AirVelocity,
+				Gravity = state.PlanetState.Gravity,
+				AirLayerCount = worldData.AirLayers,
+				Count = staticState.Count
 
-		}, dependencies);
+			}, dependencies);
 
-		var surfaceStateJobHandle = _jobHelper.Schedule(new UpdateSurfaceStateJob()
-		{
-			SurfaceAirTemperatureAbsolute = SurfaceAirTemperatureAbsolute,
-			SurfaceAreaAirFlora = SurfaceAreaAirFlora,
-			SurfaceAreaAirIce = SurfaceAreaAirIce,
-			SurfaceAreaAirTerrain = SurfaceAreaAirTerrain,
-			SurfaceAreaAirWater = SurfaceAreaAirWater,
-			SurfaceAreaIceFlora = SurfaceAreaIceFlora,
-			SurfaceAreaIceTerrain = SurfaceAreaIceTerrain,
-			SurfaceAreaIceWater = SurfaceAreaIceWater,
-			SurfaceAreaWaterFlora = SurfaceAreaWaterFlora,
-			SurfaceAreaWaterTerrain = SurfaceAreaWaterTerrain,
-			SurfaceAreaFloraTerrain = SurfaceAreaFloraTerrain,
-			FloraCoverage = FloraCoverage,
-			IceCoverage = IceCoverage,
+		var surfaceStateJobHandle = _jobHelper.Schedule(
+			true, 64,
+			new UpdateSurfaceStateJob()
+			{
+				SurfaceAirTemperatureAbsolute = SurfaceAirTemperatureAbsolute,
+				SurfaceAreaAirFlora = SurfaceAreaAirFlora,
+				SurfaceAreaAirIce = SurfaceAreaAirIce,
+				SurfaceAreaAirTerrain = SurfaceAreaAirTerrain,
+				SurfaceAreaAirWater = SurfaceAreaAirWater,
+				SurfaceAreaIceFlora = SurfaceAreaIceFlora,
+				SurfaceAreaIceTerrain = SurfaceAreaIceTerrain,
+				SurfaceAreaIceWater = SurfaceAreaIceWater,
+				SurfaceAreaWaterFlora = SurfaceAreaWaterFlora,
+				SurfaceAreaWaterTerrain = SurfaceAreaWaterTerrain,
+				SurfaceAreaFloraTerrain = SurfaceAreaFloraTerrain,
+				FloraCoverage = FloraCoverage,
+				IceCoverage = IceCoverage,
 
-			WaterCoverage = staticState.GetSliceLayer(WaterCoverage, worldData.SurfaceWaterLayer),
-			FloraMass = state.FloraMass,
-			IceMass = state.IceMass,
-			AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, worldData.SurfaceAirLayer),
-			SurfaceLayerElevation = staticState.GetSliceLayer(AirLayerElevation,worldData.SurfaceAirLayer),
-			inverseFullCoverageFloraMass = 1.0f / worldData.FullCoverageFlora,
-			inverseFullCoverageIceMass = 1.0f / (worldData.FullCoverageIce * WorldData.MassIce),
-			FloraAirSurfaceArea = worldData.FloraAirSurfaceArea,
-			Roughness = state.Roughness
-		}, dependencies);
+				WaterCoverage = staticState.GetSliceLayer(WaterCoverage, worldData.SurfaceWaterLayer),
+				FloraMass = state.FloraMass,
+				IceMass = state.IceMass,
+				AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, worldData.SurfaceAirLayer),
+				SurfaceLayerElevation = staticState.GetSliceLayer(AirLayerElevation,worldData.SurfaceAirLayer),
+				inverseFullCoverageFloraMass = 1.0f / worldData.FullCoverageFlora,
+				inverseFullCoverageIceMass = 1.0f / (worldData.FullCoverageIce * WorldData.MassIce),
+				FloraAirSurfaceArea = worldData.FloraAirSurfaceArea,
+				Roughness = state.Roughness
+			}, dependencies);
 		dependencies = JobHandle.CombineDependencies(dependencies, surfaceStateJobHandle);
 
 
