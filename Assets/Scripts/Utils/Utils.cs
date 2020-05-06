@@ -186,6 +186,10 @@ public struct Optional<T> {
 	}
 }
 
+public enum JobType {
+	Schedule,
+	Run
+}
 public class JobHelper {
 
 	private int _cellCount;
@@ -195,11 +199,22 @@ public class JobHelper {
 		_cellCount = cellCount;
 	}
 
-	public JobHandle Schedule<T>(bool async, int batchCount, T job, JobHandle dependences = default(JobHandle)) where T : struct, IJobParallelFor
+
+	public JobHandle Schedule<T>(bool runSynchronously, int batchCount, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor
 	{
-		return job.Schedule(_cellCount, batchCount, dependences);
+		if (!runSynchronously)
+		{
+			return job.Schedule(_cellCount, batchCount, dependencies);
+		}
+		dependencies.Complete();
+		job.Run(_cellCount);
+		return default(JobHandle);
 	}
-	public JobHandle ScheduleOrMemset<S, T>(bool async, int batchCount, bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
+	public JobHandle Schedule<T>(JobType jobType, int batchCount, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor
+	{
+		return Schedule(jobType == JobType.Run, batchCount, job, dependencies);
+	}
+	public JobHandle ScheduleOrMemset<S, T>(JobType async, int batchCount, bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
 	{
 		// TODO: we need a version of this for slices
 		if (schedule)

@@ -471,7 +471,7 @@ public class WorldView : MonoBehaviour {
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref tempState, ref display, ref staticState, ref worldData, out windOverlayData);
 
 		var buildRenderStateJobHandle = _renderJobHelper.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new BuildRenderStateCellJob()
 			{
 				TerrainColor1 = to.TerrainColor1,
@@ -589,7 +589,7 @@ public class WorldView : MonoBehaviour {
 		}
 
 		var getVertsHandle = _renderTerrainHelper.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new BuildTerrainVertsJob()
 			{
 				VTerrainPosition = _terrainVerticesArray,
@@ -612,7 +612,7 @@ public class WorldView : MonoBehaviour {
 			}, JobHandle.CombineDependencies(dependencies));
 
 		getVertsHandle = JobHandle.CombineDependencies(getVertsHandle, _renderCloudHelper.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new BuildCloudVertsJob()
 			{
 				VCloudPosition = _cloudVerticesArray,

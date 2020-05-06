@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using System.Collections.Generic;
 using System;
+using UnityEngine;
 
 public struct TempState {
 
@@ -624,7 +625,7 @@ public struct TempState {
 		dependencies = Utils.MemsetArray(staticState.Count, dependencies, WaterDepthTotal, 0);
 
 		dependencies = _jobHelperWater.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateWaterJob()
 			{
 				Density = staticState.GetSliceWater(WaterDensity),
@@ -640,7 +641,7 @@ public struct TempState {
 		for (int j = worldData.SurfaceWaterLayer; j >= worldData.BottomWaterLayer; j--)
 		{
 			dependencies = _jobHelper.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new UpdateWaterDepthJob()
 				{
 					WaterMassTotal = WaterMassTotal,
@@ -661,8 +662,7 @@ public struct TempState {
 
 
 
-		dependencies = _jobHelper.Schedule(
-			true, 64,
+		dependencies = _jobHelper.Schedule(JobType.Schedule, 64,
 			new UpdateTempStateJob()
 			{
 				IceEnergy = IceEnergy,
@@ -685,8 +685,7 @@ public struct TempState {
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(AirLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(StandardLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 
-		dependencies = _jobHelperAir.Schedule(
-			true, 64,
+		dependencies = _jobHelperAir.Schedule(JobType.Schedule, 64,
 			new UpdateAirLayerHeightsJob()
 			{
 				StandardLayerElevation = staticState.GetSliceAir(StandardLayerElevation),
@@ -704,7 +703,7 @@ public struct TempState {
 			}, dependencies);
 
 		dependencies = _jobHelper.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateStratosphereJob()
 			{
 				StratosphereMass = AirMassTotal,
@@ -718,7 +717,7 @@ public struct TempState {
 		for (int j = worldData.AirLayers - 2; j > 0; j--)
 		{
 			dependencies = _jobHelper.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new UpdateAirPressureJob()
 				{
 					Pressure = staticState.GetSliceLayer(AirPressure, j),
@@ -726,9 +725,9 @@ public struct TempState {
 					AirMassTotal = AirMassTotal,
 					RelativeHumidity = staticState.GetSliceLayer(AirHumidityRelative, j),
 					AbsoluteHumidity = staticState.GetSliceLayer(AirHumidityAbsolute, j),
-					AirMass = staticState.GetSliceLayer(AirMass, j),
 					PotentialEnergy = staticState.GetSliceLayer(AirPotentialEnergy, j),
 
+					AirMass = staticState.GetSliceLayer(AirMass, j),
 					CloudMass = state.CloudMass,
 					VaporMass = staticState.GetSliceLayer(state.AirVapor, j),
 					AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, j),
@@ -741,7 +740,7 @@ public struct TempState {
 		}
 
 		dependencies = _jobHelper.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateCloudJob()
 			{
 				CloudVelocity = CloudVelocity,
@@ -765,7 +764,7 @@ public struct TempState {
 			}, dependencies);
 
 		var surfaceStateJobHandle = _jobHelper.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateSurfaceStateJob()
 			{
 				SurfaceAirTemperatureAbsolute = SurfaceAirTemperatureAbsolute,
@@ -863,6 +862,12 @@ public struct TempState {
 					float airMass = (Atmosphere.GetStandardPressureAtElevation(standardLayerElevation, WorldData.StandardTemperature, Gravity) - Atmosphere.GetStandardPressureAtElevation(standardLayerElevation + standardLayerHeight, WorldData.StandardTemperature, Gravity)) / Gravity;
 					StandardLayerElevation[i] = standardLayerElevation + standardLayerHeight;
 					AirMass[i] = airMass;
+
+					if (airMass <= 0 || !math.isfinite(airMass))
+					{
+						Debug.Break();
+					}
+
 					LayerHeight[i] = layerHeight;
 					LayerElevation[i] = layerElevation;
 					LayerMiddle[i] = layerElevation + layerHeight / 2;

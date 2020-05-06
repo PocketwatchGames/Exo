@@ -7,7 +7,7 @@ using Unity.Mathematics;
 using UnityEngine;
 
 [BurstCompile]
-public struct FluxWaterEvaporationJob : IJobParallelFor {
+public struct FluxEvaporationJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeSlice<float> LatentHeatWater;
 	public NativeSlice<float> LatentHeatAir;
@@ -61,7 +61,7 @@ public struct FluxWaterEvaporationJob : IJobParallelFor {
 
 
 [BurstCompile]
-public struct FluxWaterFreezeJob : IJobParallelFor {
+public struct FluxFreezeJob : IJobParallelFor {
 	public NativeArray<float> FrozenMass;
 	public NativeArray<float> FrozenTemperature;
 	public NativeArray<float> SaltPlume;
@@ -360,7 +360,7 @@ public struct FluxCloudJob : IJobParallelFor {
 
 
 [BurstCompile]
-public struct FluxAirCondensationJob : IJobParallelFor {
+public struct FluxCondensationJob : IJobParallelFor {
 	public NativeSlice<float> LatentHeat;
 	public NativeSlice<float> CondensationGroundMass;
 	public NativeSlice<float> CondensationCloudMass;
@@ -372,23 +372,22 @@ public struct FluxAirCondensationJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> LayerHeight;
 	[ReadOnly] public NativeSlice<float> LayerMiddle;
 	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-		int cloudIndex = i % Count;
 		float condensationGroundMass = 0;
 		float condensationCloudMass = 0;
 		float energyFlux = 0;
 
 		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerMiddle[i]);
-		var relativeHumidity = Atmosphere.GetRelativeHumidity(AirMass[i], LastVapor[i], temperatureAbsolute, AirPressure[i]);
-		if (relativeHumidity > 1.0f)
+		float maxWaterVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], temperatureAbsolute, AirPressure[i]);
+		float excessWaterVapor = (LastVapor[i] - maxWaterVapor) / 2;
+		if (excessWaterVapor > 0)
 		{
-			float aboveCloud = math.saturate((LayerElevation[i] - CloudElevation[cloudIndex]) / LayerHeight[i]);
-			float vaporToCondense = (relativeHumidity - 1.0f) / relativeHumidity * LastVapor[i];
-			condensationCloudMass = aboveCloud * vaporToCondense;
-			condensationGroundMass = (1.0f - aboveCloud) * vaporToCondense;
-			energyFlux += vaporToCondense * WorldData.LatentHeatWaterVapor;
+			//float toCloud = math.saturate((LayerElevation[i] - CloudElevation[cloudIndex]) / LayerHeight[i]);
+			float toCloud = 1;
+			condensationCloudMass = toCloud * excessWaterVapor;
+			condensationGroundMass = (1.0f - toCloud) * excessWaterVapor;
+			energyFlux += excessWaterVapor * WorldData.LatentHeatWaterVapor;
 		}
 
 		LatentHeat[i] = energyFlux;
@@ -398,7 +397,7 @@ public struct FluxAirCondensationJob : IJobParallelFor {
 }
 
 [BurstCompile]
-public struct FluxAirDustJob : IJobParallelFor {
+public struct FluxDustJob : IJobParallelFor {
 	public NativeSlice<float> DustUp;
 	public NativeSlice<float> DustDown;
 	[ReadOnly] public NativeSlice<float> LastDust;

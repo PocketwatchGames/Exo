@@ -148,10 +148,28 @@ public struct UpdateMassCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> CloudEvaporation;
 	[ReadOnly] public NativeArray<float> PrecipitationMass;
 	[ReadOnly] public NativeArray<float> DropletDelta;
+	[ReadOnly] public NativeSlice<float> CloudCondensation;
+	[ReadOnly] public int LayerCount;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-		CloudMass[i] = LastCloudMass[i] - CloudEvaporation[i] - PrecipitationMass[i];
-		CloudDropletMass[i] = LastDropletMass[i] + DropletDelta[i];
+		float cloudMass = LastCloudMass[i] - CloudEvaporation[i] - PrecipitationMass[i];
+		float dropletMass = LastDropletMass[i] + DropletDelta[i];
+
+		for (int j = 0; j < LayerCount; j++)
+		{
+			int layerIndex = j * Count + i;
+			float condensation = CloudCondensation[layerIndex];
+			if (cloudMass > 0)
+			{
+				dropletMass = dropletMass * cloudMass / (cloudMass + condensation);
+			}
+			cloudMass += condensation;
+		}
+
+		CloudMass[i] = cloudMass;
+		CloudDropletMass[i] = dropletMass;
+
 	}
 }
 
@@ -187,49 +205,6 @@ public struct UpdateMassAirJob : IJobParallelFor {
 		VaporMass[i] = newVaporMass;
 		DustMass[i] = newDustMass;
 		CarbonDioxideMass[i] = newCarbonDioxide;
-	}
-}
-
-
-[BurstCompile]
-public struct UpdateMassCloudCondensationJob : IJobParallelFor {
-	public NativeArray<float> CloudMass;
-	public NativeArray<float> CloudDropletMass;
-	[ReadOnly] public NativeArray<float> CloudEvaporation;
-	[ReadOnly] public NativeArray<float> CloudElevation;
-	[ReadOnly] public NativeSlice<float> LayerElevation;
-	[ReadOnly] public NativeSlice<float> LayerHeight;
-	[ReadOnly] public NativeSlice<float> CloudCondensation;
-	[ReadOnly] public NativeSlice<float> GroundCondensation;
-	[ReadOnly] public int LayerCount;
-	[ReadOnly] public int Count;
-	public void Execute(int i)
-	{
-		float cloudMass = CloudMass[i];
-		float newCloudMass = cloudMass;
-		float newDropletSize = CloudDropletMass[i];
-
-		for (int j = 0; j < LayerCount; j++)
-		{
-			bool isBottom = j == 0;
-			bool isTop = j == LayerCount - 1;
-			int layerIndex = j * Count + i;
-
-			float cloudEvaporationInLayer = 0;
-			if ((CloudElevation[i] >= LayerElevation[layerIndex] || isBottom) && (CloudElevation[i] < LayerElevation[layerIndex] + LayerHeight[layerIndex] || isTop))
-			{
-				cloudEvaporationInLayer = CloudEvaporation[i];
-			}
-			float condensation = CloudCondensation[layerIndex];
-			if (newCloudMass > 0)
-			{
-				newDropletSize = newDropletSize * newCloudMass / (newCloudMass + condensation);
-			}
-			newCloudMass += condensation;
-		}
-
-		CloudMass[i] = newCloudMass;
-		CloudDropletMass[i] = newDropletSize;
 	}
 }
 

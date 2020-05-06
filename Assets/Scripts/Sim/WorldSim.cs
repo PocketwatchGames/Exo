@@ -131,7 +131,7 @@ public class WorldSim {
 
 
 		var airTerrainFrictionJobHandle = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new AirTerrainFrictionJob()
 			{
 				Force = tempState.WindFriction,
@@ -148,7 +148,7 @@ public class WorldSim {
 			}, energyJobHandles[worldData.AirLayer0]);
 
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new AccelerationAirJob()
 			{
 				Velocity = staticState.GetSliceAir(nextState.AirVelocity),
@@ -184,7 +184,7 @@ public class WorldSim {
 		if (settings.AdvectionAir)
 		{
 			energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new GetVectorDestCoordsVerticalJob()
 				{
 					Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAir),
@@ -198,7 +198,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.AirLayer0]);
 
 			energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ResolveAdvectionConflictVert()
 				{
 					ResolvedDestination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
@@ -211,7 +211,7 @@ public class WorldSim {
 			{
 
 				energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new GetDivergenceJob()
 					{
 						Divergence = staticState.GetSliceAir(tempState.DivergenceAir),
@@ -232,7 +232,7 @@ public class WorldSim {
 				}
 
 				energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new GetDivergenceFreeFieldJob()
 					{
 						Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
@@ -243,7 +243,7 @@ public class WorldSim {
 					}, energyJobHandles[worldData.AirLayer0]);
 
 				energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new SumMassLeavingJob()
 					{
 						MassLeaving = staticState.GetSliceAir(tempState.AirMassLeaving),
@@ -251,7 +251,7 @@ public class WorldSim {
 					}, energyJobHandles[worldData.AirLayer0]);
 
 				energyJobHandles[worldData.AirLayer0] = AirNeighborJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new CapMassLeavingJob()
 					{
 						Destination = staticState.GetSliceAirNeighbors(tempState.DestinationAirResolved),
@@ -262,7 +262,7 @@ public class WorldSim {
 					}, energyJobHandles[worldData.AirLayer0]);
 
 				energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new UpdateDivergenceFreeVelocityJob()
 					{
 						Velocity = staticState.GetSliceAir(nextState.AirVelocity),
@@ -278,7 +278,7 @@ public class WorldSim {
 
 
 			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new AdvectionAirJob()
 				{
 					Delta = staticState.GetSliceAir(tempState.AdvectionAir),
@@ -298,7 +298,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.AirLayer0]);
 
 			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyAdvectionAirJob()
 				{
 					Advection = tempState.AdvectionAir,
@@ -319,7 +319,7 @@ public class WorldSim {
 		{
 			// TODO: is it a problem that we are using the dependent variables from last frame while referencing our newly calculated next frame values for temperature and such?
 			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new DiffusionAirJob()
 				{
 					Delta = staticState.GetSliceAir(tempState.DiffusionAir),
@@ -342,7 +342,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.AirLayer0]);
 
 			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyAdvectionAirJob()
 				{
 					Advection = staticState.GetSliceAir(tempState.DiffusionAir),
@@ -368,7 +368,7 @@ public class WorldSim {
 #region Update Velocity
 
 		energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new WaterSurfaceFrictionJob()
 			{
 				Force = tempState.WaterFriction,
@@ -389,7 +389,7 @@ public class WorldSim {
 		// TODO: since I moved acceleration up here, we will need to add a buoyancy job down after the temperature adjustment to incorporate positive buoyancy in the vertical velocity
 		// (see usage of "next state" velocity
 		energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new AccelerationWaterJob()
 			{
 				Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
@@ -423,7 +423,7 @@ public class WorldSim {
 		if (settings.AdvectionWater)
 		{
 			energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 				new GetVectorDestCoordsVerticalJob()
 				{
 					Destination = staticState.GetSliceWaterNeighbors(tempState.DestinationWater),
@@ -437,7 +437,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.WaterLayer0]);
 
 			energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ResolveAdvectionConflictVert()
 				{
 					ResolvedDestination = staticState.GetSliceWaterNeighbors(tempState.DestinationWaterResolved),
@@ -449,7 +449,7 @@ public class WorldSim {
 			if (settings.MakeWaterIncompressible)
 			{
 				energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new GetDivergenceJob()
 					{
 						Divergence = staticState.GetSliceWater(tempState.DivergenceWater),
@@ -470,7 +470,7 @@ public class WorldSim {
 				}
 
 				energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new GetDivergenceFreeFieldJob()
 					{
 						Destination = staticState.GetSliceWaterNeighbors(tempState.DestinationWaterResolved),
@@ -481,7 +481,7 @@ public class WorldSim {
 					}, energyJobHandles[worldData.WaterLayer0]);
 
 				energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new SumMassLeavingJob()
 					{
 						MassLeaving = staticState.GetSliceWater(tempState.WaterMassLeaving),
@@ -489,7 +489,7 @@ public class WorldSim {
 					}, energyJobHandles[worldData.WaterLayer0]);
 
 				energyJobHandles[worldData.WaterLayer0] = WaterNeighborJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new CapMassLeavingJob()
 					{
 						Destination = staticState.GetSliceWaterNeighbors(tempState.DestinationWaterResolved),
@@ -500,7 +500,7 @@ public class WorldSim {
 					}, energyJobHandles[worldData.WaterLayer0]);
 
 				energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new UpdateDivergenceFreeVelocityJob()
 					{
 						Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
@@ -516,7 +516,7 @@ public class WorldSim {
 
 
 			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new AdvectionWaterJob()
 				{
 					Delta = staticState.GetSliceWater(tempState.AdvectionWater),
@@ -536,7 +536,7 @@ public class WorldSim {
 					CellsPerLayer = staticState.Count
 				}, JobHandle.CombineDependencies(groundWaterJob, energyJobHandles[worldData.WaterLayer0]));
 			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyAdvectionWaterJob()
 				{
 					SaltMass = staticState.GetSliceWater(nextState.SaltMass),
@@ -554,7 +554,7 @@ public class WorldSim {
 		if (settings.AdvectionCloud)
 		{
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new GetVectorDestCoordsJob()
 				{
 					Destination = tempState.DestinationCloud,
@@ -568,7 +568,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.CloudLayer]);
 
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new AdvectionCloudJob()
 				{
 					Delta = tempState.AdvectionCloud,
@@ -580,7 +580,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.CloudLayer]);
 
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyAdvectionCloudJob()
 				{
 					Advection = tempState.AdvectionCloud,
@@ -598,7 +598,7 @@ public class WorldSim {
 		if (settings.DiffusionWater)
 		{
 			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new DiffusionWaterJob()
 				{
 					Delta = staticState.GetSliceWater(tempState.DiffusionWater),
@@ -622,7 +622,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.WaterLayer0]);
 
 			energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyAdvectionWaterJob()
 				{
 					Advection = staticState.GetSliceWater(tempState.DiffusionWater),
@@ -639,7 +639,7 @@ public class WorldSim {
 		if (settings.DiffusionCloud)
 		{
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new DiffusionCloudJob()
 				{
 					Delta = tempState.DiffusionCloud,
@@ -652,7 +652,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.CloudLayer]);
 
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyAdvectionCloudJob()
 				{
 					Advection = tempState.DiffusionCloud,
@@ -687,7 +687,7 @@ public class WorldSim {
 		{
 			// TODO: surface elevation is inaccurate now, we should recalculate (and use water surfae, not ice surface)
 			energyJobHandles[worldData.WaterLayer0] = NeighborJob.Schedule(
-			true, 64,
+				JobType.Schedule, 64,
 				new UpdateFlowVelocityJob()
 				{
 					Flow = nextState.FlowWater,
@@ -704,7 +704,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.WaterLayer0]);
 
 			energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new SumOutgoingFlowJob()
 				{
 					OutgoingFlow = tempState.OutgoingFlowWater,
@@ -712,7 +712,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.WaterLayer0]);
 
 			energyJobHandles[worldData.WaterLayer0] = NeighborJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new LimitOutgoingFlowJob()
 				{
 					Flow = nextState.FlowWater,
@@ -724,7 +724,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.WaterLayer0]);
 
 			energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyFlowWaterJob()
 				{
 					Delta = staticState.GetSliceLayer(tempState.DiffusionWater,worldData.SurfaceWaterLayer),
@@ -746,7 +746,7 @@ public class WorldSim {
 				}, energyJobHandles[worldData.WaterLayer0]);
 
 			energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ApplyAdvectionWaterJob()
 				{
 					WaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
@@ -784,7 +784,7 @@ public class WorldSim {
 					minDepth = worldData.ThermoclineDepth - 10;
 				}
 				energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new RebalanceWaterLayersLimitJob()
 					{
 						Delta1 = tempState.RebalanceWater1,
@@ -807,7 +807,7 @@ public class WorldSim {
 						Count = staticState.Count
 					}, energyJobHandles[worldData.WaterLayer0]);
 				energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ApplyAdvectionWaterJob()
 					{
 						WaterMass = staticState.GetSliceLayer(nextState.WaterMass, i),
@@ -821,7 +821,7 @@ public class WorldSim {
 						Advection = tempState.RebalanceWater1,
 					}, energyJobHandles[worldData.WaterLayer0]);
 				energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ApplyAdvectionWaterJob()
 					{
 						WaterMass = staticState.GetSliceLayer(nextState.WaterMass, i - 1),
@@ -865,7 +865,7 @@ public class WorldSim {
 	{
 #region Init Solar Radiation Per Cell
 		var solarInJobHandle = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new SolarRadiationJob()
 			{
 				SolarRadiation = tempState.SolarRadiation,
@@ -889,7 +889,7 @@ public class WorldSim {
 
 		JobHandle emissivityJobHandle = default(JobHandle);
 		emissivityJobHandle = JobHandle.CombineDependencies(emissivityJobHandle, AirJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EmissivityAirJob()
 			{
 				Emissivity = staticState.GetSliceAir(tempState.EmissivityAir),
@@ -908,7 +908,7 @@ public class WorldSim {
 		// for the bottom we rely on conduction with the terrain for heat transfer (although this might lead to an imbalance!)
 		{
 			emissivityJobHandle = JobHandle.CombineDependencies(emissivityJobHandle, SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new EmissivityWaterJob()
 				{
 					Emissivity = staticState.GetSliceLayer(tempState.EmissivityWater,worldData.SurfaceWaterLayer),
@@ -919,7 +919,7 @@ public class WorldSim {
 				}, lastJobHandle));
 		}
 		emissivityJobHandle = JobHandle.CombineDependencies(emissivityJobHandle, SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EmissivityTerrainJob()
 			{
 				Emissivity = tempState.EmissivityTerrain,
@@ -936,7 +936,7 @@ public class WorldSim {
 
 		// ICE
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ThermalEnergyRadiatedConstantEmissivityJob()
 			{
 				ThermalRadiationEmitted = tempState.ThermalRadiationEmittedIce,
@@ -951,7 +951,7 @@ public class WorldSim {
 
 		// FLORA
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ThermalEnergyRadiatedConstantEmissivityJob()
 			{
 				ThermalRadiationEmitted = tempState.ThermalRadiationEmittedFlora,
@@ -966,7 +966,7 @@ public class WorldSim {
 
 		// TERRAIN
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ThermalEnergyRadiatedTerrainJob()
 			{
 				ThermalRadiationEmitted = tempState.ThermalRadiationEmittedTerrain,
@@ -980,7 +980,7 @@ public class WorldSim {
 
 		// ATMOSPHERE
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, AirJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ThermalEnergyRadiatedAirJob()
 			{
 				ThermalRadiationEmitted = staticState.GetSliceAir(tempState.ThermalRadiationEmittedAir),
@@ -997,7 +997,7 @@ public class WorldSim {
 		// for the bottom we rely on conduction with the terrain for heat transfer (although this might lead to an imbalance!)
 		{
 			thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, WaterJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new ThermalEnergyRadiatedWaterJob()
 				{
 					ThermalRadiationEmitted = staticState.GetSliceWater(tempState.ThermalRadiationEmittedWater),
@@ -1015,7 +1015,7 @@ public class WorldSim {
 #region absorptivity
 
 		solarInJobHandle = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new CloudAlbedoJob()
 			{
 				CloudAlbedo = tempState.CloudAlbedo,
@@ -1033,7 +1033,7 @@ public class WorldSim {
 			}, solarInJobHandle);
 
 		solarInJobHandle = AirJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new AbsorptivityAirJob()
 			{
 				AbsorptivitySolar = staticState.GetSliceAir(tempState.AbsorptivitySolar),
@@ -1076,7 +1076,7 @@ public class WorldSim {
 		{
 			int airLayerIndex = j - worldData.AirLayer0;
 			solarInJobHandle = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new SolarRadiationAbsorbedAirJob()
 				{
 					SolarRadiationAbsorbed = staticState.GetSliceLayer(tempState.SolarRadiationInAir,airLayerIndex),
@@ -1090,7 +1090,7 @@ public class WorldSim {
 
 		// ice
 		solarInJobHandle = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInIce,
@@ -1104,7 +1104,7 @@ public class WorldSim {
 
 		// water
 		solarInJobHandle = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new SolarRadiationAbsorbedSlopeJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInWater,
@@ -1117,7 +1117,7 @@ public class WorldSim {
 
 		// flora
 		solarInJobHandle = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInFlora,
@@ -1132,7 +1132,7 @@ public class WorldSim {
 		// NOTE: we don't bother with solar radiation in lava
 
 		solarInJobHandle = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new SolarRadiationAbsorbedTerrainJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInTerrain,
@@ -1157,7 +1157,7 @@ public class WorldSim {
 				int downIndex = airLayer == 1 ? worldData.IceLayer : (j - 1);
 
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedAirJob()
 					{
 						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaAir,airLayer),
@@ -1176,7 +1176,7 @@ public class WorldSim {
 			else if (j == worldData.IceLayer)
 			{
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedUpPartialCoverageJob()
 					{
 						ThermalRadiationDelta = tempState.ThermalRadiationDeltaIce,
@@ -1192,7 +1192,7 @@ public class WorldSim {
 			else if (j == worldData.FloraLayer)
 			{
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedUpPartialCoverageJob()
 					{
 						ThermalRadiationDelta = tempState.ThermalRadiationDeltaFlora,
@@ -1209,7 +1209,7 @@ public class WorldSim {
 			{
 				int waterLayerIndex = j - worldData.WaterLayer0;
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedUpPartialCoverageJob()
 					{
 						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaWater, waterLayerIndex),
@@ -1237,7 +1237,7 @@ public class WorldSim {
 			{
 				// TERRAIN
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedTerrainJob()
 					{
 						ThermalRadiationAbsorbed = tempState.ThermalRadiationDeltaTerrain,
@@ -1251,7 +1251,7 @@ public class WorldSim {
 			{
 				// FLORA
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedDownPartialCoverageJob()
 					{
 						ThermalRadiationDelta = tempState.ThermalRadiationDeltaFlora,
@@ -1265,7 +1265,7 @@ public class WorldSim {
 			{
 				// ICE
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedDownPartialCoverageJob()
 					{
 						ThermalRadiationDelta = tempState.ThermalRadiationDeltaIce,
@@ -1280,7 +1280,7 @@ public class WorldSim {
 				// WATER
 				int waterLayerIndex = j - worldData.WaterLayer0;
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedDownPartialCoverageJob()
 					{
 						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaWater, waterLayerIndex),
@@ -1294,7 +1294,7 @@ public class WorldSim {
 			{
 				int airLayer = j - worldData.AirLayer0;
 				thermalOutJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ThermalEnergyAbsorbedAirJob()
 					{
 						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaAir,airLayer),
@@ -1329,7 +1329,7 @@ public class WorldSim {
 
 		// air to ice
 		conductionAirIceJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionAirIce,
 			tempState.ConductionAirIce,
 			0,
@@ -1347,7 +1347,7 @@ public class WorldSim {
 
 		// air to water
 		conductionAirWaterJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionAirWater,
 			tempState.ConductionAirWater,
 			0,
@@ -1365,7 +1365,7 @@ public class WorldSim {
 
 		// air to flora
 		conductionAirFloraJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionAirFlora,
 			tempState.ConductionAirFlora,
 			0,
@@ -1383,7 +1383,7 @@ public class WorldSim {
 
 		// air to terrain
 		conductionAirTerrainJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionAirTerrain,
 			tempState.ConductionAirTerrain,
 			0,
@@ -1400,7 +1400,7 @@ public class WorldSim {
 
 		// ice to water
 		conductionIceWaterJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionIceWater,
 			tempState.ConductionIceWater,
 			0,
@@ -1419,7 +1419,7 @@ public class WorldSim {
 
 		// ice to flora
 		conductionIceFloraJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionIceFlora,
 			tempState.ConductionIceFlora,
 			0,
@@ -1438,7 +1438,7 @@ public class WorldSim {
 
 		// ice to terrain
 		conductionIceTerrainJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionIceTerrain,
 			tempState.ConductionIceTerrain,
 			0,
@@ -1456,7 +1456,7 @@ public class WorldSim {
 
 		// flora to terrain
 		conductionFloraTerrainJobHandle = SimJob.ScheduleOrMemset(
-			true, 64,
+			JobType.Schedule, 64,
 			settings.ConductionFloraTerrain,
 			tempState.ConductionFloraTerrain,
 			0,
@@ -1484,7 +1484,7 @@ public class WorldSim {
 			for (int i = 1; i < worldData.WaterLayers - 1; i++)
 			{
 				conductionWaterTerrainJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new ConductionWaterBottomAJob()
 					{
 						EnergyDelta = staticState.GetSliceLayer(tempState.ConductionWaterTerrain, i),
@@ -1518,7 +1518,7 @@ public class WorldSim {
 			};
 		jobHandleDependencies.Add(terrainEnergyJobHandleDependencies);
 		energyJobHandles[worldData.TerrainLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EnergyTerrainJob()
 			{
 				TerrainTemperature = nextState.GroundTemperature,
@@ -1545,7 +1545,7 @@ public class WorldSim {
 			};
 		jobHandleDependencies.Add(energyIceJobHandleDependencies);
 		energyJobHandles[worldData.IceLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EnergyIceJob()
 			{
 				Temperature = nextState.IceTemperature,
@@ -1569,7 +1569,7 @@ public class WorldSim {
 			};
 		jobHandleDependencies.Add(energyFloraJobHandleDependencies);
 		energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EnergyFloraJob()
 			{
 				FloraTemperature = nextState.FloraTemperature,
@@ -1584,7 +1584,7 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies(energyFloraJobHandleDependencies));
 
 		energyJobHandles[worldData.LavaLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EnergyLavaJob()
 			{
 				LavaTemperature = nextState.LavaTemperature,
@@ -1595,7 +1595,7 @@ public class WorldSim {
 			});
 
 		energyJobHandles[worldData.AirLayer0] = UpperAirJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EnergyAirJob()
 			{
 				AirTemperaturePotential = staticState.GetSliceLayers(nextState.AirTemperaturePotential, 2, worldData.AirLayers-3),
@@ -1618,7 +1618,7 @@ public class WorldSim {
 		};
 		jobHandleDependencies.Add(airSurfaceDependencies);
 		energyJobHandles[worldData.AirLayer0] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EnergyAirSurfaceJob()
 			{
 				AirTemperaturePotential = staticState.GetSliceLayer(nextState.AirTemperaturePotential,worldData.SurfaceAirLayer),
@@ -1644,7 +1644,7 @@ public class WorldSim {
 		jobHandleDependencies.Add(waterDependencies);
 
 		energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new EnergyWaterJob()
 			{
 				Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
@@ -1685,8 +1685,7 @@ public class WorldSim {
 		if (settings.Condensation)
 		{
 			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-				true, 64,
-				new FluxAirCondensationJob()
+				settings.SynchronousOverrides.FluxCondensation, 64, new FluxCondensationJob()
 				{
 					LatentHeat = staticState.GetSliceAir(tempState.LatentHeatAir),
 					CondensationCloudMass = staticState.GetSliceAir(tempState.CondensationCloudMass),
@@ -1700,12 +1699,11 @@ public class WorldSim {
 					LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
 					LayerMiddle = staticState.GetSliceAir(tempState.AirLayerMiddle),
 					CloudElevation = tempState.CloudElevation,
-					Count = staticState.Count
 				}, energyJobHandles[worldData.AirLayer0]);
 		}
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-			true, 64,
-			new FluxAirDustJob()
+			settings.SynchronousOverrides.FluxDust, 64,
+			new FluxDustJob()
 			{
 				DustUp = staticState.GetSliceAir(tempState.DustUp),
 				DustDown = staticState.GetSliceAir(tempState.DustDown),
@@ -1722,8 +1720,8 @@ public class WorldSim {
 		if (settings.Evaporation)
 		{
 			energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-				true, 64,
-				new FluxWaterEvaporationJob()
+				settings.SynchronousOverrides.FluxEvaporation, 64,
+				new FluxEvaporationJob()
 				{
 					EvaporatedWaterMass = tempState.EvaporationMassWater,
 					LatentHeatWater = tempState.LatentHeatWater,
@@ -1744,8 +1742,8 @@ public class WorldSim {
 		if (settings.Freezing)
 		{
 			energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-				true, 64,
-				new FluxWaterFreezeJob()
+				settings.SynchronousOverrides.FluxFreeze, 64,
+				new FluxFreezeJob()
 				{
 					FrozenMass = tempState.FrozenMass,
 					FrozenTemperature = tempState.FrozenTemperature,
@@ -1763,7 +1761,7 @@ public class WorldSim {
 		}
 
 		energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new FluxFloraWaterConsumeJob()
 			{
 				FloraWaterConsumed = tempState.WaterConsumedByFlora,
@@ -1777,7 +1775,7 @@ public class WorldSim {
 		if (settings.Plankton)
 		{
 			energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-				true, 64,
+				settings.SynchronousOverrides.FluxPlankton, 64,
 				new FluxPlanktonJob()
 				{
 					LatentHeatWater = tempState.LatentHeatWater,
@@ -1808,7 +1806,7 @@ public class WorldSim {
 		if (settings.Precipitation)
 		{
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-				true, 64,
+				settings.SynchronousOverrides.FluxCloud, 64,
 				new FluxCloudJob()
 				{
 					EvaporationMass = tempState.CloudEvaporationMass,
@@ -1841,7 +1839,7 @@ public class WorldSim {
 		if (settings.Flora)
 		{
 			energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(
-				true, 64,
+				settings.SynchronousOverrides.FluxFlora, 64,
 				new FluxFloraJob()
 				{
 					LatentHeatAir = staticState.GetSliceLayer(tempState.LatentHeatAir, worldData.SurfaceAirLayer),
@@ -1887,7 +1885,7 @@ public class WorldSim {
 		if (settings.IceMelting)
 		{
 			energyJobHandles[worldData.IceLayer] = SimJob.Schedule(
-				true, 64,
+				settings.SynchronousOverrides.FluxIceMelt, 64,
 				new FluxIceMeltJob()
 				{
 					LatentHeatAir = staticState.GetSliceLayer(tempState.LatentHeatAir, worldData.SurfaceAirLayer),
@@ -1909,7 +1907,7 @@ public class WorldSim {
 		}
 
 		energyJobHandles[worldData.LavaLayer] = SimJob.Schedule(
-			true, 64,
+			settings.SynchronousOverrides.FluxLava, 64,
 			new FluxLavaJob()
 			{
 			}, energyJobHandles[worldData.LavaLayer]);
@@ -1917,7 +1915,7 @@ public class WorldSim {
 		if (settings.SoilRespiration)
 		{
 			energyJobHandles[worldData.TerrainLayer] = SimJob.Schedule(
-				true, 64,
+				settings.SynchronousOverrides.FluxTerrain, 64,
 				new FluxTerrainJob()
 				{
 					SoilRespiration = tempState.SoilRespiration,
@@ -1950,7 +1948,7 @@ public class WorldSim {
 
 		JobHandle waterDependencies = JobHandle.CombineDependencies(energyJobHandles[worldData.IceLayer], energyJobHandles[worldData.TerrainLayer], energyJobHandles[worldData.WaterLayer0]);
 		energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateMassWaterJob()
 			{
 				WaterMass = staticState.GetSliceWater(nextState.WaterMass),
@@ -1968,7 +1966,7 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies( energyJobHandles[worldData.WaterLayer0], waterDependencies));
 
 		energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateMassCondensationGroundJob()
 			{
 				SurfaceWaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
@@ -1983,7 +1981,7 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.AirLayer0]));
 
 		energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateMassWaterSurfaceJob()
 			{
 				WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
@@ -2008,21 +2006,24 @@ public class WorldSim {
 				WaterCarbonDelta = tempState.WaterCarbonDelta,
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.CloudLayer]));
 
-		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-			true, 64,
+		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(JobType.Run, 64,
 			new UpdateMassCloudJob()
 			{
 				CloudMass = nextState.CloudMass,
 				CloudDropletMass = nextState.CloudDropletMass,
+
 				LastCloudMass = lastState.CloudMass,
 				LastDropletMass = lastState.CloudDropletMass,
 				CloudEvaporation = tempState.CloudEvaporationMass,
 				PrecipitationMass = tempState.PrecipitationMass,
 				DropletDelta = tempState.DropletDelta,
+				CloudCondensation = staticState.GetSliceAir(tempState.CondensationCloudMass),
+				LayerCount = worldData.AirLayers - 2,
+				Count = staticState.Count
 			}, energyJobHandles[worldData.CloudLayer]);
 
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateMassAirJob()
 			{
 				VaporMass = staticState.GetSliceAir(nextState.AirVapor),
@@ -2041,26 +2042,8 @@ public class WorldSim {
 
 			}, energyJobHandles[worldData.AirLayer0]);
 
-		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-			true, 64,
-			new UpdateMassCloudCondensationJob()
-			{
-				CloudMass = nextState.CloudMass,
-				CloudDropletMass = nextState.CloudDropletMass,
-
-				CloudEvaporation = tempState.CloudEvaporationMass,
-				CloudElevation = tempState.CloudElevation,
-				LayerElevation = staticState.GetSliceAir(tempState.AirLayerElevation),
-				LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
-				CloudCondensation = staticState.GetSliceAir(tempState.CondensationCloudMass),
-				GroundCondensation = staticState.GetSliceAir(tempState.CondensationGroundMass),
-				LayerCount = worldData.AirLayers - 2,
-				Count = staticState.Count
-			}, JobHandle.CombineDependencies(energyJobHandles[worldData.CloudLayer], energyJobHandles[worldData.AirLayer0]));
-		energyJobHandles[worldData.AirLayer0] = JobHandle.CombineDependencies(energyJobHandles[worldData.AirLayer0], energyJobHandles[worldData.CloudLayer]);
-
 		energyJobHandles[worldData.AirLayer0] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateMassAirSurfaceJob()
 			{
 				AirTemperaturePotential = staticState.GetSliceLayer(nextState.AirTemperaturePotential, worldData.SurfaceAirLayer),
@@ -2081,7 +2064,7 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.AirLayer0], energyJobHandles[worldData.WaterLayer0]));
 
 		energyJobHandles[worldData.IceLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateMassIceJob()
 			{
 				IceMass = nextState.IceMass,
@@ -2096,7 +2079,7 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.IceLayer], energyJobHandles[worldData.CloudLayer]));
 
 		energyJobHandles[worldData.TerrainLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateTerrainJob()
 			{
 				SoilCarbon = nextState.GroundCarbon,
@@ -2126,10 +2109,12 @@ public class WorldSim {
 				LavaEjected = tempState.LavaEjected,
 				MagmaTemperature = worldData.MagmaTemperature,
 				LavaToRockMassAdjustment = worldData.LavaToRockMassAdjustment,
-			}, JobHandle.CombineDependencies(energyJobHandles[worldData.TerrainLayer], energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.WaterLayer0]));
+			}, JobHandle.CombineDependencies(JobHandle.CombineDependencies(
+				energyJobHandles[worldData.TerrainLayer], energyJobHandles[worldData.LavaLayer]), 
+				energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.WaterLayer0]));
 
 		energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateFloraJob()
 			{
 				FloraMass = nextState.FloraMass,
@@ -2146,7 +2131,7 @@ public class WorldSim {
 			}, energyJobHandles[worldData.FloraLayer]);
 
 		energyJobHandles[worldData.AirLayer0] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateWaterAirDiffusionJob()
 			{
 				AirCarbon = staticState.GetSliceLayer(nextState.AirCarbon, worldData.SurfaceAirLayer),
@@ -2166,7 +2151,7 @@ public class WorldSim {
 #region Apply Latent Heat
 
 		energyJobHandles[worldData.IceLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ApplyLatentHeatIceJob()
 			{
 				IceTemperature = nextState.IceTemperature,
@@ -2175,7 +2160,7 @@ public class WorldSim {
 			}, energyJobHandles[worldData.IceLayer]);
 
 		energyJobHandles[worldData.TerrainLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ApplyLatentHeatTerrainJob()
 			{
 				TerrainTemperature = nextState.GroundTemperature,
@@ -2186,7 +2171,7 @@ public class WorldSim {
 			}, energyJobHandles[worldData.TerrainLayer]);
 
 		energyJobHandles[worldData.LavaLayer] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ApplyLatentHeatLavaJob()
 			{
 				LavaTemperature = nextState.LavaTemperature,
@@ -2196,7 +2181,7 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.LavaLayer], energyJobHandles[worldData.TerrainLayer]));
 
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ApplyLatentHeatAirJob()
 			{
 				AirTemperaturePotential = staticState.GetSliceAir(nextState.AirTemperaturePotential),
@@ -2206,7 +2191,7 @@ public class WorldSim {
 			}, energyJobHandles[worldData.AirLayer0]);
 
 		energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new ApplyLatentHeatWaterJob()
 			{
 				WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
@@ -2235,7 +2220,7 @@ public class WorldSim {
 		{
 
 			lastJobHandle = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new GroundWaterFlowJob()
 				{
 					GroundWater = nextState.GroundWater,
@@ -2251,7 +2236,7 @@ public class WorldSim {
 				}, JobHandle.CombineDependencies(lastJobHandle, energyJobHandles[worldData.TerrainLayer]));
 
 			lastJobHandle = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new GroundWaterDiffusionJob()
 				{
 					GroundWater = tempState.GroundWaterFlowMass,
@@ -2268,7 +2253,7 @@ public class WorldSim {
 			for (int i = 1; i < worldData.WaterLayers - 1; i++)
 			{
 				lastJobHandle = SimJob.Schedule(
-					true, 64,
+					JobType.Schedule, 64,
 					new GroundWaterAbsorptionJob()
 					{
 						GroundWater = nextState.GroundWater,
@@ -2290,7 +2275,7 @@ public class WorldSim {
 			}
 
 			lastJobHandle = SimJob.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new GroundWaterConductionJob()
 				{
 					GroundWaterTemperature = tempState.GroundWaterFlowTemperature,

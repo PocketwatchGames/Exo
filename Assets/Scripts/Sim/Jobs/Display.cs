@@ -194,7 +194,7 @@ public struct DisplayState {
 		JobHandle initDisplayWaterHandle = default(JobHandle);
 
 		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new GetDivergenceJob()
 			{
 				Divergence = staticState.GetSliceAir(display.DivergenceAir),
@@ -202,7 +202,7 @@ public struct DisplayState {
 			}));
 
 		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new GetDivergenceJob()
 			{
 				Divergence = staticState.GetSliceWater(display.DivergenceWater),
@@ -213,7 +213,7 @@ public struct DisplayState {
 		tempState.AbsorptivitySolar.CopyTo(display.AbsorptionSolar);
 		tempState.AbsorptivityThermal.CopyTo(display.AbsorptionThermal);
 		initDisplayAirHandle = JobHandle.CombineDependencies(initDisplayAirHandle, DisplayJobAir.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new InitDisplayAirLayerJob()
 			{
 				DisplayPressure = staticState.GetSliceAir(display.Pressure),
@@ -239,7 +239,7 @@ public struct DisplayState {
 			}, initDisplayAirHandle));
 
 		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new InitDisplayWaterLayerJob()
 			{
 				Enthalpy = staticState.GetSliceWater(display.EnthalpyWater),
@@ -254,7 +254,7 @@ public struct DisplayState {
 			}, initDisplayWaterHandle));
 
 		var updateDisplayJobHandle = DisplayJob.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new UpdateDisplayJob()
 			{
 				SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,

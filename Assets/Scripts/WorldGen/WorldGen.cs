@@ -383,7 +383,7 @@ public static class WorldGen {
 		worldGenInitJob.Run(staticState.Count);
 
 		var worldGenJobHandle = worldGenJobHelper.Schedule(
-			true, 64,
+			JobType.Schedule, 64,
 			new WorldGenJob()
 			{
 				Elevation = state.Elevation,
@@ -427,7 +427,7 @@ public static class WorldGen {
 				plankton = 0;
 			}
 			worldGenJobHandle = worldGenJobHelper.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new WorldGenWaterLayerJob()
 				{
 					WaterTemperature = staticState.GetSliceLayer(state.WaterTemperature, i),
@@ -456,7 +456,7 @@ public static class WorldGen {
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
 			worldGenJobHandle = worldGenJobHelper.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new WorldGenAirLayerJob()
 				{
 					AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, i),
@@ -474,7 +474,7 @@ public static class WorldGen {
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
 			worldGenJobHandle = worldGenJobHelper.Schedule(
-				true, 64,
+				JobType.Schedule, 64,
 				new WorldGenWaterVaporJob()
 				{
 					AirVapor = staticState.GetSliceLayer(state.AirVapor,i),
