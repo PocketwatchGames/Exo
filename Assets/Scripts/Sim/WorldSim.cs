@@ -1946,7 +1946,10 @@ public class WorldSim {
 
 #region Update Mass - Evaporation, Condensation, Melting, Rainfall
 
-		JobHandle waterDependencies = JobHandle.CombineDependencies(energyJobHandles[worldData.IceLayer], energyJobHandles[worldData.TerrainLayer], energyJobHandles[worldData.WaterLayer0]);
+		JobHandle waterDependencies = JobHandle.CombineDependencies(
+			energyJobHandles[worldData.IceLayer], 
+			energyJobHandles[worldData.TerrainLayer],
+			energyJobHandles[worldData.WaterLayer0]);
 		energyJobHandles[worldData.WaterLayer0] = WaterJob.Schedule(
 			JobType.Schedule, 64,
 			new UpdateMassWaterJob()
@@ -2022,6 +2025,12 @@ public class WorldSim {
 				Count = staticState.Count
 			}, energyJobHandles[worldData.CloudLayer]);
 
+		JobHandle airDependencies = JobHandle.CombineDependencies(JobHandle.CombineDependencies(
+			energyJobHandles[worldData.AirLayer0],
+			energyJobHandles[worldData.CloudLayer],
+			energyJobHandles[worldData.IceLayer]),
+			energyJobHandles[worldData.TerrainLayer],
+			energyJobHandles[worldData.WaterLayer0]);
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
 			JobType.Schedule, 64,
 			new UpdateMassAirJob()
@@ -2029,18 +2038,25 @@ public class WorldSim {
 				VaporMass = staticState.GetSliceAir(nextState.AirVapor),
 				DustMass = staticState.GetSliceAir(nextState.Dust),
 				CarbonDioxideMass = staticState.GetSliceAir(nextState.AirCarbon),
-
+				TemperaturePotential = staticState.GetSliceAir(nextState.AirTemperaturePotential),
+				
 				CloudCondensation = staticState.GetSliceAir(tempState.CondensationCloudMass),
 				GroundCondensation = staticState.GetSliceAir(tempState.CondensationGroundMass),
+				LastTemperaturePotential = staticState.GetSliceAir(lastState.AirTemperaturePotential),
 				LastVaporMass = staticState.GetSliceAir(lastState.AirVapor),
 				LastDustMass = staticState.GetSliceAir(lastState.Dust),
 				LastCarbonDioxideMass = staticState.GetSliceAir(lastState.AirCarbon),
+				AirMass = staticState.GetSliceAir(tempState.AirMass),
+				LayerElevation = staticState.GetSliceAir(tempState.AirLayerElevation),
+				LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
+				CloudElevation = tempState.CloudElevation,
+				CloudMass = lastState.CloudMass,
 				DustUp = tempState.DustUp,
 				DustDown = tempState.DustDown,
 				LayerCount = worldData.AirLayers - 2,
 				Count = staticState.Count
 
-			}, energyJobHandles[worldData.AirLayer0]);
+			}, airDependencies);
 
 		energyJobHandles[worldData.AirLayer0] = SimJob.Schedule(
 			JobType.Schedule, 64,

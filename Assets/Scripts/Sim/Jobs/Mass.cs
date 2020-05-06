@@ -179,29 +179,49 @@ public struct UpdateMassAirJob : IJobParallelFor {
 	public NativeSlice<float> VaporMass;
 	public NativeSlice<float> CarbonDioxideMass;
 	public NativeSlice<float> DustMass;
+	public NativeSlice<float> TemperaturePotential;
 	[ReadOnly] public NativeSlice<float> LastVaporMass;
 	[ReadOnly] public NativeSlice<float> LastCarbonDioxideMass;
+	[ReadOnly] public NativeSlice<float> LastTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> LastDustMass;
 	[ReadOnly] public NativeSlice<float> CloudCondensation;
 	[ReadOnly] public NativeSlice<float> GroundCondensation;
+	[ReadOnly] public NativeSlice<float> LayerElevation;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public NativeSlice<float> CloudElevation;
+	[ReadOnly] public NativeSlice<float> CloudMass;
+	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeArray<float> DustUp;
 	[ReadOnly] public NativeArray<float> DustDown;
 	[ReadOnly] public int LayerCount;
 	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
+		int layerIndex = i / Count;
+		int columnIndex = i - layerIndex * Count;
 		int dustLayerIndex = i + Count;
 		int dustLayerIndexDown = i;
 		int dustLayerIndexUp = dustLayerIndex + Count;
 		float newVaporMass = LastVaporMass[i] - CloudCondensation[i] - GroundCondensation[i];
 		float newDustMass = LastDustMass[i] + DustDown[dustLayerIndexUp] + DustUp[dustLayerIndexDown] - DustDown[dustLayerIndex];
 		float newCarbonDioxide = LastCarbonDioxideMass[i];
-		bool isTop = (i / Count) == LayerCount - 1;
+		bool isTop = layerIndex == LayerCount - 1;
 		if (!isTop)
 		{
 			newDustMass -= DustUp[dustLayerIndex];
 		}
 
+		float newTemperature = LastTemperaturePotential[i];
+		float cloudCondensationInLayer = 0;
+		if (CloudElevation[columnIndex] >= LayerElevation[i] && CloudElevation[columnIndex] < LayerElevation[i] + LayerHeight[i])
+		{
+			cloudCondensationInLayer = CloudCondensation[i];
+		}
+		newTemperature = (newTemperature * (AirMass[i] * WorldData.SpecificHeatAtmosphere + VaporMass[i] * WorldData.SpecificHeatWaterVapor + CloudMass[columnIndex] * WorldData.SpecificHeatWater)
+			+ (LastTemperaturePotential[i] * cloudCondensationInLayer * WorldData.SpecificHeatWater))
+			/ (AirMass[i] * WorldData.SpecificHeatAtmosphere + VaporMass[i] * WorldData.SpecificHeatWaterVapor + (CloudMass[columnIndex] + cloudCondensationInLayer) * WorldData.SpecificHeatWater);
+
+		TemperaturePotential[i] = newTemperature;
 		VaporMass[i] = newVaporMass;
 		DustMass[i] = newDustMass;
 		CarbonDioxideMass[i] = newCarbonDioxide;
