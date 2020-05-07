@@ -25,17 +25,12 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public float MaxWindMove;
-	[ReadOnly] public int CellsPerLayer;
-	public void Execute(int e)
+	public void Execute(int i)
 	{
-		Debug.Assert(CellsPerLayer > 0);
-		int cellIndex = e / StaticState.MaxNeighbors;
-		int columnIndex = cellIndex % CellsPerLayer;
-		int fullRangeEdgeIndex = e + CellsPerLayer * StaticState.MaxNeighbors;
-		float3 position = Position[columnIndex];
+		float3 position = Position[i];
 		float3 pos = position * PlanetRadius;
 
-		float3 velocity = Velocity[cellIndex];
+		float3 velocity = Velocity[i];
 
 		float3 move = velocity * SecondsPerTick;
 		float windMoveHorizontalSq = math.lengthsq(move);
@@ -50,13 +45,13 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 		float3 movePos = pos + move;
 		for (int j = 0; j < StaticState.MaxNeighbors; j++)
 		{
-			int indexB = Neighbors[cellIndex * StaticState.MaxNeighbors + j];
+			int indexB = Neighbors[i * StaticState.MaxNeighbors + j];
 			if (indexB >= 0)
 			{
-				int indexC = Neighbors[cellIndex * StaticState.MaxNeighbors + (j + 1) % StaticState.MaxNeighbors];
+				int indexC = Neighbors[i * StaticState.MaxNeighbors + (j + 1) % StaticState.MaxNeighbors];
 				if (indexC < 0)
 				{
-					indexC = Neighbors[cellIndex * StaticState.MaxNeighbors];
+					indexC = Neighbors[i * StaticState.MaxNeighbors];
 				}
 
 				float a;
@@ -64,9 +59,9 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 				float c;
 				if (Utils.GetBarycentricIntersection(movePos, pos, Position[indexB] * PlanetRadius, Position[indexC] * PlanetRadius, out a, out b, out c))
 				{
-					Destination[e] = new BarycentricValue
+					Destination[i] = new BarycentricValue
 					{
-						indexA = cellIndex,
+						indexA = i,
 						indexB = indexB,
 						indexC = indexC,
 						valueA = a,
@@ -79,9 +74,9 @@ public struct GetVectorDestCoordsJob : IJobParallelFor {
 		}
 
 		// TODO: this means the velocity is too high and has skipped over our neighbors!
-		Destination[e] = new BarycentricValue
+		Destination[i] = new BarycentricValue
 		{
-			indexA = cellIndex,
+			indexA = i,
 			indexB = -1,
 			indexC = -1,
 			valueA = 1,
@@ -125,11 +120,6 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 		int columnIndex = cellIndex % CellsPerLayer;
 		int fullRangeEdgeIndex = e + CellsPerLayer * StaticState.MaxNeighborsVert;
 		int edgeIndex = e % StaticState.MaxNeighborsVert;
-
-		if (columnIndex == 5254- CellsPerLayer*2)
-		{
-			int k = 0;
-		}
 
 		if (edgeIndex == StaticState.NeighborUp)
 		{

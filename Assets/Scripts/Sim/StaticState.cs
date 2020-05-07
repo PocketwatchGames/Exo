@@ -223,10 +223,6 @@ public struct StaticState {
 				}
 
 			}
-			if (!(ReverseNeighborsVert[i] < 0 || NeighborsVert[ReverseNeighborsVert[i]] == cellIndex))
-			{
-				int j = 0;
-			}
 			Debug.Assert(ReverseNeighborsVert[i] < 0 || NeighborsVert[ReverseNeighborsVert[i]] == cellIndex);
 		}
 

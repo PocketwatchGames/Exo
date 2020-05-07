@@ -190,11 +190,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		int columnIndex = i % CellsPerLayer;
 		int fullRangeIndex = i + CellsPerLayer;
 
-		if (i == 1878 + CellsPerLayer)
-		{
-			int j = 0;
-		}
-
 		float waterMass = Mass[fullRangeIndex];
 
 		float newMass = waterMass;
@@ -236,10 +231,6 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					} else
 					{
 						incoming = 0;
-					}
-					if ((j==6 || j==7) && Destination[edgeIndex] != 0)
-					{
-						int k = 0;
 					}
 
 					newMass += incomingMass;
@@ -315,63 +306,60 @@ public struct AdvectionCloudJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<BarycentricValue> Destination;
 	public void Execute(int i)
 	{
-		float newMass;
-		float newTemperature;
-		float newDropletMass;
+		float newMass = 0;
+		float newTemperature = 0;
+		float newDropletMass = 0;
 
-#if DISABLE_CLOUD_ADVECTION
-		newMass = Mass[i];
-		newTemperature = Temperature[i];
-		newDropletMass = DropletMass[i];
-
-#else
-		newMass = 0;
-		newTemperature = 0;
-		newDropletMass = 0;
-		float totalMass = 0;
-
-		if (Destination[i].indexA == i)
+		float massPercentRemaining = 0;
+		if (Destination[i].indexA == i || Destination[i].indexA < 0)
 		{
-			float v = Destination[i].valueA;
-			float m = Mass[i] * v;
-			totalMass += m;
-			newMass += m;
-			newTemperature += Temperature[i] * v * m;
-			newDropletMass += DropletMass[i] * v;
+			massPercentRemaining += Destination[i].valueA;
 		}
-
-		for (int j = 0; j < 6; j++)
+		if (Destination[i].indexB == i || Destination[i].indexB < 0)
 		{
-			int n = Neighbors[i * 6 + j];
+			massPercentRemaining += Destination[i].valueB;
+		}
+		if (Destination[i].indexC == i || Destination[i].indexC < 0)
+		{
+			massPercentRemaining += Destination[i].valueC;
+		}
+		float m = Mass[i] * massPercentRemaining;
+		newMass += m;
+		newTemperature += Temperature[i] * m;
+		newDropletMass += DropletMass[i] * m;
+
+		for (int j = 0; j < StaticState.MaxNeighbors; j++)
+		{
+			int n = Neighbors[i * StaticState.MaxNeighbors + j];
 			if (n >= 0)
 			{
 				float incoming = 0;
 				if (Destination[n].indexA == i)
 				{
-					incoming = Destination[n].valueA;
+					incoming += Destination[n].valueA;
 				}
 				else if (Destination[n].indexB == i)
 				{
-					incoming = Destination[n].valueB;
+					incoming += Destination[n].valueB;
 				}
 				else if (Destination[n].indexC == i)
 				{
-					incoming = Destination[n].valueC;
+					incoming += Destination[n].valueC;
 				}
-				float m = Mass[n] * incoming;
-				totalMass += m;
-				newMass += m;
-				newTemperature += Temperature[n] * incoming * m;
-				newDropletMass += DropletMass[n] * incoming;
+				float massIncoming = Mass[n] * incoming;
+				newMass += massIncoming;
+				newTemperature += Temperature[n] * massIncoming;
+				newDropletMass += DropletMass[n] * massIncoming;
 			}
 		}
 
-		if (totalMass > 0)
+		if (newMass > 0)
 		{
-			newTemperature /= totalMass;
+			float inverseMass = 1.0f / newMass;
+			newTemperature *= inverseMass;
+			newDropletMass *= inverseMass;
 		}
 
-#endif
 		Delta[i] = new DiffusionCloud()
 		{
 			Mass = newMass,

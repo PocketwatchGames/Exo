@@ -19293,6 +19293,22 @@ MonoBehaviour:
   WorldDataAsset: {fileID: 4900000, guid: a0e62a68ba207124092d1d775e028c05, type: 3}
   TicksPerRealSecond: 1
   SimSettings:
+    CheckForDegeneracy: 0
+    LogState: 0
+    LogStateIndex: 0
+    SynchronousOverrides:
+      FluxDust: 0
+      FluxFreeze: 0
+      FluxIceMelt: 0
+      FluxCondensation: 0
+      FluxEvaporation: 0
+      FluxPlankton: 0
+      FluxCloud: 0
+      FluxFlora: 0
+      FluxLava: 0
+      FluxTerrain: 0
+      UpdateMassCloud: 0
+      AdvectionCloud: 0
     MakeAirIncompressible: 1
     MakeWaterIncompressible: 0
     WaterSurfaceFlowEnabled: 1
@@ -19322,11 +19338,8 @@ MonoBehaviour:
     ConductionFloraTerrain: 1
     ConductionWaterTerrain: 1
     IncompressibilityIterations: 20
-    CheckForDegeneracy: 0
     CollectGlobals: 0
     CollectOverlay: 0
-    LogState: 0
-    LogStateIndex: 0
   WorldData:
     SecondsPerTick: 0
     AirLayers: 0

@@ -98,6 +98,11 @@ public class WorldSim {
 		tickJobHandle = tempState.Clear(staticState.Count, ref worldData, tickJobHandle);
 		tickJobHandle = tempState.Update(ref lastState, ref worldData, ref staticState, tickJobHandle);
 
+		for (int i=0;i<energyJobHandles.Length;i++)
+		{
+			energyJobHandles[i] = tickJobHandle;
+		}
+
 		#endregion
 
 
@@ -564,11 +569,10 @@ public class WorldSim {
 					PlanetRadius = staticState.PlanetRadius,
 					SecondsPerTick = worldData.SecondsPerTick,
 					MaxWindMove = staticState.CellRadius * 0.9f,
-					CellsPerLayer = staticState.Count,
 				}, energyJobHandles[worldData.CloudLayer]);
 
 			energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
-				JobType.Schedule, 64,
+				settings.SynchronousOverrides.AdvectionCloud, 64,
 				new AdvectionCloudJob()
 				{
 					Delta = tempState.AdvectionCloud,
@@ -2009,7 +2013,8 @@ public class WorldSim {
 				WaterCarbonDelta = tempState.WaterCarbonDelta,
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.CloudLayer]));
 
-		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(JobType.Run, 64,
+		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
+			settings.SynchronousOverrides.UpdateMassCloud, 64,
 			new UpdateMassCloudJob()
 			{
 				CloudMass = nextState.CloudMass,
@@ -2023,7 +2028,7 @@ public class WorldSim {
 				CloudCondensation = staticState.GetSliceAir(tempState.CondensationCloudMass),
 				LayerCount = worldData.AirLayers - 2,
 				Count = staticState.Count
-			}, energyJobHandles[worldData.CloudLayer]);
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.CloudLayer], energyJobHandles[worldData.AirLayer0]));
 
 		JobHandle airDependencies = JobHandle.CombineDependencies(JobHandle.CombineDependencies(
 			energyJobHandles[worldData.AirLayer0],
