@@ -77,7 +77,6 @@ public struct ThermalEnergyRadiatedTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Emissivity;
 	[ReadOnly] public float SecondsPerTick;
-	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
 		// radiate half up and half down
@@ -149,14 +148,29 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 
 
 [BurstCompile]
-public struct ThermalEnergyAbsorbedTerrainJob : IJobParallelFor {
-	public NativeSlice<float> ThermalRadiationAbsorbed;
-	[ReadOnly] public NativeSlice<float> WindowRadiationIncoming;
-	[ReadOnly] public NativeSlice<float> ThermalRadiationIncoming;
+public struct ThermalEnergyRadiatedUpTerrainJob : IJobParallelFor {
+	public NativeSlice<float> ThermalRadiationDelta;
+	public NativeSlice<float> ThermalRadiationTransmitted;
+	public NativeSlice<float> WindowRadiationTransmitted;
 	[ReadOnly] public NativeSlice<float> ThermalRadiationEmitted;
+	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
-		ThermalRadiationAbsorbed[i] += ThermalRadiationIncoming[i] + WindowRadiationIncoming[i] - ThermalRadiationEmitted[i];
+		float emitted = ThermalRadiationEmitted[i];
+		ThermalRadiationDelta[i] = -emitted;
+		ThermalRadiationTransmitted[i] = emitted * (1.0f - PercentRadiationInAtmosphericWindow);
+		WindowRadiationTransmitted[i] = emitted * PercentRadiationInAtmosphericWindow;
+	}
+}
+
+[BurstCompile]
+public struct ThermalEnergyAbsorbedDownTerrainJob : IJobParallelFor {
+	public NativeSlice<float> ThermalRadiationDelta;
+	[ReadOnly] public NativeSlice<float> WindowRadiationIncoming;
+	[ReadOnly] public NativeSlice<float> ThermalRadiationIncoming;
+	public void Execute(int i)
+	{
+		ThermalRadiationDelta[i] += ThermalRadiationIncoming[i] + WindowRadiationIncoming[i];
 	}
 }
 
@@ -192,11 +206,11 @@ public struct ThermalEnergyAbsorbedUpPartialCoverageJob : IJobParallelFor {
 
 		float emitted = ThermalRadiationEmitted[i];
 
-		float atmosphericWindowAbsorbed = WindowRadiationTransmitted[i] * Coverage[i];
+		float atmosphericWindowAbsorbed = WindowRadiationTransmitted[i] * absorptivity;
 		WindowRadiationTransmitted[i] = WindowRadiationTransmitted[i] - atmosphericWindowAbsorbed + emitted * PercentRadiationInAtmosphericWindow;
 
 		float incoming = ThermalRadiationTransmitted[i];
-		float absorbed = incoming * Coverage[i];
+		float absorbed = incoming * absorptivity;
 		ThermalRadiationTransmitted[i] = incoming - absorbed + emitted * (1.0f - PercentRadiationInAtmosphericWindow);
 		ThermalRadiationDelta[i] += absorbed + atmosphericWindowAbsorbed - emitted;
 	}

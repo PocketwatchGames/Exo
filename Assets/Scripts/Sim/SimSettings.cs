@@ -50,6 +50,11 @@ public struct SimSettings {
 
 	[Serializable]
 	public struct SynchronousOverride {
+		public bool ThermalRadiation;
+		public bool CloudAlbedo;
+		public bool AirAbsorptivity;
+		public bool SolarRadiationAbsorbed;
+		public bool ThermalRadiationAbsorbed;
 		public bool FluxDust;
 		public bool FluxFreeze;
 		public bool FluxIceMelt;

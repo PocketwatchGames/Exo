@@ -940,7 +940,7 @@ public class WorldSim {
 
 		// ICE
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.ThermalRadiation, 64,
 			new ThermalEnergyRadiatedConstantEmissivityJob()
 			{
 				ThermalRadiationEmitted = tempState.ThermalRadiationEmittedIce,
@@ -955,7 +955,7 @@ public class WorldSim {
 
 		// FLORA
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.ThermalRadiation, 64,
 			new ThermalEnergyRadiatedConstantEmissivityJob()
 			{
 				ThermalRadiationEmitted = tempState.ThermalRadiationEmittedFlora,
@@ -970,12 +970,11 @@ public class WorldSim {
 
 		// TERRAIN
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.ThermalRadiation, 64,
 			new ThermalEnergyRadiatedTerrainJob()
 			{
 				ThermalRadiationEmitted = tempState.ThermalRadiationEmittedTerrain,
-
-				PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
+				
 				Emissivity = tempState.EmissivityTerrain,
 				Temperature = lastState.GroundTemperature,
 				SecondsPerTick = worldData.SecondsPerTick
@@ -984,7 +983,7 @@ public class WorldSim {
 
 		// ATMOSPHERE
 		thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, AirJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.ThermalRadiation, 64,
 			new ThermalEnergyRadiatedAirJob()
 			{
 				ThermalRadiationEmitted = staticState.GetSliceAir(tempState.ThermalRadiationEmittedAir),
@@ -1001,7 +1000,7 @@ public class WorldSim {
 		// for the bottom we rely on conduction with the terrain for heat transfer (although this might lead to an imbalance!)
 		{
 			thermalOutJobHandle = JobHandle.CombineDependencies(thermalOutJobHandle, WaterJob.Schedule(
-				JobType.Schedule, 64,
+				settings.SynchronousOverrides.ThermalRadiation, 64,
 				new ThermalEnergyRadiatedWaterJob()
 				{
 					ThermalRadiationEmitted = staticState.GetSliceWater(tempState.ThermalRadiationEmittedWater),
@@ -1019,7 +1018,7 @@ public class WorldSim {
 #region absorptivity
 
 		solarInJobHandle = SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.CloudAlbedo, 64,
 			new CloudAlbedoJob()
 			{
 				CloudAlbedo = tempState.CloudAlbedo,
@@ -1037,7 +1036,7 @@ public class WorldSim {
 			}, solarInJobHandle);
 
 		solarInJobHandle = AirJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.AirAbsorptivity, 64,
 			new AbsorptivityAirJob()
 			{
 				AbsorptivitySolar = staticState.GetSliceAir(tempState.AbsorptivitySolar),
@@ -1080,7 +1079,7 @@ public class WorldSim {
 		{
 			int airLayerIndex = j - worldData.AirLayer0;
 			solarInJobHandle = SimJob.Schedule(
-				JobType.Schedule, 64,
+				settings.SynchronousOverrides.SolarRadiationAbsorbed, 64,
 				new SolarRadiationAbsorbedAirJob()
 				{
 					SolarRadiationAbsorbed = staticState.GetSliceLayer(tempState.SolarRadiationInAir,airLayerIndex),
@@ -1094,7 +1093,7 @@ public class WorldSim {
 
 		// ice
 		solarInJobHandle = SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.SolarRadiationAbsorbed, 64,
 			new SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInIce,
@@ -1108,7 +1107,7 @@ public class WorldSim {
 
 		// water
 		solarInJobHandle = SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.SolarRadiationAbsorbed, 64,
 			new SolarRadiationAbsorbedSlopeJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInWater,
@@ -1121,7 +1120,7 @@ public class WorldSim {
 
 		// flora
 		solarInJobHandle = SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.SolarRadiationAbsorbed, 64,
 			new SolarRadiationAbsorbedPartialCoverageConstantAlbedoJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInFlora,
@@ -1136,7 +1135,7 @@ public class WorldSim {
 		// NOTE: we don't bother with solar radiation in lava
 
 		solarInJobHandle = SimJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.SolarRadiationAbsorbed, 64,
 			new SolarRadiationAbsorbedTerrainJob()
 			{
 				SolarRadiationAbsorbed = tempState.SolarRadiationInTerrain,
@@ -1154,49 +1153,24 @@ public class WorldSim {
 		// transmit up from land
 		for (int j = 0; j < worldData.LayerCount; j++)
 		{
-
-			if (j > worldData.AirLayer0 && j < worldData.AirLayer0 + worldData.AirLayers - 1)
+			if (j == worldData.TerrainLayer)
 			{
-				int airLayer = j - worldData.AirLayer0;
-				int downIndex = airLayer == 1 ? worldData.IceLayer : (j - 1);
-
+				// TERRAIN
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
-					new ThermalEnergyAbsorbedAirJob()
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
+					new ThermalEnergyRadiatedUpTerrainJob()
 					{
-						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaAir,airLayer),
-						ThermalRadiationTransmitted = tempState.ThermalRadiationTransmittedUp,
+						ThermalRadiationDelta = tempState.ThermalRadiationDeltaTerrain,
 						WindowRadiationTransmitted = tempState.WindowRadiationTransmittedUp,
-
-						ThermalRadiationEmitted = staticState.GetSliceLayer(tempState.ThermalRadiationEmittedAir, airLayer),
-						AbsorptivityThermal = staticState.GetSliceLayer(tempState.AbsorptivityThermal,airLayer),
-						LayerElevation = staticState.GetSliceLayer(tempState.AirLayerElevation,airLayer),
-						LayerHeight = staticState.GetSliceLayer(tempState.AirLayerHeight,airLayer),
-						CloudElevation = tempState.CloudElevation,
-						PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
-						FromTop = false,
-					}, JobHandle.CombineDependencies(solarInJobHandle, thermalOutJobHandle));
-			}
-			else if (j == worldData.IceLayer)
-			{
-				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
-					new ThermalEnergyAbsorbedUpPartialCoverageJob()
-					{
-						ThermalRadiationDelta = tempState.ThermalRadiationDeltaIce,
 						ThermalRadiationTransmitted = tempState.ThermalRadiationTransmittedUp,
-						WindowRadiationTransmitted = tempState.WindowRadiationTransmittedUp,
 
-						ThermalRadiationEmitted = tempState.ThermalRadiationEmittedIce,
-						PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
-						Coverage = tempState.IceCoverage,
-
+						ThermalRadiationEmitted = tempState.ThermalRadiationEmittedTerrain,
 					}, thermalOutJobHandle);
 			}
 			else if (j == worldData.FloraLayer)
 			{
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
 					new ThermalEnergyAbsorbedUpPartialCoverageJob()
 					{
 						ThermalRadiationDelta = tempState.ThermalRadiationDeltaFlora,
@@ -1213,7 +1187,7 @@ public class WorldSim {
 			{
 				int waterLayerIndex = j - worldData.WaterLayer0;
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
 					new ThermalEnergyAbsorbedUpPartialCoverageJob()
 					{
 						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaWater, waterLayerIndex),
@@ -1225,13 +1199,51 @@ public class WorldSim {
 						Coverage = staticState.GetSliceLayer(tempState.WaterCoverage, waterLayerIndex),
 					}, thermalOutJobHandle);
 			}
+			else if (j == worldData.IceLayer)
+			{
+				thermalOutJobHandle = SimJob.Schedule(
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
+					new ThermalEnergyAbsorbedUpPartialCoverageJob()
+					{
+						ThermalRadiationDelta = tempState.ThermalRadiationDeltaIce,
+						ThermalRadiationTransmitted = tempState.ThermalRadiationTransmittedUp,
+						WindowRadiationTransmitted = tempState.WindowRadiationTransmittedUp,
+
+						ThermalRadiationEmitted = tempState.ThermalRadiationEmittedIce,
+						PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
+						Coverage = tempState.IceCoverage,
+
+					}, thermalOutJobHandle);
+			}
+			else if (j > worldData.AirLayer0 && j < worldData.AirLayer0 + worldData.AirLayers - 1)
+			{
+				int airLayer = j - worldData.AirLayer0;
+				int downIndex = airLayer == 1 ? worldData.IceLayer : (j - 1);
+
+				thermalOutJobHandle = SimJob.Schedule(
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
+					new ThermalEnergyAbsorbedAirJob()
+					{
+						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaAir, airLayer),
+						ThermalRadiationTransmitted = tempState.ThermalRadiationTransmittedUp,
+						WindowRadiationTransmitted = tempState.WindowRadiationTransmittedUp,
+
+						ThermalRadiationEmitted = staticState.GetSliceLayer(tempState.ThermalRadiationEmittedAir, airLayer),
+						AbsorptivityThermal = staticState.GetSliceLayer(tempState.AbsorptivityThermal, airLayer),
+						LayerElevation = staticState.GetSliceLayer(tempState.AirLayerElevation, airLayer),
+						LayerHeight = staticState.GetSliceLayer(tempState.AirLayerHeight, airLayer),
+						CloudElevation = tempState.CloudElevation,
+						PercentRadiationInAtmosphericWindow = worldData.EnergyLostThroughAtmosphereWindow,
+						FromTop = false,
+					}, JobHandle.CombineDependencies(solarInJobHandle, thermalOutJobHandle));
+			}
 		}
 
-#endregion
+		#endregion
 
 		// Thermal radiation is absorbed travelling downwards, collecting and then eventually hitting the earth (back radiation)
 		// TODO: we need to include the top layer of atmosphere here, since we calculate cloud absorption as part of the air layer step
-#region Thermal Radiation Absorbed Down
+		#region Thermal Radiation Absorbed Down
 
 		// transmit down from top of atmosphere			
 		for (int j = worldData.LayerCount - 1; j >= 0; j--)
@@ -1241,12 +1253,11 @@ public class WorldSim {
 			{
 				// TERRAIN
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
-					new ThermalEnergyAbsorbedTerrainJob()
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
+					new ThermalEnergyAbsorbedDownTerrainJob()
 					{
-						ThermalRadiationAbsorbed = tempState.ThermalRadiationDeltaTerrain,
+						ThermalRadiationDelta = tempState.ThermalRadiationDeltaTerrain,
 
-						ThermalRadiationEmitted = tempState.ThermalRadiationEmittedTerrain,
 						WindowRadiationIncoming = tempState.WindowRadiationTransmittedDown,
 						ThermalRadiationIncoming = tempState.ThermalRadiationTransmittedDown,
 					}, thermalOutJobHandle);
@@ -1255,7 +1266,7 @@ public class WorldSim {
 			{
 				// FLORA
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
 					new ThermalEnergyAbsorbedDownPartialCoverageJob()
 					{
 						ThermalRadiationDelta = tempState.ThermalRadiationDeltaFlora,
@@ -1269,7 +1280,7 @@ public class WorldSim {
 			{
 				// ICE
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
 					new ThermalEnergyAbsorbedDownPartialCoverageJob()
 					{
 						ThermalRadiationDelta = tempState.ThermalRadiationDeltaIce,
@@ -1284,7 +1295,7 @@ public class WorldSim {
 				// WATER
 				int waterLayerIndex = j - worldData.WaterLayer0;
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
 					new ThermalEnergyAbsorbedDownPartialCoverageJob()
 					{
 						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaWater, waterLayerIndex),
@@ -1298,7 +1309,7 @@ public class WorldSim {
 			{
 				int airLayer = j - worldData.AirLayer0;
 				thermalOutJobHandle = SimJob.Schedule(
-					JobType.Schedule, 64,
+					settings.SynchronousOverrides.ThermalRadiationAbsorbed, 64,
 					new ThermalEnergyAbsorbedAirJob()
 					{
 						ThermalRadiationDelta = staticState.GetSliceLayer(tempState.ThermalRadiationDeltaAir,airLayer),
