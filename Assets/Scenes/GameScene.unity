@@ -19176,7 +19176,7 @@ MonoBehaviour:
   SlopeAmountCloud: 10
   TerrainScale: 250
   CloudHeight: 0.1
-  DisplayCloudMin: 0.1
+  DisplayCloudMin: 0.5
   AtmosphereScale: 600
   DisplayFloraWeight: 100
   DisplaySandWeight: 1
@@ -19309,6 +19309,7 @@ MonoBehaviour:
       FluxTerrain: 0
       UpdateMassCloud: 0
       AdvectionCloud: 0
+      AdvectionAir: 0
     MakeAirIncompressible: 1
     MakeWaterIncompressible: 0
     WaterSurfaceFlowEnabled: 1

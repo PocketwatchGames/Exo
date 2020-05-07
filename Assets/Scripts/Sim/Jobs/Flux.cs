@@ -380,7 +380,7 @@ public struct FluxCondensationJob : IJobParallelFor {
 
 		float temperatureAbsolute = Atmosphere.GetAbsoluteTemperature(TemperaturePotential[i], LayerMiddle[i]);
 		float maxWaterVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], temperatureAbsolute, AirPressure[i]);
-		float excessWaterVapor = (LastVapor[i] - maxWaterVapor) / 2;
+		float excessWaterVapor = (LastVapor[i] - maxWaterVapor);
 		if (excessWaterVapor > 0)
 		{
 			//float toCloud = math.saturate((LayerElevation[i] - CloudElevation[cloudIndex]) / LayerHeight[i]);

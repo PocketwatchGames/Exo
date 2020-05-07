@@ -244,7 +244,8 @@ public class WorldView : MonoBehaviour {
 		_cloudObject.transform.SetParent(Planet.transform, false);
 		var cloudFilter = _cloudObject.AddComponent<MeshFilter>();
 		var cloudSurfaceRenderer = _cloudObject.AddComponent<MeshRenderer>();
-		cloudSurfaceRenderer.materials = new Material[] { CloudMaterialBack, CloudMaterialFront };
+	//	cloudSurfaceRenderer.materials = new Material[] { CloudMaterialBack, CloudMaterialFront };
+		cloudSurfaceRenderer.material = CloudMaterialFront;
 		cloudFilter.mesh = _cloudMesh;
 		cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 		_cloudMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;

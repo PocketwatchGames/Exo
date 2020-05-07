@@ -61,6 +61,7 @@ public struct SimSettings {
 		public bool FluxTerrain;
 		public bool UpdateMassCloud;
 		public bool AdvectionCloud;
+		public bool AdvectionAir;
 	}
 
 }

@@ -283,7 +283,7 @@ public class WorldSim {
 
 
 			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-				JobType.Schedule, 64,
+				settings.SynchronousOverrides.AdvectionAir, 64,
 				new AdvectionAirJob()
 				{
 					Delta = staticState.GetSliceAir(tempState.AdvectionAir),
