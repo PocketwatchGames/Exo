@@ -59,12 +59,10 @@ public struct EmissivityTerrainJob : IJobParallelFor {
 }
 
 
-#if !CloudAlbedoJobDebug
 [BurstCompile]
-#endif
-public struct CloudAlbedoJob : IJobParallelFor {
-	public NativeArray<float> CloudAlbedo;
-	public NativeArray<float> CloudAbsorptivity;
+public struct AlbedoCloudJob : IJobParallelFor {
+	public NativeArray<float> Albedo;
+	public NativeArray<float> Absorptivity;
 	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeArray<float> CloudElevation;
 	[ReadOnly] public NativeArray<float> DewPoint;
@@ -83,8 +81,33 @@ public struct CloudAlbedoJob : IJobParallelFor {
 
 		float cloudCollision = math.saturate(1.0f - math.exp10(-SolarAbsorptivityCloud * CloudMass[i]));
 		float albedo = cloudTemperatureAlbedo * rainDropSizeAlbedo * (1.0f - AlbedoSlope[i]) + AlbedoSlope[i];
-		CloudAlbedo[i] = albedo;
-		CloudAbsorptivity[i] = cloudCollision;
+		Albedo[i] = albedo;
+		Absorptivity[i] = cloudCollision;
+	}
+}
+
+[BurstCompile]
+public struct AlbedoTerrainJob : IJobParallelFor {
+	public NativeArray<float> Albedo;
+	[ReadOnly] public NativeArray<float> AlbedoSlope;
+	[ReadOnly] public NativeArray<float> FloraCoverage;
+	[ReadOnly] public NativeArray<float> GroundCarbon;
+	[ReadOnly] public NativeArray<float> GroundWater;
+	[ReadOnly] public float GroundWaterDepth;
+	[ReadOnly] public float SolarAbsorptivityCloud;
+	public void Execute(int i)
+	{
+		//TODO: incorporate soil wetness and sand/soil and different flora types
+		float floraCoverage = FloraCoverage[i];
+		float albedo = WorldData.AlbedoLand * (1.0f - floraCoverage) + WorldData.AlbedoFloraMin * floraCoverage;
+
+		// TODO: use a different albedo slope for flora/terrain since it's not nearly as reflective as water/ice at low angles
+		// this is temp:
+		float albedoSlope = math.pow(AlbedoSlope[i], 3);
+
+		albedo = albedo * (1.0f - albedoSlope) + albedoSlope;
+		Albedo[i] = albedo;
+
 	}
 }
 

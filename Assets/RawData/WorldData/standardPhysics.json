@@ -41,6 +41,7 @@
 	"ThermalEmissivityFlora": 0.98,
 	"ThermalEmissivityLava": 0.98,
 
+	"GroundCarbonFertility": 0.1,
 	"SoilHeatDepth": 1,
 	"WaterHeatingDepth": 0.1,
 	"WaterAirCarbonDiffusionCoefficient": 0.1,

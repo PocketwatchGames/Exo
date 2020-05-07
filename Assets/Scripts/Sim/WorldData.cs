@@ -114,6 +114,7 @@ public struct WorldData {
 	[Header("Terrain and Ground Water")]
 	public float SoilHeatDepth;
 	public float SoilRespirationSpeed;
+	public float GroundCarbonFertility;
 	public float GroundWaterFlowSpeed;
 	public float GroundWaterMax;
 	public float GroundWaterMaxDepth;
@@ -209,22 +210,19 @@ public struct WorldData {
 	public const float ConductivityWater = 0.606f;
 	public const float ConductivityIce = 2.18f;
 	public const float ConductivityTerrain = 0.2f;
-	public const float ConductivityFlora = 0.1f;
+	public const float ConductivityFlora = 0.25f;
 	public const float ConductivityLava = 1.45f;
 	public const float ThermalContactResistance = 0.00005f;
+	// TODO: make custom conductivity for terrain based on soil/flora properties
 	public const float ConductivityAirWater = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityWater + ThermalContactResistance);
 	public const float ConductivityAirIce = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityIce + ThermalContactResistance);
-	public const float ConductivityAirFlora = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityFlora + ThermalContactResistance);
 	public const float ConductivityAirLava = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityLava + ThermalContactResistance);
 	public const float ConductivityAirTerrain = 1.0f / (1.0f / ConductivityAir + 1.0f / ConductivityTerrain + ThermalContactResistance);
 	public const float ConductivityIceWater = 1.0f / (1.0f / ConductivityWater + 1.0f / ConductivityIce + ThermalContactResistance);
-	public const float ConductivityIceFlora = 1.0f / (1.0f / ConductivityFlora + 1.0f / ConductivityIce + ThermalContactResistance);
 	public const float ConductivityIceLava = 1.0f / (1.0f / ConductivityLava + 1.0f / ConductivityIce + ThermalContactResistance);
 	public const float ConductivityIceTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityIce + ThermalContactResistance);
 	public const float ConductivityWaterLava = 1.0f / (1.0f / ConductivityLava + 1.0f / ConductivityWater + ThermalContactResistance);
 	public const float ConductivityWaterTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityWater + ThermalContactResistance);
-	public const float ConductivityFloraTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityFlora + ThermalContactResistance);
-	public const float ConductivityLavaTerrain = 1.0f / (1.0f / ConductivityTerrain + 1.0f / ConductivityLava + ThermalContactResistance);
 	public const float GasConstantAir = UniversalGasConstant / MolarMassAir * 1000;
 	public const float GasConstantWaterVapor = UniversalGasConstant / MolarMassWater * 1000;
 	public const float PressureExponent = 1.0f / (UniversalGasConstant * TemperatureLapseRate);

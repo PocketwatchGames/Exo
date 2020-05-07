@@ -81,8 +81,7 @@ public struct ConductionABJob : IJobParallelFor {
 
 [BurstCompile]
 public struct ConductionWaterBottomAJob : IJobParallelFor {
-	public NativeSlice<float> EnergyDelta;
-	public NativeArray<float> EnergyDeltaTotal;
+	public NativeArray<float> EnergyDelta;
 	[ReadOnly] public NativeSlice<float> TemperatureA;
 	[ReadOnly] public NativeArray<float> TemperatureB;
 	[ReadOnly] public NativeSlice<float> EnergyA;
@@ -94,15 +93,11 @@ public struct ConductionWaterBottomAJob : IJobParallelFor {
 	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
-#if !DISABLE_CONDUCTION
 		float coverage = Coverage[i + LayerIndex * Count];
 		float coverageBelow = Coverage[i + (LayerIndex - 1) * Count];
 
 		// TODO: this can conduct heat past a point of equilibrium
-		float delta = math.max((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * SurfaceArea[i] * coverage * (1.0f - coverageBelow), -EnergyA[i]);
-		EnergyDelta[i] = delta;
-		EnergyDeltaTotal[i] += delta;
-#endif
+		EnergyDelta[i] += math.max((TemperatureB[i] - TemperatureA[i]) * ConductionCoefficient * SecondsPerTick * SurfaceArea[i] * coverage * (1.0f - coverageBelow), -EnergyA[i]);
 	}
 }
 

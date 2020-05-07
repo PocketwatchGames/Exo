@@ -229,10 +229,12 @@ public static class Atmosphere {
 		return (WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWater * vaporMass) / (airMass + vaporMass);
 	}
 
-	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility)
+	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility, float floraMass, float floraWater)
 	{
-		float sandMass = math.max(0, heatingDepth - soilFertility / WorldData.MassSoil) * WorldData.MassSand;
-		return WorldData.SpecificHeatSoil * soilFertility + WorldData.SpecificHeatSand * sandMass;
+		float sandPercent = soilFertility;
+		float massSand = heatingDepth * WorldData.MassSand * sandPercent;
+		float massSoil = heatingDepth * WorldData.MassSand * (1.0f - sandPercent);
+		return WorldData.SpecificHeatSoil * massSoil + WorldData.SpecificHeatSand * massSand + WorldData.SpecificHeatFlora * floraMass + WorldData.SpecificHeatWater * floraWater;
 	}
 
 

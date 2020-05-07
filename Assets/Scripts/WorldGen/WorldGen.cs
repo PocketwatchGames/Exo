@@ -46,7 +46,6 @@ public static class WorldGen {
 		public NativeArray<float> Elevation;
 		public NativeArray<float> Flora;
 		public NativeArray<float> FloraWater;
-		public NativeArray<float> FloraTemperature;
 		public NativeArray<float> FloraGlucose;
 		public NativeArray<float> MagmaMass;
 		public NativeArray<float> CrustDepth;
@@ -157,7 +156,6 @@ public static class WorldGen {
 			SurfaceElevation[i] = surfaceElevation;
 			Elevation[i] = elevation;
 			Flora[i] = flora;
-			FloraTemperature[i] = airTemperatureSurface;
 			FloraWater[i] = floraWater;
 			FloraGlucose[i] = floraGlucose;
 			Roughness[i] = roughness;
@@ -354,7 +352,6 @@ public static class WorldGen {
 			Elevation = state.Elevation,
 			Flora = state.FloraMass,
 			FloraWater = state.FloraWater,
-			FloraTemperature = state.FloraTemperature,
 			FloraGlucose = state.FloraGlucose,
 			CrustDepth = state.CrustDepth,
 			MagmaMass = state.MagmaMass,

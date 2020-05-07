@@ -43,12 +43,9 @@ public class WorldSimComponent : MonoBehaviour
 		GroundWater = true,
 		AirWaterCarbonDioxideDiffusion = true,
 
-		ConductionAirFlora = true,
 		ConductionAirIce = true,
 		ConductionAirTerrain = true,
 		ConductionAirWater = true,
-		ConductionFloraTerrain = true,
-		ConductionIceFlora = true,
 		ConductionIceTerrain = true,
 		ConductionIceWater = true,
 		ConductionWaterTerrain = true,

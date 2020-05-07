@@ -36,12 +36,9 @@ public struct SimSettings {
 	public bool AirWaterCarbonDioxideDiffusion;
 	public bool ConductionAirIce;
 	public bool ConductionAirWater;
-	public bool ConductionAirFlora;
 	public bool ConductionAirTerrain;
 	public bool ConductionIceWater;
-	public bool ConductionIceFlora;
 	public bool ConductionIceTerrain;
-	public bool ConductionFloraTerrain;
 	public bool ConductionWaterTerrain;
 	public int IncompressibilityIterations;
 
@@ -51,10 +48,12 @@ public struct SimSettings {
 	[Serializable]
 	public struct SynchronousOverride {
 		public bool ThermalRadiation;
-		public bool CloudAlbedo;
+		public bool Albedo;
 		public bool AirAbsorptivity;
 		public bool SolarRadiationAbsorbed;
 		public bool ThermalRadiationAbsorbed;
+		public bool Conduction;
+		public bool Energy;
 		public bool FluxDust;
 		public bool FluxFreeze;
 		public bool FluxIceMelt;

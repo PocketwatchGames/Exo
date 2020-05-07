@@ -57,7 +57,7 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> WaterFrozen;
 	[ReadOnly] public NativeArray<float> SaltPlume;
 	[ReadOnly] public NativeArray<float> FloraRespirationWater;
-	[ReadOnly] public NativeArray<float> FloraTemperature;
+	[ReadOnly] public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> PlanktonMassDelta;
 	[ReadOnly] public NativeArray<float> PlanktonGlucoseDelta;
 	[ReadOnly] public NativeArray<float> WaterCarbonDelta;
@@ -86,7 +86,7 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 			float newTemperature = WorldData.SpecificHeatWater * (
 				+ precipitationTemperature * rainMass
 				+ WorldData.FreezingTemperature * IceMelted[i]
-				+ FloraTemperature[i] * FloraRespirationWater[i]);
+				+ TerrainTemperature[i] * FloraRespirationWater[i]);
 			float divisor = WorldData.SpecificHeatWater * (
 				+ rainMass
 				+ IceMelted[i]

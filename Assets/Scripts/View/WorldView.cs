@@ -33,7 +33,6 @@ public class WorldView : MonoBehaviour {
 		GroundTemperature,
 		GroundWater,
 		GroundWaterTemperature,
-		FloraTemperature,
 		FloraWater,
 		CrustDepth,
 		MagmaMass,
@@ -884,9 +883,6 @@ public class WorldView : MonoBehaviour {
 				return true;
 			case MeshOverlay.GroundWaterTemperature:
 				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundWaterTemperature);
-				return true;
-			case MeshOverlay.FloraTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.FloraTemperature);
 				return true;
 			case MeshOverlay.FloraWater:
 				overlay = new MeshOverlayData(0, Sim.WorldData.FullCoverageFlora, _normalizedRainbow, simState.FloraWater);

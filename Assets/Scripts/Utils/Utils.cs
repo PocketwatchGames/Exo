@@ -214,12 +214,12 @@ public class JobHelper {
 	{
 		return Schedule(jobType == JobType.Run, batchCount, job, dependencies);
 	}
-	public JobHandle ScheduleOrMemset<S, T>(JobType async, int batchCount, bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
+	public JobHandle ScheduleOrMemset<S, T>(bool runSynchronously, int batchCount, bool schedule, NativeArray<S> arrayToSet, S setVal, T job, JobHandle dependencies = default(JobHandle)) where T : struct, IJobParallelFor where S : struct
 	{
 		// TODO: we need a version of this for slices
 		if (schedule)
 		{
-			return Schedule(async, batchCount, job, dependencies);
+			return Schedule(runSynchronously, batchCount, job, dependencies);
 		} else
 		{
 			return Utils.MemsetArray<S>(_cellCount, dependencies, arrayToSet, setVal);

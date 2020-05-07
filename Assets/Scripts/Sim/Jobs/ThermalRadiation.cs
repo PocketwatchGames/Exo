@@ -81,6 +81,8 @@ public struct ThermalEnergyRadiatedTerrainJob : IJobParallelFor {
 	{
 		// radiate half up and half down
 		ThermalRadiationEmitted[i] = Atmosphere.GetRadiationRate(Temperature[i], Emissivity[i]) * SecondsPerTick;
+
+		// TODO: should we radiate more given that the surface area of flora can be greater than 1?
 	}
 }
 

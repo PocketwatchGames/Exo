@@ -21,11 +21,10 @@ public struct ApplyLatentHeatIceJob : IJobParallelFor {
 public struct ApplyLatentHeatTerrainJob : IJobParallelFor {
 	public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeSlice<float> LatentHeat;
-	[ReadOnly] public NativeArray<float> SoilFertility;
-	[ReadOnly] public float HeatingDepth;
+	[ReadOnly] public NativeArray<float> SpecificHeatTerrain;
 	public void Execute(int i)
 	{
-		TerrainTemperature[i] = math.max(0, TerrainTemperature[i] + LatentHeat[i] / Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i]));
+		TerrainTemperature[i] = math.max(0, TerrainTemperature[i] + LatentHeat[i] / SpecificHeatTerrain[i]);
 	}
 }
 [BurstCompile]

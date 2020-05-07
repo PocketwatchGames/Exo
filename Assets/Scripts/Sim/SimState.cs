@@ -20,7 +20,6 @@ public struct SimState {
 	public NativeArray<float> GroundWaterTemperature;
 	public NativeArray<float> FloraMass;
 	public NativeArray<float> FloraWater;
-	public NativeArray<float> FloraTemperature;
 	public NativeArray<float> FloraGlucose;
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> IceMass;
@@ -56,7 +55,6 @@ public struct SimState {
 		GroundWaterTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		FloraMass = new NativeArray<float>(count, Allocator.Persistent);
 		FloraWater = new NativeArray<float>(count, Allocator.Persistent);
-		FloraTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		FloraGlucose = new NativeArray<float>(count, Allocator.Persistent);
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -97,7 +95,6 @@ public struct SimState {
 		GroundWaterTemperature.CopyFrom(from.GroundWaterTemperature);
 		FloraMass.CopyFrom(from.FloraMass);
 		FloraWater.CopyFrom(from.FloraWater);
-		FloraTemperature.CopyFrom(from.FloraTemperature);
 		FloraGlucose.CopyFrom(from.FloraGlucose);
 		IceTemperature.CopyFrom(from.IceTemperature);
 		IceMass.CopyFrom(from.IceMass);
@@ -135,7 +132,6 @@ public struct SimState {
 		FloraMass.Dispose();
 		FloraWater.Dispose();
 		FloraGlucose.Dispose();
-		FloraTemperature.Dispose();
 		GroundWater.Dispose();
 		GroundWaterTemperature.Dispose();
 		IceTemperature.Dispose();

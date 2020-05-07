@@ -66,7 +66,6 @@ public static class CellInfo {
 		s.AppendFormat("\nEnthalpy Delta Ice: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaIce * inverseCellCount), worldData.SecondsPerTick));
 		s.AppendFormat("\nEnthalpy Delta Cloud: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaCloud * inverseCellCount), worldData.SecondsPerTick));
 		s.AppendFormat("\nEnthalpy Delta Terrain: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaTerrain * inverseCellCount), worldData.SecondsPerTick));
-		s.AppendFormat("\nEnthalpy Delta Flora: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaFlora * inverseCellCount), worldData.SecondsPerTick));
 		s.AppendFormat("\nEnthalpy Delta Ground Water: {0:N1}", ConvertTileEnergyToWatts((float)(display.GlobalEnthalpyDeltaGroundWater * inverseCellCount), worldData.SecondsPerTick));
 
 		return s.ToString();
@@ -196,9 +195,8 @@ public static class CellInfo {
 		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
 		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.GroundTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbon[ActiveCellIndex]);
-		s.AppendFormat("\nFLORA: {0:N2} kg TEMP: {1:N2}",
-			state.FloraMass[ActiveCellIndex],
-			GetTemperatureString(state.FloraTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
+		s.AppendFormat("\nFLORA: {0:N2} kg",
+			state.FloraMass[ActiveCellIndex]);
 		s.AppendFormat("\nFWATER: {0:N2} kg GLUCOSE: {1:N2} kg",
 			state.FloraWater[ActiveCellIndex],
 			state.FloraGlucose[ActiveCellIndex]);
@@ -343,7 +341,6 @@ public static class CellInfo {
 		s.AppendFormat("Mass: {0}\n", state.FloraMass[i]);
 		s.AppendFormat("Glucose: {0}\n", state.FloraGlucose[i]);
 		s.AppendFormat("Water: {0}\n", state.FloraWater[i]);
-		s.AppendFormat("Temperature: {0}\n", state.FloraTemperature[i]);
 
 		s.AppendFormat("\nPLANKTON\n");
 		s.AppendFormat("Mass: {0}\n", state.PlanktonMass[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, i)]);
@@ -384,7 +381,6 @@ public static class CellInfo {
 		s.AppendFormat("Ice Coverage: {0}\n", dependent.IceCoverage[i]);
 		s.AppendFormat("Flora Coverage: {0}\n", dependent.FloraCoverage[i]);
 		s.AppendFormat("Ice Terrain SA: {0}\n", dependent.SurfaceAreaIceTerrain[i]);
-		s.AppendFormat("Ice Flora SA: {0}\n", dependent.SurfaceAreaIceFlora[i]);
 		s.AppendFormat("Ice Water SA: {0}\n", dependent.SurfaceAreaIceWater[i]);
 		s.AppendFormat("Air Ice SA: {0}\n", dependent.SurfaceAreaAirIce[i]);
 		s.AppendFormat("Cloud Elevation: {0}\n", dependent.CloudElevation[i]);
