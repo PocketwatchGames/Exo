@@ -83,7 +83,7 @@ public struct AdvectionAirJob : IJobParallelFor {
 		float totalMass = 0;
 
 		float massRemaining = AirMass[fullRangeIndex];
-		for (int j=0;j<StaticState.MaxNeighbors;j++)
+		for (int j=0;j<StaticState.MaxNeighborsVert; j++)
 		{
 			massRemaining -= math.max(0, Destination[fullRangeIndex * StaticState.MaxNeighborsVert + j]);
 		}

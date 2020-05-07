@@ -33,6 +33,7 @@ public struct SimSettings {
 	public bool IceMelting;
 	public bool SoilRespiration;
 	public bool GroundWater;
+	public bool AirWaterCarbonDioxideDiffusion;
 	public bool ConductionAirIce;
 	public bool ConductionAirWater;
 	public bool ConductionAirFlora;
@@ -60,6 +61,7 @@ public struct SimSettings {
 		public bool FluxLava;
 		public bool FluxTerrain;
 		public bool UpdateMassCloud;
+		public bool UpdateMassAir;
 		public bool AdvectionCloud;
 		public bool AdvectionAir;
 	}

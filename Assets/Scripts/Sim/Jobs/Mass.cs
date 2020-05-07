@@ -389,7 +389,6 @@ public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 	[ReadOnly] public float WaterAirCarbonDiffusionDepth;
 	public void Execute(int i)
 	{
-#if !DISABLE_WATER_AIR_CARBON_TRANSFER
 
 		float airCarbon = AirCarbon[i];
 		float waterCarbon = WaterCarbon[i];
@@ -404,7 +403,6 @@ public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 			AirCarbon[i] = airCarbon - diffusion;
 			WaterCarbon[i] = waterCarbon + diffusion;
 		}
-#endif
 	}
 
 }

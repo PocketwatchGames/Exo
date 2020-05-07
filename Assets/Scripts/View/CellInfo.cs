@@ -176,7 +176,7 @@ public static class CellInfo {
 				dependent.AirLayerElevation[index],
 				display.Pressure[index],
 				wind.x, wind.y, wind.z);
-			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[index], state.AirVapor[index], display.CarbonDioxidePercent[index] * 1000000);
+			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[index], state.AirVapor[index], state.AirCarbon[index] / dependent.AirMass[index] * 1000000);
 			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[index].AbsorptivityAirAbove) * display.AbsorptionSolar[index].AbsorptivityAirBelow, display.AbsorptionSolar[index].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[index].ReflectivityAirBelow) * display.AbsorptionSolar[index].ReflectivityAirBelow);
 			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityCloud, display.AbsorptionSolar[index].ReflectivityCloud);
 			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[index].AbsorptivityAirAbove) * display.AbsorptionThermal[index].AbsorptivityAirBelow, display.AbsorptionThermal[index].AbsorptivityCloud);

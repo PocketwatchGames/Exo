@@ -455,10 +455,10 @@ public struct DisplayState {
 		{
 			DisplayPressure[i] = Atmosphere.GetPressureAtElevation(0, Gravity, AirPressure[i], AirTemperaturePotential[i], LayerMiddle[i]);
 			DisplayPressureGradientForce[i] = PressureGradientForce[i];
-			DisplayCondensationGround[i] += CondensationCloud[i];
-			DisplayCondensationCloud[i] += CondensationGround[i];
+			DisplayCondensationGround[i] = CondensationCloud[i];
+			DisplayCondensationCloud[i] = CondensationGround[i];
 			DustCoverage[i] += DustMass[i];
-			CarbonDioxidePercent[i] += CarbonDioxide[i] / AirMass[i];
+			CarbonDioxidePercent[i] = CarbonDioxide[i] / AirMass[i];
 			Divergence[i] /= AirMass[i];
 			if (AirMass[i] > 0)
 			{

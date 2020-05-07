@@ -41,6 +41,7 @@ public class WorldSimComponent : MonoBehaviour
 		Precipitation = true,
 		SoilRespiration = true,
 		GroundWater = true,
+		AirWaterCarbonDioxideDiffusion = true,
 
 		ConductionAirFlora = true,
 		ConductionAirIce = true,

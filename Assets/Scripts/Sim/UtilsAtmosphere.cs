@@ -177,7 +177,7 @@ public static class Atmosphere {
 
 		// TODO: guard against divide by zero (or negative)
 		//https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
-		return airMass * 0.62198f * saturationPressureOfWaterVapor / (pressure - saturationPressureOfWaterVapor);
+		return airMass * 0.62198f * saturationPressureOfWaterVapor / math.max(1, pressure - saturationPressureOfWaterVapor);
 	}
 
 	static public float GetEvaporationMass(float airMass, float airPressure, float airVapor, float3 wind, float waterTemperature, float maxMass)

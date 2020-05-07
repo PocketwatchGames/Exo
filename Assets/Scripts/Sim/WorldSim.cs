@@ -2037,7 +2037,7 @@ public class WorldSim {
 			energyJobHandles[worldData.TerrainLayer],
 			energyJobHandles[worldData.WaterLayer0]);
 		energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.UpdateMassAir, 64,
 			new UpdateMassAirJob()
 			{
 				VaporMass = staticState.GetSliceAir(nextState.AirVapor),
@@ -2151,21 +2151,24 @@ public class WorldSim {
 				LastWater = lastState.FloraWater,
 			}, energyJobHandles[worldData.FloraLayer]);
 
-		energyJobHandles[worldData.AirLayer0] = SimJob.Schedule(
-			JobType.Schedule, 64,
-			new UpdateWaterAirDiffusionJob()
-			{
-				AirCarbon = staticState.GetSliceLayer(nextState.AirCarbon, worldData.SurfaceAirLayer),
-				WaterCarbon = staticState.GetSliceLayer(nextState.WaterCarbon,worldData.SurfaceWaterLayer),
+		if (settings.AirWaterCarbonDioxideDiffusion)
+		{
+			energyJobHandles[worldData.AirLayer0] = SimJob.Schedule(
+				JobType.Schedule, 64,
+				new UpdateWaterAirDiffusionJob()
+				{
+					AirCarbon = staticState.GetSliceLayer(nextState.AirCarbon, worldData.SurfaceAirLayer),
+					WaterCarbon = staticState.GetSliceLayer(nextState.WaterCarbon, worldData.SurfaceWaterLayer),
 
-				AirMass = staticState.GetSliceLayer(tempState.AirMass, worldData.SurfaceAirLayer),
-				WaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
-				SaltMass = staticState.GetSliceLayer(nextState.SaltMass,worldData.SurfaceWaterLayer),
-				WaterDepth = staticState.GetSliceLayer(tempState.WaterLayerHeight,worldData.SurfaceWaterLayer),
-				WaterAirCarbonDiffusionCoefficient = worldData.WaterAirCarbonDiffusionCoefficient,
-				WaterAirCarbonDiffusionDepth = worldData.WaterAirCarbonDiffusionDepth,
-			}, JobHandle.CombineDependencies(energyJobHandles[worldData.AirLayer0], energyJobHandles[worldData.WaterLayer0]));
-		energyJobHandles[worldData.WaterLayer0] = JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.AirLayer0]);
+					AirMass = staticState.GetSliceLayer(tempState.AirMass, worldData.SurfaceAirLayer),
+					WaterMass = staticState.GetSliceLayer(nextState.WaterMass, worldData.SurfaceWaterLayer),
+					SaltMass = staticState.GetSliceLayer(nextState.SaltMass, worldData.SurfaceWaterLayer),
+					WaterDepth = staticState.GetSliceLayer(tempState.WaterLayerHeight, worldData.SurfaceWaterLayer),
+					WaterAirCarbonDiffusionCoefficient = worldData.WaterAirCarbonDiffusionCoefficient,
+					WaterAirCarbonDiffusionDepth = worldData.WaterAirCarbonDiffusionDepth,
+				}, JobHandle.CombineDependencies(energyJobHandles[worldData.AirLayer0], energyJobHandles[worldData.WaterLayer0]));
+			energyJobHandles[worldData.WaterLayer0] = JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.AirLayer0]);
+		}
 #endregion
 
 

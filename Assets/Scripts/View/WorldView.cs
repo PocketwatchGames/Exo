@@ -363,8 +363,7 @@ public class WorldView : MonoBehaviour {
 		{
 			for (int i = 0; i < _windArrows.Length; i++)
 			{
-				var wind = _renderStates[_curRenderState].VelocityHorizontal[i];
-				var windHorizontal = Utils.GetHorizontalComponent(wind, Sim.StaticState.SphericalPosition[i]);
+				var windHorizontal = _renderStates[_curRenderState].VelocityHorizontal[i];
 				float windVertical = _renderStates[_curRenderState].VelocityVertical[i];
 				float windSpeed = math.length(windHorizontal);
 				var pos = _renderStates[_curRenderState].SurfacePosition[i];
@@ -389,7 +388,7 @@ public class WorldView : MonoBehaviour {
 					if (windSpeed > 0)
 					{
 						_windArrows[i].transform.localRotation = Quaternion.LookRotation(windHorizontal / windSpeed, pos);
-						_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(math.pow(windSpeed*2, 0.5f), 0.5f);
+						_windArrows[i].transform.GetChild(1).localScale = Vector3.one * math.min(math.pow(windSpeed, 0.5f), 1.0f);
 					} else
 					{
 						_windArrows[i].transform.localRotation = Quaternion.LookRotation(math.cross(pos, Vector3.up), pos);
