@@ -175,7 +175,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		// Terrain color
 		float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
 		float lavaCoverage = math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f;
-		float iceCoverage = math.floor(IceLevels * IceCoverage[i]) / IceLevels;
+		float iceCoverage = math.floor(IceLevels * math.pow(IceCoverage[i], 0.4f)) / IceLevels;
 		float waterCoverage = WaterCoverage[i];
 		float floraCoverage = FloraCoverage[i] * DisplayFloraWeight;
 		float dirtCoverage = 1.0f;
@@ -189,7 +189,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 			);
 
 		terrainColor2 = new float4(
-			iceCoverage,
+			iceCoverage * (1.0f - waterCoverage),
 			waterCoverage,
 			lavaCoverage,
 			0

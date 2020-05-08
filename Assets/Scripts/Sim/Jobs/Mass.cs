@@ -213,13 +213,17 @@ public struct UpdateMassAirJob : IJobParallelFor {
 
 		float newTemperature = LastTemperaturePotential[i];
 		float cloudCondensationInLayer = 0;
+		float cloudMassInLayer = 0;
 		if (CloudElevation[columnIndex] >= LayerElevation[i] && CloudElevation[columnIndex] < LayerElevation[i] + LayerHeight[i])
 		{
 			cloudCondensationInLayer = CloudCondensation[i];
+			cloudMassInLayer = CloudMass[columnIndex];
 		}
-		newTemperature = (newTemperature * (AirMass[i] * WorldData.SpecificHeatAtmosphere + VaporMass[i] * WorldData.SpecificHeatWaterVapor + CloudMass[columnIndex] * WorldData.SpecificHeatWater)
-			+ (LastTemperaturePotential[i] * cloudCondensationInLayer * WorldData.SpecificHeatWater))
-			/ (AirMass[i] * WorldData.SpecificHeatAtmosphere + VaporMass[i] * WorldData.SpecificHeatWaterVapor + (CloudMass[columnIndex] + cloudCondensationInLayer) * WorldData.SpecificHeatWater);
+
+
+		float specificHeatAir = Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i], cloudMassInLayer);
+		float specificHeatAirNew = Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i], cloudMassInLayer + cloudCondensationInLayer);
+		newTemperature = (newTemperature * specificHeatAir + LastTemperaturePotential[i] * cloudCondensationInLayer * WorldData.SpecificHeatWater) / specificHeatAirNew;
 
 		TemperaturePotential[i] = newTemperature;
 		VaporMass[i] = newVaporMass;
@@ -245,17 +249,25 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> SoilRespiration;
 	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> Elevation;
+	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeSlice<float> LayerElevation;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 		float vaporMass = VaporMass[i];
 		float airMass = AirMass[i];
 		float elevation = Elevation[i];
-
+		int columnIndex = i % Count;
+		float cloudMassInLayer = Atmosphere.GetCloudMassInLayer(CloudMass[columnIndex], CloudElevation[columnIndex], LayerElevation[i], LayerHeight[i]);
+		float specificHeatAir = Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i], cloudMassInLayer);
+		float specificHeatAirNew = Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i] + EvaporationWater[i] + EvaporationFlora[i], cloudMassInLayer);
 		AirTemperaturePotential[i] =
-			((airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * AirTemperaturePotential[i] +
+			(specificHeatAir * AirTemperaturePotential[i] +
 			EvaporationWater[i] * Atmosphere.GetPotentialTemperature(EvaporationTemperatureWater[i], elevation) * WorldData.SpecificHeatWaterVapor +
 			EvaporationFlora[i] * Atmosphere.GetPotentialTemperature(EvaporationTemperatureFlora[i], elevation) * WorldData.SpecificHeatWaterVapor) /
-			(airMass * WorldData.SpecificHeatAtmosphere + (vaporMass + EvaporationWater[i] + EvaporationFlora[i]) * WorldData.SpecificHeatWaterVapor);
+			specificHeatAirNew;
 
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];

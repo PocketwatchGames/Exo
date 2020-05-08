@@ -88,7 +88,7 @@ public static class Atmosphere {
 		// https://link.springer.com/content/pdf/bbm%3A978-3-319-18908-6%2F1.pdf
 		double tempCelsius = temperature - WorldData.FreezingTemperature;
 		double standardMeanOceanWaterDensity =
-			+ 999.842594
+			+999.842594
 			+ 0.06793953 * tempCelsius
 			- 0.009095290 * tempCelsius * tempCelsius
 			+ 0.0001001685 * tempCelsius * tempCelsius * tempCelsius
@@ -96,7 +96,7 @@ public static class Atmosphere {
 			+ 0.000000006536332 * tempCelsius * tempCelsius * tempCelsius * tempCelsius * tempCelsius;
 
 		double b1 =
-			+ 0.82449
+			+0.82449
 			- 0.0040899 * tempCelsius
 			+ 0.000076438 * tempCelsius * tempCelsius
 			- 0.00000082467 * tempCelsius * tempCelsius * tempCelsius
@@ -114,7 +114,7 @@ public static class Atmosphere {
 		return (float)density;
 
 
-	//	return WorldData.DensityWater + (waterDensityPerSalinity * saltMass / (waterMass + saltMass) + waterDensityPerDegree * (temperature - WorldData.FreezingTemperature));
+		//	return WorldData.DensityWater + (waterDensityPerSalinity * saltMass / (waterMass + saltMass) + waterDensityPerDegree * (temperature - WorldData.FreezingTemperature));
 	}
 
 	static public float GetWaterSalinity(float waterMass, float saltMass)
@@ -171,13 +171,12 @@ public static class Atmosphere {
 
 	static public float GetMaxVaporAtTemperature(float airMass, float temperatureAbsolute, float pressure)
 	{
-		// https://www.engineeringtoolbox.com/water-vapor-saturation-pressure-air-d_689.html
-		float saturationPressureOfWaterVapor = math.exp(77.345f + 0.0057f * temperatureAbsolute - 7235 / temperatureAbsolute) / math.pow(temperatureAbsolute, 8.2f);
 
+		// https://en.wikipedia.org/wiki/Vapour_pressure_of_water
+		float saturationPressureOfWaterVaporTentens = 610.78f * math.exp(17.27f * (temperatureAbsolute - 273.15f) / (temperatureAbsolute - 35.85f));
 
-		// TODO: guard against divide by zero (or negative)
 		//https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
-		return airMass * 0.62198f * saturationPressureOfWaterVapor / math.max(1, pressure - saturationPressureOfWaterVapor);
+		return airMass * 0.62198f * saturationPressureOfWaterVaporTentens / math.max(1, pressure - saturationPressureOfWaterVaporTentens);
 	}
 
 	static public float GetEvaporationMass(float airMass, float airPressure, float airVapor, float3 wind, float waterTemperature, float maxMass)
@@ -219,14 +218,23 @@ public static class Atmosphere {
 		return elevationOrSeaLevel + math.max(0, (airTemperature - dewPoint) * dewPointElevationPerDegree);
 	}
 
-	static public float GetSpecificHeatOfWater(float waterMass, float saltMass)
+	static public float GetSpecificHeatWater(float waterMass, float saltMass)
 	{
-		return (WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass) / (waterMass + saltMass);
+		return WorldData.SpecificHeatWater * waterMass + WorldData.SpecificHeatSalt * saltMass;
 	}
 
-	static public float GetSpecificHeatOfAir(float airMass, float vaporMass)
+	static public float GetSpecificHeatAir(float airMass, float vaporMass, float cloudMass)
 	{
-		return (WorldData.SpecificHeatAtmosphere * airMass + WorldData.SpecificHeatWater * vaporMass) / (airMass + vaporMass);
+		return (airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor + cloudMass * WorldData.SpecificHeatWater);
+	}
+
+	static public float GetCloudMassInLayer(float cloudMass, float cloudElevation, float layerElevation, float layerHeight)
+	{
+		if (cloudElevation >= layerElevation && cloudElevation < layerElevation + layerHeight)
+		{
+			return cloudMass;
+		}
+		return 0;
 	}
 
 	static public float GetSpecificHeatTerrain(float heatingDepth, float soilFertility, float floraMass, float floraWater)

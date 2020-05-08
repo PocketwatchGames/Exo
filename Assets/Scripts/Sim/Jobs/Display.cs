@@ -230,7 +230,12 @@ public struct DisplayState {
 				AirMass = staticState.GetSliceAir(tempState.AirMass),
 				VaporMass = staticState.GetSliceAir(nextState.AirVapor),
 				DustMass = staticState.GetSliceAir(nextState.Dust),
+				CloudElevation = tempState.CloudElevation,
+				CloudMass = nextState.CloudMass,
+				LayerElevation = staticState.GetSliceAir(tempState.AirLayerElevation),
+				LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
 				Gravity = nextState.PlanetState.Gravity,
+				Count = staticState.Count,
 			}, initDisplayAirHandle));
 
 		initDisplayWaterHandle = JobHandle.CombineDependencies(initDisplayWaterHandle, DisplayJobWater.Schedule(
@@ -438,7 +443,12 @@ public struct DisplayState {
 		[ReadOnly] public NativeSlice<float> VaporMass;
 		[ReadOnly] public NativeSlice<float> DustMass;
 		[ReadOnly] public NativeSlice<float> CarbonDioxide;
+		[ReadOnly] public NativeArray<float> CloudMass;
+		[ReadOnly] public NativeArray<float> CloudElevation;
+		[ReadOnly] public NativeSlice<float> LayerElevation;
+		[ReadOnly] public NativeSlice<float> LayerHeight;
 		[ReadOnly] public float Gravity;
+		[ReadOnly] public int Count;
 		public void Execute(int i)
 		{
 			DisplayPressure[i] = Atmosphere.GetPressureAtElevation(0, Gravity, AirPressure[i], AirTemperaturePotential[i], LayerMiddle[i]);
@@ -450,7 +460,10 @@ public struct DisplayState {
 			Divergence[i] /= AirMass[i];
 			if (AirMass[i] > 0)
 			{
-				Enthalpy[i] = AirTemperaturePotential[i] * (WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * VaporMass[i]) + VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);
+				int columnIndex = i % Count;
+				float cloudMass = Atmosphere.GetCloudMassInLayer(CloudMass[columnIndex], CloudElevation[columnIndex], LayerElevation[i], LayerHeight[i]);
+				Enthalpy[i] = AirTemperaturePotential[i] * Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i], cloudMass) 
+					+ VaporMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.LatentHeatWaterVapor);
 			}
 		}
 	}

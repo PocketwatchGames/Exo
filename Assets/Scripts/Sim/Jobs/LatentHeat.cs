@@ -43,12 +43,33 @@ public struct ApplyLatentHeatFloraJob : IJobParallelFor {
 [BurstCompile]
 public struct ApplyLatentHeatAirJob : IJobParallelFor {
 	public NativeSlice<float> AirTemperaturePotential;
+	[ReadOnly] public NativeSlice<float> LatentHeatAir;
+	[ReadOnly] public NativeSlice<float> LatentHeatCloud;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeArray<float> CloudMass;
 	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeSlice<float> VaporMass;
-	[ReadOnly] public NativeSlice<float> LatentHeat;
+	[ReadOnly] public NativeSlice<float> LayerElevation;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public int Count;
+	[ReadOnly] public int LayerCount;
 	public void Execute(int i)
 	{
-		AirTemperaturePotential[i] += LatentHeat[i] / (AirMass[i] * WorldData.SpecificHeatAtmosphere + VaporMass[i] * WorldData.SpecificHeatWaterVapor);
+		int columnIndex = i % Count;
+		float cloudMass = Atmosphere.GetCloudMassInLayer(CloudMass[columnIndex], CloudElevation[columnIndex], LayerElevation[i], LayerHeight[i]);
+		float latentHeatCloud = 0;
+		if (CloudElevation[columnIndex] >= LayerElevation[i] && CloudElevation[columnIndex] < LayerElevation[i] + LayerHeight[i])
+		{
+			for (int j = 0; j < LayerCount; j++)
+			{
+				latentHeatCloud += LatentHeatCloud[columnIndex + j * Count];
+			}
+		}
+		float sh = Atmosphere.GetSpecificHeatAir(
+			AirMass[i],
+			VaporMass[i],
+			cloudMass);
+		AirTemperaturePotential[i] += (LatentHeatAir[i] + latentHeatCloud) / sh;
 	}
 }
 

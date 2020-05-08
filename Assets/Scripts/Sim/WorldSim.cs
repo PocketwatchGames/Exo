@@ -1487,6 +1487,11 @@ public class WorldSim {
 				AirMass = staticState.GetSliceLayers(tempState.AirMass, 2, worldData.AirLayers - 3),
 				SolarRadiationIn = staticState.GetSliceLayers(tempState.SolarRadiationInAir, 2, worldData.AirLayers - 3),
 				ThermalRadiationDelta = staticState.GetSliceLayers(tempState.ThermalRadiationDeltaAir, 2, worldData.AirLayers - 3),
+				CloudMass = lastState.CloudMass,
+				CloudElevation = tempState.CloudElevation,
+				LayerElevation = staticState.GetSliceLayers(tempState.AirLayerElevation, 2, worldData.AirLayers - 3),
+				LayerHeight = staticState.GetSliceLayers(tempState.AirLayerHeight, 2, worldData.AirLayers - 3),
+				Count = staticState.Count
 			}, JobHandle.CombineDependencies(solarInJobHandle, thermalOutJobHandle));
 
 		var airSurfaceDependencies = new NativeList<JobHandle>(Allocator.Persistent)
@@ -1512,6 +1517,11 @@ public class WorldSim {
 				ConductionEnergyWater = tempState.ConductionAirWater,
 				ConductionEnergyIce = tempState.ConductionAirIce,
 				ConductionEnergyTerrain = tempState.ConductionAirTerrain,
+				CloudMass = lastState.CloudMass,
+				CloudElevation = tempState.CloudElevation,
+				LayerElevation = staticState.GetSliceAir(tempState.AirLayerElevation),
+				LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
+				Count = staticState.Count
 			}, JobHandle.CombineDependencies(airSurfaceDependencies));
 
 		var waterDependencies = new NativeList<JobHandle>(Allocator.Persistent)
@@ -1568,7 +1578,7 @@ public class WorldSim {
 			energyJobHandles[worldData.AirLayer0] = AirJob.Schedule(
 				settings.SynchronousOverrides.FluxCondensation, 64, new FluxCondensationJob()
 				{
-					LatentHeat = staticState.GetSliceAir(tempState.LatentHeatAir),
+					LatentHeatCloud = staticState.GetSliceAir(tempState.LatentHeatCloud),
 					CondensationCloudMass = staticState.GetSliceAir(tempState.CondensationCloudMass),
 					CondensationGroundMass = staticState.GetSliceAir(tempState.CondensationGroundMass),
 
@@ -1605,7 +1615,7 @@ public class WorldSim {
 				new FluxEvaporationJob()
 				{
 					EvaporatedWaterMass = tempState.EvaporationMassWater,
-					LatentHeatWater = tempState.LatentHeatWater,
+					LatentHeatWater = tempState.LatentHeatWaterSurface,
 					LatentHeatAir = staticState.GetSliceLayer(tempState.LatentHeatAir,worldData.SurfaceAirLayer),
 
 					WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
@@ -1628,7 +1638,7 @@ public class WorldSim {
 				{
 					FrozenMass = tempState.FrozenMass,
 					FrozenTemperature = tempState.FrozenTemperature,
-					LatentHeatWater = tempState.LatentHeatWater,
+					LatentHeatWater = tempState.LatentHeatWaterSurface,
 					SaltPlume = tempState.SaltPlume,
 
 					WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
@@ -1659,7 +1669,7 @@ public class WorldSim {
 				settings.SynchronousOverrides.FluxPlankton, 64,
 				new FluxPlanktonJob()
 				{
-					LatentHeatWater = tempState.LatentHeatWater,
+					LatentHeatWater = tempState.LatentHeatWaterSurface,
 					PlanktonMassDelta = tempState.PlanktonMassDelta,
 					PlanktonGlucoseDelta = tempState.PlanktonGlucoseDelta,
 					PlanktonDeath = tempState.PlanktonDeath,
@@ -1772,7 +1782,7 @@ public class WorldSim {
 				new FluxIceMeltJob()
 				{
 					LatentHeatAir = staticState.GetSliceLayer(tempState.LatentHeatAir, worldData.SurfaceAirLayer),
-					LatentHeatWater = tempState.LatentHeatWater,
+					LatentHeatWater = tempState.LatentHeatWaterSurface,
 					LatentHeatTerrain = tempState.LatentHeatTerrain,
 					LatentHeatIce = tempState.LatentHeatIce,
 					MeltedMass = tempState.IceMeltedMass,
@@ -1781,6 +1791,7 @@ public class WorldSim {
 					LastMass = lastState.IceMass,
 					IceHeatingDepth = worldData.IceHeatingDepth,
 					WaterIceSurfaceArea = tempState.SurfaceAreaIceWater,
+					WaterTerrainSurfaceArea = tempState.SurfaceAreaIceTerrain,
 					WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
 					TerrainTemperature = nextState.GroundTemperature,
 					SurfaceElevation = tempState.SurfaceElevation,
@@ -1961,7 +1972,12 @@ public class WorldSim {
 				SoilRespiration = tempState.SoilRespiration,
 				WaterCoverage = staticState.GetSliceLayer(tempState.WaterCoverage,worldData.SurfaceWaterLayer),
 				Elevation = lastState.Elevation,
-			}, JobHandle.CombineDependencies(energyJobHandles[worldData.AirLayer0], energyJobHandles[worldData.WaterLayer0]));
+				CloudElevation = tempState.CloudElevation,
+				CloudMass = nextState.CloudMass,
+				LayerElevation = staticState.GetSliceAir(tempState.AirLayerElevation),
+				LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
+				Count = staticState.Count
+			}, JobHandle.CombineDependencies(energyJobHandles[worldData.AirLayer0], energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.CloudLayer]));
 
 		energyJobHandles[worldData.IceLayer] = SimJob.Schedule(
 			JobType.Schedule, 64,
@@ -2089,8 +2105,16 @@ public class WorldSim {
 				AirTemperaturePotential = staticState.GetSliceAir(nextState.AirTemperaturePotential),
 				AirMass = staticState.GetSliceAir(tempState.AirMass),
 				VaporMass = staticState.GetSliceAir(nextState.AirVapor),
-				LatentHeat = staticState.GetSliceAir(tempState.LatentHeatAir)
+				CloudMass = nextState.CloudMass,
+				CloudElevation = tempState.CloudElevation,
+				LayerElevation = staticState.GetSliceAir(tempState.AirLayerElevation),
+				LayerHeight = staticState.GetSliceAir(tempState.AirLayerHeight),
+				LatentHeatAir = staticState.GetSliceAir(tempState.LatentHeatAir),
+				LatentHeatCloud = staticState.GetSliceAir(tempState.LatentHeatCloud),				
+				Count = staticState.Count,
+				LayerCount = worldData.AirLayers - 2,
 			}, energyJobHandles[worldData.AirLayer0]);
+		energyJobHandles[worldData.CloudLayer] = JobHandle.CombineDependencies(energyJobHandles[worldData.CloudLayer], energyJobHandles[worldData.AirLayer0]);
 
 		energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
 			JobType.Schedule, 64,
@@ -2099,7 +2123,7 @@ public class WorldSim {
 				WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
 				WaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
 				SaltMass = staticState.GetSliceLayer(nextState.SaltMass,worldData.SurfaceWaterLayer),
-				LatentHeat = tempState.LatentHeatWater,
+				LatentHeat = tempState.LatentHeatWaterSurface,
 			}, energyJobHandles[worldData.WaterLayer0]);
 
 #endregion

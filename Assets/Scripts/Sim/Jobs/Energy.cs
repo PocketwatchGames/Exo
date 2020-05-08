@@ -16,6 +16,11 @@ public struct EnergyAirSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> ConductionEnergyIce;
 	[ReadOnly] public NativeArray<float> ConductionEnergyWater;
 	[ReadOnly] public NativeArray<float> ConductionEnergyTerrain;
+	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeSlice<float> LayerElevation;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 		float energy =
@@ -25,7 +30,9 @@ public struct EnergyAirSurfaceJob : IJobParallelFor {
 			+ ConductionEnergyTerrain[i]
 			+ ConductionEnergyWater[i];
 
-		float specificHeat = WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * LastVapor[i];
+		int columnIndex = i % Count;
+		float cloudMassInLayer = Atmosphere.GetCloudMassInLayer(CloudMass[columnIndex], CloudElevation[columnIndex], LayerElevation[i], LayerHeight[i]);
+		float specificHeat = Atmosphere.GetSpecificHeatAir(AirMass[i], LastVapor[i], cloudMassInLayer);
 		AirTemperaturePotential[i] = LastTemperaturePotential[i] + energy / specificHeat;
 	}
 }
@@ -37,13 +44,20 @@ public struct EnergyAirJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> LastTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> ThermalRadiationDelta;
 	[ReadOnly] public NativeSlice<float> SolarRadiationIn;
+	[ReadOnly] public NativeArray<float> CloudMass;
+	[ReadOnly] public NativeArray<float> CloudElevation;
+	[ReadOnly] public NativeSlice<float> LayerElevation;
+	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public int Count;
 	public void Execute(int i)
 	{
 		float energy =
 			SolarRadiationIn[i]
 			+ ThermalRadiationDelta[i];
 
-		float specificHeat = WorldData.SpecificHeatAtmosphere * AirMass[i] + WorldData.SpecificHeatWaterVapor * LastVapor[i];
+		int columnIndex = i % Count;
+		float cloudMassInLayer = Atmosphere.GetCloudMassInLayer(CloudMass[columnIndex], CloudElevation[columnIndex], LayerElevation[i], LayerHeight[i]);
+		float specificHeat = Atmosphere.GetSpecificHeatAir(AirMass[i], LastVapor[i], cloudMassInLayer);
 		AirTemperaturePotential[i] = LastTemperaturePotential[i] + energy / specificHeat;
 	}
 }

@@ -119,6 +119,8 @@ public class WorldView : MonoBehaviour {
 	public GameObject WindArrowPrefab;
 	public FoliageManager Foliage;
 
+	[Header("Debug")]
+	public bool RunSynchronously;
 
 	[HideInInspector] public MeshOverlay ActiveMeshOverlay { get; private set; }
 	[HideInInspector] public WindOverlay ActiveWindOverlay;
@@ -197,11 +199,12 @@ public class WorldView : MonoBehaviour {
 
 		_normalizedRainbow = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.black, 0),
-											new CVP(Color.blue, 0.1667f),
-											new CVP(Color.green, 0.3333f),
-											new CVP(Color.yellow, 0.5f),
-											new CVP(Color.red, 0.6667f),
-											new CVP(Color.magenta, 0.8333f),
+											new CVP(new Color(1,0,1,1), 1.0f / 7),
+											new CVP(Color.blue, 2.0f / 7),
+											new CVP(Color.green, 3.0f / 7),
+											new CVP(Color.yellow, 4.0f / 7),
+											new CVP(Color.red, 5.0f / 7),
+											new CVP(Color.magenta, 6.0f / 7),
 											new CVP(Color.white, 1),
 											},
 											Allocator.Persistent);
@@ -426,7 +429,7 @@ public class WorldView : MonoBehaviour {
 		}
 
 
-		var buildRenderStateJob = BuildRenderState(ref Sim.LastSimState, ref Sim.LastTempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, displayJob);
+		var buildRenderStateJob = BuildRenderState(RunSynchronously, ref Sim.LastSimState, ref Sim.LastTempState, ref DisplayState, ref _renderStates[_nextRenderState], ref Sim.WorldData, ref Sim.StaticState, displayJob);
 		var foliageJob = Foliage.Tick(ref Sim.LastTempState, displayJob);
 
 		displayJob = JobHandle.CombineDependencies(displayJob, buildRenderStateJob, foliageJob);
@@ -457,7 +460,7 @@ public class WorldView : MonoBehaviour {
 
 
 
-	public JobHandle BuildRenderState(ref SimState from, ref TempState tempState, ref DisplayState display, ref RenderState to, ref WorldData worldData, ref StaticState staticState, JobHandle dependency)
+	public JobHandle BuildRenderState(bool sychronous, ref SimState from, ref TempState tempState, ref DisplayState display, ref RenderState to, ref WorldData worldData, ref StaticState staticState, JobHandle dependency)
 	{
 		to.Ticks = from.PlanetState.Ticks;
 		to.Position = from.PlanetState.Position;
@@ -470,7 +473,7 @@ public class WorldView : MonoBehaviour {
 		bool useWindOverlay = GetWindOverlayData(ActiveWindOverlay, ref from, ref tempState, ref display, ref staticState, ref worldData, out windOverlayData);
 
 		var buildRenderStateJobHandle = _renderJobHelper.Schedule(
-			JobType.Schedule, 64,
+			sychronous, 64,
 			new BuildRenderStateCellJob()
 			{
 				TerrainColor1 = to.TerrainColor1,

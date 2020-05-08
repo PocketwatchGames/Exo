@@ -54,7 +54,7 @@ public struct FluxEvaporationJob : IJobParallelFor {
 		}
 
 		EvaporatedWaterMass[i] = evapMass;
-		LatentHeatWater[i] = energyFlux;
+		LatentHeatWater[i] += energyFlux;
 		LatentHeatAir[i] += -latentHeatFromAir;
 	}
 }
@@ -361,7 +361,7 @@ public struct FluxCloudJob : IJobParallelFor {
 
 [BurstCompile]
 public struct FluxCondensationJob : IJobParallelFor {
-	public NativeSlice<float> LatentHeat;
+	public NativeSlice<float> LatentHeatCloud;
 	public NativeSlice<float> CondensationGroundMass;
 	public NativeSlice<float> CondensationCloudMass;
 	[ReadOnly] public NativeSlice<float> TemperaturePotential;
@@ -390,7 +390,7 @@ public struct FluxCondensationJob : IJobParallelFor {
 			energyFlux += excessWaterVapor * WorldData.LatentHeatWaterVapor;
 		}
 
-		LatentHeat[i] = energyFlux;
+		LatentHeatCloud[i] += energyFlux;
 		CondensationGroundMass[i] = condensationGroundMass;
 		CondensationCloudMass[i] = condensationCloudMass;
 	}
@@ -438,6 +438,7 @@ public struct FluxIceMeltJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float> WaterIceSurfaceArea;
+	[ReadOnly] public NativeArray<float> WaterTerrainSurfaceArea;
 	[ReadOnly] public NativeSlice<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> LastMass;
@@ -496,7 +497,7 @@ public struct FluxIceMeltJob : IJobParallelFor {
 				meltedMass += melted;
 			}
 		}
-		float terrainCoverage = (1.0f - waterCoverage); // This ignores foliage and lava and conducts directly with the terrain for simplicity
+		float terrainCoverage = WaterTerrainSurfaceArea[i]; // This ignores foliage and lava and conducts directly with the terrain for simplicity
 		if (iceMass > 0 && waterCoverage < 1)
 		{
 			float iceDepth = iceMass / WorldData.MassIce;

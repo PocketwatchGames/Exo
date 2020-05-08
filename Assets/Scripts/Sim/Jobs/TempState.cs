@@ -98,8 +98,9 @@ public struct TempState {
 	public NativeArray<float> DivergenceAir;
 	public NativeArray<float> CondensationGroundMass;
 	public NativeArray<float> CondensationCloudMass;
+	public NativeArray<float> LatentHeatCloud;
 	public NativeArray<float> LatentHeatAir;
-	public NativeArray<float> LatentHeatWater;
+	public NativeArray<float> LatentHeatWaterSurface;
 	public NativeArray<float> LatentHeatIce;
 	public NativeArray<float> LatentHeatTerrain;
 	public NativeArray<float> LatentHeatLava;
@@ -278,7 +279,8 @@ public struct TempState {
 		CondensationCloudMass = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		StandardLayerElevation = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		LatentHeatAir = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
-		LatentHeatWater = new NativeArray<float>(count, Allocator.Persistent);
+		LatentHeatCloud = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		LatentHeatWaterSurface = new NativeArray<float>(count, Allocator.Persistent);
 		LatentHeatIce = new NativeArray<float>(count, Allocator.Persistent);
 		LatentHeatLava = new NativeArray<float>(count, Allocator.Persistent);
 		LatentHeatTerrain = new NativeArray<float>(count, Allocator.Persistent);
@@ -325,7 +327,6 @@ public struct TempState {
 		WaterCarbonDelta = new NativeArray<float>(count, Allocator.Persistent);
 
 
-		ConductionWaterTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		CloudEvaporationMass = new NativeArray<float>(count, Allocator.Persistent);
 		DropletDelta = new NativeArray<float>(count, Allocator.Persistent);
 		PrecipitationMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -423,7 +424,8 @@ public struct TempState {
 		CondensationGroundMass.Dispose();
 		CondensationCloudMass.Dispose();
 		LatentHeatAir.Dispose();
-		LatentHeatWater.Dispose();
+		LatentHeatCloud.Dispose();
+		LatentHeatWaterSurface.Dispose();
 		LatentHeatIce.Dispose();
 		LatentHeatTerrain.Dispose();
 		LatentHeatLava.Dispose();
@@ -441,7 +443,6 @@ public struct TempState {
 		RebalanceWater2.Dispose();
 		DestinationWater.Dispose();
 		DestinationWaterResolved.Dispose();
-		ConductionWaterTerrain.Dispose();
 		DivergencePressureWater.Dispose();
 		DivergenceWater.Dispose();
 
@@ -508,6 +509,7 @@ public struct TempState {
 		ConductionAirTerrain.Dispose();
 		ConductionIceWater.Dispose();
 		ConductionIceTerrain.Dispose();
+		ConductionWaterTerrain.Dispose();
 		GeothermalRadiation.Dispose();
 		TerrainGradient.Dispose();
 		GroundWaterFlowMass.Dispose();
@@ -534,7 +536,6 @@ public struct TempState {
 		PrecipitationMass.Dispose();
 		PrecipitationTemperature.Dispose();
 		CloudEvaporationMass.Dispose();
-		ConductionWaterTerrain.Dispose();
 
 		OutgoingFlowWater.Dispose();
 		OutgoingFlowLava.Dispose();
@@ -562,10 +563,11 @@ public struct TempState {
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, CondensationGroundMass, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, CondensationCloudMass, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, LatentHeatAir, 0));
+		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.AirLayers, dependency, LatentHeatCloud, 0));
 
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount * worldData.WaterLayers, dependency, DivergencePressureWater, 0));
 
-		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, LatentHeatWater, 0));
+		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, LatentHeatWaterSurface, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, LatentHeatIce, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, ThermalRadiationTransmittedUp, 0));
 		h = JobHandle.CombineDependencies(h, Utils.MemsetArray(cellCount, dependency, ThermalRadiationTransmittedDown, 0));
@@ -716,7 +718,9 @@ public struct TempState {
 					LayerMiddle = staticState.GetSliceLayer(AirLayerMiddle, j),
 					LayerHeight = staticState.GetSliceLayer(AirLayerHeight, j),
 					SurfaceElevation = SurfaceElevation,
+					CloudElevation = CloudElevation,
 					Gravity = state.PlanetState.Gravity,
+					Count = staticState.Count,
 				}, dependencies);
 		}
 
@@ -886,8 +890,9 @@ public struct TempState {
 		[ReadOnly] public NativeSlice<float> LayerMiddle;
 		[ReadOnly] public NativeSlice<float> LayerElevation;
 		[ReadOnly] public NativeSlice<float> SurfaceElevation;
+		[ReadOnly] public NativeSlice<float> CloudElevation;
 		[ReadOnly] public float Gravity;
-
+		[ReadOnly] public int Count;
 		public void Execute(int i)
 		{
 			float airMass = AirMass[i];
@@ -902,7 +907,10 @@ public struct TempState {
 
 			AbsoluteHumidity[i] = vaporMass / (vaporMass + airMass);
 			RelativeHumidity[i] = Atmosphere.GetRelativeHumidity(airMass, vaporMass, airTemperatureAbsolute, Pressure[i]);
-			PotentialEnergy[i] = (airMass * WorldData.SpecificHeatAtmosphere + vaporMass * WorldData.SpecificHeatWaterVapor) * airTemperatureAbsolute;
+
+			int columnIndex = i % Count;
+			float cloudMass = Atmosphere.GetCloudMassInLayer(CloudMass[columnIndex], CloudElevation[columnIndex], LayerElevation[i], LayerHeight[i]);
+			PotentialEnergy[i] = Atmosphere.GetSpecificHeatAir(airMass, vaporMass, cloudMass) * airTemperatureAbsolute;
 
 		}
 	}
