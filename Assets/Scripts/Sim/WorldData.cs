@@ -25,10 +25,26 @@ public struct WorldData {
 	public float SolarAbsorptivityWaterVapor; // total absorbed by atmosphere AFTER reflection about 30%
 	public float SolarAbsorptivityDust; // total absorbed by atmosphere AFTER reflection about 30%
 	public float SolarAbsorptivityCloud; // 6% absorbed by clouds
+
+	[Header("Albedo")]
+	// For values of different surfaces:
+	// https://en.wikipedia.org/wiki/Albedo
 	public float AlbedoAir; // 7% is reflected due to atmospheric scattering 
 	public float AlbedoWaterVapor;
 	public float AlbedoDust;
-	public float AlbedoReductionSoilQuality;
+	public float AlbedoReductionGroundWaterSaturation;
+	public float AlbedoWaterRange; // how much is reflected due to slope
+	public float AlbedoSlopePower;
+	public float AlbedoWaterMin;
+	public float AlbedoIceMin;
+	public float AlbedoIceRange;
+	public float AlbedoSandMin;
+	public float AlbedoSandRange;
+	public float AlbedoSoilMin;
+	public float AlbedoSoilRange;
+	public float AlbedoFloraMin;
+	public float AlbedoFloraRange;
+	//public const float AlbedoCloud = 0.05f; // 24% incoming  reflected back to space by clouds (avg, globally)
 	public float minCloudFreezingTemperature;
 	public float maxCloudFreezingTemperature;
 	public float rainDropSizeAlbedoMin;
@@ -76,6 +92,7 @@ public struct WorldData {
 	public float WaterHeatingDepth;
 	public float WaterAirCarbonDiffusionCoefficient; // standard carbon/air: 407.4 ppm, carbon/water: 90 ppm
 	public float WaterAirCarbonDiffusionDepth;
+	public float EvaporationLatentHeatFromAir;
 
 	[Header("Ice")]
 	public float IceHeatingDepth;
@@ -178,12 +195,6 @@ public struct WorldData {
 	public const float FreezingTemperature = 273.15f;
 	public const float StefanBoltzmannConstant = 0.00000005670373f;
 	// specific heat is joules to raise one degree (kJ/kgK)
-	public const float AlbedoWater = 0.03f; // How much heat is reflected back by the water
-	public const float AlbedoIce = 0.5f; // How much heat is reflected back by the water
-	public const float AlbedoLand = 0.4f;
-	public const float AlbedoFloraMin = 0.15f;
-	public const float AlbedoFloraRange = 0.1f;
-	//public const float AlbedoCloud = 0.05f; // 24% incoming  reflected back to space by clouds (avg, globally)
 	public const float SpecificHeatIce = 2.108f;
 	public const float SpecificHeatFlora = 1.76f;
 	public const float SpecificHeatWater = 4.187f;

@@ -11,6 +11,8 @@ public struct FluxEvaporationJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
 	public NativeSlice<float> LatentHeatWater;
 	public NativeSlice<float> LatentHeatAir;
+	public NativeSlice<float> LatentHeatTerrain;
+	[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> WaterTemperature;
 	[ReadOnly] public NativeSlice<float> WaterMass;
 	[ReadOnly] public NativeArray<float> IceCoverage;
@@ -18,44 +20,38 @@ public struct FluxEvaporationJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeSlice<float> AirVapor;
 	[ReadOnly] public NativeSlice<float> AirPressure;
+	[ReadOnly] public NativeSlice<float> SurfaceElevation;
 	[ReadOnly] public NativeSlice<float3> SurfaceWind;
 	[ReadOnly] public float WaterHeatingDepth;
+	[ReadOnly] public float EvaporationLatentHeatFromAir;
 	public void Execute(int i)
 	{
-		float temperature = WaterTemperature[i];
 		float waterMass = WaterMass[i];
 
 		float latentHeatFromAir = 0;
+		float latentHeatFromTerrain = 0;
+		float latentHeatFromWater = 0;
 		float evapMass = 0;
-		float energyFlux = 0;
 
 		if (waterMass > 0)
 		{
 
-#if !DISABLE_EVAPORATION
-			evapMass = Atmosphere.GetEvaporationMass(AirMass[i], AirPressure[i], AirVapor[i], SurfaceWind[i], temperature, waterMass);
+			evapMass = Atmosphere.GetEvaporationMass(AirMass[i], AirPressure[i], AirVapor[i], SurfaceWind[i], Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceElevation[i]), waterMass);
 			evapMass *= WaterCoverage[i] * (1.0f - IceCoverage[i]);
 			waterMass -= evapMass;
 
-#if !DISABLE_EVAPORATION_LATENT_HEAT
-			const bool latentHeatFromAirOrWater = false;
-			if (latentHeatFromAirOrWater)
-			{
-				latentHeatFromAir = evapMass * WorldData.LatentHeatWaterVapor;
-			}
-			else
-			{
-				energyFlux -= evapMass * WorldData.LatentHeatWaterVapor;
-			}
-			//energyTop -= evapMass * WorldData.LatentHeatWaterVapor;
-#endif
+			float latentHeat = -evapMass * WorldData.LatentHeatWaterVapor;
+			latentHeatFromAir = latentHeat * EvaporationLatentHeatFromAir;
+			float latentHeatFromBottom = latentHeat * (1.0f - EvaporationLatentHeatFromAir);
+			latentHeatFromWater = WaterCoverage[i] * latentHeatFromBottom;
+			latentHeatFromTerrain = (1.0f - WaterCoverage[i]) * latentHeatFromBottom;
 
-#endif
 		}
 
 		EvaporatedWaterMass[i] = evapMass;
-		LatentHeatWater[i] += energyFlux;
-		LatentHeatAir[i] += -latentHeatFromAir;
+		LatentHeatWater[i] += latentHeatFromWater;
+		LatentHeatAir[i] += latentHeatFromAir;
+		LatentHeatTerrain[i] += latentHeatFromTerrain;
 	}
 }
 
@@ -543,8 +539,7 @@ public struct FluxFloraJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> AirVapor;
 	[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> AirPressure;
-	[ReadOnly] public NativeSlice<float> LayerElevation;
-	[ReadOnly] public NativeSlice<float> LayerHeight;
+	[ReadOnly] public NativeSlice<float> SurfaceElevation;
 	[ReadOnly] public NativeSlice<float3> SurfaceWind;
 	[ReadOnly] public float FloraGrowthTemperatureRangeInverse;
 	[ReadOnly] public float FloraGrowthRate;
@@ -652,7 +647,7 @@ public struct FluxFloraJob : IJobParallelFor {
 			floraWaterDelta -= deathPercent * floraWater;
 			floraDeath += death + deathPercent * glucose;
 
-			evapMass = Atmosphere.GetEvaporationMass(AirMass[i], AirPressure[i], AirVapor[i], SurfaceWind[i], TerrainTemperature[i], surfaceWaterDelta);
+			evapMass = Atmosphere.GetEvaporationMass(AirMass[i], AirPressure[i], AirVapor[i], SurfaceWind[i], Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceElevation[i]), surfaceWaterDelta);
 			surfaceWaterDelta -= evapMass;
 
 			latentHeatFromFlora = -evapMass * WorldData.LatentHeatWaterVapor;

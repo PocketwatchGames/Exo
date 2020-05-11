@@ -68,6 +68,11 @@ public struct SimSettings {
 		public bool UpdateMassAir;
 		public bool AdvectionCloud;
 		public bool AdvectionAir;
+		public bool AdvectionWater;
+		public bool DiffusionCloud;
+		public bool DiffusionAir;
+		public bool DiffusionWater;
+		public bool TempState;
 	}
 
 }

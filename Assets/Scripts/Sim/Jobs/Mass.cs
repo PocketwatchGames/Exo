@@ -32,10 +32,11 @@ public struct UpdateMassWaterJob : IJobParallelFor {
 		if (LastWaterMass[downIndex] == 0 && waterMass > 0)
 		{
 			float saltPlume = SaltPlume[columnIndex];
-			WaterTemperature[i] = 
+			float newTemp = 
 				(WaterTemperature[i] * (waterMass * WorldData.SpecificHeatWater + saltMass * WorldData.SpecificHeatSalt) + 
 				SaltPlumeTemperature[columnIndex] * saltPlume * WorldData.SpecificHeatSalt)
 				/ (waterMass * WorldData.SpecificHeatWater + (saltMass + saltPlume) * WorldData.SpecificHeatSalt);
+			WaterTemperature[i] = newTemp;
 			SaltMass[i] += saltPlume;
 		}
 	}
@@ -97,6 +98,8 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 				divisor += (SaltMass[i] * WorldData.SpecificHeatSalt + remainingWater * WorldData.SpecificHeatWater);
 			}
 			newTemperature /= divisor;
+
+
 			WaterTemperature[i] = newTemperature;
 		}
 	}
@@ -225,6 +228,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 		float specificHeatAirNew = Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i], cloudMassInLayer + cloudCondensationInLayer);
 		newTemperature = (newTemperature * specificHeatAir + LastTemperaturePotential[i] * cloudCondensationInLayer * WorldData.SpecificHeatWater) / specificHeatAirNew;
 
+
 		TemperaturePotential[i] = newTemperature;
 		VaporMass[i] = newVaporMass;
 		DustMass[i] = newDustMass;
@@ -268,6 +272,8 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 			EvaporationWater[i] * Atmosphere.GetPotentialTemperature(EvaporationTemperatureWater[i], elevation) * WorldData.SpecificHeatWaterVapor +
 			EvaporationFlora[i] * Atmosphere.GetPotentialTemperature(EvaporationTemperatureFlora[i], elevation) * WorldData.SpecificHeatWaterVapor) /
 			specificHeatAirNew;
+
+
 
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];

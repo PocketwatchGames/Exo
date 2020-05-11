@@ -18854,6 +18854,7 @@ MonoBehaviour:
   DisplayPlanktonPower: 0.5
   DisplayPlanktonLevels: 5
   DisplayIceLevels: 5
+  DisplayIcePower: 5
   DisplayWaterTemperatureMax: 30
   DisplayWaterTemperatureLevels: 6
   DisplayWindSpeedLowerAirMax: 50
@@ -18917,6 +18918,7 @@ MonoBehaviour:
     - {fileID: 8214449997699801927, guid: 97ee32d999bd51840ac7246c8c971ed4, type: 3}
     - {fileID: 8214449997699801927, guid: 9e7abdf660b879a4bbd3fbb8a2d9def2, type: 3}
     - {fileID: 9126738353149491658, guid: 0c05cdd761033044fad81acc4252651f, type: 3}
+  RunSynchronously: 0
   ActiveWindOverlay: 0
   ActiveMeshLayerWater: 1
   ActiveMeshLayerAir: 1
@@ -18968,6 +18970,7 @@ MonoBehaviour:
       AirAbsorptivity: 0
       SolarRadiationAbsorbed: 0
       ThermalRadiationAbsorbed: 0
+      Conduction: 0
       Energy: 0
       FluxDust: 0
       FluxFreeze: 0
@@ -18983,13 +18986,18 @@ MonoBehaviour:
       UpdateMassAir: 0
       AdvectionCloud: 0
       AdvectionAir: 0
+      AdvectionWater: 0
+      DiffusionCloud: 0
+      DiffusionAir: 0
+      DiffusionWater: 0
+      TempState: 0
     MakeAirIncompressible: 1
     MakeWaterIncompressible: 1
     WaterSurfaceFlowEnabled: 1
     RebalanceWaterLayers: 1
     AdvectionAir: 1
     DiffusionAir: 1
-    AdvectionWater: 1
+    AdvectionWater: 0
     DiffusionWater: 1
     AdvectionCloud: 1
     DiffusionCloud: 1
@@ -18998,7 +19006,7 @@ MonoBehaviour:
     Freezing: 1
     Plankton: 1
     Precipitation: 1
-    Flora: 1
+    Flora: 0
     IceMelting: 1
     SoilRespiration: 1
     GroundWater: 1
@@ -19025,7 +19033,18 @@ MonoBehaviour:
     AlbedoAir: 0
     AlbedoWaterVapor: 0
     AlbedoDust: 0
-    AlbedoReductionSoilQuality: 0.15
+    AlbedoReductionGroundWaterSaturation: 0
+    AlbedoWaterRange: 0
+    AlbedoSlopePower: 0
+    AlbedoWaterMin: 0
+    AlbedoIceMin: 0
+    AlbedoIceRange: 0
+    AlbedoSandMin: 0
+    AlbedoSandRange: 0
+    AlbedoSoilMin: 0
+    AlbedoSoilRange: 0
+    AlbedoFloraMin: 0
+    AlbedoFloraRange: 0
     minCloudFreezingTemperature: 0
     maxCloudFreezingTemperature: 0
     rainDropSizeAlbedoMin: 0
@@ -19052,6 +19071,7 @@ MonoBehaviour:
     WaterHeatingDepth: 0
     WaterAirCarbonDiffusionCoefficient: 0
     WaterAirCarbonDiffusionDepth: 0
+    EvaporationLatentHeatFromAir: 0
     IceHeatingDepth: 0
     FreezePointReductionPerSalinity: 0
     rainDropDragCoefficient: 0.5

@@ -100,6 +100,11 @@ public struct AdvectionAirJob : IJobParallelFor {
 		// Wait, does it? is this comment outdated?
 		for (int j = 0; j < StaticState.MaxNeighborsVert; j++)
 		{
+			// TODO: this removes all vert motion, fix vert motion and remove!
+			if (j == StaticState.NeighborDown || j == StaticState.NeighborUp)
+			{
+				continue;
+			}
 			int n = NeighborsVert[fullRangeIndex * StaticState.MaxNeighborsVert + j];
 			if (n >= 0)
 			{
@@ -114,16 +119,16 @@ public struct AdvectionAirJob : IJobParallelFor {
 				// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
 				var deflectedVelocity = Velocity[n];
 
+				int nColumnIndex = n % CellsPerLayer;
 				if (j != StaticState.NeighborDown && j != StaticState.NeighborUp) {
-					int nColumnIndex = n % CellsPerLayer;
 					deflectedVelocity += math.cross(Positions[nColumnIndex], Velocity[n]) * CoriolisMultiplier[nColumnIndex] * CoriolisTerm * SecondsPerTick;
 
-					// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-					var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
-					deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
-					deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
-					deflectedVelocity += deflectedVertical * Positions[columnIndex];
 				}
+				// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+				//var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
+				//deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
+				deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
+				//deflectedVelocity += deflectedVertical * Positions[columnIndex];
 
 
 				// adjust vertical wind velocity when we hit a mountain or go down a valley
@@ -206,6 +211,7 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			{
 				newMass -= math.max(0, Destination[fullRangeIndex * StaticState.MaxNeighborsVert + j]);
 			}
+			newMass = math.max(0, newMass);
 
 			float percentRemaining = newMass / waterMass;
 
@@ -218,6 +224,11 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 			for (int j = 0; j < StaticState.MaxNeighborsVert; j++)
 			{
+				// TODO: this removes all vert motion, fix vert motion and remove!
+				if (j == StaticState.NeighborDown || j == StaticState.NeighborUp)
+				{
+					continue;
+				}
 				int edgeIndex = fullRangeIndex * StaticState.MaxNeighborsVert + j;
 				int n = NeighborsVert[edgeIndex];
 				if (n >= 0)
@@ -245,15 +256,14 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 					if (j != StaticState.NeighborDown && j != StaticState.NeighborUp)
 					{
-
 						deflectedVelocity += math.cross(Positions[nColumnIndex], Velocity[n]) * CoriolisMultiplier[nColumnIndex] * CoriolisTerm * SecondsPerTick;
-
-						// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
-						var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
-						deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
-						deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
-						deflectedVelocity += deflectedVertical * Positions[columnIndex];
 					}
+
+					// TODO: turn velocity along great circle, instead of just erasing the vertical component as we are doing here
+					//var deflectedVertical = math.dot(deflectedVelocity, Positions[nColumnIndex]);
+					//deflectedVelocity -= Positions[nColumnIndex] * deflectedVertical;
+					deflectedVelocity -= Positions[columnIndex] * math.dot(Positions[columnIndex], deflectedVelocity);
+					//deflectedVelocity += deflectedVertical * Positions[columnIndex];
 
 					// TODO: adjust vertical wind velocity when we hit a mountain or go down a valley
 					// deflectedVelocity += (LayerMiddle[n] - layerMiddle) * NeighborDistInverse[i * 6 + j] * TicksPerSecond;
@@ -271,8 +281,14 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			// OR NOT? water is compressible!
 			if (newMass > 0)
 			{
-				newTemperature /= newMass;
-				newVelocity /= newMass;
+				float inverseNewMass = 1.0f / newMass;
+				newTemperature *= inverseNewMass;
+				newVelocity *= inverseNewMass;
+				newSaltMass *= inverseNewMass * waterMass;
+				newCarbon *= inverseNewMass * waterMass;
+				newPlankton *= inverseNewMass * waterMass;
+				newGlucose *= inverseNewMass * waterMass;
+				newMass = waterMass;
 			}
 			else
 			{

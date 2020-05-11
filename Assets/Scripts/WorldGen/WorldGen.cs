@@ -320,7 +320,7 @@ public static class WorldGen {
 #if ASYNC_WORLDGEN
 	[BurstCompile]
 #endif
-	public static void Generate(int seed, WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref TempState tempState)
+	public static void Generate(int seed, WorldGenData worldGenData, Icosphere icosphere, ref WorldData worldData, ref StaticState staticState, ref SimState state, ref TempState tempState, ref SimSettings settings)
 	{
 
 		float inversePI = 1.0f / math.PI;
@@ -466,7 +466,7 @@ public static class WorldGen {
 		worldGenJobHandle.Complete();
 
 		var tempArrays = new List<NativeArray<float>>();
-		tempState.Update(ref state, ref worldData, ref staticState, worldGenJobHandle).Complete();
+		tempState.Update(ref state, ref worldData, ref staticState, ref settings, worldGenJobHandle).Complete();
 
 		for (int i = 1; i < worldData.AirLayers - 1; i++)
 		{
@@ -491,7 +491,7 @@ public static class WorldGen {
 		///////////////////////////////////
 		// Update dependent variables
 
-		tempState.Update(ref state, ref worldData, ref staticState, worldGenJobHandle).Complete();
+		tempState.Update(ref state, ref worldData, ref staticState, ref settings, worldGenJobHandle).Complete();
 
 		waterMassTotal.Dispose();
 		waterDepthTotal.Dispose();

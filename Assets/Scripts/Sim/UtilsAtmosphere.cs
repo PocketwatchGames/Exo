@@ -176,7 +176,7 @@ public static class Atmosphere {
 		float saturationPressureOfWaterVaporTentens = 610.78f * math.exp(17.27f * (temperatureAbsolute - 273.15f) / (temperatureAbsolute - 35.85f));
 
 		//https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
-		return airMass * 0.62198f * saturationPressureOfWaterVaporTentens / math.max(1, pressure - saturationPressureOfWaterVaporTentens);
+		return math.max(0, airMass * 0.62198f * saturationPressureOfWaterVaporTentens / math.max(1, pressure - saturationPressureOfWaterVaporTentens));
 	}
 
 	static public float GetEvaporationMass(float airMass, float airPressure, float airVapor, float3 wind, float waterTemperature, float maxMass)

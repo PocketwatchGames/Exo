@@ -73,6 +73,7 @@ public class WorldView : MonoBehaviour {
 	public float DisplayPlanktonPower = 0.5f;
 	public int DisplayPlanktonLevels = 5;
 	public int DisplayIceLevels = 5;
+	public int DisplayIcePower = 5;
 	public float DisplayWaterTemperatureMax = 50;
 	public int DisplayWaterTemperatureLevels = 10;
 
@@ -199,7 +200,7 @@ public class WorldView : MonoBehaviour {
 
 		_normalizedRainbow = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.black, 0),
-											new CVP(new Color(1,0,1,1), 1.0f / 7),
+											new CVP(new Color(0.25f,0,0.5f,1), 1.0f / 7),
 											new CVP(Color.blue, 2.0f / 7),
 											new CVP(Color.green, 3.0f / 7),
 											new CVP(Color.yellow, 4.0f / 7),
@@ -543,6 +544,7 @@ public class WorldView : MonoBehaviour {
 				PlanktonPower = DisplayPlanktonPower,
 				PlanktonLevels = DisplayPlanktonLevels,
 				IceLevels = DisplayIceLevels,
+				IceCoveragePower = DisplayIcePower,
 				WaterTemperatureMax = DisplayWaterTemperatureMax,
 				WaterTemperatureLevels = DisplayWaterTemperatureLevels,
 				AirLayers = worldData.AirLayers - 2,

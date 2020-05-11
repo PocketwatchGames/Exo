@@ -94,7 +94,9 @@ public struct EnergyWaterJob : IJobParallelFor {
 				);
 
 			float specificHeat = WorldData.SpecificHeatWater * LastMass[index] + WorldData.SpecificHeatSalt * LastSaltMass[index];
-			Temperature[i] = LastTemperature[index] + energy / specificHeat;
+			float newTemp = LastTemperature[index] + energy / specificHeat;
+
+			Temperature[i] = newTemp;
 		}
 		else
 		{

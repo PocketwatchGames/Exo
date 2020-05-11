@@ -94,11 +94,14 @@ public struct ResolveAdvectionConflictVert : IJobParallelFor {
 	[ReadOnly] public int Count;
 	public void Execute(int e)
 	{
+		float d = 0;
 		int n = ReverseNeighborsVert[e];
 		if (n >= 0)
 		{
-			ResolvedDestination[e] = Destination[e] - Destination[n - Count * StaticState.MaxNeighborsVert];
+			d = Destination[e] - Destination[n - Count * StaticState.MaxNeighborsVert];
 		}
+		ResolvedDestination[e] = d;
+		
 	}
 }
 
@@ -109,9 +112,11 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<int> NeighborsVert;
 	[ReadOnly] public NativeArray<float3> Position;
 	[ReadOnly] public NativeArray<float> Mass;
+	[ReadOnly] public NativeArray<float> LayerHeight;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float PlanetRadius;
 	[ReadOnly] public int CellsPerLayer;
+	[ReadOnly] public int LayerCount;
 	public void Execute(int e)
 	{
 		Debug.Assert(CellsPerLayer > 0);
@@ -123,11 +128,21 @@ public struct GetVectorDestCoordsVerticalJob : IJobParallelFor {
 
 		if (edgeIndex == StaticState.NeighborUp)
 		{
-
+			int layerIndex = cellIndex / CellsPerLayer;
+			if (layerIndex < LayerCount - 1)
+			{
+				float layerHeight = LayerHeight[cellIndex];
+				moveValue = math.max(0, math.dot(Velocity[cellIndex], Position[columnIndex]) / layerHeight);
+			}
 		}
 		else if (edgeIndex == StaticState.NeighborDown)
 		{
-
+			int layerIndex = cellIndex / CellsPerLayer;
+			if (layerIndex > 1)
+			{
+				float layerHeight = LayerHeight[cellIndex];
+				moveValue = math.max(0, math.dot(-Velocity[cellIndex], Position[columnIndex]) / layerHeight);
+			}
 		}
 		else
 		{
@@ -340,14 +355,18 @@ public struct GetDivergencePressureJob : IJobFor {
 		int neighborCount = 0;
 		for (int k = 0; k < StaticState.MaxNeighborsVert; k++)
 		{
-			int n = NeighborsVert[i * StaticState.MaxNeighborsVert + k];
-			if (n >= 0)
+			int n = NeighborsVert[i * StaticState.MaxNeighborsVert + k] - Count;
+			if (n >= 0 && n < Pressure.Length)
 			{
 				neighborCount++;
-				pressure += Pressure[n - Count];
+				pressure += Pressure[n];
 			}
 		}
-		Pressure[i] = pressure / neighborCount;
+		if (neighborCount > 0)
+		{
+			pressure /= neighborCount;
+		}
+		Pressure[i] = pressure;
 
 	}
 }
@@ -357,17 +376,15 @@ public struct GetDivergencePressureJob : IJobFor {
 public struct GetDivergenceFreeFieldJob : IJobParallelFor {
 	public NativeSlice<float> Destination;
 	[ReadOnly] public NativeSlice<float> Pressure;
-	[ReadOnly] public NativeSlice<float> Mass;
 	[ReadOnly] public NativeSlice<int> NeighborsVert;
 	[ReadOnly] public int Count;
 	public void Execute(int e)
 	{
 		int cellIndex = StaticState.GetCellIndexFromEdgeVert(e);
-		float mass = Mass[cellIndex];
-		int nIndex = NeighborsVert[e];
-		if (mass > 0 && nIndex >= 0)
+		int nIndex = NeighborsVert[e] - Count;
+		if (nIndex >= 0)
 		{
-			float pressureGradient = Pressure[cellIndex] - Pressure[nIndex - Count];
+			float pressureGradient = Pressure[cellIndex] - Pressure[nIndex];
 			Destination[e] += pressureGradient;
 		}
 	}
@@ -379,7 +396,7 @@ public struct SumMassLeavingJob : IJobParallelFor {
 	public void Execute(int i)
 	{
 		float massLeaving = 0;
-		for (int j = 0; j < StaticState.MaxNeighbors; j++)
+		for (int j = 0; j < StaticState.MaxNeighborsVert; j++)
 		{
 			massLeaving += math.max(0, Destination[i * StaticState.MaxNeighborsVert + j]);
 		}
@@ -401,9 +418,18 @@ public struct CapMassLeavingJob : IJobParallelFor {
 		{
 			from = NeighborsVert[i] - Count;
 		}
-		float mass = Mass[from];
-		float massLeaving = math.max(mass, MassLeaving[from]);
-		dest *= mass / massLeaving;
+		if (from >= 0)
+		{
+			float mass = Mass[from];
+			if (mass > 0)
+			{
+				float massLeaving = math.max(mass, MassLeaving[from]);
+				dest *= mass / massLeaving;
+			} else
+			{
+				dest = 0;
+			}
+		}
 		Destination[i] = dest;
 	}
 }

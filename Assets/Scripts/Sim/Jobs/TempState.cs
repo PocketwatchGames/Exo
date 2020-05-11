@@ -75,12 +75,12 @@ public struct TempState {
 	public NativeArray<float> AirDensityCloud;
 	public NativeArray<float> LavaDepth;
 	public NativeArray<float> SoilFertility;
+	public NativeArray<float> GroundWaterSaturation;
 
 
 	public NativeArray<float> SolarRadiation;
 	public NativeArray<float> AlbedoSlope;
 	public NativeArray<float> AlbedoCloud;
-	public NativeArray<float> AlbedoTerrain;
 	public NativeArray<float> SpecificHeatTerrain;
 	public NativeArray<DiffusionCloud> DiffusionCloud;
 	public NativeArray<DiffusionCloud> AdvectionCloud;
@@ -206,6 +206,7 @@ public struct TempState {
 		SurfaceAreaWaterTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		LavaDepth = new NativeArray<float>(count, Allocator.Persistent);
 		SoilFertility = new NativeArray<float>(count, Allocator.Persistent);
+		GroundWaterSaturation = new NativeArray<float>(count, Allocator.Persistent);
 
 		AirMass = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		AirPressure = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
@@ -244,7 +245,6 @@ public struct TempState {
 		SolarRadiation = new NativeArray<float>(count, Allocator.Persistent);
 		AlbedoSlope = new NativeArray<float>(count, Allocator.Persistent);
 		AlbedoCloud = new NativeArray<float>(count, Allocator.Persistent);
-		AlbedoTerrain = new NativeArray<float>(count, Allocator.Persistent);
 		SpecificHeatTerrain = new NativeArray<float>(count, Allocator.Persistent);
 
 		WaterCoverage = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
@@ -399,6 +399,7 @@ public struct TempState {
 		SurfaceAreaWaterTerrain.Dispose();
 		LavaDepth.Dispose();
 		SoilFertility.Dispose();
+		GroundWaterSaturation.Dispose();
 
 		AirMass.Dispose();
 		AirPressure.Dispose();
@@ -481,7 +482,6 @@ public struct TempState {
 		SolarRadiation.Dispose();
 		AlbedoSlope.Dispose();
 		AlbedoCloud.Dispose();
-		AlbedoTerrain.Dispose();
 		SpecificHeatTerrain.Dispose();
 
 		FrozenTemperature.Dispose();
@@ -586,14 +586,22 @@ public struct TempState {
 		return h;
 	}
 
-	public JobHandle Update(ref SimState state, ref WorldData worldData, ref StaticState staticState, JobHandle dependencies)
+	public JobHandle Update(ref SimState state, ref WorldData worldData, ref StaticState staticState, ref SimSettings settings, JobHandle dependencies)
 	{
 		dependencies = Utils.MemCopy(WaterMassTotal, state.IceMass, dependencies);
 		dependencies = Utils.MemsetArray(staticState.Count, dependencies, AirMassTotal, 0);
 		dependencies = Utils.MemsetArray(staticState.Count, dependencies, WaterDepthTotal, 0);
 
 		dependencies = _jobHelper.Schedule(
-			JobType.Schedule, 1,
+			settings.SynchronousOverrides.TempState, 1,
+			new UpdateGroundWaterSaturationJob()
+			{
+				GroundWaterSaturation = GroundWaterSaturation,
+				GroundWater = state.GroundWater,
+				GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
+			}, dependencies);
+		dependencies = _jobHelper.Schedule(
+			settings.SynchronousOverrides.TempState, 1,
 			new UpdateSoilFertilityJob()
 			{
 				SoilFertility = SoilFertility,
@@ -601,7 +609,7 @@ public struct TempState {
 				GroundCarbonFertility = worldData.GroundCarbonFertility
 			}, dependencies);
 		dependencies = _jobHelper.Schedule(
-			JobType.Schedule, 1,
+			settings.SynchronousOverrides.TempState, 1,
 			new UpdateSpecificHeatTerrainJob()
 			{
 				SpecificHeatTerrain = SpecificHeatTerrain,
@@ -612,7 +620,7 @@ public struct TempState {
 			}, dependencies);
 
 		dependencies = _jobHelperWater.Schedule(
-			JobType.Schedule, 64,
+			settings.SynchronousOverrides.TempState, 64,
 			new UpdateWaterJob()
 			{
 				Density = staticState.GetSliceWater(WaterDensity),
@@ -628,7 +636,7 @@ public struct TempState {
 		for (int j = worldData.SurfaceWaterLayer; j >= worldData.BottomWaterLayer; j--)
 		{
 			dependencies = _jobHelper.Schedule(
-				JobType.Schedule, 64,
+				settings.SynchronousOverrides.TempState, 64,
 				new UpdateWaterDepthJob()
 				{
 					WaterMassTotal = WaterMassTotal,
@@ -649,7 +657,7 @@ public struct TempState {
 
 
 
-		dependencies = _jobHelper.Schedule(JobType.Schedule, 64,
+		dependencies = _jobHelper.Schedule(settings.SynchronousOverrides.TempState, 64,
 			new UpdateTempStateJob()
 			{
 				IceEnergy = IceEnergy,
@@ -668,7 +676,7 @@ public struct TempState {
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(AirLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 		dependencies = Utils.MemCopy(staticState.GetSliceLayer(StandardLayerElevation, worldData.SurfaceAirLayer), SurfaceElevation, dependencies);
 
-		dependencies = _jobHelperAir.Schedule(JobType.Schedule, 64,
+		dependencies = _jobHelperAir.Schedule(settings.SynchronousOverrides.TempState, 64,
 			new UpdateAirLayerHeightsJob()
 			{
 				StandardLayerElevation = staticState.GetSliceAir(StandardLayerElevation),
@@ -685,9 +693,7 @@ public struct TempState {
 				Count = staticState.Count
 			}, dependencies);
 
-		dependencies = _jobHelper.Schedule(
-			JobType.Schedule, 64,
-			new UpdateStratosphereJob()
+		dependencies = _jobHelper.Schedule(settings.SynchronousOverrides.TempState, 64,	new UpdateStratosphereJob()
 			{
 				StratosphereMass = AirMassTotal,
 
@@ -699,9 +705,7 @@ public struct TempState {
 
 		for (int j = worldData.AirLayers - 2; j > 0; j--)
 		{
-			dependencies = _jobHelper.Schedule(
-				JobType.Schedule, 64,
-				new UpdateAirPressureJob()
+			dependencies = _jobHelper.Schedule(settings.SynchronousOverrides.TempState, 64, new UpdateAirPressureJob()
 				{
 					Pressure = staticState.GetSliceLayer(AirPressure, j),
 					PressureInverse = staticState.GetSliceLayer(AirPressureInverse, j),
@@ -724,9 +728,7 @@ public struct TempState {
 				}, dependencies);
 		}
 
-		dependencies = _jobHelper.Schedule(
-			JobType.Schedule, 64,
-			new UpdateCloudJob()
+		dependencies = _jobHelper.Schedule(settings.SynchronousOverrides.TempState, 64, new UpdateCloudJob()
 			{
 				CloudVelocity = CloudVelocity,
 				CloudElevation = CloudElevation,
@@ -748,9 +750,7 @@ public struct TempState {
 
 			}, dependencies);
 
-		var surfaceStateJobHandle = _jobHelper.Schedule(
-			JobType.Schedule, 64,
-			new UpdateSurfaceStateJob()
+		var surfaceStateJobHandle = _jobHelper.Schedule(settings.SynchronousOverrides.TempState, 64, new UpdateSurfaceStateJob()
 			{
 				SurfaceAirTemperatureAbsolute = SurfaceAirTemperatureAbsolute,
 				SurfaceAreaAirIce = SurfaceAreaAirIce,
@@ -1127,6 +1127,16 @@ public struct TempState {
 		public void Execute(int i)
 		{
 			SoilFertility[i] = math.saturate(1.0f - math.exp10(-GroundCarbonFertility * GroundCarbon[i]));
+		}
+	}
+	[BurstCompile]
+	public struct UpdateGroundWaterSaturationJob : IJobParallelFor {
+		public NativeArray<float> GroundWaterSaturation;
+		[ReadOnly] public NativeArray<float> GroundWater;
+		[ReadOnly] public float GroundWaterMaxInverse;
+		public void Execute(int i)
+		{
+			GroundWaterSaturation[i] = GroundWater[i] * GroundWaterMaxInverse;
 		}
 	}
 }

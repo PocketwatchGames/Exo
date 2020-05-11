@@ -119,7 +119,7 @@ public class WorldSimComponent : MonoBehaviour
 		}
 
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
-		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempStates[0]);
+		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempStates[0], ref SimSettings);
 
 		OnTick?.Invoke();
 	}
@@ -235,7 +235,7 @@ public class WorldSimComponent : MonoBehaviour
 
 		editSimState(ref lastState, ref nextState);
 
-		_tempStates[_lastTempState].Update(ref nextState, ref WorldData, ref StaticState, default(JobHandle)).Complete();
+		_tempStates[_lastTempState].Update(ref nextState, ref WorldData, ref StaticState, ref SimSettings, default(JobHandle)).Complete();
 		OnTick?.Invoke();
 	}
 
