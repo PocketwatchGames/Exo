@@ -1754,6 +1754,7 @@ public class WorldSim {
 				new FluxFloraJob()
 				{
 					LatentHeatFlora = tempState.LatentHeatTerrain,
+					LatentHeatAir = tempState.LatentHeatAir,
 					EvaporatedWaterMass = tempState.FloraRespirationMassVapor,
 					SurfaceWaterDelta = tempState.FloraRespirationMassWater,
 					FloraMassDelta = tempState.FloraMassDelta,

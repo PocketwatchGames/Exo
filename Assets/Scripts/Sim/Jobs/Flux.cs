@@ -519,6 +519,7 @@ public struct FluxIceMeltJob : IJobParallelFor {
 [BurstCompile]
 public struct FluxFloraJob : IJobParallelFor {
 	public NativeArray<float> EvaporatedWaterMass;
+	public NativeSlice<float> LatentHeatAir;
 	public NativeSlice<float> LatentHeatFlora;
 	public NativeArray<float> CarbonDioxideDelta;
 	public NativeArray<float> OxygenDelta;
@@ -556,7 +557,8 @@ public struct FluxFloraJob : IJobParallelFor {
 	{
 		float floraMass = FloraMass[i];
 
-		float latentHeatFromFlora = 0;
+		float latentHeatFlora = 0;
+		float latentHeatAir = 0;
 		float evapMass = 0;
 		float floraMassDelta = 0;
 		float carbonDioxideDelta = 0;
@@ -650,13 +652,14 @@ public struct FluxFloraJob : IJobParallelFor {
 			evapMass = Atmosphere.GetEvaporationMass(AirMass[i], AirPressure[i], AirVapor[i], SurfaceWind[i], Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceElevation[i]), surfaceWaterDelta);
 			surfaceWaterDelta -= evapMass;
 
-			latentHeatFromFlora = -evapMass * WorldData.LatentHeatWaterVapor;
+			latentHeatAir = -evapMass * WorldData.LatentHeatWaterVapor;
 
 #endif
 		}
 
 		EvaporatedWaterMass[i] = evapMass;
-		LatentHeatFlora[i] += latentHeatFromFlora;
+		LatentHeatFlora[i] += latentHeatFlora;
+		LatentHeatAir[i] += latentHeatAir;
 		CarbonDioxideDelta[i] = carbonDioxideDelta;
 		OxygenDelta[i] = oxygenDelta;
 		FloraMassDelta[i] = floraMassDelta;
