@@ -11,6 +11,7 @@ using Unity.Collections;
 using System.Globalization;
 using UnityEngine.Profiling;
 using UnityEngine.VFX;
+using UnityEngine.Rendering;
 
 public class WorldView : MonoBehaviour {
 
@@ -119,6 +120,8 @@ public class WorldView : MonoBehaviour {
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
 	public FoliageManager Foliage;
+	public Volume StandardPostProcessingVolume;
+	public Volume OverlayPostProcessingVolume;
 
 	[Header("Debug")]
 	public bool RunSynchronously;
@@ -361,6 +364,9 @@ public class WorldView : MonoBehaviour {
 
 		LerpMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
 		Foliage.Update(ref _renderStates[_curRenderState]);
+
+		OverlayPostProcessingVolume.weight = (ActiveMeshOverlay != MeshOverlay.None) ? 1 : 0;
+		StandardPostProcessingVolume.weight = (ActiveMeshOverlay == MeshOverlay.None) ? 1 : 0;
 
 		if (ActiveWindOverlay != WindOverlay.None)
 		{

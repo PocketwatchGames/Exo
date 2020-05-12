@@ -63,12 +63,6 @@ public struct WorldData {
 	// Water vapor is responsible for 70% of solar absorption and about 60% of absorption of thermal radiation.
 	// carbon dioxide accounts for just 26% of the greenhouse effect.
 	// The total absorptivity of carbon dioxide at its current concentration in the atmosphere is 0.0017. Therefore, for an air temperature of 308 K (35 °C), carbon dioxide contributes with 13.5 K
-	public float ThermalAbsorptivityAir;
-	public float ThermalAbsorptivityWaterVapor;
-	public float ThermalAbsorptivityCarbonDioxide;
-	public float ThermalAbsorptivityOxygen;
-	public float ThermalAbsorptivityDust;
-	public float ThermalAbsorptivityCloud;
 
 	// emissivity values obtained here: https://www.thermoworks.com/emissivity-table
 	// and here https://www.aspen-electronics.com/uploads/3/7/1/2/37123419/emissivity-table.pdf

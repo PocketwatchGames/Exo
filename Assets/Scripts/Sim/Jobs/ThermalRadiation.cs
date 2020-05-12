@@ -100,7 +100,6 @@ public struct ThermalEnergyAbsorbedAirJob : IJobParallelFor {
 	[ReadOnly] public float PercentRadiationInAtmosphericWindow;
 	public void Execute(int i)
 	{
-		float emitted = ThermalRadiationEmitted[i];
 
 		float cloudElevation = CloudElevation[i];
 		float layerElevation = LayerElevation[i];

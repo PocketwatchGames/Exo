@@ -185,7 +185,6 @@ public struct UpdateMassAirJob : IJobParallelFor {
 	public NativeSlice<float> TemperaturePotential;
 	[ReadOnly] public NativeSlice<float> LastVaporMass;
 	[ReadOnly] public NativeSlice<float> LastCarbonDioxideMass;
-	[ReadOnly] public NativeSlice<float> LastTemperaturePotential;
 	[ReadOnly] public NativeSlice<float> LastDustMass;
 	[ReadOnly] public NativeSlice<float> CloudCondensation;
 	[ReadOnly] public NativeSlice<float> GroundCondensation;
@@ -214,7 +213,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 			newDustMass -= DustUp[dustLayerIndex];
 		}
 
-		float newTemperature = LastTemperaturePotential[i];
+		float newTemperature = TemperaturePotential[i];
 		float cloudCondensationInLayer = 0;
 		float cloudMassInLayer = 0;
 		if (CloudElevation[columnIndex] >= LayerElevation[i] && CloudElevation[columnIndex] < LayerElevation[i] + LayerHeight[i])
@@ -226,7 +225,7 @@ public struct UpdateMassAirJob : IJobParallelFor {
 
 		float specificHeatAir = Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i], cloudMassInLayer);
 		float specificHeatAirNew = Atmosphere.GetSpecificHeatAir(AirMass[i], VaporMass[i], cloudMassInLayer + cloudCondensationInLayer);
-		newTemperature = (newTemperature * specificHeatAir + LastTemperaturePotential[i] * cloudCondensationInLayer * WorldData.SpecificHeatWater) / specificHeatAirNew;
+		newTemperature = (newTemperature * specificHeatAir + TemperaturePotential[i] * cloudCondensationInLayer * WorldData.SpecificHeatWater) / specificHeatAirNew;
 
 
 		TemperaturePotential[i] = newTemperature;
