@@ -58,6 +58,8 @@ public class WorldView : MonoBehaviour {
 
 
 	[Header("Display")]
+	public int CloudLayers = 10;
+	public float CloudVerticalScale = 0.1f;
 	public float SlopeAmountTerrain = 3;
 	public float SlopeAmountCloud = 10;
 	public float TerrainScale = 100f;
@@ -108,18 +110,17 @@ public class WorldView : MonoBehaviour {
 	[Header("References")]
 	public WorldSimComponent Sim;
 	public GameplayManager GameplayManager;
+	public FoliageManager Foliage;
 	public GameObject Planet;
 	public GameObject Sun;
 	public GameObject Moon;
 	public GameObject SunLight;
-	public VisualEffect WindEffect;
 	public Material TerrainMaterial;
-	public Material WaterMaterial;
+	public Material WaterMaterial, WaterMaterialBack;
 	public Material CloudMaterialFront, CloudMaterialBack;
 	public Material OverlayMaterial;
 	public GameObject SelectionCirclePrefab;
 	public GameObject WindArrowPrefab;
-	public FoliageManager Foliage;
 	public Volume StandardPostProcessingVolume;
 	public Volume OverlayPostProcessingVolume;
 
@@ -131,7 +132,7 @@ public class WorldView : MonoBehaviour {
 	[HideInInspector] public int ActiveMeshLayerWater = 1;
 	[HideInInspector] public int ActiveMeshLayerAir = 1;
 	[HideInInspector] public DisplayState DisplayState;
-
+	[HideInInspector] public RenderState CurRenderState { get { return _renderStates[_curRenderState]; } }
 
 	private JobHelper _renderJobHelper;
 	private JobHelper _renderTerrainHelper;
@@ -164,12 +165,13 @@ public class WorldView : MonoBehaviour {
 	private Vector3[] _cloudNormals;
 
 	private Mesh _terrainMesh;
-	private Mesh _waterMesh;
-	private Mesh _cloudMesh;
+	private Mesh _waterMeshFront, _waterMeshBack;
+	private Mesh _cloudMeshFront, _cloudMeshBack;
 
 	private GameObject _terrainObject;
 	private GameObject _waterObject;
-	private GameObject _cloudObject;
+	private List<GameObject> _cloudObjectFront = new List<GameObject>();
+	private List<GameObject> _cloudObjectBack = new List<GameObject>();
 	private GameObject _selectionCircle;
 	private List<GameObject> _selectionCircleNeighbors;
 
@@ -181,7 +183,9 @@ public class WorldView : MonoBehaviour {
 	private bool _indicesInitialized;
 	private int[] _indices;
 	private int[] _indicesTerrain;
-	private int[] _indicesCloud;
+	private int[] _indicesTerrainBack;
+	private int[] _indicesCloudFront;
+	private int[] _indicesCloudBack;
 
 	private NativeArray<CVP> _normalizedRainbow;
 	private NativeArray<CVP> _normalizedBlueBlackRed;
@@ -195,6 +199,7 @@ public class WorldView : MonoBehaviour {
 	private float _skyboxExposureDest = 1;
 	private float _skyboxExposureStart = 1;
 	private float _skyboxExposureTime = 0;
+
 
 	public void Start()
 	{
@@ -218,14 +223,15 @@ public class WorldView : MonoBehaviour {
 											new CVP(Color.red, 1) },
 											Allocator.Persistent);
 
-
 		if (_terrainMesh)
 		{
 			GameObject.Destroy(_terrainMesh);
 		}
 		_terrainMesh = new Mesh();
-		_cloudMesh = new Mesh();
-		_waterMesh = new Mesh();
+		_cloudMeshFront = new Mesh();
+		_cloudMeshBack = new Mesh();
+		_waterMeshFront = new Mesh();
+		_waterMeshBack = new Mesh();
 
 		_terrainObject = new GameObject("Terrain Mesh");
 		_terrainObject.transform.SetParent(Planet.transform, false);
@@ -236,25 +242,55 @@ public class WorldView : MonoBehaviour {
 		terrainFilter.mesh = terrainCollider.sharedMesh = _terrainMesh;
 		_terrainMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
-		_waterObject = new GameObject("Water Mesh");
-		_waterObject.transform.SetParent(Planet.transform, false);
-		var waterFilter = _waterObject.AddComponent<MeshFilter>();
-		var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
-		var waterCollider = _waterObject.AddComponent<MeshCollider>();
-		waterSurfaceRenderer.material = WaterMaterial;
-		waterFilter.mesh = waterCollider.sharedMesh = _waterMesh;
-		waterSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-		_waterMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		_cloudMeshBack.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		for (int i = 0; i < CloudLayers; i++)
+		{
+			var c = new GameObject("Cloud Mesh");
+			c.transform.SetParent(Planet.transform, false);
+			var cloudFilter = c.AddComponent<MeshFilter>();
+			var cloudSurfaceRenderer = c.AddComponent<MeshRenderer>();
+			cloudSurfaceRenderer.material = CloudMaterialBack;
+			cloudFilter.mesh = _cloudMeshBack;
+			cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+			_cloudObjectBack.Add(c);
+		}
 
-		_cloudObject = new GameObject("Cloud Mesh");
-		_cloudObject.transform.SetParent(Planet.transform, false);
-		var cloudFilter = _cloudObject.AddComponent<MeshFilter>();
-		var cloudSurfaceRenderer = _cloudObject.AddComponent<MeshRenderer>();
-	//	cloudSurfaceRenderer.materials = new Material[] { CloudMaterialBack, CloudMaterialFront };
-		cloudSurfaceRenderer.material = CloudMaterialFront;
-		cloudFilter.mesh = _cloudMesh;
-		cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-		_cloudMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		{
+			_waterObject = new GameObject("Water Mesh Front");
+			_waterObject.transform.SetParent(Planet.transform, false);
+			var waterFilter = _waterObject.AddComponent<MeshFilter>();
+			var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
+			var waterCollider = _waterObject.AddComponent<MeshCollider>();
+			waterSurfaceRenderer.material = WaterMaterial;
+			waterFilter.mesh = waterCollider.sharedMesh = _waterMeshFront;
+			waterSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+			_waterMeshFront.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		}
+		{
+			_waterObject = new GameObject("Water Mesh Back");
+			_waterObject.transform.SetParent(Planet.transform, false);
+			var waterFilter = _waterObject.AddComponent<MeshFilter>();
+			var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
+			var waterCollider = _waterObject.AddComponent<MeshCollider>();
+			waterSurfaceRenderer.material = WaterMaterialBack;
+			waterFilter.mesh = waterCollider.sharedMesh = _waterMeshBack;
+			waterSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+			_waterMeshBack.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		}
+
+		_cloudMeshFront.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		for (int i = 0; i < CloudLayers; i++)
+		{
+			var c = new GameObject("Cloud Mesh");
+			c.transform.SetParent(Planet.transform, false);
+			var cloudFilter = c.AddComponent<MeshFilter>();
+			var cloudSurfaceRenderer = c.AddComponent<MeshRenderer>();
+			cloudSurfaceRenderer.material = CloudMaterialFront;
+			cloudFilter.mesh = _cloudMeshFront;
+			cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+			_cloudObjectFront.Add(c);
+		}
+
 
 		_selectionCircle = GameObject.Instantiate(SelectionCirclePrefab, Planet.transform);
 		_selectionCircle.transform.localScale *= 0.02f;
@@ -316,10 +352,13 @@ public class WorldView : MonoBehaviour {
 		
 		const int boundsSize = 1000;
 		_terrainMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
-		_waterMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
-		_cloudMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
+		_waterMeshFront.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
+		_waterMeshBack.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
+		_cloudMeshFront.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize)*1.1f);
+		_cloudMeshBack.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize) * 0.9f);
 
-		WindEffect.SetMesh("TerrainMesh", _terrainMesh);
+
+
 	}
 	public void OnDestroy()
 	{
@@ -416,7 +455,21 @@ public class WorldView : MonoBehaviour {
 		CloudMaterialFront.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
 		WaterMaterial.SetFloat("Vector1_2C57E502", _renderStates[_curRenderState].Ticks); // sim time
 
+		for (int i = 0; i < _cloudObjectFront.Count; i++)
+		{
+			float h = (float)i / _cloudObjectFront.Count;
+			_cloudObjectFront[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_E31C0ED2", h * CloudVerticalScale);// height multiplier
+			_cloudObjectFront[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_97917029", 1.0f - h);// opacity multiplier
+		}
+		for (int i = 0; i < _cloudObjectBack.Count; i++)
+		{
+			float h = (float)i / _cloudObjectBack.Count;
+			_cloudObjectBack[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_E31C0ED2", h * CloudVerticalScale);// height multiplier
+			_cloudObjectBack[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_97917029", 1.0f - h);// opacity multiplier
+		}
+
 	}
+
 	public void StartLerp(float lerpTime)
 	{
 		_tickLerpTime = lerpTime;
@@ -428,7 +481,7 @@ public class WorldView : MonoBehaviour {
 
 		var displayJob = default(JobHandle);
 		var lastDisplay = DisplayState;
-		if (Sim.SimSettings.CollectOverlay)
+	//	if (Sim.SimSettings.CollectOverlay)
 		{
 			DisplayState = new DisplayState();
 			DisplayState.Init(Sim.StaticState.Count, ref Sim.WorldData);
@@ -588,7 +641,7 @@ public class WorldView : MonoBehaviour {
 			dependencies.Add((new LerpJobfloat { Progress = t, Out = state.CloudHeight, Start = lastState.CloudHeight, End = nextState.CloudHeight }).Schedule(Sim.CellCount, _batchCount));
 			dependencies.Add((new LerpJobColor32 { Progress = t, Out = state.CloudColor, Start = lastState.CloudColor, End = nextState.CloudColor }).Schedule(Sim.CellCount, _batchCount));
 		}
-		if (ActiveWindOverlay != WindOverlay.None)
+	//	if (ActiveWindOverlay != WindOverlay.None)
 		{
 			dependencies.Add((new LerpJobfloat3 { Progress = t, Out = state.VelocityHorizontal, Start = lastState.VelocityHorizontal, End = nextState.VelocityHorizontal }).Schedule(Sim.CellCount, _batchCount));
 			dependencies.Add((new LerpJobfloat { Progress = t, Out = state.VelocityVertical, Start = lastState.VelocityVertical, End = nextState.VelocityVertical }).Schedule(Sim.CellCount, _batchCount));
@@ -639,32 +692,43 @@ public class WorldView : MonoBehaviour {
 		dependencies.Dispose();
 
 		_terrainMesh.SetVertices(_terrainVerticesArray);
-		_waterMesh.SetVertices(_waterVerticesArray);
-		_waterMesh.SetNormals(_waterNormalsArray);
+		_waterMeshFront.SetVertices(_waterVerticesArray);
+		_waterMeshFront.SetNormals(_waterNormalsArray);
+		_waterMeshBack.SetVertices(_waterVerticesArray);
+		_waterMeshBack.SetNormals(_waterNormalsArray);
 
-		_cloudMesh.SetVertices(_cloudVerticesArray);
-		_cloudMesh.SetColors(_cloudColorsArray);
-		_cloudMesh.SetNormals(_cloudNormalsArray);
+		_cloudMeshFront.SetVertices(_cloudVerticesArray);
+		_cloudMeshFront.SetColors(_cloudColorsArray);
+		_cloudMeshFront.SetNormals(_cloudNormalsArray);
+
+		_cloudMeshBack.SetVertices(_cloudVerticesArray);
+		_cloudMeshBack.SetColors(_cloudColorsArray);
+		_cloudMeshBack.SetNormals(_cloudNormalsArray);
 
 		if (ActiveMeshOverlay == MeshOverlay.None)
 		{
 			_terrainMesh.SetUVs(1, _terrainColorsArray1);
 			_terrainMesh.SetUVs(2, _terrainColorsArray2);
-			_waterMesh.SetUVs(1, _waterColorsArray);
-			_waterMesh.SetUVs(2, _waterCurrentArray);
+			_waterMeshFront.SetUVs(1, _waterColorsArray);
+			_waterMeshFront.SetUVs(2, _waterCurrentArray);
+			_waterMeshBack.SetUVs(1, _waterColorsArray);
+			_waterMeshBack.SetUVs(2, _waterCurrentArray);
 		}
 		else
 		{
 			_terrainMesh.SetColors(_overlayColorsArray);
-			_waterMesh.SetColors(_overlayColorsArray);
+			_waterMeshFront.SetColors(_overlayColorsArray);
+			_waterMeshBack.SetColors(_overlayColorsArray);
 		}
 
 
 		if (!_indicesInitialized)
 		{
 			_terrainMesh.SetTriangles(_indicesTerrain, 0);
-			_waterMesh.SetTriangles(_indicesTerrain, 0);
-			_cloudMesh.SetTriangles(_indicesCloud, 0);
+			_waterMeshFront.SetTriangles(_indicesTerrain, 0);
+			_waterMeshBack.SetTriangles(_indicesTerrainBack, 0);
+			_cloudMeshFront.SetTriangles(_indicesCloudFront, 0);
+			_cloudMeshBack.SetTriangles(_indicesCloudBack, 0);
 			_indicesInitialized = true;
 		}
 
@@ -686,7 +750,8 @@ public class WorldView : MonoBehaviour {
 	}
 	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
-		_cloudObject.SetActive(toggle.isOn);
+		foreach (var c in _cloudObjectFront) { c.SetActive(toggle.isOn); }
+		foreach (var c in _cloudObjectBack) { c.SetActive(toggle.isOn); }
 	}
 	public void OnFoliageDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
@@ -751,8 +816,10 @@ public class WorldView : MonoBehaviour {
 		_terrainVerts = new NativeArray<float3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_cloudVerts = new NativeArray<float3>(Sim.CellCount * VertsPerCloud, Allocator.Persistent);
 		List<int> indices = new List<int>();
-		List<int> indicesCloud = new List<int>();
+		List<int> indicesCloudFront = new List<int>();
+		List<int> indicesCloudBack = new List<int>();
 		List<int> indicesTerrain = new List<int>();
+		List<int> indicesTerrainBack = new List<int>();
 		for (int i=0;i< icosphere.Vertices.Length;i++)
 		{
 			float3 pos = icosphere.Vertices[i];
@@ -790,9 +857,17 @@ public class WorldView : MonoBehaviour {
 				indicesTerrain.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
 				indicesTerrain.Add(i * VertsPerCell + 1 + j);
 
-				indicesCloud.Add(i * VertsPerCell);
-				indicesCloud.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
-				indicesCloud.Add(i * VertsPerCell + 1 + j);
+				indicesTerrainBack.Add(i * VertsPerCell);
+				indicesTerrainBack.Add(i * VertsPerCell + 1 + j);
+				indicesTerrainBack.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
+
+				indicesCloudFront.Add(i * VertsPerCell);
+				indicesCloudFront.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
+				indicesCloudFront.Add(i * VertsPerCell + 1 + j);
+
+				indicesCloudBack.Add(i * VertsPerCell);
+				indicesCloudBack.Add(i * VertsPerCell + 1 + j);
+				indicesCloudBack.Add(i * VertsPerCell + 1 + ((j + 1) % neighborCount));
 
 				indices.Add(i * VertsPerCloud);
 				indices.Add(i * VertsPerCloud + 1 + ((j + 1) % neighborCount));
@@ -810,9 +885,17 @@ public class WorldView : MonoBehaviour {
 							indicesTerrain.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
 							indicesTerrain.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
 
-							indicesCloud.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
-							indicesCloud.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
-							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
+							indicesTerrainBack.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
+							indicesTerrainBack.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
+							indicesTerrainBack.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
+
+							indicesCloudFront.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
+							indicesCloudFront.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
+							indicesCloudFront.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
+
+							indicesCloudBack.Add(i * VertsPerCell + 1 + 2 * MaxNeighbors + ((j - 1 + neighborCount) % neighborCount));
+							indicesCloudBack.Add(neighborIndex1 * VertsPerCell + 1 + MaxNeighbors + k);
+							indicesCloudBack.Add(i * VertsPerCell + 1 + MaxNeighbors + j);
 
 							break;
 						}
@@ -829,9 +912,17 @@ public class WorldView : MonoBehaviour {
 							indicesTerrain.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
 							indicesTerrain.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
 
-							indicesCloud.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
-							indicesCloud.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
-							indicesCloud.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
+							indicesTerrainBack.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
+							indicesTerrainBack.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
+							indicesTerrainBack.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
+
+							indicesCloudFront.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
+							indicesCloudFront.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
+							indicesCloudFront.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
+
+							indicesCloudBack.Add(i * VertsPerCell + 1 + 3 * MaxNeighbors + j);
+							indicesCloudBack.Add(neighborIndex1 * VertsPerCell + 1 + 3 * MaxNeighbors + neighbor1);
+							indicesCloudBack.Add(neighborIndex2 * VertsPerCell + 1 + 3 * MaxNeighbors + k);
 
 							break;
 						}
@@ -842,7 +933,9 @@ public class WorldView : MonoBehaviour {
 		}
 		_indices = indices.ToArray();
 		_indicesTerrain = indicesTerrain.ToArray();
-		_indicesCloud = indicesCloud.ToArray();
+		_indicesTerrainBack = indicesTerrainBack.ToArray();
+		_indicesCloudFront = indicesCloudFront.ToArray();
+		_indicesCloudBack = indicesCloudBack.ToArray();
 	}
 
 	private bool GetMeshOverlayData(MeshOverlay activeOverlay, ref SimState simState, ref TempState dependentState, ref DisplayState display, ref StaticState staticState, out MeshOverlayData overlay)

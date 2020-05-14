@@ -94,7 +94,11 @@ public class WorldSimComponent : MonoBehaviour
 		WorldData = JsonUtility.FromJson<WorldData>(WorldDataAsset.text);
 		WorldData.Init();
 
-		Icosphere = new Icosphere(Subdivisions);
+
+		var icosphereObject = new GameObject();
+		Icosphere = icosphereObject.AddComponent<Icosphere>();
+		Icosphere.Init(Subdivisions);
+
 		CellCount = Icosphere.Vertices.Length;
 		InverseCellCount = 1.0f / CellCount;
 

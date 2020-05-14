@@ -8,13 +8,17 @@ using UnityEngine;
 using Unity.Mathematics;
 using Unity.Collections;
 
-public class Icosphere {
+public class Icosphere : MonoBehaviour {
 
-	public List<Polygon> Polygons = new List<Polygon>();
-	public NativeArray<float3> Vertices = new NativeArray<float3>();
-	public NativeArray<int> Neighbors;
 
-	public Icosphere(int recursions)
+	[HideInInspector] public List<Polygon> Polygons = new List<Polygon>();
+	[HideInInspector] public NativeArray<float3> Vertices = new NativeArray<float3>();
+	[HideInInspector] public NativeArray<int> Neighbors;
+	[HideInInspector] public MeshCollider MeshCollider;
+
+	private List<int> _indices = new List<int>();
+
+	public void Init(int recursions)
 	{
 		Polygons = new List<Polygon>();
 
@@ -67,6 +71,25 @@ public class Icosphere {
 
 		Vertices = new NativeArray<float3>(vertexList.ToArray(), Allocator.Persistent);
 		InitNeighbors();
+
+		for (int i = 0; i < Polygons.Count; i++)
+		{
+			_indices.Add(Polygons[i].m_Vertices[0]);
+			_indices.Add(Polygons[i].m_Vertices[2]);
+			_indices.Add(Polygons[i].m_Vertices[1]);
+		}
+
+		var mesh = new Mesh();
+		mesh.SetVertices(Vertices);
+		mesh.SetTriangles(_indices.ToArray(), 0);
+		mesh.RecalculateBounds();
+
+		var filter = gameObject.AddComponent<MeshFilter>();
+		filter.sharedMesh = mesh;
+
+		MeshCollider = gameObject.AddComponent<MeshCollider>();
+		MeshCollider.sharedMesh = null;
+		MeshCollider.sharedMesh = mesh;
 	}
 
 	public void Dispose()

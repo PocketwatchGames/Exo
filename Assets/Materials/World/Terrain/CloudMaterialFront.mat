@@ -103,10 +103,13 @@ Material:
     - Vector1_31593DAB: 0.01
     - Vector1_4150CA4C: 1
     - Vector1_615A9D35: 0
+    - Vector1_66DD3A6A: 0.25
     - Vector1_7C5C456F: 1
     - Vector1_8BF67E34: 0
+    - Vector1_97917029: 1
     - Vector1_A74332C0: 1
     - Vector1_C3F63C53: 1
+    - Vector1_E31C0ED2: 1
     - Vector1_F21F5787: 0.5
     - _Alpha: 1
     - _AlphaCutoffEnable: 1
