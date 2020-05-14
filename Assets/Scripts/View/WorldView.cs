@@ -122,7 +122,7 @@ public class WorldView : MonoBehaviour {
 	public GameObject Moon;
 	public GameObject SunLight;
 	public Material TerrainMaterial;
-	public Material WaterMaterial, WaterMaterialBack;
+	public Material WaterMaterialFront, WaterMaterialBack;
 	public Material CloudMaterialFront, CloudMaterialBack;
 	public Material OverlayMaterial;
 	public GameObject SelectionCirclePrefab;
@@ -175,7 +175,7 @@ public class WorldView : MonoBehaviour {
 	private Mesh _cloudMeshFront, _cloudMeshBack;
 
 	private GameObject _terrainObject;
-	private GameObject _waterObject;
+	private GameObject _waterObjectFront, _waterObjectBack;
 	private List<GameObject> _cloudObjectFront = new List<GameObject>();
 	private List<GameObject> _cloudObjectBack = new List<GameObject>();
 	private GameObject _selectionCircle;
@@ -262,22 +262,22 @@ public class WorldView : MonoBehaviour {
 		}
 
 		{
-			_waterObject = new GameObject("Water Mesh Front");
-			_waterObject.transform.SetParent(Planet.transform, false);
-			var waterFilter = _waterObject.AddComponent<MeshFilter>();
-			var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
-			var waterCollider = _waterObject.AddComponent<MeshCollider>();
-			waterSurfaceRenderer.material = WaterMaterial;
+			_waterObjectFront = new GameObject("Water Mesh Front");
+			_waterObjectFront.transform.SetParent(Planet.transform, false);
+			var waterFilter = _waterObjectFront.AddComponent<MeshFilter>();
+			var waterSurfaceRenderer = _waterObjectFront.AddComponent<MeshRenderer>();
+			var waterCollider = _waterObjectFront.AddComponent<MeshCollider>();
+			waterSurfaceRenderer.material = WaterMaterialFront;
 			waterFilter.mesh = waterCollider.sharedMesh = _waterMeshFront;
 			waterSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 			_waterMeshFront.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 		}
 		{
-			_waterObject = new GameObject("Water Mesh Back");
-			_waterObject.transform.SetParent(Planet.transform, false);
-			var waterFilter = _waterObject.AddComponent<MeshFilter>();
-			var waterSurfaceRenderer = _waterObject.AddComponent<MeshRenderer>();
-			var waterCollider = _waterObject.AddComponent<MeshCollider>();
+			_waterObjectBack = new GameObject("Water Mesh Back");
+			_waterObjectBack.transform.SetParent(Planet.transform, false);
+			var waterFilter = _waterObjectBack.AddComponent<MeshFilter>();
+			var waterSurfaceRenderer = _waterObjectBack.AddComponent<MeshRenderer>();
+			var waterCollider = _waterObjectBack.AddComponent<MeshCollider>();
 			waterSurfaceRenderer.material = WaterMaterialBack;
 			waterFilter.mesh = waterCollider.sharedMesh = _waterMeshBack;
 			waterSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -459,7 +459,7 @@ public class WorldView : MonoBehaviour {
 
 		CloudMaterialBack.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
 		CloudMaterialFront.SetFloat("Vector1_E122B9B2", Sim.TimeScale);// sim time scale
-		WaterMaterial.SetFloat("Vector1_2C57E502", _renderStates[_curRenderState].Ticks); // sim time
+		WaterMaterialFront.SetFloat("Vector1_2C57E502", _renderStates[_curRenderState].Ticks); // sim time
 
 		for (int i = 0; i < _cloudObjectFront.Count; i++)
 		{
@@ -726,15 +726,14 @@ public class WorldView : MonoBehaviour {
 			_terrainMesh.SetUVs(2, _terrainColorsArray2);
 			_waterMeshFront.SetUVs(1, _waterColorsArray);
 			_waterMeshFront.SetUVs(2, _waterCurrentArray);
-			_waterMeshBack.SetUVs(1, _waterColorsArray);
-			_waterMeshBack.SetUVs(2, _waterCurrentArray);
 		}
 		else
 		{
 			_terrainMesh.SetColors(_overlayColorsArray);
 			_waterMeshFront.SetColors(_overlayColorsArray);
-			_waterMeshBack.SetColors(_overlayColorsArray);
 		}
+		_waterMeshBack.SetUVs(1, _waterColorsArray);
+		_waterMeshBack.SetUVs(2, _waterCurrentArray);
 
 
 		if (!_indicesInitialized)
@@ -761,7 +760,8 @@ public class WorldView : MonoBehaviour {
 
 	public void OnWaterDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
-		_waterObject.SetActive(toggle.isOn);
+		_waterObjectFront.SetActive(toggle.isOn);
+		_waterObjectBack.SetActive(toggle.isOn);
 	}
 	public void OnCloudDisplayToggled(UnityEngine.UI.Toggle toggle)
 	{
@@ -1105,7 +1105,7 @@ public class WorldView : MonoBehaviour {
 		ActiveMeshOverlay = o;
 
 		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
-		_waterObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterial : OverlayMaterial;
+		_waterObjectFront.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterialFront : OverlayMaterial;
 		Sim.SimSettings.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
 
 		StartLerp(0.1f);

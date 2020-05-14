@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 1598314396}
-  m_IndirectSpecularColor: {r: 0.0022178374, g: 0.002123111, b: 0.0020811418, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -19178,13 +19178,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LerpStates: 1
   CloudLayers: 20
-  CloudVerticalScale: 0.1
-  SlopeAmountTerrain: 3
-  SlopeAmountCloud: 10
-  TerrainScale: 250
-  CloudHeight: 0.1
-  DisplayCloudMin: 0.5
+  CloudVerticalScale: 0.075
+  CloudLayerOpacityPower: 0.5
+  CloudHeight: 0.2
+  DisplayCloudMin: 0.25
+  DisplayCloudPower: 3
   AtmosphereScale: 600
+  SlopeAmountCloud: 10
+  SlopeAmountTerrain: 3
+  TerrainScale: 250
   DisplayFloraWeight: 100
   DisplaySandWeight: 1
   DisplaySoilWeight: 1
