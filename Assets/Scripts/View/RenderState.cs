@@ -130,7 +130,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public float DisplayFloraWeight;
 	[ReadOnly] public float DisplayCloudHeight;
 	[ReadOnly] public float DisplayCloudMin;
-	[ReadOnly] public float DisplayCloudRangeInverse;
+	[ReadOnly] public float DisplayCloudPower;
 	[ReadOnly] public float PlanktonPower;
 	[ReadOnly] public float PlanktonMax;
 	[ReadOnly] public int PlanktonLevels;
@@ -199,8 +199,9 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		float waterTemperatureColor = math.floor(WaterTemperatureLevels * math.saturate((WaterTemperature[i] - WorldData.FreezingTemperature) / WaterTemperatureMax)) / WaterTemperatureLevels;
 		waterColor = new float4(plankton, iceCoverage, waterTemperatureColor, waterDepth);
 
-		float cloudVolume = CloudMass[i] * 2;
-		float cloudCoverage = math.saturate((math.pow(cloudVolume, 0.6667f) - DisplayCloudMin) * DisplayCloudRangeInverse);
+		//float cloudVolume = CloudMass[i] * 2;
+		//float cloudCoverage = math.saturate((math.pow(cloudVolume, 0.6667f) - DisplayCloudMin) * DisplayCloudRangeInverse);
+		float cloudCoverage = math.pow((CloudAbsorption[i] - DisplayCloudMin) / (1.0f - DisplayCloudMin), DisplayCloudPower);
 
 		float dust = 0;
 		for (int j = 0; j < AirLayers; j++)
@@ -209,14 +210,14 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		}
 		float dustCoverage = math.saturate(math.sqrt(dust * DustMaxInverse));
 		cloudColor = Color32.Lerp(new Color32(255, 255, 255, 255), new Color32(0, 0, 0, 255), dustCoverage);
-		cloudColor.a = (byte)(255 * math.max(dustCoverage, cloudCoverage * 0.75f));
+		cloudColor.a = (byte)(255 * math.max(dustCoverage, cloudCoverage));
 
 		terrainElevation = ((elevation + roughness) * TerrainScale + PlanetRadius) / PlanetRadius;
 		waterElevation = ((waterDepth == 0) ? 0.99f : ((elevation + waterDepth) * TerrainScale + PlanetRadius) / PlanetRadius);
 		surfacePosition = icosphere * ((surfaceElevation + 50) * TerrainScale + PlanetRadius) / PlanetRadius;
 		cloudElevation = (5000 * TerrainScale + PlanetRadius) / PlanetRadius;
-		cloudHeight = cloudCoverage == 0 ? 0 : (cloudVolume / cloudCoverage * DisplayCloudHeight);
-
+		//cloudHeight = cloudCoverage == 0 ? 0 : (cloudVolume / cloudCoverage * DisplayCloudHeight);
+		cloudHeight = 0;
 
 		if (WindOverlayActive)
 		{

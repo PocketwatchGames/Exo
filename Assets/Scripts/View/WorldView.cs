@@ -57,15 +57,21 @@ public class WorldView : MonoBehaviour {
 	public bool LerpStates = true;
 
 
-	[Header("Display")]
+	[Header("Clouds")]
 	public int CloudLayers = 10;
 	public float CloudVerticalScale = 0.1f;
-	public float SlopeAmountTerrain = 3;
-	public float SlopeAmountCloud = 10;
-	public float TerrainScale = 100f;
+	public float CloudLayerOpacityPower = 0.5f;
 	public float CloudHeight = 0.1f;
 	public float DisplayCloudMin = 0.1f;
+	public float DisplayCloudPower = 0.5f;
 	public float AtmosphereScale = 1000f;
+	public float SlopeAmountCloud = 10;
+
+	[Header("Terrain")]
+	public float SlopeAmountTerrain = 3;
+	public float TerrainScale = 100f;
+
+	[Header("Display")]
 	public float DisplayFloraWeight = 1;
 	public float DisplaySandWeight = 1;
 	public float DisplaySoilWeight = 1;
@@ -250,7 +256,7 @@ public class WorldView : MonoBehaviour {
 			var cloudFilter = c.AddComponent<MeshFilter>();
 			var cloudSurfaceRenderer = c.AddComponent<MeshRenderer>();
 			cloudSurfaceRenderer.material = CloudMaterialBack;
-			cloudFilter.mesh = _cloudMeshBack;
+			cloudFilter.sharedMesh = _cloudMeshBack;
 			cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 			_cloudObjectBack.Add(c);
 		}
@@ -286,7 +292,7 @@ public class WorldView : MonoBehaviour {
 			var cloudFilter = c.AddComponent<MeshFilter>();
 			var cloudSurfaceRenderer = c.AddComponent<MeshRenderer>();
 			cloudSurfaceRenderer.material = CloudMaterialFront;
-			cloudFilter.mesh = _cloudMeshFront;
+			cloudFilter.sharedMesh = _cloudMeshFront;
 			cloudSurfaceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 			_cloudObjectFront.Add(c);
 		}
@@ -349,7 +355,7 @@ public class WorldView : MonoBehaviour {
 		//		BuildRenderState(ref Sim.ActiveSimState, ref _tempState, ref DisplayState, ref _renderStates[0], ref Sim.WorldData, ref Sim.StaticState);
 
 		LerpMesh(ref _renderStates[_lastRenderState], ref _renderStates[_nextRenderState], ref _renderStates[_curRenderState]);
-		
+
 		const int boundsSize = 1000;
 		_terrainMesh.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
 		_waterMeshFront.bounds = new Bounds(Planet.transform.position, new Vector3(boundsSize, boundsSize, boundsSize));
@@ -458,14 +464,23 @@ public class WorldView : MonoBehaviour {
 		for (int i = 0; i < _cloudObjectFront.Count; i++)
 		{
 			float h = (float)i / _cloudObjectFront.Count;
+			//float opacityMultiplier = h;
+			//if (opacityMultiplier < CloudCurveHeight)
+			//{
+			//	opacityMultiplier *= math.pow(opacityMultiplier / CloudCurveHeight, CloudCurvePower) * CloudCurveMax + (1.0f - CloudCurveMax);
+			//}
+			//else
+			//{
+			//	opacityMultiplier *= math.pow((opacityMultiplier - CloudCurveHeight) / (1.0f - CloudCurveHeight), CloudCurvePower) * CloudCurveMax + (1.0f - CloudCurveMax);
+			//}
 			_cloudObjectFront[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_E31C0ED2", h * CloudVerticalScale);// height multiplier
-			_cloudObjectFront[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_97917029", 1.0f - h);// opacity multiplier
+			_cloudObjectFront[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_97917029", math.pow(h, CloudLayerOpacityPower));// opacity min
 		}
 		for (int i = 0; i < _cloudObjectBack.Count; i++)
 		{
 			float h = (float)i / _cloudObjectBack.Count;
 			_cloudObjectBack[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_E31C0ED2", h * CloudVerticalScale);// height multiplier
-			_cloudObjectBack[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_97917029", 1.0f - h);// opacity multiplier
+			_cloudObjectBack[i].GetComponent<MeshRenderer>().material.SetFloat("Vector1_97917029", math.pow(h, CloudLayerOpacityPower));// opacity min
 		}
 
 	}
@@ -598,7 +613,7 @@ public class WorldView : MonoBehaviour {
 				DisplaySoilWeight = DisplaySoilWeight,
 				DisplayCloudHeight = CloudHeight,
 				DisplayCloudMin = DisplayCloudMin,
-				DisplayCloudRangeInverse = 1.0f / (1.0f - DisplayCloudMin),
+				DisplayCloudPower = DisplayCloudPower,
 				PlanktonMax = DisplayPlanktonMax,
 				PlanktonPower = DisplayPlanktonPower,
 				PlanktonLevels = DisplayPlanktonLevels,
