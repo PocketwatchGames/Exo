@@ -38,7 +38,8 @@ public class WorldView : MonoBehaviour {
 		CrustDepth,
 		MagmaMass,
 		DivergenceAir,
-		DivergenceWater
+		DivergenceWater,
+		PlateTectonics
 	}
 
 	public enum WindOverlay {
@@ -70,6 +71,7 @@ public class WorldView : MonoBehaviour {
 	[Header("Terrain")]
 	public float SlopeAmountTerrain = 3;
 	public float TerrainScale = 100f;
+	public List<Color> PlateColors;
 
 	[Header("Display")]
 	public float DisplayFloraWeight = 1;
@@ -193,6 +195,7 @@ public class WorldView : MonoBehaviour {
 	private int[] _indicesCloudFront;
 	private int[] _indicesCloudBack;
 
+	private NativeArray<CVP> _plateColors;
 	private NativeArray<CVP> _normalizedRainbow;
 	private NativeArray<CVP> _normalizedBlueBlackRed;
 	private NativeArray<float3> _terrainVerts;
@@ -211,8 +214,20 @@ public class WorldView : MonoBehaviour {
 	{
 		Sim.OnTick += OnSimTick;
 		GameplayManager.OnSetActiveCell += OnSetActiveCell;
+		GameplayManager.OnSetActiveTool += OnSetActiveTool;
 
 		_normalizedRainbow = new NativeArray<CVP>(new CVP[] {
+											new CVP(Color.black, 0),
+											new CVP(new Color(0.25f,0,0.5f,1), 1.0f / 7),
+											new CVP(Color.blue, 2.0f / 7),
+											new CVP(Color.green, 3.0f / 7),
+											new CVP(Color.yellow, 4.0f / 7),
+											new CVP(Color.red, 5.0f / 7),
+											new CVP(Color.magenta, 6.0f / 7),
+											new CVP(Color.white, 1),
+											},
+											Allocator.Persistent);
+		_plateColors = new NativeArray<CVP>(new CVP[] {
 											new CVP(Color.black, 0),
 											new CVP(new Color(0.25f,0,0.5f,1), 1.0f / 7),
 											new CVP(Color.blue, 2.0f / 7),
@@ -372,6 +387,7 @@ public class WorldView : MonoBehaviour {
 
 		_normalizedRainbow.Dispose();
 		_normalizedBlueBlackRed.Dispose();
+		_plateColors.Dispose();
 
 		for (int i=0;i<_renderStateCount;i++)
 		{
@@ -509,7 +525,7 @@ public class WorldView : MonoBehaviour {
 
 		displayJob = JobHandle.CombineDependencies(displayJob, buildRenderStateJob, foliageJob);
 		displayJob.Complete();
-		if (Sim.SimSettings.CollectOverlay)
+	//	if (Sim.SimSettings.CollectOverlay)
 		{
 			lastDisplay.Dispose();
 		}
@@ -1016,7 +1032,10 @@ public class WorldView : MonoBehaviour {
 				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceAir,ActiveMeshLayerAir));
 				return true;
 			case MeshOverlay.DivergenceWater:
-				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceWater,ActiveMeshLayerWater));
+				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceWater, ActiveMeshLayerWater));
+				return true;
+			case MeshOverlay.PlateTectonics:
+				overlay = new MeshOverlayData(0, 11, _normalizedRainbow, display.Plate);
 				return true;
 		}
 		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
@@ -1098,6 +1117,11 @@ public class WorldView : MonoBehaviour {
 				}
 			}
 		}
+	}
+
+	private void OnSetActiveTool(GameTool tool)
+	{
+		SetActiveMeshOverlay(tool != null ? tool.Overlay : MeshOverlay.None);
 	}
 
 	public void SetActiveMeshOverlay(MeshOverlay o)

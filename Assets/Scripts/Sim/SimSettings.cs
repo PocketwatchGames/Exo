@@ -73,6 +73,7 @@ public struct SimSettings {
 		public bool DiffusionAir;
 		public bool DiffusionWater;
 		public bool TempState;
+		public bool Tools;
 	}
 
 }

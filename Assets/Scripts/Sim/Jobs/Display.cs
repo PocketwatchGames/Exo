@@ -64,6 +64,7 @@ public struct DisplayState {
 	public double GlobalAirMass;
 	public float GlobalCloudMass;
 
+	public NativeArray<float> Plate;
 	public NativeArray<float> SolarRadiationAbsorbedSurface;
 	public NativeArray<float> Rainfall;
 	public NativeArray<float> CondensationCloud;
@@ -94,6 +95,7 @@ public struct DisplayState {
 	public void Init(int count, ref WorldData worldData)
 	{
 		_initialized = true;
+		Plate = new NativeArray<float>(count, Allocator.Persistent);
 		SolarRadiationAbsorbedSurface = new NativeArray<float>(count, Allocator.Persistent);
 		Rainfall = new NativeArray<float>(count, Allocator.Persistent);
 		Evaporation = new NativeArray<float>(count, Allocator.Persistent);
@@ -135,6 +137,7 @@ public struct DisplayState {
 		{
 			return;
 		}
+		Plate.Dispose();
 		SolarRadiationAbsorbedSurface.Dispose();
 		Rainfall.Dispose();
 		CondensationCloud.Dispose();
@@ -257,6 +260,7 @@ public struct DisplayState {
 			JobType.Schedule, 64,
 			new UpdateDisplayJob()
 			{
+				DisplayPlate = display.Plate,
 				SolarRadiationAbsorbedSurface = display.SolarRadiationAbsorbedSurface,
 				DisplayEvaporation = display.Evaporation,
 				DisplayPrecipitation = display.Rainfall,
@@ -265,6 +269,7 @@ public struct DisplayState {
 				EnthalpyIce = display.EnthalpyIce,
 				EnthalpyGroundWater = display.EnthalpyGroundWater,
 
+				Plate = nextState.Plate,
 				SolarRadiationInTerrain = tempState.SolarRadiationInTerrain,
 				SolarRadiationInIce = tempState.SolarRadiationInIce,
 				SolarRadiationInWaterSurface = tempState.SolarRadiationInWater,
@@ -388,6 +393,7 @@ public struct DisplayState {
 
 	[BurstCompile]
 	private struct UpdateDisplayJob : IJobParallelFor {
+		public NativeArray<float> DisplayPlate;
 		public NativeArray<float> SolarRadiationAbsorbedSurface;
 		public NativeArray<float> DisplayPrecipitation;
 		public NativeArray<float> DisplayEvaporation;
@@ -395,6 +401,7 @@ public struct DisplayState {
 		public NativeArray<float> EnthalpyCloud;
 		public NativeArray<float> EnthalpyIce;
 		public NativeArray<float> EnthalpyGroundWater;
+		[ReadOnly] public NativeArray<sbyte> Plate;
 		[ReadOnly] public NativeArray<float> SolarRadiationInTerrain;
 		[ReadOnly] public NativeArray<float> SolarRadiationInIce;
 		[ReadOnly] public NativeArray<float> SolarRadiationInWaterSurface;
@@ -413,6 +420,7 @@ public struct DisplayState {
 		[ReadOnly] public float HeatingDepth;
 		public void Execute(int i)
 		{
+			DisplayPlate[i] = Plate[i];
 			SolarRadiationAbsorbedSurface[i] = SolarRadiationInTerrain[i] + SolarRadiationInIce[i] + SolarRadiationInWaterSurface[i];
 			DisplayPrecipitation[i] = Precipitation[i];
 			DisplayEvaporation[i] = EvaporationWater[i] + EvaporationFlora[i];

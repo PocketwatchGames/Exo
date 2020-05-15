@@ -121,6 +121,8 @@ public class WorldSim {
 		float coriolisTerm = 2 * lastState.PlanetState.SpinSpeed;
 		#endregion
 
+		tickJobHandle = Utils.MemCopy(nextState.Plate, lastState.Plate, tickJobHandle);
+
 		DoEnergyCycle(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref staticState, ref worldData, ref settings);
 
 		DoStateChange(energyJobHandles, tickJobHandle, ref nextState, ref lastState, ref tempState, ref staticState, ref worldData, ref settings);

@@ -340,6 +340,29 @@ public static class WorldGen {
 		var RelativeHumidity = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 		var WaterLayerElevation = new NativeArray<float>(staticState.Count, Allocator.TempJob);
 
+		Queue<int> openList = new Queue<int>();
+		Utils.MemsetArray<sbyte>(staticState.Count, default(JobHandle), state.Plate, -1).Complete();
+		for (int i=0;i<worldGenData.NumPlates;i++) {
+			int plateStart = _random.Next(staticState.Count);
+			openList.Enqueue(plateStart);
+			state.Plate[plateStart] = (sbyte)i;
+		}
+		while (openList.Count > 0)
+		{
+			int index = openList.Dequeue();
+			sbyte p = state.Plate[index];
+			int neighborCount = StaticState.GetMaxNeighbors(index, staticState.Neighbors);
+			for (int i = 0; i < neighborCount; i++)
+			{
+				int n = staticState.Neighbors[i+index*StaticState.MaxNeighbors];
+				if (state.Plate[n] < 0)
+				{
+					state.Plate[n] = p;
+					openList.Enqueue(n);
+				}
+			}
+		}
+
 		var worldGenInitJob = new WorldGenInitJob()
 		{
 			Roughness = state.Roughness,

@@ -240,6 +240,7 @@ public class WorldSimComponent : MonoBehaviour
 		editSimState(ref lastState, ref nextState);
 
 		_tempStates[_lastTempState].Update(ref nextState, ref WorldData, ref StaticState, ref SimSettings, default(JobHandle)).Complete();
+		TimeTillTick = 0.1f;
 		OnTick?.Invoke();
 	}
 

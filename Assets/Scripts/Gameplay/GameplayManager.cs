@@ -24,9 +24,16 @@ public class GameplayManager : MonoBehaviour {
 	public int ActiveCellIndex { get; private set; }
 	[HideInInspector]
 	public GameTool ActiveTool;
+	[HideInInspector]
+	public sbyte ActivePlateIndex { get; set; }
 
 	public event Action<int> OnSetActiveCell;
+	public event Action<GameTool> OnSetActiveTool;
 
+	public void OnDestroy()
+	{
+		ActiveTool.OnDeselected();
+	}
 
 	public void SetActiveTool(GameTool tool)
 	{
@@ -35,6 +42,7 @@ public class GameplayManager : MonoBehaviour {
 			ActiveTool?.OnDeselected();
 			ActiveTool = tool;
 			ActiveTool.OnSelected();
+			OnSetActiveTool?.Invoke(ActiveTool);
 		}
 	}
 
@@ -74,7 +82,6 @@ public class GameplayManager : MonoBehaviour {
 		ActiveCellLocked = locked;
 		OnSetActiveCell?.Invoke(index);
 	}
-
 
 
 }

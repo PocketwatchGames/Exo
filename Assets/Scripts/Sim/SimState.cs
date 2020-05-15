@@ -12,6 +12,7 @@ using Unity.Collections;
 public struct SimState {
 
 	public PlanetState PlanetState;
+	public NativeArray<sbyte> Plate;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> Roughness;
 	public NativeArray<float> GroundCarbon;
@@ -47,6 +48,7 @@ public struct SimState {
 
 	public void Init(int count, ref WorldData worldData)
 	{
+		Plate = new NativeArray<sbyte>(count, Allocator.Persistent);
 		Roughness = new NativeArray<float>(count, Allocator.Persistent);
 		GroundCarbon = new NativeArray<float>(count, Allocator.Persistent);
 		Elevation = new NativeArray<float>(count, Allocator.Persistent);
@@ -87,6 +89,7 @@ public struct SimState {
 	public void CopyFrom(ref SimState from)
 	{
 		PlanetState = from.PlanetState;
+		Plate.CopyFrom(from.Plate);
 		Roughness.CopyFrom(from.Roughness);
 		GroundCarbon.CopyFrom(from.GroundCarbon);
 		Elevation.CopyFrom(from.Elevation);
@@ -125,6 +128,7 @@ public struct SimState {
 
 	public void Dispose()
 	{
+		Plate.Dispose();
 		Roughness.Dispose();
 		GroundCarbon.Dispose();
 		Elevation.Dispose();

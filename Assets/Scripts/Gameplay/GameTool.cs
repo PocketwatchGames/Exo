@@ -11,6 +11,8 @@ public class GameTool : MonoBehaviour {
 	public string Name;
 	public List<GameObject> HUDComponents;
 	public GameplayManager Gameplay;
+	public WorldView.MeshOverlay Overlay;
+	virtual public void Dispose() { }
 	virtual public void OnSelected()
 	{
 		foreach (var c in HUDComponents)

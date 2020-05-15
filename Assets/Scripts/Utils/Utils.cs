@@ -22,8 +22,18 @@ public static class Utils {
 		}.Schedule(count, 128, dependency);
 	}
 
-	public static JobHandle MemCopy(NativeSlice<float> dest, NativeSlice<float> src, JobHandle dependencies) {
+	public static JobHandle MemCopy(NativeSlice<float> dest, NativeSlice<float> src, JobHandle dependencies)
+	{
 		return new MemCopyFloat()
+		{
+			Dest = dest,
+			Src = src,
+
+		}.Schedule(src.Length, 128, dependencies);
+	}
+	public static JobHandle MemCopy(NativeSlice<sbyte> dest, NativeSlice<sbyte> src, JobHandle dependencies)
+	{
+		return new MemCopySByte()
 		{
 			Dest = dest,
 			Src = src,
@@ -231,6 +241,16 @@ public class JobHelper {
 public struct MemCopyFloat : IJobParallelFor {
 	public NativeSlice<float> Dest;
 	[ReadOnly] public NativeSlice<float> Src;
+	public void Execute(int i)
+	{
+		Dest[i] = Src[i];
+	}
+
+}
+[BurstCompile]
+public struct MemCopySByte : IJobParallelFor {
+	public NativeSlice<sbyte> Dest;
+	[ReadOnly] public NativeSlice<sbyte> Src;
 	public void Execute(int i)
 	{
 		Dest[i] = Src[i];
