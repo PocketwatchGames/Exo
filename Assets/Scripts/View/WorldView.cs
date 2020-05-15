@@ -152,6 +152,8 @@ public class WorldView : MonoBehaviour {
 	private int _nextRenderState;
 	private const int _renderStateCount = 3;
 
+	private NativeArray<Vector3> _overlayVerticesArray;
+	private NativeArray<Vector4> _overlayUVArray;
 	private NativeArray<Vector3> _terrainVerticesArray;
 	private NativeArray<Vector4> _terrainColorsArray1;
 	private NativeArray<Vector4> _terrainColorsArray2;
@@ -172,11 +174,12 @@ public class WorldView : MonoBehaviour {
 	private Color32[] _cloudColors;
 	private Vector3[] _cloudNormals;
 
+	private Mesh _overlayMesh;
 	private Mesh _terrainMesh;
 	private Mesh _waterMeshFront, _waterMeshBack;
 	private Mesh _cloudMeshFront, _cloudMeshBack;
 
-	private GameObject _terrainObject;
+	private GameObject _terrainObject, _overlayObject;
 	private GameObject _waterObjectFront, _waterObjectBack;
 	private List<GameObject> _cloudObjectFront = new List<GameObject>();
 	private List<GameObject> _cloudObjectBack = new List<GameObject>();
@@ -244,15 +247,18 @@ public class WorldView : MonoBehaviour {
 											new CVP(Color.red, 1) },
 											Allocator.Persistent);
 
-		if (_terrainMesh)
-		{
-			GameObject.Destroy(_terrainMesh);
-		}
+		_overlayMesh = new Mesh();
 		_terrainMesh = new Mesh();
 		_cloudMeshFront = new Mesh();
 		_cloudMeshBack = new Mesh();
 		_waterMeshFront = new Mesh();
 		_waterMeshBack = new Mesh();
+
+		var cloudMeshesBack = new GameObject("Cloud Meshes Back");
+		cloudMeshesBack.transform.SetParent(Planet.transform, false);
+
+		var cloudMeshesFront = new GameObject("Cloud Meshes Front");
+		cloudMeshesFront.transform.SetParent(Planet.transform, false);
 
 		_terrainObject = new GameObject("Terrain Mesh");
 		_terrainObject.transform.SetParent(Planet.transform, false);
@@ -262,12 +268,13 @@ public class WorldView : MonoBehaviour {
 		terrainSurfaceRenderer.material = TerrainMaterial;
 		terrainFilter.mesh = terrainCollider.sharedMesh = _terrainMesh;
 		_terrainMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-
 		_cloudMeshBack.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		_cloudMeshFront.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+
 		for (int i = 0; i < CloudLayers; i++)
 		{
 			var c = new GameObject("Cloud Mesh");
-			c.transform.SetParent(Planet.transform, false);
+			c.transform.SetParent(cloudMeshesBack.transform, false);
 			var cloudFilter = c.AddComponent<MeshFilter>();
 			var cloudSurfaceRenderer = c.AddComponent<MeshRenderer>();
 			cloudSurfaceRenderer.material = CloudMaterialBack;
@@ -299,11 +306,21 @@ public class WorldView : MonoBehaviour {
 			_waterMeshBack.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 		}
 
-		_cloudMeshFront.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		_overlayObject = new GameObject("Overlay Mesh");
+		_overlayObject.transform.SetParent(Planet.transform, false);
+		var overlayFilter = _overlayObject.AddComponent<MeshFilter>();
+		var overlaySurfaceRenderer = _overlayObject.AddComponent<MeshRenderer>();
+		overlaySurfaceRenderer.material = OverlayMaterial;
+		overlayFilter.mesh = _overlayMesh;
+		_overlayMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+		_overlayObject.SetActive(false);
+
+
+
 		for (int i = 0; i < CloudLayers; i++)
 		{
 			var c = new GameObject("Cloud Mesh");
-			c.transform.SetParent(Planet.transform, false);
+			c.transform.SetParent(cloudMeshesFront.transform, false);
 			var cloudFilter = c.AddComponent<MeshFilter>();
 			var cloudSurfaceRenderer = c.AddComponent<MeshRenderer>();
 			cloudSurfaceRenderer.material = CloudMaterialFront;
@@ -347,6 +364,8 @@ public class WorldView : MonoBehaviour {
 		_renderJobHelper = new JobHelper(Sim.CellCount);
 		_renderTerrainHelper = new JobHelper(Sim.CellCount * VertsPerCell);
 		_renderCloudHelper = new JobHelper(Sim.CellCount * VertsPerCloud);
+		_overlayVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
+		_overlayUVArray = new NativeArray<Vector4>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_terrainVerticesArray = new NativeArray<Vector3>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_terrainColorsArray1 = new NativeArray<Vector4>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
 		_terrainColorsArray2 = new NativeArray<Vector4>(Sim.CellCount * VertsPerCell, Allocator.Persistent);
@@ -396,6 +415,8 @@ public class WorldView : MonoBehaviour {
 
 		_terrainVerts.Dispose();
 		_cloudVerts.Dispose();
+		_overlayVerticesArray.Dispose();
+		_overlayUVArray.Dispose();
 		_terrainVerticesArray.Dispose();
 		_terrainColorsArray1.Dispose();
 		_terrainColorsArray2.Dispose();
@@ -686,6 +707,8 @@ public class WorldView : MonoBehaviour {
 			JobType.Schedule, 64,
 			new BuildTerrainVertsJob()
 			{
+				VOverlayPosition = _overlayVerticesArray,
+				VOverlayUVs = _overlayUVArray,
 				VTerrainPosition = _terrainVerticesArray,
 				VTerrainColor1 = _terrainColorsArray1,
 				VTerrainColor2 = _terrainColorsArray2,
@@ -723,6 +746,7 @@ public class WorldView : MonoBehaviour {
 		dependencies.Dispose();
 
 		_terrainMesh.SetVertices(_terrainVerticesArray);
+		_overlayMesh.SetVertices(_overlayVerticesArray);
 		_waterMeshFront.SetVertices(_waterVerticesArray);
 		_waterMeshFront.SetNormals(_waterNormalsArray);
 		_waterMeshBack.SetVertices(_waterVerticesArray);
@@ -736,25 +760,22 @@ public class WorldView : MonoBehaviour {
 		_cloudMeshBack.SetColors(_cloudColorsArray);
 		_cloudMeshBack.SetNormals(_cloudNormalsArray);
 
-		if (ActiveMeshOverlay == MeshOverlay.None)
-		{
-			_terrainMesh.SetUVs(1, _terrainColorsArray1);
-			_terrainMesh.SetUVs(2, _terrainColorsArray2);
-			_waterMeshFront.SetUVs(1, _waterColorsArray);
-			_waterMeshFront.SetUVs(2, _waterCurrentArray);
-		}
-		else
-		{
-			_terrainMesh.SetColors(_overlayColorsArray);
-			_waterMeshFront.SetColors(_overlayColorsArray);
-		}
+		_terrainMesh.SetUVs(1, _terrainColorsArray1);
+		_terrainMesh.SetUVs(2, _terrainColorsArray2);
+		_waterMeshFront.SetUVs(1, _waterColorsArray);
+		_waterMeshFront.SetUVs(2, _waterCurrentArray);
 		_waterMeshBack.SetUVs(1, _waterColorsArray);
 		_waterMeshBack.SetUVs(2, _waterCurrentArray);
 
-
+		if (ActiveMeshOverlay != MeshOverlay.None)
+		{
+			_overlayMesh.SetColors(_overlayColorsArray);
+			_overlayMesh.SetUVs(1, _overlayUVArray);
+		}
 		if (!_indicesInitialized)
 		{
 			_terrainMesh.SetTriangles(_indicesTerrain, 0);
+			_overlayMesh.SetTriangles(_indicesTerrain, 0);
 			_waterMeshFront.SetTriangles(_indicesTerrain, 0);
 			_waterMeshBack.SetTriangles(_indicesTerrainBack, 0);
 			_cloudMeshFront.SetTriangles(_indicesCloudFront, 0);
@@ -851,6 +872,7 @@ public class WorldView : MonoBehaviour {
 		List<int> indicesCloudBack = new List<int>();
 		List<int> indicesTerrain = new List<int>();
 		List<int> indicesTerrainBack = new List<int>();
+		const float maxSlope = 3;
 		for (int i=0;i< icosphere.Vertices.Length;i++)
 		{
 			float3 pos = icosphere.Vertices[i];
@@ -864,13 +886,15 @@ public class WorldView : MonoBehaviour {
 
 				{
 					float slope = random.NextFloat() * SlopeAmountTerrain;
-					float3 slopePoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos * (1 + slope)) / (3 + slope);
+					float3 slopePoint = (icosphere.Vertices[neighborIndex1] + icosphere.Vertices[neighborIndex2] + pos * (1 + slope)) / (maxSlope + slope);
 					float slopePointLength = math.length(slopePoint);
 					float3 extendedSlopePoint = slopePoint / (slopePointLength * slopePointLength);
+
 					_terrainVerts[i * VertsPerCell + 1 + j] = extendedSlopePoint; // surface
 					_terrainVerts[i * VertsPerCell + 1 + j + MaxNeighbors] = extendedSlopePoint; // wall
 					_terrainVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 2] = extendedSlopePoint; // wall
 					_terrainVerts[i * VertsPerCell + 1 + j + MaxNeighbors * 3] = extendedSlopePoint; // corner
+
 				}
 
 				{
@@ -1128,9 +1152,8 @@ public class WorldView : MonoBehaviour {
 	{
 		ActiveMeshOverlay = o;
 
-		_terrainObject.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? TerrainMaterial : OverlayMaterial;
-		_waterObjectFront.GetComponent<MeshRenderer>().material = (ActiveMeshOverlay == MeshOverlay.None) ? WaterMaterialFront : OverlayMaterial;
 		Sim.SimSettings.CollectOverlay = ActiveMeshOverlay != MeshOverlay.None;
+		_overlayObject.SetActive(o != MeshOverlay.None);
 
 		StartLerp(0.1f);
 	}

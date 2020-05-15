@@ -258,6 +258,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 [BurstCompile]
 public struct BuildTerrainVertsJob : IJobParallelFor {
+	public NativeArray<Vector3> VOverlayPosition;
+	public NativeArray<Vector4> VOverlayUVs;
 	public NativeArray<Vector3> VTerrainPosition;
 	public NativeArray<Vector4> VTerrainColor1;
 	public NativeArray<Vector4> VTerrainColor2;
@@ -283,11 +285,19 @@ public struct BuildTerrainVertsJob : IJobParallelFor {
 
 		VTerrainPosition[i] = v * TerrainElevation[j];
 		VWaterPosition[i] = v * WaterElevation[j];
+		VOverlayPosition[i] = v * (math.max(TerrainElevation[j], WaterElevation[j]) + 0.001f);
 		VTerrainColor1[i] = TerrainColor1[j];
 		VTerrainColor2[i] = TerrainColor2[j];
 		VOverlayColor[i] = OverlayColor[j];
 		var c = WaterCurrent[j];
 		int cellVert = (i % WorldView.VertsPerCell);
+
+
+		VOverlayUVs[i] = new float4(
+			0,
+			0,
+			math.length(v - StandardVerts[j * WorldView.VertsPerCell]), 
+			(cellVert == 0) ? 0 : (cellVert < 1 + StaticState.MaxNeighbors ? 1 : 2));
 		VWaterCurrent[i] = new float4(c.x, c.y, c.z, (cellVert == 0) ? 1 : 0);
 		var w = WaterColor[j];
 		VWaterColor[i] = new Vector4(
