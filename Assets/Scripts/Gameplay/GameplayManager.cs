@@ -25,7 +25,7 @@ public class GameplayManager : MonoBehaviour {
 	[HideInInspector]
 	public GameTool ActiveTool;
 	[HideInInspector]
-	public sbyte ActivePlateIndex { get; set; }
+	public short ActivePlateIndex { get; set; }
 
 	public event Action<int> OnSetActiveCell;
 	public event Action<GameTool> OnSetActiveTool;

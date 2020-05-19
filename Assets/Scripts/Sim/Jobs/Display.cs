@@ -401,7 +401,7 @@ public struct DisplayState {
 		public NativeArray<float> EnthalpyCloud;
 		public NativeArray<float> EnthalpyIce;
 		public NativeArray<float> EnthalpyGroundWater;
-		[ReadOnly] public NativeArray<sbyte> Plate;
+		[ReadOnly] public NativeArray<short> Plate;
 		[ReadOnly] public NativeArray<float> SolarRadiationInTerrain;
 		[ReadOnly] public NativeArray<float> SolarRadiationInIce;
 		[ReadOnly] public NativeArray<float> SolarRadiationInWaterSurface;

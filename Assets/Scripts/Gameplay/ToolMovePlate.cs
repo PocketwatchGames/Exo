@@ -9,17 +9,17 @@ using Unity.Collections;
 public class ToolMovePlate : GameTool {
 
 	private JobHelper _jobHelper;
-	private NativeArray<int> AffectedCells;
+	private NativeArray<bool> Closed;
 
 	public override void OnSelected()
 	{
 		base.OnSelected();
-		AffectedCells = new NativeArray<int>(Gameplay.Sim.StaticState.Count, Allocator.Persistent);
+		Closed = new NativeArray<bool>(Gameplay.Sim.StaticState.Count, Allocator.Persistent);
 	}
 	public override void OnDeselected()
 	{
 		base.OnDeselected();
-		AffectedCells.Dispose();
+		Closed.Dispose();
 	}
 	public override void OnPointerDown(Vector3 worldPos, int cellIndex)
 	{
@@ -44,7 +44,7 @@ public class ToolMovePlate : GameTool {
 		Gameplay.SetActiveCell(cellIndex, false);
 	}
 
-	private void Activate(ref SimState lastState, ref SimState nextState, sbyte plateIndex, float3 direction, ref WorldData worldData, ref TempState tempState, ref SimSettings settings)
+	private void Activate(ref SimState lastState, ref SimState nextState, short plateIndex, float3 direction, ref WorldData worldData, ref TempState tempState, ref SimSettings settings)
 	{
 		nextState.CopyFrom(ref lastState);
 
@@ -54,7 +54,7 @@ public class ToolMovePlate : GameTool {
 			{
 				_jobHelper = new JobHelper(Gameplay.Sim.CellCount);
 			}
-			_jobHelper.Schedule(settings.SynchronousOverrides.Tools, 1, new MovePlateJob()
+			var movePlateJob = _jobHelper.Schedule(settings.SynchronousOverrides.Tools, 1, new MovePlateJob()
 			{
 				Plates = nextState.Plate,
 				Elevation = nextState.Elevation,
@@ -82,15 +82,101 @@ public class ToolMovePlate : GameTool {
 				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
 				LastFloraMass = lastState.FloraMass,
 				LastFloraWater = lastState.FloraWater,
-				LastFloraGlucose = lastState.FloraGlucose
+				LastFloraGlucose = lastState.FloraGlucose,
+				LastWaterDepth = tempState.WaterDepthTotal
 
-			}).Complete();
+			});
+
+			var clearJob = Utils.MemsetArray<bool>(Gameplay.Sim.StaticState.Count, default(JobHandle), Closed, false);
+			JobHandle.CombineDependencies(movePlateJob, clearJob).Complete();
+
+
+			for (int i = 0; i < Gameplay.Sim.StaticState.Count; i++)
+			{
+				bool erode = false;
+				int maxNeighbors = StaticState.GetMaxNeighbors(i, Gameplay.Sim.StaticState.Neighbors);
+				for (int j = 0; j < maxNeighbors; j++)
+				{
+					int n = i * StaticState.MaxNeighbors + j;
+					int neighbor = Gameplay.Sim.StaticState.Neighbors[n];
+					if (nextState.Plate[neighbor] != plateIndex)
+					{
+						erode = (nextState.Plate[i] == plateIndex) != (nextState.Plate[neighbor] == plateIndex);
+						break;
+					}
+				}
+
+				if (erode)
+				{
+					for (int j = 0; j < maxNeighbors; j++)
+					{
+						int n = i * StaticState.MaxNeighbors + j;
+						int neighbor = Gameplay.Sim.StaticState.Neighbors[n];
+						float diff = nextState.Elevation[i] - nextState.Elevation[neighbor];
+						if (diff > 0)
+						{
+							nextState.Elevation[i] -= diff / 3;
+							nextState.Elevation[neighbor] += diff / 3;
+						}
+					}
+				}
+			}
+
+
+			HashSet<int> allPlates = new HashSet<int>();
+			for (int i = 0; i < Gameplay.Sim.StaticState.Count; i++)
+			{
+				allPlates.Add(nextState.Plate[i]);
+			}
+
+			HashSet<int> plates = new HashSet<int>();
+			for (int i = 0; i < Gameplay.Sim.StaticState.Count; i++)
+			{
+				Queue<int> openList = new Queue<int>();
+				if (!Closed[i])
+				{
+					short curPlate = nextState.Plate[i];
+					short plateToSet = curPlate;
+					if (plates.Contains(curPlate))
+					{
+						// Find new plate
+						plateToSet = 0;
+						while (allPlates.Contains(plateToSet) && plateToSet < Gameplay.Sim.StaticState.Count)
+						{
+							plateToSet++;
+						}
+					}
+					plates.Add(plateToSet);
+
+					openList.Enqueue(i);
+					Closed[i] = true;
+					while (openList.Count > 0)
+					{
+						int index = openList.Dequeue();
+						int plate = nextState.Plate[index];
+						nextState.Plate[index] = plateToSet;
+
+						int maxNeighbors = StaticState.GetMaxNeighbors(index, Gameplay.Sim.StaticState.Neighbors);
+						for (int j = 0; j < maxNeighbors; j++)
+						{
+							int n = Gameplay.Sim.StaticState.Neighbors[index * StaticState.MaxNeighbors + j];
+							if (nextState.Plate[n] == plate && !Closed[n])
+							{
+								Closed[n] = true;
+								openList.Enqueue(n);
+							}
+						}
+					}
+				}
+
+			}
+
 		}
 	}
 
 	private struct MovePlateJob : IJobParallelFor {
 
-		public NativeArray<sbyte> Plates;
+		public NativeArray<short> Plates;
 		public NativeArray<float> Elevation;
 		public NativeArray<float> Roughness;
 		public NativeArray<float> CrustDepth;
@@ -102,9 +188,9 @@ public class ToolMovePlate : GameTool {
 		public NativeArray<float> FloraGlucose;
 		public NativeArray<float> FloraWater;
 
-		[ReadOnly] public sbyte PlateIndex;
+		[ReadOnly] public short PlateIndex;
 		[ReadOnly] public float3 Direction;
-		[ReadOnly] public NativeArray<sbyte> LastPlates;
+		[ReadOnly] public NativeArray<short> LastPlates;
 		[ReadOnly] public NativeArray<float> LastElevation;
 		[ReadOnly] public NativeArray<float> LastRoughness;
 		[ReadOnly] public NativeArray<float> LastCrustDepth;
@@ -115,68 +201,105 @@ public class ToolMovePlate : GameTool {
 		[ReadOnly] public NativeArray<float> LastFloraMass;
 		[ReadOnly] public NativeArray<float> LastFloraGlucose;
 		[ReadOnly] public NativeArray<float> LastFloraWater;
+		[ReadOnly] public NativeArray<float> LastWaterDepth;
 		[ReadOnly] public NativeArray<int> Neighbors;
 		[ReadOnly] public NativeArray<float3> NeighborDir;
 
 		[BurstCompile]
 		public void Execute(int i)
 		{
-			float bestNeighborDot = -1;
-			int bestNeighbor = -1;
-			float bestRearNeighborDot = 1;
+			float fromDot = 1;
+			int from = -1;
+			float bestRearNeighborDot = -1;
 			int bestRearNeighbor = -1;
 			int maxNeighbors = StaticState.GetMaxNeighbors(i, Neighbors);
 			for (int j = 0; j < maxNeighbors; j++)
 			{
 				int n = i * StaticState.MaxNeighbors + j;
+				int neighbor = Neighbors[n];
 				float dot = math.dot(Direction, NeighborDir[n]);
-				if (dot >= bestNeighborDot)
+				if (dot <= fromDot)
 				{
-					bestNeighborDot = dot;
-					bestNeighbor = Neighbors[n];
+					fromDot = dot;
+					from = neighbor;
 				}
-				if (dot <= bestRearNeighborDot)
+				if (dot >= bestRearNeighborDot)
 				{
 					bestRearNeighborDot = dot;
 					bestRearNeighbor = Neighbors[n];
 				}
 			}
-			if (bestNeighbor >= 0 && LastPlates[bestNeighbor] == PlateIndex)
+			if (LastPlates[i] == PlateIndex)
 			{
-				// within same plate
-				if (LastPlates[i] == PlateIndex)
+				if (from >= 0 && LastPlates[from] == PlateIndex)
 				{
-					Plates[i] = LastPlates[bestNeighbor];
-					Elevation[i] = LastElevation[bestNeighbor];
-					GroundTemperature[i] = LastGroundTemperature[bestNeighbor];
-					GroundCarbon[i] = LastGroundCarbon[bestNeighbor];
-					GroundWater[i] = LastGroundWater[bestNeighbor];
-					GroundWaterTemperature[i] = LastGroundWaterTemperature[bestNeighbor];
-					FloraMass[i] = LastFloraMass[bestNeighbor];
-					FloraGlucose[i] = LastFloraGlucose[bestNeighbor];
-					FloraWater[i] = LastFloraWater[bestNeighbor];
-				} else // moving into new plate
+					// within same plate
+					Plates[i] = LastPlates[from];
+					Elevation[i] = LastElevation[from];
+					GroundTemperature[i] = LastGroundTemperature[from];
+					GroundCarbon[i] = LastGroundCarbon[from];
+					GroundWater[i] = LastGroundWater[from];
+					GroundWaterTemperature[i] = LastGroundWaterTemperature[from];
+					FloraMass[i] = LastFloraMass[from];
+					FloraGlucose[i] = LastFloraGlucose[from];
+					FloraWater[i] = LastFloraWater[from];
+				}
+				else
 				{
-					Plates[i] = LastPlates[bestNeighbor];
-					Elevation[i] = math.max(LastElevation[bestNeighbor], LastElevation[i]);
-					GroundTemperature[i] = (LastGroundTemperature[bestNeighbor] + LastGroundTemperature[i]) / 2;
-					GroundCarbon[i] = LastGroundCarbon[bestNeighbor] + LastGroundCarbon[i];
-					GroundWater[i] = LastGroundWater[bestNeighbor] + LastGroundWater[i];
-					GroundWaterTemperature[i] = (LastGroundWaterTemperature[bestNeighbor] * LastGroundWater[bestNeighbor] + LastGroundWaterTemperature[i] * LastGroundWaterTemperature[i]) / (GroundWater[i]);
-					FloraMass[i] = LastFloraMass[bestNeighbor] + LastFloraMass[i];
-					FloraGlucose[i] = LastFloraGlucose[bestNeighbor] + LastFloraGlucose[i];
-					FloraWater[i] = LastFloraWater[bestNeighbor] + LastFloraWater[i];
+					// trailing edge
+
+					// Divergent				
+					Elevation[i] = math.min(LastElevation[i], LastElevation[from]) - 100;
+					Plates[i] = LastPlates[from];
+					GroundCarbon[i] = 0;
+					GroundWater[i] = 0;
+					FloraMass[i] = 0;
+					FloraGlucose[i] = 0;
+					FloraWater[i] = 0;
 				}
 			}
-			else if (LastPlates[i] == PlateIndex && bestRearNeighbor >= 0 && LastPlates[bestRearNeighbor] != PlateIndex)
+			else if (from >= 0 && LastPlates[from] == PlateIndex)
 			{
-				Elevation[i] -= CrustDepth[i];
-				Plates[i] = LastPlates[bestRearNeighbor];
-				GroundCarbon[i] = 0;
-				GroundWater[i] = 0;
-				FloraMass[i] = 0;
-				FloraGlucose[i] = 0;
-				FloraWater[i] = 0;
+				// Leading edge
+				GroundTemperature[i] = (LastGroundTemperature[from] + LastGroundTemperature[i]) / 2;
+				GroundCarbon[i] = LastGroundCarbon[from] + LastGroundCarbon[i];
+				GroundWater[i] = LastGroundWater[from] + LastGroundWater[i];
+				GroundWaterTemperature[i] = (LastGroundWaterTemperature[from] * LastGroundWater[from] + LastGroundWaterTemperature[i] * LastGroundWaterTemperature[i]) / (GroundWater[i]);
+				FloraMass[i] = LastFloraMass[from] + LastFloraMass[i];
+				FloraGlucose[i] = LastFloraGlucose[from] + LastFloraGlucose[i];
+				FloraWater[i] = LastFloraWater[from] + LastFloraWater[i];
+
+				bool toContinental = LastWaterDepth[i] < LastRoughness[i];
+				bool fromContinental = LastWaterDepth[from] < LastRoughness[from];
+				if (LastElevation[from] > LastElevation[i])
+				{
+					Plates[i] = LastPlates[from];
+					if (!toContinental)
+					{
+						// subduction
+						Elevation[i] = (LastElevation[from] + LastElevation[i]) / 2 - 10;
+					}
+					else
+					{
+						// Convergent continental plates
+						// upthrust
+						Elevation[i] = LastElevation[from] + 100;
+					}
+				}
+				else
+				{
+					Plates[i] = LastPlates[i];
+					if (!toContinental)
+					{
+						// Subduction
+						Elevation[i] = (LastElevation[from] + LastElevation[i]) / 2 - 10;
+					} else
+					{
+						// Convergent continental plates
+						// upthrust
+						Elevation[i] = LastElevation[i] + 100;
+					}
+				}
 			}
 		}
 	}

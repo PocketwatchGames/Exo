@@ -103,7 +103,7 @@ public struct StaticState {
 				{
 					int n = neighborList[i][j].Item1;
 					Neighbors[index] = n;
-					var diff = pos - SphericalPosition[n];
+					var diff = SphericalPosition[n] - pos;
 					float dist = math.length(diff * PlanetRadius);
 					NeighborDist[index] = dist;
 					NeighborDistInverse[index] = 1.0f / dist;

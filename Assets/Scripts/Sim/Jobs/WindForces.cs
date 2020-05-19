@@ -75,7 +75,7 @@ public struct AccelerationAirJob : IJobParallelFor {
 			{
 				n += layer * Count;
 				float neighborElevationAtPressure = Atmosphere.GetElevationAtPressure(pressure, TemperaturePotential[n], Pressure[n], LayerMiddle[n], GravityInverse);
-				gradientPressure += NeighborDiffInverse[neighborIndex] * (neighborElevationAtPressure - layerMiddle);
+				gradientPressure += NeighborDiffInverse[neighborIndex] * (layerMiddle - neighborElevationAtPressure);
 				neighborCount++;
 			}
 		}
@@ -212,7 +212,7 @@ public struct AccelerationWaterJob : IJobParallelFor {
 				if (nColumnIndex >= 0 && WaterDensity[nCellIndex] > 0)
 				{
 					float neighborElevationAtPressure = SurfaceElevation[nColumnIndex] - Atmosphere.GetDepthAtPressure(pressure, WaterPressure[nCellIndex], LayerDepth[nCellIndex] - LayerHeight[nCellIndex] / 2, WaterDensity[nCellIndex], Gravity);
-					pressureGradient += NeighborDiffInverse[neighborIndex] * (neighborElevationAtPressure - midDepthElevation);
+					pressureGradient += NeighborDiffInverse[neighborIndex] * (midDepthElevation - neighborElevationAtPressure);
 				}
 			}
 

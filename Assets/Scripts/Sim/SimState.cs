@@ -12,7 +12,7 @@ using Unity.Collections;
 public struct SimState {
 
 	public PlanetState PlanetState;
-	public NativeArray<sbyte> Plate;
+	public NativeArray<short> Plate;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> Roughness;
 	public NativeArray<float> GroundCarbon;
@@ -48,7 +48,7 @@ public struct SimState {
 
 	public void Init(int count, ref WorldData worldData)
 	{
-		Plate = new NativeArray<sbyte>(count, Allocator.Persistent);
+		Plate = new NativeArray<short>(count, Allocator.Persistent);
 		Roughness = new NativeArray<float>(count, Allocator.Persistent);
 		GroundCarbon = new NativeArray<float>(count, Allocator.Persistent);
 		Elevation = new NativeArray<float>(count, Allocator.Persistent);

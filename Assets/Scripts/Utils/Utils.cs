@@ -31,9 +31,9 @@ public static class Utils {
 
 		}.Schedule(src.Length, 128, dependencies);
 	}
-	public static JobHandle MemCopy(NativeSlice<sbyte> dest, NativeSlice<sbyte> src, JobHandle dependencies)
+	public static JobHandle MemCopy(NativeSlice<short> dest, NativeSlice<short> src, JobHandle dependencies)
 	{
-		return new MemCopySByte()
+		return new MemCopyShort()
 		{
 			Dest = dest,
 			Src = src,
@@ -248,9 +248,9 @@ public struct MemCopyFloat : IJobParallelFor {
 
 }
 [BurstCompile]
-public struct MemCopySByte : IJobParallelFor {
-	public NativeSlice<sbyte> Dest;
-	[ReadOnly] public NativeSlice<sbyte> Src;
+public struct MemCopyShort : IJobParallelFor {
+	public NativeSlice<short> Dest;
+	[ReadOnly] public NativeSlice<short> Src;
 	public void Execute(int i)
 	{
 		Dest[i] = Src[i];
