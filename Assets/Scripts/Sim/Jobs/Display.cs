@@ -289,11 +289,12 @@ public struct DisplayState {
 			});
 
 		updateDisplayJobHandle = JobHandle.CombineDependencies(initDisplayAirHandle, initDisplayWaterHandle, updateDisplayJobHandle);
-		if (settings.CollectGlobals)
+		UpdateGlobals(ref display, ref worldData, ref tempState, ref nextState, ref staticState, default(JobHandle));
+		if (settings.CollectGlobalsDebug)
 		{
 			updateDisplayJobHandle.Complete();
 
-			UpdateGlobals(ref display, ref worldData, ref tempState, ref nextState, ref staticState);
+			UpdateGlobalsDebug(ref display, ref worldData, ref tempState, ref nextState, ref staticState);
 
 			display.GlobalEnthalpyDelta = display.GlobalEnthalpy - lastDisplay.GlobalEnthalpy;
 			display.GlobalEnthalpyDeltaTerrain = display.GlobalEnthalpyTerrain - lastDisplay.GlobalEnthalpyTerrain;
@@ -309,10 +310,27 @@ public struct DisplayState {
 	}
 
 	public static void UpdateGlobals(
-		ref DisplayState display, 
-		ref WorldData worldData, 
-		ref TempState tempState, 
-		ref SimState nextState, 
+		ref DisplayState display,
+		ref WorldData worldData,
+		ref TempState tempState,
+		ref SimState nextState,
+		ref StaticState staticState,
+		JobHandle dependency
+		)
+	{
+		dependency.Complete();
+		display.GlobalSurfaceTemperature = 0;
+		for (int i = 0; i < staticState.Count; i++)
+		{
+			display.GlobalSurfaceTemperature += tempState.SurfaceAirTemperatureAbsolute[i];
+		}
+		display.GlobalSurfaceTemperature /= staticState.Count;
+	}
+	public static void UpdateGlobalsDebug(
+		ref DisplayState display,
+		ref WorldData worldData,
+		ref TempState tempState,
+		ref SimState nextState,
 		ref StaticState staticState
 		)
 	{
@@ -331,8 +349,7 @@ public struct DisplayState {
 			display.GeothermalRadiation += tempState.GeothermalRadiation[i];
 			display.GlobalCloudMass += nextState.CloudMass[i];
 			display.GlobalIceMass += nextState.IceMass[i];
-			display.GlobalOceanCoverage += tempState.WaterCoverage[staticState.GetWaterIndex(worldData.SurfaceWaterLayer,i)];
-			display.GlobalSurfaceTemperature += tempState.SurfaceAirTemperatureAbsolute[i];
+			display.GlobalOceanCoverage += tempState.WaterCoverage[staticState.GetWaterIndex(worldData.SurfaceWaterLayer, i)];
 			display.GlobalSeaLevel += tempState.AirLayerElevation[staticState.GetLayerIndexAir(worldData.SurfaceAirLayer, i)];
 			display.GlobalEvaporation += display.Evaporation[i];
 			display.GlobalRainfall += display.Rainfall[i];
@@ -356,7 +373,7 @@ public struct DisplayState {
 				display.GlobalCondensationGround += display.CondensationGround[index];
 			}
 			display.EnergySolarAbsorbedOcean += tempState.SolarRadiationInWater[i];
-			display.EnergySolarAbsorbedSurface += tempState.SolarRadiationInWater[i] + tempState.SolarRadiationInTerrain[i] + tempState.SolarRadiationInIce[i] ;
+			display.EnergySolarAbsorbedSurface += tempState.SolarRadiationInWater[i] + tempState.SolarRadiationInTerrain[i] + tempState.SolarRadiationInIce[i];
 			display.EnergySolarReflectedSurface += tempState.SolarReflectedWater[i] + tempState.SolarReflectedTerrain[i] + tempState.SolarReflectedIce[i];
 			for (int j = 1; j < worldData.WaterLayers - 1; j++)
 			{
@@ -390,6 +407,7 @@ public struct DisplayState {
 		display.GlobalTerrainTemperature /= staticState.Count;
 		display.GlobalEnthalpy = display.GlobalEnthalpyTerrain + display.GlobalEnthalpyAir + display.GlobalEnthalpyWater + display.GlobalEnthalpyCloud + display.GlobalEnthalpyDeltaTerrain + display.GlobalEnthalpyDeltaIce;
 	}
+
 
 	[BurstCompile]
 	private struct UpdateDisplayJob : IJobParallelFor {

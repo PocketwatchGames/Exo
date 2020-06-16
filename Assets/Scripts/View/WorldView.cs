@@ -216,9 +216,10 @@ public class WorldView : MonoBehaviour {
 
 	public event Action<MeshOverlay> OnMeshOverlayChanged;
 
-	public void Start()
+	public void Awake()
 	{
 		Sim.OnTick += OnSimTick;
+		Sim.OnTimeScaleChanged += OnTimeScaleChanged;
 		GameplayManager.OnSetActiveCell += OnSetActiveCell;
 		GameplayManager.OnSetActiveTool += OnSetActiveTool;
 
@@ -586,7 +587,7 @@ public class WorldView : MonoBehaviour {
 		float lerpTime;
 		if (Sim.TimeScale == 0)
 		{
-			lerpTime = Sim.TimeTillTick;
+			lerpTime = 0.1f;
 		}
 		else
 		{
@@ -597,7 +598,10 @@ public class WorldView : MonoBehaviour {
 
 	}
 
-
+	private void OnTimeScaleChanged(float ts)
+	{
+		StartLerp(0.05f);
+	}
 
 	public JobHandle BuildRenderState(bool sychronous, ref SimState from, ref TempState tempState, ref DisplayState display, ref RenderState to, ref WorldData worldData, ref StaticState staticState, JobHandle dependency)
 	{

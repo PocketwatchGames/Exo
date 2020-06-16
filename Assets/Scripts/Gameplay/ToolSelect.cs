@@ -14,12 +14,12 @@ public class ToolSelect : GameTool {
 	public override void OnDeselected()
 	{
 		base.OnDeselected();
-		Gameplay.Sim.SimSettings.CollectGlobals = false;
+		Gameplay.Sim.SimSettings.CollectGlobalsDebug = false;
 	}
 	public override void OnSelected()
 	{
 		base.OnSelected();
-		Gameplay.Sim.SimSettings.CollectGlobals = true;
+		Gameplay.Sim.SimSettings.CollectGlobalsDebug = true;
 	}
 	override public void OnClick(Vector3 worldPos, int cellIndex)
 	{

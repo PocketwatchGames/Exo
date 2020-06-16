@@ -42,7 +42,7 @@ public struct SimSettings {
 	public bool ConductionWaterTerrain;
 	public int IncompressibilityIterations;
 
-	[HideInInspector] public bool CollectGlobals;
+	[HideInInspector] public bool CollectGlobalsDebug;
 	[HideInInspector] public bool CollectOverlay;
 
 	[Serializable]

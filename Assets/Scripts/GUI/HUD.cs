@@ -87,11 +87,16 @@ public class HUD : MonoBehaviour
 		{
 			Gameplay.OnWorldHovered(p.Item1, p.Item2);
 		}
+
+		if (Input.GetKeyUp(KeyCode.Period))
+		{
+			Sim.StepTime();
+		}
 	}
 
 	public void OnOptionsClicked()
 	{
-		OptionsPanel.SetActive(true);
+		OptionsPanel.SetActive(!OptionsPanel.activeSelf);
 	}
 
 	public void OnAirLayerChanged(Slider slider)
@@ -279,7 +284,7 @@ public class HUD : MonoBehaviour
 		EnergyDeltaText.color = deltaColor;
 
 		float temperatureDelta = ((float)View.DisplayState.GlobalAirTemperaturePotential - _averageTemperature);
-		TemperatureText.text = CellInfo.GetTemperatureString((float)View.DisplayState.GlobalAirTemperaturePotential, ActiveTemperatureUnits, 1);
+		TemperatureText.text = CellInfo.GetTemperatureString((float)View.DisplayState.GlobalSurfaceTemperature, ActiveTemperatureUnits, 1);
 		float deltaSign = Math.Sign(temperatureDelta);
 		if (deltaSign > 0)
 		{

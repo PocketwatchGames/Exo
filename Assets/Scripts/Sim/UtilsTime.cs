@@ -8,10 +8,10 @@ using Unity.Mathematics;
 static class WorldTime {
 	public static float GetTime(float ticks, float spinSpeed)
 	{
-		return math.modf(ticks * spinSpeed, out var i);
+		return math.modf(ticks * spinSpeed / (math.PI * 2), out var i);
 	}
 	public static float GetDays(float ticks, float spinSpeed)
 	{
-		return ticks * spinSpeed;
+		return ticks * spinSpeed / (math.PI * 2);
 	}
 }

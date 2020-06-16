@@ -53,7 +53,7 @@ public class WorldSimComponent : MonoBehaviour
 		IncompressibilityIterations = 20,
 
 		CheckForDegeneracy = false,
-		CollectGlobals = false,
+		CollectGlobalsDebug = false,
 		CollectOverlay = false,
 		LogState = false,
 		LogStateIndex = 0,
@@ -128,8 +128,12 @@ public class WorldSimComponent : MonoBehaviour
 		_worldGenData = JsonUtility.FromJson<WorldGenData>(WorldGenAsset.text);
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempStates[0], ref SimSettings);
 
-		OnTick?.Invoke();
 
+	}
+
+	public void Start()
+	{
+		OnTick?.Invoke();
 	}
 
 	public void OnDestroy()
