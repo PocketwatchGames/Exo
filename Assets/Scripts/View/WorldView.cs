@@ -135,12 +135,14 @@ public class WorldView : MonoBehaviour {
 	[Header("Debug")]
 	public bool RunSynchronously;
 
-	[HideInInspector] public MeshOverlay ActiveMeshOverlay { get; private set; }
 	[HideInInspector] public WindOverlay ActiveWindOverlay;
+	private MeshOverlay _activeMeshOverlay;
+	[HideInInspector] public MeshOverlay ActiveMeshOverlay { get { return _activeMeshOverlay; } set { _activeMeshOverlay = value; OnMeshOverlayChanged?.Invoke(value); } }
 	[HideInInspector] public int ActiveMeshLayerWater = 1;
 	[HideInInspector] public int ActiveMeshLayerAir = 1;
 	[HideInInspector] public DisplayState DisplayState;
 	[HideInInspector] public RenderState CurRenderState { get { return _renderStates[_curRenderState]; } }
+	public Dictionary<MeshOverlay, MeshOverlayColors> OverlayColors;
 
 	private JobHelper _renderJobHelper;
 	private JobHelper _renderTerrainHelper;
@@ -212,6 +214,7 @@ public class WorldView : MonoBehaviour {
 	private float _skyboxExposureStart = 1;
 	private float _skyboxExposureTime = 0;
 
+	public event Action<MeshOverlay> OnMeshOverlayChanged;
 
 	public void Start()
 	{
@@ -247,6 +250,30 @@ public class WorldView : MonoBehaviour {
 											new CVP(Color.red, 1) },
 											Allocator.Persistent);
 
+		OverlayColors = new Dictionary<MeshOverlay, MeshOverlayColors>
+		{
+			{ MeshOverlay.AbsoluteHumidity, new MeshOverlayColors{ Title="Absolute Humidity", Min=0,Max=DisplayAbsoluteHumidityMax,ColorValuePairs=_normalizedRainbow, LegendType=LegendType.Percent, DecimalPlaces=2 } },
+			{ MeshOverlay.RelativeHumidity, new MeshOverlayColors{ Title="Relative Humidity", Min=0,Max=1,ColorValuePairs=_normalizedRainbow, LegendType=LegendType.Percent, DecimalPlaces=0 } },
+			{ MeshOverlay.TemperatureSurface, new MeshOverlayColors{ Title="Surface Temperature", Min=DisplayTemperatureMin,Max=DisplayTemperatureMax,ColorValuePairs=_normalizedRainbow, LegendType=LegendType.Temperature, DecimalPlaces=0 } },
+			{ MeshOverlay.PotentialTemperature, new MeshOverlayColors{ Title="Potential Temperature", Min=DisplayTemperatureMin,Max=DisplayTemperatureMax,ColorValuePairs=_normalizedRainbow, LegendType=LegendType.Temperature, DecimalPlaces=0 } },
+			{ MeshOverlay.Pressure, new MeshOverlayColors{ Title="Pressure", Min=DisplayAirPressureMin,Max=DisplayAirPressureMax,ColorValuePairs=_normalizedRainbow, LegendType=LegendType.Pressure, DecimalPlaces=0 } },
+			{ MeshOverlay.WaterTemperature, new MeshOverlayColors{ Title="Water Temperature", Min=WorldData.FreezingTemperature,Max=DisplayTemperatureMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Temperature, DecimalPlaces=0 } },
+			{ MeshOverlay.WaterCarbonDioxide, new MeshOverlayColors{Title="Water CO2",  Min=0,Max=DisplayWaterCarbonMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.PPM, DecimalPlaces=0 } },
+			{ MeshOverlay.Salinity, new MeshOverlayColors{ Title="Salinity", Min=DisplaySalinityMin,Max=DisplaySalinityMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.PPM, DecimalPlaces=0 } },
+			{ MeshOverlay.GroundTemperature, new MeshOverlayColors{ Title="Ground Temperature", Min=DisplayTemperatureMin,Max=DisplayTemperatureMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Temperature, DecimalPlaces=0 } },
+			{ MeshOverlay.CarbonDioxide, new MeshOverlayColors{ Title="Carbon Dioxide", Min=0,Max=DisplayCarbonDioxideMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.PPM, DecimalPlaces=0  } },
+			{ MeshOverlay.HeatAbsorbed, new MeshOverlayColors{ Title="Heat Absorbed", Min=0,Max=DisplayHeatAbsorbedMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Watts, DecimalPlaces=0 } },
+			{ MeshOverlay.Rainfall, new MeshOverlayColors{ Title="Rainfall", Min=0,Max=DisplayRainfallMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Volume, DecimalPlaces=2 } },
+			{ MeshOverlay.Evaporation, new MeshOverlayColors{ Title="Evaporation", Min=0,Max=DisplayEvaporationMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Volume, DecimalPlaces=2 } },
+			{ MeshOverlay.GroundWater, new MeshOverlayColors{ Title="Ground Water", Min=0,Max=Sim.WorldData.GroundWaterMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Mass, DecimalPlaces=0 } },
+			{ MeshOverlay.GroundWaterTemperature, new MeshOverlayColors{ Title="Ground Water Temperature", Min=DisplayTemperatureMin,Max=DisplayTemperatureMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Temperature, DecimalPlaces=0 } },
+			{ MeshOverlay.FloraWater, new MeshOverlayColors{ Title="Flora Water", Min=0,Max=Sim.WorldData.FullCoverageFlora,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Mass, DecimalPlaces=2 } },
+			{ MeshOverlay.CrustDepth, new MeshOverlayColors{ Title="Crust Depth", Min=DisplayCrustDepthMax,Max=0,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.None, DecimalPlaces=0 } },
+			{ MeshOverlay.MagmaMass, new MeshOverlayColors{ Title="Magma", Min=0,Max=DisplayMagmaMassMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Mass, DecimalPlaces=0 } },
+			{ MeshOverlay.DivergenceAir, new MeshOverlayColors{ Title="Divergence Air", Min=-DisplayDivergenceMax,Max=DisplayDivergenceMax,ColorValuePairs=_normalizedBlueBlackRed,LegendType=LegendType.None, DecimalPlaces=2 } },
+			{ MeshOverlay.DivergenceWater, new MeshOverlayColors{ Title="Divergence Water", Min=-DisplayDivergenceMax,Max=DisplayDivergenceMax,ColorValuePairs=_normalizedBlueBlackRed,LegendType=LegendType.None, DecimalPlaces=2 } },
+			{ MeshOverlay.PlateTectonics, new MeshOverlayColors{ Title="Plate Tectonics", Min=0,Max=11,ColorValuePairs=_plateColors,LegendType=LegendType.None, DecimalPlaces=0 } },
+		};
 		_overlayMesh = new Mesh();
 		_terrainMesh = new Mesh();
 		_cloudMeshFront = new Mesh();
@@ -612,7 +639,7 @@ public class WorldView : MonoBehaviour {
 				WindVelocityMax = windOverlayData.MaxVelocity,
 				WindVerticalMax = DisplayVerticalWindSpeedMax,
 				WindMaskedByLand = windOverlayData.MaskLand,
-				MeshOverlayMin = meshOverlay.Min,
+				MeshOverlayMin = meshOverlay.Colors.Min,
 				MeshOverlayInverseRange = meshOverlay.InverseRange,
 				CloudElevationSim = tempState.CloudElevation,
 				Icosphere = Sim.Icosphere.Vertices,
@@ -634,7 +661,7 @@ public class WorldView : MonoBehaviour {
 				SurfaceElevation = tempState.SurfaceElevation,
 				GroundWater = from.GroundWater,
 				MeshOverlayData = meshOverlay.Values,
-				MeshOverlayColors = meshOverlay.ColorValuePairs,
+				MeshOverlayColors = meshOverlay.Colors.ColorValuePairs,
 				WindOverlayData = windOverlayData.Values,
 				GroundWaterMax = worldData.GroundWaterMax,
 				SoilFertilityMax = DisplaySoilFertilityMax,
@@ -820,19 +847,36 @@ public class WorldView : MonoBehaviour {
 		return _indicesTerrain[triangleIndex * 3 + vIndex] / VertsPerCell;
 	}
 
+	public enum LegendType {
+		None,
+		Temperature,
+		PPM,
+		Percent,
+		Pressure,
+		Volume,
+		Mass,
+		Watts,
+	}
+
+	[Serializable]
+	public struct MeshOverlayColors {
+		public string Title;
+		public float Min;
+		public float Max;
+		public LegendType LegendType;
+		public int DecimalPlaces;
+		public NativeArray<CVP> ColorValuePairs;
+	}
+
 	public struct MeshOverlayData {
-		public MeshOverlayData(float min, float max, NativeArray<CVP> colors, NativeSlice<float> values)
+		public MeshOverlayData(MeshOverlayColors colors, NativeSlice<float> values)
 		{
 			Values = values;
-			Min = min;
-			Max = max;
-			ColorValuePairs = colors;
-			InverseRange = 1.0f / (Max - Min);
+			Colors = colors;
+			InverseRange = 1.0f / (colors.Max - colors.Min);
 		}
-		public float Min { get; private set; }
-		public float Max { get; private set; }
+		public MeshOverlayColors Colors;
 		public NativeSlice<float> Values { get; private set; }
-		public NativeArray<CVP> ColorValuePairs { get; private set; }
 		public float InverseRange { get; private set; }
 	}
 
@@ -996,73 +1040,77 @@ public class WorldView : MonoBehaviour {
 	private bool GetMeshOverlayData(MeshOverlay activeOverlay, ref SimState simState, ref TempState dependentState, ref DisplayState display, ref StaticState staticState, out MeshOverlayData overlay)
 	{
 		float ticksPerYear = Sim.WorldData.TicksPerSecond * 60 * 60 * 24 * 365;
-		switch (activeOverlay)
+		MeshOverlayColors colors;
+		if (OverlayColors.TryGetValue(activeOverlay, out colors))
 		{
-			case MeshOverlay.AbsoluteHumidity:
-				overlay = new MeshOverlayData(0, DisplayAbsoluteHumidityMax, _normalizedRainbow, staticState.GetSliceLayer(dependentState.AirHumidityAbsolute,ActiveMeshLayerAir));
-				return true;
-			case MeshOverlay.RelativeHumidity:
-				overlay = new MeshOverlayData(0, 1.0f, _normalizedRainbow, staticState.GetSliceLayer(dependentState.AirHumidityRelative,ActiveMeshLayerAir));
-				return true;
-			case MeshOverlay.TemperatureSurface:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, dependentState.SurfaceAirTemperatureAbsolute);
-				return true;
-			case MeshOverlay.PotentialTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, staticState.GetSliceLayer(simState.AirTemperaturePotential,ActiveMeshLayerAir));
-				return true;
-			case MeshOverlay.Pressure:
-				overlay = new MeshOverlayData(DisplayAirPressureMin, DisplayAirPressureMax, _normalizedRainbow, staticState.GetSliceLayer(display.Pressure,ActiveMeshLayerAir));
-				return true;
-			case MeshOverlay.WaterTemperature:
-				overlay = new MeshOverlayData(WorldData.FreezingTemperature, DisplayTemperatureMax, _normalizedRainbow, staticState.GetSliceLayer(simState.WaterTemperature,ActiveMeshLayerWater));
-				return true;
-			case MeshOverlay.WaterCarbonDioxide:
-				overlay = new MeshOverlayData(0, DisplayWaterCarbonMax, _normalizedRainbow, staticState.GetSliceLayer(display.WaterCarbonDioxidePercent,ActiveMeshLayerWater));
-				return true;
-			case MeshOverlay.Salinity:
-				overlay = new MeshOverlayData(DisplaySalinityMin, DisplaySalinityMax, _normalizedRainbow, staticState.GetSliceLayer(display.Salinity,ActiveMeshLayerWater));
-				return true;
-			case MeshOverlay.GroundTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundTemperature);
-				return true;
-			case MeshOverlay.CarbonDioxide:
-				overlay = new MeshOverlayData(0, DisplayCarbonDioxideMax, _normalizedRainbow, staticState.GetSliceLayer(display.CarbonDioxidePercent,ActiveMeshLayerAir));
-				return true;
-			case MeshOverlay.HeatAbsorbed:
-				overlay = new MeshOverlayData(0, DisplayHeatAbsorbedMax, _normalizedRainbow, display.SolarRadiationAbsorbedSurface);
-				return true;
-			case MeshOverlay.Rainfall:
-				overlay = new MeshOverlayData(0, DisplayRainfallMax, _normalizedRainbow, display.Rainfall);
-				return true;
-			case MeshOverlay.Evaporation:
-				overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
-				return true;
-			case MeshOverlay.GroundWater:
-				overlay = new MeshOverlayData(0, Sim.WorldData.GroundWaterMax, _normalizedRainbow, simState.GroundWater);
-				return true;
-			case MeshOverlay.GroundWaterTemperature:
-				overlay = new MeshOverlayData(DisplayTemperatureMin, DisplayTemperatureMax, _normalizedRainbow, simState.GroundWaterTemperature);
-				return true;
-			case MeshOverlay.FloraWater:
-				overlay = new MeshOverlayData(0, Sim.WorldData.FullCoverageFlora, _normalizedRainbow, simState.FloraWater);
-				return true;
-			case MeshOverlay.CrustDepth:
-				overlay = new MeshOverlayData(DisplayCrustDepthMax, 0, _normalizedRainbow, simState.CrustDepth);
-				return true;
-			case MeshOverlay.MagmaMass:
-				overlay = new MeshOverlayData(0, DisplayMagmaMassMax, _normalizedRainbow, simState.MagmaMass);
-				return true;
-			case MeshOverlay.DivergenceAir:
-				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceAir,ActiveMeshLayerAir));
-				return true;
-			case MeshOverlay.DivergenceWater:
-				overlay = new MeshOverlayData(-DisplayDivergenceMax, DisplayDivergenceMax, _normalizedBlueBlackRed, staticState.GetSliceLayer(display.DivergenceWater, ActiveMeshLayerWater));
-				return true;
-			case MeshOverlay.PlateTectonics:
-				overlay = new MeshOverlayData(0, 11, _normalizedRainbow, display.Plate);
-				return true;
+			switch (activeOverlay)
+			{
+				case MeshOverlay.AbsoluteHumidity:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(dependentState.AirHumidityAbsolute, ActiveMeshLayerAir));
+					return true;
+				case MeshOverlay.RelativeHumidity:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(dependentState.AirHumidityRelative, ActiveMeshLayerAir));
+					return true;
+				case MeshOverlay.TemperatureSurface:
+					overlay = new MeshOverlayData(colors, dependentState.SurfaceAirTemperatureAbsolute);
+					return true;
+				case MeshOverlay.PotentialTemperature:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(simState.AirTemperaturePotential, ActiveMeshLayerAir));
+					return true;
+				case MeshOverlay.Pressure:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(display.Pressure, ActiveMeshLayerAir));
+					return true;
+				case MeshOverlay.WaterTemperature:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(simState.WaterTemperature, ActiveMeshLayerWater));
+					return true;
+				case MeshOverlay.WaterCarbonDioxide:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(display.WaterCarbonDioxidePercent, ActiveMeshLayerWater));
+					return true;
+				case MeshOverlay.Salinity:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(display.Salinity, ActiveMeshLayerWater));
+					return true;
+				case MeshOverlay.GroundTemperature:
+					overlay = new MeshOverlayData(colors, simState.GroundTemperature);
+					return true;
+				case MeshOverlay.CarbonDioxide:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(display.CarbonDioxidePercent, ActiveMeshLayerAir));
+					return true;
+				case MeshOverlay.HeatAbsorbed:
+					overlay = new MeshOverlayData(colors, display.SolarRadiationAbsorbedSurface);
+					return true;
+				case MeshOverlay.Rainfall:
+					overlay = new MeshOverlayData(colors, display.Rainfall);
+					return true;
+				case MeshOverlay.Evaporation:
+					overlay = new MeshOverlayData(colors, display.Evaporation);
+					return true;
+				case MeshOverlay.GroundWater:
+					overlay = new MeshOverlayData(colors, simState.GroundWater);
+					return true;
+				case MeshOverlay.GroundWaterTemperature:
+					overlay = new MeshOverlayData(colors, simState.GroundWaterTemperature);
+					return true;
+				case MeshOverlay.FloraWater:
+					overlay = new MeshOverlayData(colors, simState.FloraWater);
+					return true;
+				case MeshOverlay.CrustDepth:
+					overlay = new MeshOverlayData(colors, simState.CrustDepth);
+					return true;
+				case MeshOverlay.MagmaMass:
+					overlay = new MeshOverlayData(colors, simState.MagmaMass);
+					return true;
+				case MeshOverlay.DivergenceAir:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(display.DivergenceAir, ActiveMeshLayerAir));
+					return true;
+				case MeshOverlay.DivergenceWater:
+					overlay = new MeshOverlayData(colors, staticState.GetSliceLayer(display.DivergenceWater, ActiveMeshLayerWater));
+					return true;
+				case MeshOverlay.PlateTectonics:
+					overlay = new MeshOverlayData(colors, display.Plate);
+					return true;
+			}
 		}
-		overlay = new MeshOverlayData(0, DisplayEvaporationMax, _normalizedRainbow, display.Evaporation);
+		overlay = new MeshOverlayData(OverlayColors[MeshOverlay.Evaporation], display.Evaporation);
 		return false;
 
 	}

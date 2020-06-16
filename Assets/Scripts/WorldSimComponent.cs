@@ -66,7 +66,9 @@ public class WorldSimComponent : MonoBehaviour
 
 	[HideInInspector] public Icosphere Icosphere;
 	[HideInInspector] public bool CollectOverlay = false;
-	[HideInInspector] public float TimeScale = 0;
+
+	private float _timeScale = 0;
+	[HideInInspector] public float TimeScale { get { return _timeScale; } set { _timeScale = value; OnTimeScaleChanged?.Invoke(value); } }
 
 	public int CellCount { get; private set; }
 	public ref SimState LastSimState { get { return ref _simStates[_lastSimState]; } }
@@ -87,6 +89,7 @@ public class WorldSimComponent : MonoBehaviour
 
 	public delegate void TickEventHandler();
 	public event TickEventHandler OnTick;
+	public event Action<float> OnTimeScaleChanged;
 
 	public void Awake()
     {
@@ -126,6 +129,7 @@ public class WorldSimComponent : MonoBehaviour
 		WorldGen.Generate(Seed, _worldGenData, Icosphere, ref WorldData, ref StaticState, ref _simStates[0], ref _tempStates[0], ref SimSettings);
 
 		OnTick?.Invoke();
+
 	}
 
 	public void OnDestroy()

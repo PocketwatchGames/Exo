@@ -27,7 +27,7 @@ public static class CellInfo {
 	}
 
 
-	public static string GetCellInfoGlobal(TemperatureUnits ActiveTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref TempState dependent, ref DisplayState display)
+	public static string GetCellInfoGlobal(TemperatureUnits activeTemperatureUnits, float inverseCellCount, ref WorldData worldData, ref SimState state, ref TempState dependent, ref DisplayState display)
 	{
 		StringBuilder s = new StringBuilder();
 		NumberFormatInfo nfi1 = new NumberFormatInfo() { NumberDecimalDigits = 1 };
@@ -39,11 +39,11 @@ public static class CellInfo {
 		s.AppendFormat("\nPlankton: {0:N1} kg", display.GlobalPlanktonMass);
 		s.AppendFormat("\nSoil Carbon: {0:N1} kg", display.GlobalSoilFertility);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * inverseCellCount);
-		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * inverseCellCount, ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nTemperature Air: {0}", GetTemperatureString((float)(display.GlobalAirTemperaturePotential), ActiveTemperatureUnits, 2));
-		s.AppendFormat("\nTemperature Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanTemperature, ActiveTemperatureUnits, 4));
-		s.AppendFormat("\nTemperature Terrain: {0:N0}", GetTemperatureString((float)display.GlobalTerrainTemperature, ActiveTemperatureUnits, 4));
+		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * inverseCellCount, activeTemperatureUnits, 2));
+		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, activeTemperatureUnits, 2));
+		s.AppendFormat("\nTemperature Air: {0}", GetTemperatureString((float)(display.GlobalAirTemperaturePotential), activeTemperatureUnits, 2));
+		s.AppendFormat("\nTemperature Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanTemperature, activeTemperatureUnits, 4));
+		s.AppendFormat("\nTemperature Terrain: {0:N0}", GetTemperatureString((float)display.GlobalTerrainTemperature, activeTemperatureUnits, 4));
 		s.AppendFormat("\nWater Vapor: {0:N0}", display.GlobalWaterVapor);
 		s.AppendFormat("\nRainfall: {0:N3}", display.GlobalRainfall * worldData.TicksPerYear * inverseCellCount / WorldData.MassWater);
 		s.AppendFormat("\nCondensationCloud: {0:N3}", display.GlobalCondensationCloud * worldData.TicksPerYear * inverseCellCount / WorldData.MassWater);

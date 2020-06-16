@@ -5,26 +5,63 @@ using Unity.Mathematics;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System;
+using System.Linq;
 
 public class HUD : MonoBehaviour
 {
+	public enum FilterType {
+		None,
+		CarbonDioxide,
+		Nitrogen,		
+	}
+
+	[Serializable]
+	public struct SimSpeed {
+		public float Speed;
+		public Image Image;
+	}
+
 	public WorldView View;
 	public GameplayManager Gameplay;
 	public WorldSimComponent Sim;
 	public GameToolButton GameToolButtonPrefab;
 	public GameObject Toolbar;
 	public GameObject OptionsPanel;
+	public GameObject FiltersPanel;
+	public FilterDetailsPanel FilterDetailsPanel;
+	public Image PauseButtonPausedImage;
+	public Image PauseButtonPlayImage;
+	public List<SimSpeed> SimSpeeds;
+	public ToggleGroup ModeToggleGroup;
+	public List<GameObject> ModePanels;
+	public Text EnergyText;
+	public Text EnergyDeltaText;
+	public Text BiomassText;
+	public Text BiomassDeltaText;
+	public Text TemperatureText;
+	public Text TemperatureDeltaText;
+	public Text TimeDateText;
+	public ToggleGroup FilterToggleGroup;
 
 	private bool _isDown;
 	private Vector3 _dragStart;
+	private int _simSpeedIndex;
+	private bool _paused = true;
+	private int _mode;
+	private float _averageTemperature;
 
 	public CellInfo.TemperatureUnits ActiveTemperatureUnits = CellInfo.TemperatureUnits.Celsius;
 
 	private List<List<GameObject>> ModeComponents;
 
 	// Start is called before the first frame update
-	void Start()
+	void Awake()
     {
+		View.OnMeshOverlayChanged += OnFilterChanged;
+		Gameplay.Sim.OnTimeScaleChanged += OnTimeScaleChanged;
+		Sim.OnTick += OnTick;
+		SetSimSpeedIndex(0);
+		SetMode(0);
 	}
 
 	public void AddToolbarButton(GameTool tool)
@@ -131,6 +168,157 @@ public class HUD : MonoBehaviour
 			}
 		}
 		return new Tuple<Vector3, int>(worldPos, cellIndex);
+	}
+
+	public void OnSimSpeedClicked()
+	{
+		SetSimSpeedIndex((_simSpeedIndex + 1) % SimSpeeds.Count);
+		Gameplay.Sim.TimeScale = _paused ? 0 : SimSpeeds[_simSpeedIndex].Speed;
+	}
+
+	public void OnPauseClicked()
+	{
+		_paused = !_paused;
+		Gameplay.Sim.TimeScale = _paused ? 0 : SimSpeeds[_simSpeedIndex].Speed;
+	}
+
+	private void SetSimSpeedIndex(int index)
+	{
+		_simSpeedIndex = index;
+		for (int i=0;i<SimSpeeds.Count;i++)
+		{
+			SimSpeeds[i].Image.gameObject.SetActive(_simSpeedIndex == i);
+		}
+	}
+
+	private void OnTimeScaleChanged(float timeScale)
+	{
+		PauseButtonPausedImage.gameObject.SetActive(timeScale==0);
+		PauseButtonPlayImage.gameObject.SetActive(timeScale > 0);
+		if (timeScale > 0)
+		{
+			for (int i = SimSpeeds.Count - 1; i >= 0; i--)
+			{
+				if (timeScale >= SimSpeeds[i].Speed)
+				{
+					SetSimSpeedIndex(i);
+					break;
+				}
+				else
+				{
+					SimSpeeds[i].Image.gameObject.SetActive(false);
+				}
+			}
+		}
+	}
+
+	public void OnFiltersClicked()
+	{
+		if (FiltersPanel.activeSelf)
+		{
+			FilterToggleGroup.SetAllTogglesOff();
+		}
+		FiltersPanel.SetActive(!FiltersPanel.activeSelf);
+		FilterDetailsPanel.gameObject.SetActive(FiltersPanel.activeSelf && View.ActiveMeshOverlay != WorldView.MeshOverlay.None);
+		View.SetActiveMeshOverlay(FiltersPanel.activeSelf ? View.ActiveMeshOverlay : WorldView.MeshOverlay.None);
+	}
+
+	public void OnFilterChanged(WorldView.MeshOverlay overlay)
+	{
+		if (overlay == WorldView.MeshOverlay.None)
+		{
+			FilterDetailsPanel.gameObject.SetActive(false);
+		} else
+		{
+			FilterDetailsPanel.gameObject.SetActive(true);
+			var o = View.OverlayColors[overlay];
+			FilterDetailsPanel.Legend.SetValues(o, ActiveTemperatureUnits);
+			FilterDetailsPanel.Title.text = o.Title;
+		}
+	}
+
+	public void OnFilterClicked(Toggle t)
+	{
+		if (t.isOn)
+		{
+			View.SetActiveMeshOverlay(t.GetComponent<ToggleOverlayMesh>().Overlay);
+		} else
+		{
+			View.SetActiveMeshOverlay(WorldView.MeshOverlay.None);
+		}
+	}
+
+
+	public void OnModeClicked(int mode)
+	{
+		SetMode(mode);
+	}
+
+	private void SetMode(int mode)
+	{
+		_mode = mode;
+		for (int i=0;i<ModePanels.Count;i++)
+		{
+			ModePanels[i].SetActive(mode == i);
+		}
+
+	}
+
+	private void OnTick()
+	{
+		var time = WorldTime.GetTime(Sim.LastSimState.PlanetState.Ticks, Sim.LastSimState.PlanetState.SpinSpeed) / Sim.LastSimState.PlanetState.SpinSpeed;
+		float days = WorldTime.GetDays(Sim.LastSimState.PlanetState.Ticks, Sim.LastSimState.PlanetState.SpinSpeed * Sim.WorldData.SecondsPerTick);
+		TimeDateText.text = ((int)days).ToString() + "\\" + ((int)(Sim.LastSimState.PlanetState.Ticks * Sim.LastSimState.PlanetState.OrbitSpeed)).ToString("X4");
+		//		TimeDateText.text = ;
+
+		int energyDelta = 0;
+		EnergyText.text = "0";
+		Color deltaColor = Color.gray;
+		string deltaString = "+" + energyDelta;
+		EnergyDeltaText.text = energyDelta.ToString("0");
+		EnergyDeltaText.color = deltaColor;
+
+		float temperatureDelta = ((float)View.DisplayState.GlobalAirTemperaturePotential - _averageTemperature);
+		TemperatureText.text = CellInfo.GetTemperatureString((float)View.DisplayState.GlobalAirTemperaturePotential, ActiveTemperatureUnits, 1);
+		float deltaSign = Math.Sign(temperatureDelta);
+		if (deltaSign > 0)
+		{
+			deltaString = "+" + temperatureDelta;
+			deltaColor = new Color(255, 100, 100, 255);
+		}
+		else if (deltaSign < 0)
+		{
+			deltaString = "-" + temperatureDelta;
+			deltaColor = new Color(100, 100, 255, 255);
+		}
+		else
+		{
+			deltaString = "+" + temperatureDelta;
+			deltaColor = Color.gray;
+		}
+		TemperatureDeltaText.text = temperatureDelta.ToString("0.0");
+		TemperatureDeltaText.color = deltaColor;
+
+		float biomassDelta = 0;
+		deltaSign = Math.Sign(biomassDelta);
+		if (deltaSign > 0)
+		{
+			deltaString = "+" + biomassDelta;
+			deltaColor = new Color(0, 255, 0, 255);
+		}
+		else if (deltaSign < 0)
+		{
+			deltaString = "-" + biomassDelta;
+			deltaColor = new Color(255, 0, 0, 255);
+		}
+		else
+		{
+			deltaString = "+" + biomassDelta;
+			deltaColor = Color.gray;
+		}
+		BiomassText.text = "0";
+		BiomassDeltaText.text = deltaString;
+		BiomassDeltaText.color = deltaColor;
 	}
 
 
