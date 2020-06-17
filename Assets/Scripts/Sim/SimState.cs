@@ -15,7 +15,6 @@ public struct SimState {
 	public NativeArray<short> Plate;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> Roughness;
-	public NativeArray<float> GroundCarbonDioxide;
 	public NativeArray<float> GroundNitrogen;
 	public NativeArray<float> GroundGlucose;
 	public NativeArray<float> GroundMinerals;
@@ -57,7 +56,6 @@ public struct SimState {
 	{
 		Plate = new NativeArray<short>(count, Allocator.Persistent);
 		Roughness = new NativeArray<float>(count, Allocator.Persistent);
-		GroundCarbonDioxide = new NativeArray<float>(count, Allocator.Persistent);
 		Elevation = new NativeArray<float>(count, Allocator.Persistent);
 		GroundTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWater = new NativeArray<float>(count, Allocator.Persistent);
@@ -82,11 +80,12 @@ public struct SimState {
 		AirTemperaturePotential = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		AirVapor = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		AirCarbonDioxide = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
-		AirVelocity = new NativeArray<float3>(count * worldData.AirLayers, Allocator.Persistent);
-		AirDust = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
-		AirMinerals = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		AirOxygen = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		AirNitrogen = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
 		AirMethane = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		AirMinerals = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		AirDust = new NativeArray<float>(count * worldData.AirLayers, Allocator.Persistent);
+		AirVelocity = new NativeArray<float3>(count * worldData.AirLayers, Allocator.Persistent);
 
 		WaterTemperature = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		WaterMass = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
@@ -104,7 +103,6 @@ public struct SimState {
 		PlanetState = from.PlanetState;
 		Plate.CopyFrom(from.Plate);
 		Roughness.CopyFrom(from.Roughness);
-		GroundCarbonDioxide.CopyFrom(from.GroundCarbonDioxide);
 		Elevation.CopyFrom(from.Elevation);
 		GroundTemperature.CopyFrom(from.GroundTemperature);
 		GroundWater.CopyFrom(from.GroundWater);
@@ -128,11 +126,12 @@ public struct SimState {
 		AirTemperaturePotential.CopyFrom(from.AirTemperaturePotential);
 		AirVapor.CopyFrom(from.AirVapor);
 		AirCarbonDioxide.CopyFrom(from.AirCarbonDioxide);
-		AirVelocity.CopyFrom(from.AirVelocity);
-		AirDust.CopyFrom(from.AirDust);
-		AirMinerals.CopyFrom(from.AirMinerals);
+		AirOxygen.CopyFrom(from.AirOxygen);
 		AirNitrogen.CopyFrom(from.AirNitrogen);
 		AirMethane.CopyFrom(from.AirMethane);
+		AirMinerals.CopyFrom(from.AirMinerals);
+		AirDust.CopyFrom(from.AirDust);
+		AirVelocity.CopyFrom(from.AirVelocity);
 
 		WaterTemperature.CopyFrom(from.WaterTemperature);
 		WaterMass.CopyFrom(from.WaterMass);
@@ -140,7 +139,7 @@ public struct SimState {
 		WaterSaltMass.CopyFrom(from.WaterSaltMass);
 		WaterMinerals.CopyFrom(from.WaterMinerals);
 		WaterGlucose.CopyFrom(from.WaterGlucose);
-		WaterOxygen.CopyFrom(from.WaterGlucose);
+		WaterOxygen.CopyFrom(from.WaterOxygen);
 		WaterVelocity.CopyFrom(from.WaterVelocity);
 		WaterNitrogen.CopyFrom(from.WaterNitrogen);
 	}
@@ -149,7 +148,6 @@ public struct SimState {
 	{
 		Plate.Dispose();
 		Roughness.Dispose();
-		GroundCarbonDioxide.Dispose();
 		Elevation.Dispose();
 		GroundTemperature.Dispose();
 		GroundWater.Dispose();
@@ -173,6 +171,7 @@ public struct SimState {
 		AirTemperaturePotential.Dispose();
 		AirVapor.Dispose();
 		AirCarbonDioxide.Dispose();
+		AirOxygen.Dispose();
 		AirVelocity.Dispose();
 		AirDust.Dispose();
 		AirMinerals.Dispose();

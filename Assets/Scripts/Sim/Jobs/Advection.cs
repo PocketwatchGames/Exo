@@ -8,7 +8,11 @@ public struct DiffusionAir {
 	public float Temperature;
 	public float WaterVapor;
 	public float Dust;
+	public float Minerals;
 	public float CarbonDioxide;
+	public float Nitrogen;
+	public float Oxygen;
+	public float Methane;
 	public float3 Velocity;
 }
 public struct DiffusionCloud {
@@ -20,6 +24,10 @@ public struct DiffusionWater {
 	public float WaterMass;
 	public float SaltMass;
 	public float CarbonMass;
+	public float NitrogenMass;
+	public float GlucoseMass;
+	public float MineralMass;
+	public float OxygenMass;
 	public float Temperature;
 	public float3 Velocity;
 }
@@ -180,6 +188,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float> Salt;
 	[ReadOnly] public NativeArray<float> Carbon;
+	[ReadOnly] public NativeArray<float> Nitrogen;
+	[ReadOnly] public NativeArray<float> Mineral;
+	[ReadOnly] public NativeArray<float> Oxygen;
+	[ReadOnly] public NativeArray<float> Glucose;
 	[ReadOnly] public NativeArray<float> CoriolisMultiplier;
 	[ReadOnly] public NativeArray<int> NeighborsVert;
 	[ReadOnly] public float CoriolisTerm;
@@ -196,6 +208,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 		float newMass = waterMass;
 		float newSaltMass = 0;
 		float newCarbon = 0;
+		float newGlucose = 0;
+		float newNitrogen = 0;
+		float newMineral = 0;
+		float newOxygen = 0;
 		float newTemperature = 0;
 		float3 newVelocity = 0;
 
@@ -211,6 +227,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 
 			newSaltMass = Salt[fullRangeIndex] * percentRemaining;
 			newCarbon = Carbon[fullRangeIndex] * percentRemaining;
+			newNitrogen = Nitrogen[fullRangeIndex] * percentRemaining;
+			newGlucose = Glucose[fullRangeIndex] * percentRemaining;
+			newMineral = Mineral[fullRangeIndex] * percentRemaining;
+			newOxygen = Oxygen[fullRangeIndex] * percentRemaining;
 			newTemperature = Temperature[fullRangeIndex] * newMass;
 			newVelocity = Velocity[fullRangeIndex] * newMass;
 
@@ -239,6 +259,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 					newMass += incomingMass;
 					newSaltMass += Salt[n] * incoming;
 					newCarbon += Carbon[n] * incoming;
+					newNitrogen += Nitrogen[n] * incoming;
+					newMineral += Mineral[n] * incoming;
+					newOxygen += Oxygen[n] * incoming;
+					newGlucose += Glucose[n] * incoming;
 					newTemperature += Temperature[n] * incomingMass;
 
 					// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
@@ -276,6 +300,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 				newVelocity *= inverseNewMass;
 				newSaltMass *= inverseNewMass * waterMass;
 				newCarbon *= inverseNewMass * waterMass;
+				newNitrogen *= inverseNewMass * waterMass;
+				newGlucose *= inverseNewMass * waterMass;
+				newMineral *= inverseNewMass * waterMass;
+				newOxygen *= inverseNewMass * waterMass;
 				newMass = waterMass;
 			}
 			else
@@ -291,6 +319,10 @@ public struct AdvectionWaterJob : IJobParallelFor {
 			WaterMass = newMass,
 			SaltMass = newSaltMass,
 			CarbonMass = newCarbon,
+			NitrogenMass = newNitrogen,
+			GlucoseMass = newGlucose,
+			MineralMass = newMineral,
+			OxygenMass = newOxygen,
 			Temperature = newTemperature,
 			Velocity = newVelocity
 		};
@@ -378,6 +410,10 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 	public NativeSlice<float> Vapor;
 	public NativeSlice<float> Dust;
 	public NativeSlice<float> CarbonDioxide;
+	public NativeSlice<float> Nitrogen;
+	public NativeSlice<float> Oxygen;
+	public NativeSlice<float> Minerals;
+	public NativeSlice<float> Methane;
 	public NativeSlice<float3> AirVelocity;
 	[ReadOnly] public NativeSlice<DiffusionAir> Advection;
 	public void Execute(int i)
@@ -386,6 +422,10 @@ public struct ApplyAdvectionAirJob : IJobParallelFor {
 		Vapor[i] = Advection[i].WaterVapor;
 		Dust[i] = Advection[i].Dust;
 		CarbonDioxide[i] = Advection[i].CarbonDioxide;
+		Nitrogen[i] = Advection[i].Nitrogen;
+		Oxygen[i] = Advection[i].Oxygen;
+		Minerals[i] = Advection[i].Minerals;
+		Methane[i] = Advection[i].Methane;
 		AirVelocity[i] = Advection[i].Velocity;
 	}
 }
@@ -396,6 +436,10 @@ public struct ApplyAdvectionWaterJob : IJobParallelFor {
 	public NativeSlice<float> WaterMass;
 	public NativeSlice<float> SaltMass;
 	public NativeSlice<float> CarbonMass;
+	public NativeSlice<float> NitrogenMass;
+	public NativeSlice<float> GlucoseMass;
+	public NativeSlice<float> MineralMass;
+	public NativeSlice<float> OxygenMass;
 	public NativeSlice<float> Temperature;
 	public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeSlice<DiffusionWater> Advection;
@@ -404,6 +448,10 @@ public struct ApplyAdvectionWaterJob : IJobParallelFor {
 		WaterMass[i] = Advection[i].WaterMass;
 		SaltMass[i] = Advection[i].SaltMass;
 		CarbonMass[i] = Advection[i].CarbonMass;
+		NitrogenMass[i] = Advection[i].NitrogenMass;
+		GlucoseMass[i] = Advection[i].GlucoseMass;
+		MineralMass[i] = Advection[i].MineralMass;
+		OxygenMass[i] = Advection[i].OxygenMass;
 		Temperature[i] = Advection[i].Temperature;
 		Velocity[i] = Advection[i].Velocity;
 	}

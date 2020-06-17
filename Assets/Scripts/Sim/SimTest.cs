@@ -26,6 +26,10 @@ public static class SimTest {
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "WaterMass", staticState.GetSliceWater(state.WaterMass), degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "SaltMass", staticState.GetSliceWater(state.WaterSaltMass), degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonMass", staticState.GetSliceWater(state.WaterCarbonDioxide), degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "NitrogenMass", staticState.GetSliceWater(state.WaterNitrogen), degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "GlucoseMass", staticState.GetSliceWater(state.WaterGlucose), degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "MineralsMass", staticState.GetSliceWater(state.WaterMinerals), degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "OxygenMass", staticState.GetSliceWater(state.WaterOxygen), degenVarNames);
 		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "WaterTemperature", staticState.GetSliceWater(state.WaterTemperature), 0, 1200, degenVarNames);
 		degen |= CheckDegen(cellCount, degenIndices, "Current", staticState.GetSliceWater(state.WaterVelocity), degenVarNames);
 

@@ -10,12 +10,20 @@ public struct UpdateMassWaterJob : IJobParallelFor {
 	public NativeSlice<float> WaterMass;
 	public NativeSlice<float> SaltMass;
 	public NativeSlice<float> CarbonMass;
+	public NativeSlice<float> OxygenMass;
+	public NativeSlice<float> NitrogenMass;
+	public NativeSlice<float> GlucoseMass;
+	public NativeSlice<float> MineralsMass;
 	public NativeSlice<float> WaterTemperature;
 	[ReadOnly] public NativeArray<float> SaltPlume;
 	[ReadOnly] public NativeArray<float> SaltPlumeTemperature;
 	[ReadOnly] public NativeArray<float> LastSaltMass;
 	[ReadOnly] public NativeArray<float> LastWaterMass;
 	[ReadOnly] public NativeArray<float> LastCarbonMass;
+	[ReadOnly] public NativeArray<float> LastOxygenMass;
+	[ReadOnly] public NativeArray<float> LastNitrogenMass;
+	[ReadOnly] public NativeArray<float> LastGlucoseMass;
+	[ReadOnly] public NativeArray<float> LastMineralsMass;
 	[ReadOnly] public NativeArray<float> WaterCoverage;
 	[ReadOnly] public int Count;
 	public void Execute(int i)
@@ -28,6 +36,10 @@ public struct UpdateMassWaterJob : IJobParallelFor {
 		WaterMass[i] = waterMass;
 		SaltMass[i] = saltMass;
 		CarbonMass[i] = LastCarbonMass[index];
+		OxygenMass[i] = LastOxygenMass[index];
+		NitrogenMass[i] = LastNitrogenMass[index];
+		GlucoseMass[i] = LastGlucoseMass[index];
+		MineralsMass[i] = LastMineralsMass[index];
 		if (LastWaterMass[downIndex] == 0 && waterMass > 0)
 		{
 			float saltPlume = SaltPlume[columnIndex];
@@ -46,6 +58,10 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	public NativeSlice<float> WaterMass;
 	public NativeSlice<float> SaltMass;
 	public NativeSlice<float> CarbonMass;
+	public NativeSlice<float> OxygenMass;
+	public NativeSlice<float> NitrogenMass;
+	public NativeSlice<float> GlucoseMass;
+	public NativeSlice<float> MineralsMass;
 	[ReadOnly] public NativeArray<float> Evaporation;
 	[ReadOnly] public NativeArray<float> IceMelted;
 	[ReadOnly] public NativeArray<float> Precipitation;
@@ -55,6 +71,10 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> FloraRespirationWater;
 	[ReadOnly] public NativeArray<float> TerrainTemperature;
 	[ReadOnly] public NativeArray<float> WaterCarbonDelta;
+	[ReadOnly] public NativeArray<float> WaterOxygenDelta;
+	[ReadOnly] public NativeArray<float> WaterNitrogenDelta;
+	[ReadOnly] public NativeArray<float> WaterGlucoseDelta;
+	[ReadOnly] public NativeArray<float> WaterMineralsDelta;
 	public void Execute(int i)
 	{
 		float precipitationTemperature = PrecipitationTemperature[i];
@@ -65,6 +85,10 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		WaterMass[i] = newMass;
 		SaltMass[i] -= SaltPlume[i];
 		CarbonMass[i] += WaterCarbonDelta[i];
+		OxygenMass[i] += WaterOxygenDelta[i];
+		NitrogenMass[i] += WaterNitrogenDelta[i];
+		GlucoseMass[i] += WaterGlucoseDelta[i];
+		MineralsMass[i] += WaterMineralsDelta[i];
 
 		if (newMass <= 0)
 		{
@@ -231,13 +255,21 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 	public NativeSlice<float> VaporMass;
 	public NativeSlice<float> DustMass;
 	public NativeSlice<float> CarbonDioxide;
+	public NativeSlice<float> Oxygen;
+	public NativeSlice<float> Nitrogen;
+	public NativeSlice<float> Methane;
+	public NativeSlice<float> Minerals;
 	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeArray<float> EvaporationWater;
 	[ReadOnly] public NativeSlice<float> EvaporationTemperatureWater;
 	[ReadOnly] public NativeArray<float> EvaporationFlora;
 	[ReadOnly] public NativeArray<float> EvaporationTemperatureFlora;
 	[ReadOnly] public NativeArray<float> DustEjected;
-	[ReadOnly] public NativeArray<float> AirCarbonDelta;
+	[ReadOnly] public NativeArray<float> CarbonDioxideDelta;
+	[ReadOnly] public NativeArray<float> OxygenDelta;
+	[ReadOnly] public NativeArray<float> NitrogenDelta;
+	[ReadOnly] public NativeArray<float> MethaneDelta;
+	[ReadOnly] public NativeArray<float> MineralsDelta;
 	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public NativeArray<float> CloudMass;
@@ -260,11 +292,13 @@ public struct UpdateMassAirSurfaceJob : IJobParallelFor {
 			EvaporationFlora[i] * Atmosphere.GetPotentialTemperature(EvaporationTemperatureFlora[i], elevation) * WorldData.SpecificHeatWaterVapor) /
 			specificHeatAirNew;
 
-
-
 		DustMass[i] = DustMass[i] + DustEjected[i];
 		VaporMass[i] = vaporMass + EvaporationWater[i] + EvaporationFlora[i];
-		CarbonDioxide[i] += AirCarbonDelta[i];
+		CarbonDioxide[i] += CarbonDioxideDelta[i];
+		Oxygen[i] += OxygenDelta[i];
+		Nitrogen[i] += NitrogenDelta[i];
+		Methane[i] += MethaneDelta[i];
+		Minerals[i] += MineralsDelta[i];
 	}
 }
 
@@ -302,7 +336,6 @@ public struct UpdateMassIceJob : IJobParallelFor {
 
 [BurstCompile]
 public struct UpdateTerrainJob : IJobParallelFor {
-	public NativeArray<float> SoilCarbon;
 	public NativeArray<float> Roughness;
 	public NativeArray<float> Elevation;
 	public NativeArray<float> GroundWater;
@@ -311,7 +344,6 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	public NativeArray<float> MagmaMass;
 	public NativeArray<float> CrustDepth;
 
-	[ReadOnly] public NativeArray<float> LastSoilFertility;
 	[ReadOnly] public NativeArray<float> LastRoughness;
 	[ReadOnly] public NativeArray<float> LastElevation;
 	[ReadOnly] public NativeArray<float> LastGroundWater;
@@ -335,8 +367,6 @@ public struct UpdateTerrainJob : IJobParallelFor {
 
 		float lavaCrystalizedDepth = lavaCrystalized * LavaToRockMassAdjustment / WorldData.MassLava;
 		Elevation[i] = LastElevation[i] + lavaCrystalizedDepth;
-		// TODO: improve soil fertility when dust settles
-		SoilCarbon[i] = LastSoilFertility[i];
 		Roughness[i] = LastRoughness[i];
 		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];
 		CrustDepth[i] = LastCrustDepth[i] + lavaCrystalizedDepth + CrustDelta[i];
@@ -382,28 +412,46 @@ public struct UpdateFloraJob : IJobParallelFor {
 [BurstCompile]
 public struct UpdateWaterAirDiffusionJob : IJobParallelFor {
 	public NativeSlice<float> AirCarbon;
+	public NativeSlice<float> AirOxygen;
 	public NativeSlice<float> WaterCarbon;
+	public NativeSlice<float> WaterOxygen;
 	[ReadOnly] public NativeSlice<float> WaterMass;
 	[ReadOnly] public NativeSlice<float> SaltMass;
 	[ReadOnly] public NativeSlice<float> AirMass;
 	[ReadOnly] public NativeSlice<float> WaterDepth;
-	[ReadOnly] public float WaterAirCarbonDiffusionCoefficient;
-	[ReadOnly] public float WaterAirCarbonDiffusionDepth;
+	[ReadOnly] public float WaterAirDiffusionCoefficient;
+	[ReadOnly] public float WaterAirCarbonDepth;
 	public void Execute(int i)
 	{
 
-		float airCarbon = AirCarbon[i];
-		float waterCarbon = WaterCarbon[i];
-		if ((waterCarbon > 0 || airCarbon > 0) && WaterMass[i] > 0)
+		if (WaterMass[i] > 0)
 		{
-			float waterLayerMass = WaterMass[i] + SaltMass[i] + waterCarbon;
-			float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + AirMass[i]);
-			float diffusionDepth = math.min(1, WaterAirCarbonDiffusionDepth / WaterDepth[i]);
-			float diffusion = (desiredCarbonDensity * waterLayerMass - waterCarbon) * WaterAirCarbonDiffusionCoefficient;
-			diffusion *= diffusionDepth;
+			float airCarbon = AirCarbon[i];
+			float airOxygen = AirOxygen[i];
+			float waterCarbon = WaterCarbon[i];
+			float waterOxygen = WaterOxygen[i];
+			float waterLayerMass = WaterMass[i] + SaltMass[i] + waterCarbon + waterOxygen;
+			if (waterCarbon > 0 || airCarbon > 0)
+			{
+				float desiredCarbonDensity = (airCarbon + waterCarbon) / (waterLayerMass + AirMass[i]);
+				float diffusionDepth = math.min(1, WaterAirCarbonDepth / WaterDepth[i]);
+				float diffusionCarbon = (desiredCarbonDensity * waterLayerMass - waterCarbon) * WaterAirDiffusionCoefficient;
+				diffusionCarbon *= diffusionDepth;
 
-			AirCarbon[i] = airCarbon - diffusion;
-			WaterCarbon[i] = waterCarbon + diffusion;
+				AirCarbon[i] = airCarbon - diffusionCarbon;
+				WaterCarbon[i] = waterCarbon + diffusionCarbon;
+			}
+			if (waterOxygen > 0 || airOxygen > 0)
+			{
+				float desiredOxygenDensity = (airOxygen + waterOxygen) / (waterLayerMass + AirMass[i]);
+				float diffusionDepth = math.min(1, WaterAirCarbonDepth / WaterDepth[i]);
+				float diffusionOxygen = (desiredOxygenDensity * waterLayerMass - waterOxygen) * WaterAirDiffusionCoefficient;
+				diffusionOxygen *= diffusionDepth;
+
+				AirOxygen[i] = airOxygen - diffusionOxygen;
+				WaterOxygen[i] = waterOxygen + diffusionOxygen;
+			}
+
 		}
 	}
 

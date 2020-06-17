@@ -116,7 +116,11 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 	public NativeSlice<DiffusionWater> Delta;
 	[ReadOnly] public NativeSlice<float> Mass;
 	[ReadOnly] public NativeSlice<float> Salt;
-	[ReadOnly] public NativeSlice<float> Carbon;
+	[ReadOnly] public NativeSlice<float> CarbonDioxide;
+	[ReadOnly] public NativeSlice<float> Oxygen;
+	[ReadOnly] public NativeSlice<float> Nitrogen;
+	[ReadOnly] public NativeSlice<float> Glucose;
+	[ReadOnly] public NativeSlice<float> Minerals;
 	[ReadOnly] public NativeSlice<float> Temperature;
 	[ReadOnly] public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> Positions;
@@ -132,6 +136,10 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 		float mass = 0;
 		float salt = 0;
 		float carbon = 0;
+		float oxygen = 0;
+		float nitrogen = 0;
+		float glucose = 0;
+		float minerals = 0;
 		float3 velocity = 0;
 		float temperature = 0;
 		float massPercentRemaining = 1;
@@ -158,7 +166,11 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 						float saltIncoming = Salt[nIndex] * flowPercent;
 						mass += massIncoming;
 						salt += saltIncoming;
-						carbon += Carbon[nIndex] * flowPercent;
+						carbon += CarbonDioxide[nIndex] * flowPercent;
+						oxygen += Oxygen[nIndex] * flowPercent;
+						nitrogen += Nitrogen[nIndex] * flowPercent;
+						glucose += Glucose[nIndex] * flowPercent;
+						minerals += Minerals[nIndex] * flowPercent;
 						temperature += Temperature[nIndex] * (massIncoming + saltIncoming);
 
 						// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
@@ -184,7 +196,11 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 		float saltRemaining = Salt[i] * massPercentRemaining;
 		mass += massRemaining;
 		salt += saltRemaining;
-		carbon += Carbon[i] * massPercentRemaining;
+		carbon += CarbonDioxide[i] * massPercentRemaining;
+		oxygen += Oxygen[i] * massPercentRemaining;
+		nitrogen += Nitrogen[i] * massPercentRemaining;
+		glucose += Glucose[i] * massPercentRemaining;
+		minerals += Minerals[i] * massPercentRemaining;
 		velocity += Velocity[i] * (massRemaining + saltRemaining);
 		temperature += Temperature[i] * (massRemaining + saltRemaining);
 
@@ -207,6 +223,10 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 			WaterMass = mass,
 			SaltMass = salt,
 			CarbonMass = carbon,
+			OxygenMass = oxygen,
+			NitrogenMass = nitrogen,
+			GlucoseMass = glucose,
+			MineralMass = minerals,
 			Temperature = temperature,
 			Velocity = velocity
 		};
@@ -222,6 +242,10 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> Salt;
 	[ReadOnly] public NativeArray<float> Carbon;
+	[ReadOnly] public NativeArray<float> Nitrogen;
+	[ReadOnly] public NativeArray<float> Glucose;
+	[ReadOnly] public NativeArray<float> Minerals;
+	[ReadOnly] public NativeArray<float> Oxygen;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public float MaxDepth1;
@@ -254,11 +278,19 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			float moveMass = mass1 * move;
 			float moveSalt = salt1 * move;
 			float moveCarbon = Carbon[index1] * move;
+			float moveNitrogen = Nitrogen[index1] * move;
+			float moveGlucose = Glucose[index1] * move;
+			float moveMinerals = Minerals[index1] * move;
+			float moveOxygen = Oxygen[index1] * move;
 			Delta1[i] = new DiffusionWater()
 			{
 				WaterMass = mass1 - moveMass,
 				SaltMass = salt1 - moveSalt,
 				CarbonMass = Carbon[index1] - moveCarbon,
+				NitrogenMass = Nitrogen[index1] - moveNitrogen,
+				GlucoseMass = Glucose[index1] - moveGlucose,
+				MineralMass = Minerals[index1] - moveMinerals,
+				OxygenMass = Oxygen[index1] - moveOxygen,
 				Temperature = temperature1,
 				Velocity = velocity1
 			};
@@ -268,6 +300,10 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass2 + moveMass,
 				SaltMass = salt2 + moveSalt,
 				CarbonMass = Carbon[index2] + moveCarbon,
+				NitrogenMass = Nitrogen[index2] + moveNitrogen,
+				GlucoseMass = Glucose[index2] + moveGlucose,
+				MineralMass = Minerals[index2] + moveMinerals,
+				OxygenMass = Oxygen[index2] + moveOxygen,
 				Temperature = (temperature2 * (mass2 + salt2) + temperature1 * (moveMass + moveSalt)) * inverseTotalMass,
 				Velocity = (velocity2 * (mass2 + salt2) + velocity1 * (moveMass + moveSalt)) * inverseTotalMass,
 			};
@@ -278,12 +314,20 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 			float moveMass = mass2 * move;
 			float moveSalt = salt2 * move;
 			float moveCarbon = Carbon[index2] * move;
+			float moveNitrogen = Nitrogen[index2] * move;
+			float moveGlucose = Glucose[index2] * move;
+			float moveMinerals = Minerals[index2] * move;
+			float moveOxygen = Oxygen[index2] * move;
 			float inverseTotalMass = 1.0f / (moveMass + moveSalt + mass1 + salt1);
 			Delta1[i] = new DiffusionWater()
 			{
 				WaterMass = mass1 + moveMass,
 				SaltMass = salt1 + moveSalt,
 				CarbonMass = Carbon[index1] + moveCarbon,
+				NitrogenMass = Nitrogen[index1] + moveNitrogen,
+				GlucoseMass = Glucose[index1] + moveGlucose,
+				MineralMass = Minerals[index1] + moveMinerals,
+				OxygenMass = Oxygen[index1] + moveOxygen,
 				Temperature = (temperature1 * (mass1 + salt1) + temperature2 * (moveMass + moveSalt)) * inverseTotalMass,
 				Velocity = (velocity1 * (mass1 + salt1) + velocity2 * (moveMass + moveSalt)) * inverseTotalMass,
 			};
@@ -293,6 +337,10 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass2 - moveMass,
 				SaltMass = salt2 - moveSalt,
 				CarbonMass = Carbon[index2] - moveCarbon,
+				NitrogenMass = Nitrogen[index2] - moveNitrogen,
+				GlucoseMass = Glucose[index2] - moveGlucose,
+				MineralMass = Minerals[index2] - moveMinerals,
+				OxygenMass = Oxygen[index2] - moveOxygen,
 				Temperature = temperature2 * anyMassRemaining,
 				Velocity = velocity2 * anyMassRemaining
 			};
@@ -304,6 +352,10 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass1,
 				SaltMass = salt1,
 				CarbonMass = Carbon[index1],
+				NitrogenMass = Nitrogen[index1],
+				GlucoseMass = Glucose[index1],
+				MineralMass = Minerals[index1],
+				OxygenMass = Oxygen[index1],
 				Temperature = temperature1,
 				Velocity = velocity1
 			};
@@ -312,6 +364,10 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass2,
 				SaltMass = salt2,
 				CarbonMass = Carbon[index2],
+				NitrogenMass = Nitrogen[index2],
+				GlucoseMass = Glucose[index2],
+				MineralMass = Minerals[index2],
+				OxygenMass = Oxygen[index2],
 				Temperature = temperature2,
 				Velocity = velocity2
 			};

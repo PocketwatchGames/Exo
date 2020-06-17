@@ -55,7 +55,6 @@ public struct DisplayState {
 	public float GlobalCloudCoverage;
 	public float GlobalEvaporation;
 	public float GlobalRainfall;
-	public float GlobalSoilFertility;
 	public float GlobalCondensationCloud;
 	public float GlobalCondensationGround;
 	public double GlobalWaterVapor;
@@ -337,7 +336,6 @@ public struct DisplayState {
 			int surfaceWaterIndex = staticState.GetWaterIndex(worldData.SurfaceWaterLayer, i);
 			float waterMassSurface = nextState.WaterMass[surfaceWaterIndex];
 			globalWaterSurfaceMass += waterMassSurface;
-			display.GlobalSoilFertility += nextState.GroundCarbonDioxide[i];
 			display.GlobalOceanSurfaceTemperature += nextState.WaterTemperature[surfaceWaterIndex] * waterMassSurface;
 			display.SolarRadiation += tempState.DisplaySolarRadiation[i];
 			display.GeothermalRadiation += tempState.GeothermalRadiation[i];

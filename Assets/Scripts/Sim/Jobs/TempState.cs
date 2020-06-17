@@ -142,8 +142,15 @@ public struct TempState {
 	public NativeArray<float> DustEjected;
 	public NativeArray<float> CrustDelta;
 	public NativeArray<float> WaterCarbonDelta;
+	public NativeArray<float> WaterOxygenDelta;
+	public NativeArray<float> WaterNitrogenDelta;
+	public NativeArray<float> WaterGlucoseDelta;
+	public NativeArray<float> WaterMineralsDelta;
 	public NativeArray<float> AirCarbonDelta;
-	public NativeArray<float> OxygenDelta;
+	public NativeArray<float> AirOxygenDelta;
+	public NativeArray<float> AirNitrogenDelta;
+	public NativeArray<float> AirMethaneDelta;
+	public NativeArray<float> AirMineralsDelta;
 	public NativeArray<float> DivergenceWater;
 	public NativeArray<float> DisplaySolarRadiation;
 
@@ -306,9 +313,16 @@ public struct TempState {
 		LavaEjected = new NativeArray<float>(count, Allocator.Persistent);
 		DustEjected = new NativeArray<float>(count, Allocator.Persistent);
 		CrustDelta = new NativeArray<float>(count, Allocator.Persistent);
+		AirOxygenDelta = new NativeArray<float>(count, Allocator.Persistent);
 		AirCarbonDelta = new NativeArray<float>(count, Allocator.Persistent);
-		OxygenDelta = new NativeArray<float>(count, Allocator.Persistent);
+		AirNitrogenDelta = new NativeArray<float>(count, Allocator.Persistent);
+		AirMethaneDelta = new NativeArray<float>(count, Allocator.Persistent);
+		AirMineralsDelta = new NativeArray<float>(count, Allocator.Persistent);
+		WaterOxygenDelta = new NativeArray<float>(count, Allocator.Persistent);
 		WaterCarbonDelta = new NativeArray<float>(count, Allocator.Persistent);
+		WaterNitrogenDelta = new NativeArray<float>(count, Allocator.Persistent);
+		WaterGlucoseDelta = new NativeArray<float>(count, Allocator.Persistent);
+		WaterMineralsDelta = new NativeArray<float>(count, Allocator.Persistent);
 
 
 		CloudEvaporationMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -497,8 +511,16 @@ public struct TempState {
 		DustEjected.Dispose();
 		CrustDelta.Dispose();
 		AirCarbonDelta.Dispose();
-		OxygenDelta.Dispose();
+		AirOxygenDelta.Dispose();
+		AirNitrogenDelta.Dispose();
+		AirMethaneDelta.Dispose();
+		AirMineralsDelta.Dispose();
+
 		WaterCarbonDelta.Dispose();
+		WaterOxygenDelta.Dispose();
+		WaterNitrogenDelta.Dispose();
+		WaterGlucoseDelta.Dispose();
+		WaterMineralsDelta.Dispose();
 
 		DisplaySolarRadiation.Dispose();
 
@@ -576,14 +598,14 @@ public struct TempState {
 				GroundWater = state.GroundWater,
 				GroundWaterMaxInverse = 1.0f / worldData.GroundWaterMax,
 			}, dependencies);
-		dependencies = _jobHelper.Schedule(
-			settings.SynchronousOverrides.TempState, 1,
-			new UpdateSoilFertilityJob()
-			{
-				SoilFertility = SoilFertility,
-				GroundCarbon = state.GroundCarbonDioxide,
-				GroundCarbonFertility = worldData.GroundCarbonFertility
-			}, dependencies);
+		//dependencies = _jobHelper.Schedule(
+		//	settings.SynchronousOverrides.TempState, 1,
+		//	new UpdateSoilFertilityJob()
+		//	{
+		//		SoilFertility = SoilFertility,
+		//		GroundCarbon = state.GroundCarbonDioxide,
+		//		GroundCarbonFertility = worldData.GroundCarbonFertility
+		//	}, dependencies);
 		dependencies = _jobHelper.Schedule(
 			settings.SynchronousOverrides.TempState, 1,
 			new UpdateSpecificHeatTerrainJob()

@@ -309,12 +309,16 @@ public class WorldSim {
 				JobType.Schedule, 64,
 				new ApplyAdvectionAirJob()
 				{
-					Advection = tempState.AdvectionAir,
-					Vapor = nextState.AirVapor,
-					Dust = nextState.AirDust,
-					CarbonDioxide = nextState.AirCarbonDioxide,
-					Temperature = nextState.AirTemperaturePotential,
-					AirVelocity = nextState.AirVelocity,
+					Advection = staticState.GetSliceAir(tempState.AdvectionAir),
+					Vapor = staticState.GetSliceAir(nextState.AirVapor),
+					Dust = staticState.GetSliceAir(nextState.AirDust),
+					CarbonDioxide = staticState.GetSliceAir(nextState.AirCarbonDioxide),
+					Oxygen = staticState.GetSliceAir(nextState.AirOxygen),
+					Nitrogen = staticState.GetSliceAir(nextState.AirNitrogen),
+					Methane = staticState.GetSliceAir(nextState.AirMethane),
+					Minerals = staticState.GetSliceAir(nextState.AirMinerals),
+					Temperature = staticState.GetSliceAir(nextState.AirTemperaturePotential),
+					AirVelocity = staticState.GetSliceAir(nextState.AirVelocity),
 			}, energyJobHandles[worldData.AirLayer0]);
 		}
 		#endregion
@@ -357,6 +361,10 @@ public class WorldSim {
 					Vapor = staticState.GetSliceAir(nextState.AirVapor),
 					Dust = staticState.GetSliceAir(nextState.AirDust),
 					CarbonDioxide = staticState.GetSliceAir(nextState.AirCarbonDioxide),
+					Oxygen = staticState.GetSliceAir(nextState.AirOxygen),
+					Nitrogen = staticState.GetSliceAir(nextState.AirNitrogen),
+					Methane = staticState.GetSliceAir(nextState.AirMethane),
+					Minerals = staticState.GetSliceAir(nextState.AirMinerals),
 					Temperature = staticState.GetSliceAir(nextState.AirTemperaturePotential),
 					AirVelocity = staticState.GetSliceAir(nextState.AirVelocity),
 				}, energyJobHandles[worldData.AirLayer0]);
@@ -544,6 +552,10 @@ public class WorldSim {
 					Mass = nextState.WaterMass,
 					Salt = nextState.WaterSaltMass,
 					Carbon = nextState.WaterCarbonDioxide,
+					Nitrogen = nextState.WaterNitrogen,
+					Glucose = nextState.WaterGlucose,
+					Mineral = nextState.WaterMinerals,
+					Oxygen = nextState.WaterOxygen,
 					Positions = staticState.SphericalPosition,
 					NeighborsVert = staticState.NeighborsVert,
 					CoriolisMultiplier = staticState.CoriolisMultiplier,
@@ -557,6 +569,10 @@ public class WorldSim {
 				{
 					SaltMass = staticState.GetSliceWater(nextState.WaterSaltMass),
 					CarbonMass = staticState.GetSliceWater(nextState.WaterCarbonDioxide),
+					NitrogenMass = staticState.GetSliceWater(nextState.WaterNitrogen),
+					GlucoseMass = staticState.GetSliceWater(nextState.WaterGlucose),
+					MineralMass = staticState.GetSliceWater(nextState.WaterMinerals),
+					OxygenMass = staticState.GetSliceWater(nextState.WaterOxygen),
 					Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
 					Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
 					WaterMass = staticState.GetSliceWater(nextState.WaterMass),
@@ -619,6 +635,11 @@ public class WorldSim {
 					Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
 					SaltMass = staticState.GetSliceWater(nextState.WaterSaltMass),
 					CarbonMass = staticState.GetSliceWater(nextState.WaterCarbonDioxide),
+					OxygenMass = staticState.GetSliceWater(nextState.WaterOxygen),
+					NitrogenMass = staticState.GetSliceWater(nextState.WaterNitrogen),
+					GlucoseMass = staticState.GetSliceWater(nextState.WaterGlucose),
+					MineralsMass = staticState.GetSliceWater(nextState.WaterMinerals),
+					
 					Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
 					WaterMass = staticState.GetSliceWater(nextState.WaterMass),
 					LayerHeight = staticState.GetSliceWater(tempState.WaterLayerHeight),
@@ -639,6 +660,10 @@ public class WorldSim {
 					Advection = staticState.GetSliceWater(tempState.DiffusionWater),
 					SaltMass = staticState.GetSliceWater(nextState.WaterSaltMass),
 					CarbonMass = staticState.GetSliceWater(nextState.WaterCarbonDioxide),
+					NitrogenMass = staticState.GetSliceWater(nextState.WaterNitrogen),
+					GlucoseMass = staticState.GetSliceWater(nextState.WaterGlucose),
+					MineralMass = staticState.GetSliceWater(nextState.WaterMinerals),
+					OxygenMass = staticState.GetSliceWater(nextState.WaterOxygen),
 					Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
 					Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
 					WaterMass = staticState.GetSliceWater(nextState.WaterMass)
@@ -740,7 +765,11 @@ public class WorldSim {
 
 					Mass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
 					Velocity = staticState.GetSliceLayer(nextState.WaterVelocity,worldData.SurfaceWaterLayer),
-					Carbon = staticState.GetSliceLayer(nextState.WaterCarbonDioxide,worldData.SurfaceWaterLayer),
+					CarbonDioxide = staticState.GetSliceLayer(nextState.WaterCarbonDioxide,worldData.SurfaceWaterLayer),
+					Oxygen = staticState.GetSliceLayer(nextState.WaterOxygen, worldData.SurfaceWaterLayer),
+					Nitrogen = staticState.GetSliceLayer(nextState.WaterNitrogen, worldData.SurfaceWaterLayer),
+					Glucose = staticState.GetSliceLayer(nextState.WaterGlucose, worldData.SurfaceWaterLayer),
+					Minerals = staticState.GetSliceLayer(nextState.WaterMinerals, worldData.SurfaceWaterLayer),
 					Salt = staticState.GetSliceLayer(nextState.WaterSaltMass,worldData.SurfaceWaterLayer),
 					Temperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
 					FlowPercent = tempState.FlowPercentWater,
@@ -759,6 +788,10 @@ public class WorldSim {
 					WaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
 					SaltMass = staticState.GetSliceLayer(nextState.WaterSaltMass,worldData.SurfaceWaterLayer),
 					CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbonDioxide,worldData.SurfaceWaterLayer),
+					NitrogenMass = staticState.GetSliceLayer(nextState.WaterNitrogen, worldData.SurfaceWaterLayer),
+					GlucoseMass = staticState.GetSliceLayer(nextState.WaterGlucose, worldData.SurfaceWaterLayer),
+					MineralMass = staticState.GetSliceLayer(nextState.WaterMinerals, worldData.SurfaceWaterLayer),
+					OxygenMass = staticState.GetSliceLayer(nextState.WaterOxygen, worldData.SurfaceWaterLayer),
 					Temperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
 					Velocity = staticState.GetSliceLayer(nextState.WaterVelocity,worldData.SurfaceWaterLayer),
 
@@ -798,6 +831,10 @@ public class WorldSim {
 						Mass = nextState.WaterMass,
 						Salt = nextState.WaterSaltMass,
 						Carbon = nextState.WaterCarbonDioxide,
+						Nitrogen = nextState.WaterNitrogen,
+						Glucose = nextState.WaterGlucose,
+						Minerals = nextState.WaterMinerals,
+						Oxygen = nextState.WaterOxygen,
 						Temperature = nextState.WaterTemperature,
 						Velocity = nextState.WaterVelocity,
 
@@ -816,6 +853,10 @@ public class WorldSim {
 						WaterMass = staticState.GetSliceLayer(nextState.WaterMass, i),
 						SaltMass = staticState.GetSliceLayer(nextState.WaterSaltMass, i),
 						CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbonDioxide, i),
+						NitrogenMass = staticState.GetSliceLayer(nextState.WaterNitrogen, i),
+						GlucoseMass = staticState.GetSliceLayer(nextState.WaterGlucose, i),
+						MineralMass = staticState.GetSliceLayer(nextState.WaterMinerals, i),
+						OxygenMass = staticState.GetSliceLayer(nextState.WaterOxygen, i),
 						Temperature = staticState.GetSliceLayer(nextState.WaterTemperature, i),
 						Velocity = staticState.GetSliceLayer(nextState.WaterVelocity, i),
 
@@ -828,6 +869,10 @@ public class WorldSim {
 						WaterMass = staticState.GetSliceLayer(nextState.WaterMass, i - 1),
 						SaltMass = staticState.GetSliceLayer(nextState.WaterSaltMass, i - 1),
 						CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbonDioxide, i - 1),
+						NitrogenMass = staticState.GetSliceLayer(nextState.WaterNitrogen, i - 1),
+						GlucoseMass = staticState.GetSliceLayer(nextState.WaterGlucose, i - 1),
+						MineralMass = staticState.GetSliceLayer(nextState.WaterMinerals, i - 1),
+						OxygenMass = staticState.GetSliceLayer(nextState.WaterOxygen, i - 1),
 						Temperature = staticState.GetSliceLayer(nextState.WaterTemperature, i - 1),
 						Velocity = staticState.GetSliceLayer(nextState.WaterVelocity, i - 1),
 
@@ -1734,7 +1779,6 @@ public class WorldSim {
 					CrustDepth = lastState.CrustDepth,
 					MagmaMass = lastState.MagmaMass,
 					Elevation = lastState.Elevation,
-					SoilCarbon = nextState.GroundCarbonDioxide,
 					WaterCoverage = staticState.GetSliceLayer(tempState.WaterCoverage,worldData.SurfaceWaterLayer),
 					LavaCrystalizationTemperature = worldData.LavaCrystalizationTemperature,
 					CrustEruptionDepth = worldData.CrustDepthForEruption,
@@ -1760,11 +1804,19 @@ public class WorldSim {
 				WaterMass = staticState.GetSliceWater(nextState.WaterMass),
 				SaltMass = staticState.GetSliceWater(nextState.WaterSaltMass),
 				CarbonMass = staticState.GetSliceWater(nextState.WaterCarbonDioxide),
+				OxygenMass = staticState.GetSliceWater(nextState.WaterOxygen),
+				NitrogenMass = staticState.GetSliceWater(nextState.WaterNitrogen),
+				GlucoseMass = staticState.GetSliceWater(nextState.WaterGlucose),
+				MineralsMass = staticState.GetSliceWater(nextState.WaterMinerals),
 				WaterTemperature = staticState.GetSliceWater(nextState.WaterTemperature),
 				SaltPlume = tempState.SaltPlume,
 				SaltPlumeTemperature = tempState.FrozenTemperature,
 				LastSaltMass = lastState.WaterSaltMass,
 				LastCarbonMass = lastState.WaterCarbonDioxide,
+				LastOxygenMass = lastState.WaterOxygen,
+				LastNitrogenMass = lastState.WaterNitrogen,
+				LastGlucoseMass = lastState.WaterGlucose,
+				LastMineralsMass = lastState.WaterMinerals,
 				LastWaterMass = lastState.WaterMass,
 				WaterCoverage = tempState.WaterCoverage,
 				Count = staticState.Count
@@ -1793,6 +1845,10 @@ public class WorldSim {
 				WaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
 				SaltMass = staticState.GetSliceLayer(nextState.WaterSaltMass,worldData.SurfaceWaterLayer),
 				CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbonDioxide,worldData.SurfaceWaterLayer),
+				OxygenMass = staticState.GetSliceLayer(nextState.WaterOxygen, worldData.SurfaceWaterLayer),
+				NitrogenMass = staticState.GetSliceLayer(nextState.WaterNitrogen, worldData.SurfaceWaterLayer),
+				GlucoseMass = staticState.GetSliceLayer(nextState.WaterGlucose, worldData.SurfaceWaterLayer),
+				MineralsMass = staticState.GetSliceLayer(nextState.WaterMinerals, worldData.SurfaceWaterLayer),
 
 				SaltPlume = tempState.SaltPlume,
 				Evaporation = tempState.EvaporationMassWater,
@@ -1803,6 +1859,10 @@ public class WorldSim {
 				TerrainTemperature = nextState.GroundTemperature,
 				WaterFrozen = tempState.FrozenMass,
 				WaterCarbonDelta = tempState.WaterCarbonDelta,
+				WaterOxygenDelta = tempState.WaterOxygenDelta,
+				WaterNitrogenDelta = tempState.WaterNitrogenDelta,
+				WaterGlucoseDelta = tempState.WaterGlucoseDelta,
+				WaterMineralsDelta = tempState.WaterMineralsDelta
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.CloudLayer]));
 
 		energyJobHandles[worldData.CloudLayer] = SimJob.Schedule(
@@ -1862,6 +1922,10 @@ public class WorldSim {
 				VaporMass = staticState.GetSliceLayer(nextState.AirVapor,worldData.SurfaceAirLayer),
 				DustMass = staticState.GetSliceLayer(nextState.AirDust,worldData.SurfaceAirLayer),
 				CarbonDioxide = staticState.GetSliceLayer(nextState.AirCarbonDioxide,worldData.SurfaceAirLayer),
+				Oxygen = staticState.GetSliceLayer(nextState.AirOxygen, worldData.SurfaceAirLayer),
+				Nitrogen = staticState.GetSliceLayer(nextState.AirNitrogen, worldData.SurfaceAirLayer),
+				Methane = staticState.GetSliceLayer(nextState.AirMethane, worldData.SurfaceAirLayer),
+				Minerals = staticState.GetSliceLayer(nextState.AirMinerals, worldData.SurfaceAirLayer),
 
 				AirMass = staticState.GetSliceLayer(tempState.AirMass, worldData.SurfaceAirLayer),
 				EvaporationWater = tempState.EvaporationMassWater,
@@ -1869,7 +1933,11 @@ public class WorldSim {
 				EvaporationFlora = tempState.FloraRespirationMassVapor,
 				EvaporationTemperatureFlora = nextState.GroundTemperature,
 				DustEjected = tempState.DustEjected,
-				AirCarbonDelta = tempState.AirCarbonDelta,
+				CarbonDioxideDelta = tempState.AirCarbonDelta,
+				OxygenDelta = tempState.AirOxygenDelta,
+				NitrogenDelta = tempState.AirNitrogenDelta,
+				MethaneDelta = tempState.AirMethaneDelta,
+				MineralsDelta = tempState.AirMineralsDelta,
 				WaterCoverage = staticState.GetSliceLayer(tempState.WaterCoverage,worldData.SurfaceWaterLayer),
 				Elevation = lastState.Elevation,
 				CloudElevation = tempState.CloudElevation,
@@ -1898,7 +1966,6 @@ public class WorldSim {
 			JobType.Schedule, 64,
 			new UpdateTerrainJob()
 			{
-				SoilCarbon = nextState.GroundCarbonDioxide,
 				Roughness = nextState.Roughness,
 				GroundWater = nextState.GroundWater,
 				Elevation = nextState.Elevation,
@@ -1910,7 +1977,6 @@ public class WorldSim {
 				CrustDelta = tempState.CrustDelta,
 				LastElevation = lastState.Elevation,
 				LastRoughness = lastState.Roughness,
-				LastSoilFertility = lastState.GroundCarbonDioxide,
 				LastGroundWater = lastState.GroundWater,
 				GroundWaterConsumed = tempState.WaterConsumedByFlora,
 				WaterCoverage = staticState.GetSliceLayer(tempState.WaterCoverage,worldData.SurfaceWaterLayer),
@@ -1934,13 +2000,15 @@ public class WorldSim {
 				{
 					AirCarbon = staticState.GetSliceLayer(nextState.AirCarbonDioxide, worldData.SurfaceAirLayer),
 					WaterCarbon = staticState.GetSliceLayer(nextState.WaterCarbonDioxide, worldData.SurfaceWaterLayer),
-
+					AirOxygen = staticState.GetSliceLayer(nextState.AirOxygen, worldData.SurfaceWaterLayer),
+					WaterOxygen = staticState.GetSliceLayer(nextState.WaterOxygen, worldData.SurfaceWaterLayer),
+									   
 					AirMass = staticState.GetSliceLayer(tempState.AirMass, worldData.SurfaceAirLayer),
 					WaterMass = staticState.GetSliceLayer(nextState.WaterMass, worldData.SurfaceWaterLayer),
 					SaltMass = staticState.GetSliceLayer(nextState.WaterSaltMass, worldData.SurfaceWaterLayer),
 					WaterDepth = staticState.GetSliceLayer(tempState.WaterLayerHeight, worldData.SurfaceWaterLayer),
-					WaterAirCarbonDiffusionCoefficient = worldData.WaterAirCarbonDiffusionCoefficient,
-					WaterAirCarbonDiffusionDepth = worldData.WaterAirCarbonDiffusionDepth,
+					WaterAirDiffusionCoefficient = worldData.WaterAirCarbonDiffusionCoefficient,
+					WaterAirCarbonDepth = worldData.WaterAirCarbonDiffusionDepth,
 				}, JobHandle.CombineDependencies(energyJobHandles[worldData.AirLayer0], energyJobHandles[worldData.WaterLayer0]));
 			energyJobHandles[worldData.WaterLayer0] = JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.AirLayer0]);
 		}

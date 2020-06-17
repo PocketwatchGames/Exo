@@ -83,7 +83,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	public NativeArray<float> VelocityVertical;
 
 	[ReadOnly] public NativeArray<float> Roughness;
-	[ReadOnly] public NativeArray<float> SoilFertility;
 	[ReadOnly] public NativeArray<float> Elevation;
 	[ReadOnly] public NativeArray<float> CloudElevationSim;
 	[ReadOnly] public NativeArray<float> CloudMass;
@@ -173,7 +172,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 			overlayColor = new Color32();
 		}
 		// Terrain color
-		float fertility = math.saturate(SoilFertility[i] / SoilFertilityMax);
 		float lavaCoverage = math.min(1, LavaMass[i] / WorldData.MassLava) * 0.1f;
 		float iceCoverage = math.floor(IceLevels * math.pow(IceCoverage[i], IceCoveragePower)) / IceLevels;
 		float waterCoverage = WaterCoverage[i];
@@ -183,8 +181,8 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 
 		terrainColor1 = new float4(
 			0.5f,
-			dirtCoverage * (1 - fertility),
-			dirtCoverage * fertility,
+			0,
+			1,
 			floraCoverage
 			);
 

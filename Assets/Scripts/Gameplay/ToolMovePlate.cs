@@ -61,7 +61,6 @@ public class ToolMovePlate : GameTool {
 				Roughness = nextState.Roughness,
 				CrustDepth = nextState.CrustDepth,
 				GroundTemperature = nextState.GroundTemperature,
-				GroundCarbon = nextState.GroundCarbonDioxide,
 				GroundWater = nextState.GroundWater,
 				GroundWaterTemperature = nextState.GroundWaterTemperature,
 
@@ -74,7 +73,6 @@ public class ToolMovePlate : GameTool {
 				LastRoughness = lastState.Roughness,
 				LastCrustDepth = lastState.CrustDepth,
 				LastGroundTemperature = lastState.GroundTemperature,
-				LastGroundCarbon = lastState.GroundCarbonDioxide,
 				LastGroundWater = lastState.GroundWater,
 				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
 				LastWaterDepth = tempState.WaterDepthTotal
@@ -175,7 +173,6 @@ public class ToolMovePlate : GameTool {
 		public NativeArray<float> Roughness;
 		public NativeArray<float> CrustDepth;
 		public NativeArray<float> GroundTemperature;
-		public NativeArray<float> GroundCarbon;
 		public NativeArray<float> GroundWater;
 		public NativeArray<float> GroundWaterTemperature;
 
@@ -186,7 +183,6 @@ public class ToolMovePlate : GameTool {
 		[ReadOnly] public NativeArray<float> LastRoughness;
 		[ReadOnly] public NativeArray<float> LastCrustDepth;
 		[ReadOnly] public NativeArray<float> LastGroundTemperature;
-		[ReadOnly] public NativeArray<float> LastGroundCarbon;
 		[ReadOnly] public NativeArray<float> LastGroundWater;
 		[ReadOnly] public NativeArray<float> LastGroundWaterTemperature;
 		[ReadOnly] public NativeArray<float> LastWaterDepth;
@@ -225,7 +221,6 @@ public class ToolMovePlate : GameTool {
 					Plates[i] = LastPlates[from];
 					Elevation[i] = LastElevation[from];
 					GroundTemperature[i] = LastGroundTemperature[from];
-					GroundCarbon[i] = LastGroundCarbon[from];
 					GroundWater[i] = LastGroundWater[from];
 					GroundWaterTemperature[i] = LastGroundWaterTemperature[from];
 				}
@@ -236,7 +231,6 @@ public class ToolMovePlate : GameTool {
 					// Divergent				
 					Elevation[i] = math.min(LastElevation[i], LastElevation[from]) - 100;
 					Plates[i] = LastPlates[from];
-					GroundCarbon[i] = 0;
 					GroundWater[i] = 0;
 				}
 			}
@@ -244,7 +238,6 @@ public class ToolMovePlate : GameTool {
 			{
 				// Leading edge
 				GroundTemperature[i] = (LastGroundTemperature[from] + LastGroundTemperature[i]) / 2;
-				GroundCarbon[i] = LastGroundCarbon[from] + LastGroundCarbon[i];
 				GroundWater[i] = LastGroundWater[from] + LastGroundWater[i];
 				GroundWaterTemperature[i] = (LastGroundWaterTemperature[from] * LastGroundWater[from] + LastGroundWaterTemperature[i] * LastGroundWaterTemperature[i]) / (GroundWater[i]);
 

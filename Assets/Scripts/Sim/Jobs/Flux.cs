@@ -684,7 +684,6 @@ public struct FluxTerrainJob : IJobParallelFor {
 	public NativeArray<float> DustEjected;
 	public NativeArray<float> CrustDelta;
 	public NativeSlice<float> LatentHeatLava;
-	[ReadOnly] public NativeArray<float> SoilCarbon;
 	[ReadOnly] public NativeSlice<float> WaterCoverage;
 	[ReadOnly] public NativeArray<float> LavaTemperature;
 	[ReadOnly] public NativeArray<float> LavaMass;
@@ -701,7 +700,6 @@ public struct FluxTerrainJob : IJobParallelFor {
 
 	public void Execute(int i)
 	{
-		float soilCarbon = SoilCarbon[i];
 		float crystalizedMass = 0;
 		float lavaEjected = 0;
 		float dustEjected = 0;

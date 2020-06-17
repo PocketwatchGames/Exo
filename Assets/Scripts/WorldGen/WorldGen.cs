@@ -40,7 +40,6 @@ public static class WorldGen {
 		public NativeArray<float> CloudMass;
 		public NativeArray<float> GroundWater;
 		public NativeArray<float> Roughness;
-		public NativeArray<float> SoilCarbon;
 		public NativeArray<float> SurfaceElevation;
 		public NativeArray<float> Elevation;
 		public NativeArray<float> MagmaMass;
@@ -100,11 +99,6 @@ public static class WorldGen {
 				regionalTemperatureVariation + GetPerlinMinMax(pos.x, pos.y, pos.z, 0.15f, 80, -5, 5) +
 				(1.0f - coord.y * coord.y) * (MaxTemperature - MinTemperature) + MinTemperature;
 
-			float soilFertilityPercent =
-				0.5f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.2f, 6630) +
-				0.3f * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 435) +
-				0.2f * GetPerlinNormalized(pos.x, pos.y, pos.z, 1f, 8740);
-			float soilFertility = soilFertilityPercent * SoilCarbonMax;
 
 			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * surfaceElevation;
 
@@ -133,7 +127,6 @@ public static class WorldGen {
 			SurfaceElevation[i] = surfaceElevation;
 			Elevation[i] = elevation;
 			Roughness[i] = roughness;
-			SoilCarbon[i] = soilFertility;
 
 			CloudMass[i] = cloudMass;
 		}
@@ -335,7 +328,6 @@ public static class WorldGen {
 		var worldGenInitJob = new WorldGenInitJob()
 		{
 			Roughness = state.Roughness,
-			SoilCarbon = state.GroundCarbonDioxide,
 			CloudMass = state.CloudMass,
 			potentialTemperature = temperaturePotential,
 			relativeHumidity = RelativeHumidity,

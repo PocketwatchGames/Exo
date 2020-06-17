@@ -131,6 +131,10 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> Temperature;
 	[ReadOnly] public NativeSlice<float> SaltMass;
 	[ReadOnly] public NativeSlice<float> CarbonMass;
+	[ReadOnly] public NativeSlice<float> OxygenMass;
+	[ReadOnly] public NativeSlice<float> NitrogenMass;
+	[ReadOnly] public NativeSlice<float> GlucoseMass;
+	[ReadOnly] public NativeSlice<float> MineralsMass;
 	[ReadOnly] public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeSlice<float> LayerHeight;
 	[ReadOnly] public NativeArray<int> Neighbors;

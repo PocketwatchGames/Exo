@@ -35,7 +35,6 @@ public static class CellInfo {
 		s.AppendFormat("CO2: {0:N0} ppm", display.GlobalAirCarbon * 1000000 / display.GlobalAirMass);
 		s.AppendFormat("\nCO2 Mass Air: {0:N1} kg", display.GlobalAirCarbon);
 		s.AppendFormat("\nCO2 Mass Water: {0:N1} kg", display.GlobalWaterCarbon);
-		s.AppendFormat("\nSoil Carbon: {0:N1} kg", display.GlobalSoilFertility);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * inverseCellCount);
 		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * inverseCellCount, activeTemperatureUnits, 2));
 		s.AppendFormat("\nSurface Temp Ocean: {0:N0}", GetTemperatureString(display.GlobalOceanSurfaceTemperature, activeTemperatureUnits, 2));
@@ -192,7 +191,6 @@ public static class CellInfo {
 		s.AppendFormat("ELE: {0:N0} m", state.Elevation[ActiveCellIndex]);
 		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
 		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.GroundTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbonDioxide[ActiveCellIndex]);
 		s.AppendFormat("\nGWATER: {0:N2} TEMP: {1:N2}",
 			state.GroundWater[ActiveCellIndex],
 			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
@@ -310,7 +308,6 @@ public static class CellInfo {
 		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
 		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
 		s.AppendFormat("Roughness: {0}\n", state.Roughness[i]);
-		s.AppendFormat("SoilFertility: {0}\n", state.GroundCarbonDioxide[i]);
 		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
 		s.AppendFormat("TerrainTemperature: {0}\n", state.GroundTemperature[i]);
 		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
