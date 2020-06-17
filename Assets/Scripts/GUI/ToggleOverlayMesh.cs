@@ -5,4 +5,5 @@ using UnityEngine;
 
 public class ToggleOverlayMesh : MonoBehaviour {
 	public WorldView.MeshOverlay Overlay;
+	public GameObject DetailsPanel;
 }

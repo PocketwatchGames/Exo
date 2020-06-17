@@ -28,7 +28,7 @@ public class HUD : MonoBehaviour
 	public GameObject Toolbar;
 	public GameObject OptionsPanel;
 	public GameObject FiltersPanel;
-	public FilterDetailsPanel FilterDetailsPanel;
+	public GameObject FilterDetailsPanels;
 	public Image PauseButtonPausedImage;
 	public Image PauseButtonPlayImage;
 	public List<SimSpeed> SimSpeeds;
@@ -224,29 +224,27 @@ public class HUD : MonoBehaviour
 			FilterToggleGroup.SetAllTogglesOff();
 		}
 		FiltersPanel.SetActive(!FiltersPanel.activeSelf);
-		FilterDetailsPanel.gameObject.SetActive(FiltersPanel.activeSelf && View.ActiveMeshOverlay != WorldView.MeshOverlay.None);
-		View.SetActiveMeshOverlay(FiltersPanel.activeSelf ? View.ActiveMeshOverlay : WorldView.MeshOverlay.None);
+		if (!FiltersPanel.activeSelf)
+		{
+			View.SetActiveMeshOverlay(WorldView.MeshOverlay.None);
+		}
 	}
 
 	public void OnFilterChanged(WorldView.MeshOverlay overlay)
 	{
-		if (overlay == WorldView.MeshOverlay.None)
-		{
-			FilterDetailsPanel.gameObject.SetActive(false);
-		} else
-		{
-			FilterDetailsPanel.gameObject.SetActive(true);
-			var o = View.OverlayColors[overlay];
-			FilterDetailsPanel.Legend.SetValues(o, ActiveTemperatureUnits);
-			FilterDetailsPanel.Title.text = o.Title;
-		}
 	}
 
 	public void OnFilterClicked(Toggle t)
 	{
+		for (int i = 0; i < FilterDetailsPanels.transform.childCount; i++)
+		{
+			FilterDetailsPanels.transform.GetChild(i).gameObject.SetActive(false);
+		}
 		if (t.isOn)
 		{
 			View.SetActiveMeshOverlay(t.GetComponent<ToggleOverlayMesh>().Overlay);
+			t.GetComponent<ToggleOverlayMesh>().DetailsPanel.SetActive(true);
+			t.GetComponent<ToggleOverlayMesh>().DetailsPanel.GetComponent<FilterDetailsPanel>().Show(this);
 		} else
 		{
 			View.SetActiveMeshOverlay(WorldView.MeshOverlay.None);
