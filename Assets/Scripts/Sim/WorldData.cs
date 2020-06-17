@@ -133,7 +133,6 @@ public struct WorldData {
 	public float GroundWaterDiffusionCoefficient;
 	public float FullCoverageIce;
 	public float FullCoverageWater;
-	public float FullCoverageFlora;
 
 	[Header("Flora")]
 	public float FloraGrowthRate;
@@ -270,7 +269,6 @@ public struct WorldData {
 		TicksPerSecond = 1.0f / SecondsPerTick;
 		TicksPerYear = 60 * 60 * 24 * 365 / SecondsPerTick;
 
-		inverseFullCoverageFlora = 1.0f / FullCoverageFlora;
 		inverseFullCoverageWater = 1.0f / FullCoverageWater;
 		inverseFullCoverageIce = 1.0f / FullCoverageIce;
 		wattsToKJPerTick = SecondsPerTick * 1000;

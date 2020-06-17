@@ -35,8 +35,6 @@ public static class CellInfo {
 		s.AppendFormat("CO2: {0:N0} ppm", display.GlobalAirCarbon * 1000000 / display.GlobalAirMass);
 		s.AppendFormat("\nCO2 Mass Air: {0:N1} kg", display.GlobalAirCarbon);
 		s.AppendFormat("\nCO2 Mass Water: {0:N1} kg", display.GlobalWaterCarbon);
-		s.AppendFormat("\nFlora: {0:N1} kg", display.GlobalFloraMass);
-		s.AppendFormat("\nPlankton: {0:N1} kg", display.GlobalPlanktonMass);
 		s.AppendFormat("\nSoil Carbon: {0:N1} kg", display.GlobalSoilFertility);
 		s.AppendFormat("\nCloud Coverage: {0:N1}%", display.GlobalCloudCoverage * 100 * inverseCellCount);
 		s.AppendFormat("\nSurface Temp Air: {0}", GetTemperatureString(display.GlobalSurfaceTemperature * inverseCellCount, activeTemperatureUnits, 2));
@@ -195,11 +193,6 @@ public static class CellInfo {
 		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
 		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.GroundTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
 		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbon[ActiveCellIndex]);
-		s.AppendFormat("\nFLORA: {0:N2} kg",
-			state.FloraMass[ActiveCellIndex]);
-		s.AppendFormat("\nFWATER: {0:N2} kg GLUCOSE: {1:N2} kg",
-			state.FloraWater[ActiveCellIndex],
-			state.FloraGlucose[ActiveCellIndex]);
 		s.AppendFormat("\nGWATER: {0:N2} TEMP: {1:N2}",
 			state.GroundWater[ActiveCellIndex],
 			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
@@ -229,10 +222,6 @@ public static class CellInfo {
 		var nfi = new NumberFormatInfo() { NumberDecimalDigits = (depth >= 1) ? 0 : 3 };
 		s.AppendFormat(nfi, "\nDEPTH: {0:N} m", depth);
 
-		if (state.WaterMass[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, ActiveCellIndex)] > 0)
-		{
-			s.AppendFormat(nfi, "\nPLANKTON: {0:N2} kg", state.PlanktonMass[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, ActiveCellIndex)]);
-		}
 		s.AppendLine();
 
 
@@ -336,15 +325,6 @@ public static class CellInfo {
 		s.AppendFormat("Temperature: {0}\n", state.LavaTemperature[i]);
 		s.AppendFormat("MagmaMass: {0}\n", state.MagmaMass[i]);
 		s.AppendFormat("CrustDepth: {0}\n", state.CrustDepth[i]);
-
-		s.AppendFormat("\nFLORA\n");
-		s.AppendFormat("Mass: {0}\n", state.FloraMass[i]);
-		s.AppendFormat("Glucose: {0}\n", state.FloraGlucose[i]);
-		s.AppendFormat("Water: {0}\n", state.FloraWater[i]);
-
-		s.AppendFormat("\nPLANKTON\n");
-		s.AppendFormat("Mass: {0}\n", state.PlanktonMass[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, i)]);
-		s.AppendFormat("Glucose: {0}\n", state.PlanktonGlucose[staticState.GetLayerIndexWater(worldData.SurfaceWaterLayer, i)]);
 
 		s.AppendFormat("\nCLOUD\n");
 		s.AppendFormat("CloudMass: {0}\n", state.CloudMass[i]);

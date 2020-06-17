@@ -544,8 +544,6 @@ public class WorldSim {
 					Mass = nextState.WaterMass,
 					Salt = nextState.SaltMass,
 					Carbon = nextState.WaterCarbon,
-					PlanktonMass = nextState.PlanktonMass,
-					PlanktonGlucose = nextState.PlanktonGlucose,
 					Positions = staticState.SphericalPosition,
 					NeighborsVert = staticState.NeighborsVert,
 					CoriolisMultiplier = staticState.CoriolisMultiplier,
@@ -559,8 +557,6 @@ public class WorldSim {
 				{
 					SaltMass = staticState.GetSliceWater(nextState.SaltMass),
 					CarbonMass = staticState.GetSliceWater(nextState.WaterCarbon),
-					PlanktonMass = staticState.GetSliceWater(nextState.PlanktonMass),
-					PlanktonGlucose = staticState.GetSliceWater(nextState.PlanktonGlucose),
 					Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
 					Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
 					WaterMass = staticState.GetSliceWater(nextState.WaterMass),
@@ -622,8 +618,6 @@ public class WorldSim {
 
 					Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
 					SaltMass = staticState.GetSliceWater(nextState.SaltMass),
-					PlanktonMass = staticState.GetSliceWater(nextState.PlanktonMass),
-					PlanktonGlucose = staticState.GetSliceWater(nextState.PlanktonGlucose),
 					CarbonMass = staticState.GetSliceWater(nextState.WaterCarbon),
 					Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
 					WaterMass = staticState.GetSliceWater(nextState.WaterMass),
@@ -645,8 +639,6 @@ public class WorldSim {
 					Advection = staticState.GetSliceWater(tempState.DiffusionWater),
 					SaltMass = staticState.GetSliceWater(nextState.SaltMass),
 					CarbonMass = staticState.GetSliceWater(nextState.WaterCarbon),
-					PlanktonMass = staticState.GetSliceWater(nextState.PlanktonMass),
-					PlanktonGlucose = staticState.GetSliceWater(nextState.PlanktonGlucose),
 					Temperature = staticState.GetSliceWater(nextState.WaterTemperature),
 					Velocity = staticState.GetSliceWater(nextState.WaterVelocity),
 					WaterMass = staticState.GetSliceWater(nextState.WaterMass)
@@ -749,8 +741,6 @@ public class WorldSim {
 					Mass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
 					Velocity = staticState.GetSliceLayer(nextState.WaterVelocity,worldData.SurfaceWaterLayer),
 					Carbon = staticState.GetSliceLayer(nextState.WaterCarbon,worldData.SurfaceWaterLayer),
-					PlanktonMass = staticState.GetSliceLayer(nextState.PlanktonMass,worldData.SurfaceWaterLayer),
-					PlanktonGlucose = staticState.GetSliceLayer(nextState.PlanktonGlucose,worldData.SurfaceWaterLayer),
 					Salt = staticState.GetSliceLayer(nextState.SaltMass,worldData.SurfaceWaterLayer),
 					Temperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
 					FlowPercent = tempState.FlowPercentWater,
@@ -769,8 +759,6 @@ public class WorldSim {
 					WaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
 					SaltMass = staticState.GetSliceLayer(nextState.SaltMass,worldData.SurfaceWaterLayer),
 					CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbon,worldData.SurfaceWaterLayer),
-					PlanktonMass = staticState.GetSliceLayer(nextState.PlanktonMass,worldData.SurfaceWaterLayer),
-					PlanktonGlucose = staticState.GetSliceLayer(nextState.PlanktonGlucose,worldData.SurfaceWaterLayer),
 					Temperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
 					Velocity = staticState.GetSliceLayer(nextState.WaterVelocity,worldData.SurfaceWaterLayer),
 
@@ -810,8 +798,6 @@ public class WorldSim {
 						Mass = nextState.WaterMass,
 						Salt = nextState.SaltMass,
 						Carbon = nextState.WaterCarbon,
-						PlanktonMass = nextState.PlanktonMass,
-						PlanktonGlucose = nextState.PlanktonGlucose,
 						Temperature = nextState.WaterTemperature,
 						Velocity = nextState.WaterVelocity,
 
@@ -830,8 +816,6 @@ public class WorldSim {
 						WaterMass = staticState.GetSliceLayer(nextState.WaterMass, i),
 						SaltMass = staticState.GetSliceLayer(nextState.SaltMass, i),
 						CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbon, i),
-						PlanktonMass = staticState.GetSliceLayer(nextState.PlanktonMass, i),
-						PlanktonGlucose = staticState.GetSliceLayer(nextState.PlanktonGlucose, i),
 						Temperature = staticState.GetSliceLayer(nextState.WaterTemperature, i),
 						Velocity = staticState.GetSliceLayer(nextState.WaterVelocity, i),
 
@@ -844,8 +828,6 @@ public class WorldSim {
 						WaterMass = staticState.GetSliceLayer(nextState.WaterMass, i - 1),
 						SaltMass = staticState.GetSliceLayer(nextState.SaltMass, i - 1),
 						CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbon, i - 1),
-						PlanktonMass = staticState.GetSliceLayer(nextState.PlanktonMass, i - 1),
-						PlanktonGlucose = staticState.GetSliceLayer(nextState.PlanktonGlucose, i - 1),
 						Temperature = staticState.GetSliceLayer(nextState.WaterTemperature, i - 1),
 						Velocity = staticState.GetSliceLayer(nextState.WaterVelocity, i - 1),
 
@@ -1668,47 +1650,6 @@ public class WorldSim {
 				}, JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.AirLayer0]));
 		}
 
-		energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(
-			JobType.Schedule, 64,
-			new FluxFloraWaterConsumeJob()
-			{
-				FloraWaterConsumed = tempState.WaterConsumedByFlora,
-
-				WaterMass = staticState.GetSliceLayer(lastState.WaterMass,worldData.SurfaceWaterLayer),
-				FloraMass = lastState.FloraMass,
-				FloraWater = lastState.FloraWater,
-				FloraWaterConsumptionRate = worldData.FloraWaterConsumptionRate
-			}, JobHandle.CombineDependencies(energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.AirLayer0]));
-
-		if (settings.Plankton)
-		{
-			energyJobHandles[worldData.WaterLayer0] = SimJob.Schedule(
-				settings.SynchronousOverrides.FluxPlankton, 64,
-				new FluxPlanktonJob()
-				{
-					LatentHeatWater = tempState.LatentHeatWaterSurface,
-					PlanktonMassDelta = tempState.PlanktonMassDelta,
-					PlanktonGlucoseDelta = tempState.PlanktonGlucoseDelta,
-					PlanktonDeath = tempState.PlanktonDeath,
-					WaterCarbonDelta = tempState.WaterCarbonDelta,
-
-					WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
-					WaterMass = staticState.GetSliceLayer(lastState.WaterMass,worldData.SurfaceWaterLayer),
-					SaltMass = staticState.GetSliceLayer(lastState.SaltMass,worldData.SurfaceWaterLayer),
-					SolarRadiation = tempState.SolarRadiationInWater,
-					WaterCarbon = staticState.GetSliceLayer(lastState.WaterCarbon,worldData.SurfaceWaterLayer),
-					PlanktonMass = staticState.GetSliceLayer(lastState.PlanktonMass,worldData.SurfaceWaterLayer),
-					PlanktonGlucoseMass = staticState.GetSliceLayer(lastState.PlanktonGlucose,worldData.SurfaceWaterLayer),
-					PlanktonDensityMax = worldData.PlanktonDensityMax,
-					PlanktonEnergyForPhotosynthesis = worldData.PlanktonEnergyForPhotosynthesis,
-					PlanktonCarbonDioxideExtractionEfficiency = worldData.PlanktonCarbonDioxideExtractionEfficiency,
-					PlanktonPhotosynthesisSpeed = worldData.PlanktonPhotosynthesisSpeed,
-					PlanktonRespirationSpeed = worldData.PlanktonRespirationSpeed,
-					PlanktonRespirationPerDegree = worldData.PlanktonRespirationPerDegree,
-					PlanktonGrowthRate = worldData.PlanktonGrowthRate,
-					PlanktonDeathRate = worldData.PlanktonDeathRate,
-				}, JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.AirLayer0]));
-		}
 
 		// CLOUD
 		if (settings.Precipitation)
@@ -1744,53 +1685,6 @@ public class WorldSim {
 				}, JobHandle.CombineDependencies(energyJobHandles[worldData.CloudLayer], energyJobHandles[worldData.AirLayer0]));
 		}
 
-		if (settings.Flora)
-		{
-			energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(
-				settings.SynchronousOverrides.FluxFlora, 64,
-				new FluxFloraJob()
-				{
-					LatentHeatFlora = tempState.LatentHeatTerrain,
-					LatentHeatAir = tempState.LatentHeatAir,
-					EvaporatedWaterMass = tempState.FloraRespirationMassVapor,
-					SurfaceWaterDelta = tempState.FloraRespirationMassWater,
-					FloraMassDelta = tempState.FloraMassDelta,
-					FloraWaterDelta = tempState.FloraWaterDelta,
-					FloraGlucoseDelta = tempState.FloraGlucoseDelta,
-					FloraDeath = tempState.FloraDeath,
-					CarbonDioxideDelta = tempState.AirCarbonDelta,
-					OxygenDelta = tempState.OxygenDelta,
-
-					SolarRadiationIn = tempState.SolarRadiationInTerrain,
-					TerrainTemperature = nextState.GroundTemperature,
-					FloraMass = lastState.FloraMass,
-					FloraGlucose = lastState.FloraGlucose,
-					FloraWater = lastState.FloraWater,
-					FloraCoverage = tempState.FloraCoverage,
-					SoilFertility = lastState.GroundCarbon,
-					FloraGrowthRate = worldData.FloraGrowthRate,
-					FloraDeathRate = worldData.FloraDeathRate,
-					CarbonDioxide = staticState.GetSliceLayer(lastState.AirCarbon,worldData.SurfaceAirLayer),
-					SurfaceElevation = tempState.SurfaceElevation,
-					SurfaceWind = staticState.GetSliceLayer(lastState.AirVelocity,worldData.SurfaceAirLayer),
-					AirMass = staticState.GetSliceLayer(tempState.AirMass,worldData.SurfaceAirLayer),
-					AirTemperaturePotential = staticState.GetSliceLayer(nextState.AirTemperaturePotential,worldData.SurfaceAirLayer),
-					AirPressure = staticState.GetSliceLayer(tempState.AirPressure,worldData.SurfaceAirLayer),
-					AirVapor = staticState.GetSliceLayer(lastState.AirVapor,worldData.SurfaceAirLayer),
-					FloraGrowthTemperatureRangeInverse = worldData.FloraGrowthTemperatureRangeInverse,
-					FloraEnergyForPhotosynthesis = worldData.FloraEnergyForPhotosynthesis,
-					FloraCarbonDioxideExtractionEfficiency = worldData.FloraCarbonDioxideExtractionEfficiency,
-					FloraOxygenExtractionEfficiency = worldData.FloraOxygenExtractionEfficiency,
-					FloraPhotosynthesisSpeed = worldData.FloraPhotosynthesisSpeed,
-					FloraRespirationSpeed = worldData.FloraRespirationSpeed,
-					FloraRespirationPerDegree = worldData.FloraRespirationPerDegree,
-					OxygenPercent = lastState.PlanetState.Oxygen,
-					Gravity = lastState.PlanetState.Gravity
-				}, 
-				JobHandle.CombineDependencies(JobHandle.CombineDependencies(
-					energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.TerrainLayer]),
-					energyJobHandles[worldData.AirLayer0]));
-		}
 
 		if (settings.IceMelting)
 		{
@@ -1901,8 +1795,6 @@ public class WorldSim {
 				WaterTemperature = staticState.GetSliceLayer(nextState.WaterTemperature,worldData.SurfaceWaterLayer),
 				WaterMass = staticState.GetSliceLayer(nextState.WaterMass,worldData.SurfaceWaterLayer),
 				SaltMass = staticState.GetSliceLayer(nextState.SaltMass,worldData.SurfaceWaterLayer),
-				PlanktonMass = staticState.GetSliceLayer(nextState.PlanktonMass,worldData.SurfaceWaterLayer),
-				PlanktonGlucose = staticState.GetSliceLayer(nextState.PlanktonGlucose,worldData.SurfaceWaterLayer),
 				CarbonMass = staticState.GetSliceLayer(nextState.WaterCarbon,worldData.SurfaceWaterLayer),
 
 				SaltPlume = tempState.SaltPlume,
@@ -1913,10 +1805,6 @@ public class WorldSim {
 				FloraRespirationWater = tempState.FloraRespirationMassWater,
 				TerrainTemperature = nextState.GroundTemperature,
 				WaterFrozen = tempState.FrozenMass,
-				LastPlanktonMass = staticState.GetSliceLayer(lastState.PlanktonMass,worldData.SurfaceWaterLayer),
-				LastPlanktonGlucose = staticState.GetSliceLayer(lastState.PlanktonGlucose,worldData.SurfaceWaterLayer),
-				PlanktonMassDelta = tempState.PlanktonMassDelta,
-				PlanktonGlucoseDelta = tempState.PlanktonGlucoseDelta,
 				WaterCarbonDelta = tempState.WaterCarbonDelta,
 			}, JobHandle.CombineDependencies(energyJobHandles[worldData.WaterLayer0], energyJobHandles[worldData.CloudLayer]));
 
@@ -2030,8 +1918,6 @@ public class WorldSim {
 				LastGroundWater = lastState.GroundWater,
 				GroundWaterConsumed = tempState.WaterConsumedByFlora,
 				SoilRespiration = tempState.SoilRespiration,
-				FloraDeath = tempState.FloraDeath,
-				PlanktonDeath = tempState.PlanktonDeath,
 				WaterCoverage = staticState.GetSliceLayer(tempState.WaterCoverage,worldData.SurfaceWaterLayer),
 				LastCrustDepth = lastState.CrustDepth,
 				LastLavaMass = lastState.LavaMass,
@@ -2044,23 +1930,6 @@ public class WorldSim {
 			}, JobHandle.CombineDependencies(JobHandle.CombineDependencies(
 				energyJobHandles[worldData.TerrainLayer], energyJobHandles[worldData.LavaLayer]), 
 				energyJobHandles[worldData.FloraLayer], energyJobHandles[worldData.WaterLayer0]));
-
-		energyJobHandles[worldData.FloraLayer] = SimJob.Schedule(
-			JobType.Schedule, 64,
-			new UpdateFloraJob()
-			{
-				FloraMass = nextState.FloraMass,
-				FloraWater = nextState.FloraWater,
-				FloraGlucose = nextState.FloraGlucose,
-
-				FloraGlucoseDelta = tempState.FloraGlucoseDelta,
-				FloraMassDelta = tempState.FloraMassDelta,
-				FloraWaterDelta = tempState.FloraWaterDelta,
-				FloraWaterConsumed = tempState.WaterConsumedByFlora,
-				LastMass = lastState.FloraMass,
-				LastGlucose = lastState.FloraGlucose,
-				LastWater = lastState.FloraWater,
-			}, energyJobHandles[worldData.FloraLayer]);
 
 		if (settings.AirWaterCarbonDioxideDiffusion)
 		{

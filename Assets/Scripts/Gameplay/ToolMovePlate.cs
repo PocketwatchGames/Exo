@@ -64,9 +64,6 @@ public class ToolMovePlate : GameTool {
 				GroundCarbon = nextState.GroundCarbon,
 				GroundWater = nextState.GroundWater,
 				GroundWaterTemperature = nextState.GroundWaterTemperature,
-				FloraMass = nextState.FloraMass,
-				FloraWater = nextState.FloraWater,
-				FloraGlucose = nextState.FloraGlucose,
 
 				PlateIndex = plateIndex,
 				Direction = direction,
@@ -80,9 +77,6 @@ public class ToolMovePlate : GameTool {
 				LastGroundCarbon = lastState.GroundCarbon,
 				LastGroundWater = lastState.GroundWater,
 				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
-				LastFloraMass = lastState.FloraMass,
-				LastFloraWater = lastState.FloraWater,
-				LastFloraGlucose = lastState.FloraGlucose,
 				LastWaterDepth = tempState.WaterDepthTotal
 
 			});
@@ -184,9 +178,6 @@ public class ToolMovePlate : GameTool {
 		public NativeArray<float> GroundCarbon;
 		public NativeArray<float> GroundWater;
 		public NativeArray<float> GroundWaterTemperature;
-		public NativeArray<float> FloraMass;
-		public NativeArray<float> FloraGlucose;
-		public NativeArray<float> FloraWater;
 
 		[ReadOnly] public short PlateIndex;
 		[ReadOnly] public float3 Direction;
@@ -198,9 +189,6 @@ public class ToolMovePlate : GameTool {
 		[ReadOnly] public NativeArray<float> LastGroundCarbon;
 		[ReadOnly] public NativeArray<float> LastGroundWater;
 		[ReadOnly] public NativeArray<float> LastGroundWaterTemperature;
-		[ReadOnly] public NativeArray<float> LastFloraMass;
-		[ReadOnly] public NativeArray<float> LastFloraGlucose;
-		[ReadOnly] public NativeArray<float> LastFloraWater;
 		[ReadOnly] public NativeArray<float> LastWaterDepth;
 		[ReadOnly] public NativeArray<int> Neighbors;
 		[ReadOnly] public NativeArray<float3> NeighborDir;
@@ -240,9 +228,6 @@ public class ToolMovePlate : GameTool {
 					GroundCarbon[i] = LastGroundCarbon[from];
 					GroundWater[i] = LastGroundWater[from];
 					GroundWaterTemperature[i] = LastGroundWaterTemperature[from];
-					FloraMass[i] = LastFloraMass[from];
-					FloraGlucose[i] = LastFloraGlucose[from];
-					FloraWater[i] = LastFloraWater[from];
 				}
 				else
 				{
@@ -253,9 +238,6 @@ public class ToolMovePlate : GameTool {
 					Plates[i] = LastPlates[from];
 					GroundCarbon[i] = 0;
 					GroundWater[i] = 0;
-					FloraMass[i] = 0;
-					FloraGlucose[i] = 0;
-					FloraWater[i] = 0;
 				}
 			}
 			else if (from >= 0 && LastPlates[from] == PlateIndex)
@@ -265,9 +247,6 @@ public class ToolMovePlate : GameTool {
 				GroundCarbon[i] = LastGroundCarbon[from] + LastGroundCarbon[i];
 				GroundWater[i] = LastGroundWater[from] + LastGroundWater[i];
 				GroundWaterTemperature[i] = (LastGroundWaterTemperature[from] * LastGroundWater[from] + LastGroundWaterTemperature[i] * LastGroundWaterTemperature[i]) / (GroundWater[i]);
-				FloraMass[i] = LastFloraMass[from] + LastFloraMass[i];
-				FloraGlucose[i] = LastFloraGlucose[from] + LastFloraGlucose[i];
-				FloraWater[i] = LastFloraWater[from] + LastFloraWater[i];
 
 				bool toContinental = LastWaterDepth[i] < LastRoughness[i];
 				bool fromContinental = LastWaterDepth[from] < LastRoughness[from];

@@ -19,9 +19,6 @@ public struct SimState {
 	public NativeArray<float> GroundTemperature;
 	public NativeArray<float> GroundWater;
 	public NativeArray<float> GroundWaterTemperature;
-	public NativeArray<float> FloraMass;
-	public NativeArray<float> FloraWater;
-	public NativeArray<float> FloraGlucose;
 	public NativeArray<float> IceTemperature;
 	public NativeArray<float> IceMass;
 	public NativeArray<float> CloudMass;
@@ -43,8 +40,6 @@ public struct SimState {
 	public NativeArray<float> WaterCarbon;
 	public NativeArray<float3> WaterVelocity;
 	public NativeArray<float> SaltMass;
-	public NativeArray<float> PlanktonMass;
-	public NativeArray<float> PlanktonGlucose;
 
 	public void Init(int count, ref WorldData worldData)
 	{
@@ -55,9 +50,6 @@ public struct SimState {
 		GroundTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWater = new NativeArray<float>(count, Allocator.Persistent);
 		GroundWaterTemperature = new NativeArray<float>(count, Allocator.Persistent);
-		FloraMass = new NativeArray<float>(count, Allocator.Persistent);
-		FloraWater = new NativeArray<float>(count, Allocator.Persistent);
-		FloraGlucose = new NativeArray<float>(count, Allocator.Persistent);
 		IceTemperature = new NativeArray<float>(count, Allocator.Persistent);
 		IceMass = new NativeArray<float>(count, Allocator.Persistent);
 		CloudMass = new NativeArray<float>(count, Allocator.Persistent);
@@ -80,8 +72,6 @@ public struct SimState {
 		WaterTemperature = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		WaterMass = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		WaterCarbon = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
-		PlanktonMass = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
-		PlanktonGlucose = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		SaltMass = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		WaterVelocity = new NativeArray<float3>(count * worldData.WaterLayers, Allocator.Persistent);
 	}
@@ -96,9 +86,6 @@ public struct SimState {
 		GroundTemperature.CopyFrom(from.GroundTemperature);
 		GroundWater.CopyFrom(from.GroundWater);
 		GroundWaterTemperature.CopyFrom(from.GroundWaterTemperature);
-		FloraMass.CopyFrom(from.FloraMass);
-		FloraWater.CopyFrom(from.FloraWater);
-		FloraGlucose.CopyFrom(from.FloraGlucose);
 		IceTemperature.CopyFrom(from.IceTemperature);
 		IceMass.CopyFrom(from.IceMass);
 		CloudMass.CopyFrom(from.CloudMass);
@@ -120,8 +107,6 @@ public struct SimState {
 		WaterTemperature.CopyFrom(from.WaterTemperature);
 		WaterMass.CopyFrom(from.WaterMass);
 		WaterCarbon.CopyFrom(from.WaterCarbon);
-		PlanktonMass.CopyFrom(from.PlanktonMass);
-		PlanktonGlucose.CopyFrom(from.PlanktonGlucose);
 		SaltMass.CopyFrom(from.SaltMass);
 		WaterVelocity.CopyFrom(from.WaterVelocity);
 	}
@@ -133,9 +118,6 @@ public struct SimState {
 		GroundCarbon.Dispose();
 		Elevation.Dispose();
 		GroundTemperature.Dispose();
-		FloraMass.Dispose();
-		FloraWater.Dispose();
-		FloraGlucose.Dispose();
 		GroundWater.Dispose();
 		GroundWaterTemperature.Dispose();
 		IceTemperature.Dispose();
@@ -158,8 +140,6 @@ public struct SimState {
 
 		WaterTemperature.Dispose();
 		WaterMass.Dispose();
-		PlanktonMass.Dispose();
-		PlanktonGlucose.Dispose();
 		WaterCarbon.Dispose();
 		SaltMass.Dispose();
 		WaterVelocity.Dispose();

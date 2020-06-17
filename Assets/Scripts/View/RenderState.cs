@@ -96,7 +96,6 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> WaterDepth;
 	[ReadOnly] public NativeSlice<float> WaterTemperature;
 	[ReadOnly] public NativeSlice<float3> WaterCurrent;
-	[ReadOnly] public NativeSlice<float> PlanktonMass;
 	[ReadOnly] public NativeArray<float> SurfaceElevation;
 	[ReadOnly] public NativeArray<float3> Icosphere;
 	[ReadOnly] public NativeSlice<float> MeshOverlayData;
@@ -180,7 +179,7 @@ public struct BuildRenderStateCellJob : IJobParallelFor {
 		float waterCoverage = WaterCoverage[i];
 		float floraCoverage = FloraCoverage[i] * DisplayFloraWeight;
 		float dirtCoverage = 1.0f;
-		float plankton = math.floor(PlanktonLevels * math.saturate(math.pow(PlanktonMass[i] / PlanktonMax, PlanktonPower))) / PlanktonLevels;
+		float plankton = 0;
 
 		terrainColor1 = new float4(
 			0.5f,

@@ -44,9 +44,6 @@ public static class WorldGen {
 		public NativeArray<float> SoilCarbon;
 		public NativeArray<float> SurfaceElevation;
 		public NativeArray<float> Elevation;
-		public NativeArray<float> Flora;
-		public NativeArray<float> FloraWater;
-		public NativeArray<float> FloraGlucose;
 		public NativeArray<float> MagmaMass;
 		public NativeArray<float> CrustDepth;
 		public NativeArray<float> LavaMass;
@@ -60,9 +57,6 @@ public static class WorldGen {
 		[ReadOnly] public float MaxElevation;
 		[ReadOnly] public float MaxTemperature;
 		[ReadOnly] public float MinTemperature;
-		[ReadOnly] public float FullCoverageFlora;
-		[ReadOnly] public float MinTemperatureFlora;
-		[ReadOnly] public float MaxTemperatureFlora;
 		[ReadOnly] public float MaxGroundWater;
 		[ReadOnly] public float SoilCarbonMax;
 		[ReadOnly] public float MagmaMin;
@@ -114,22 +108,6 @@ public static class WorldGen {
 			float soilFertility = soilFertilityPercent * SoilCarbonMax;
 
 			float airTemperatureSurface = potentialTemperature[i] + WorldData.TemperatureLapseRate * surfaceElevation;
-			float flora = 0;
-			float floraWater = 0;
-			float floraGlucose = 0;
-			if (elevation > 0)
-			{
-				flora =
-					FullCoverageFlora * math.pow(
-					soilFertilityPercent
-					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 410)
-					* GetPerlinNormalized(pos.x, pos.y, pos.z, 0.1f, 61)
-					* math.sin(math.PI * math.saturate((airTemperatureSurface - MinTemperatureFlora) / (MaxTemperatureFlora - MinTemperatureFlora))),
-					2.5f);
-				floraWater =
-					flora * GetPerlinNormalized(pos.x, pos.y, pos.z, 0.5f, 41630);
-				floraGlucose = flora;
-			}
 
 			float cloudMass = Mathf.Pow(GetPerlinMinMax(pos.x, pos.y, pos.z, 0.1f, 2000, 0, 1), 1.0f) * Mathf.Pow(relativeHumidity[i], 2.0f);
 
@@ -155,9 +133,6 @@ public static class WorldGen {
 
 			SurfaceElevation[i] = surfaceElevation;
 			Elevation[i] = elevation;
-			Flora[i] = flora;
-			FloraWater[i] = floraWater;
-			FloraGlucose[i] = floraGlucose;
 			Roughness[i] = roughness;
 			SoilCarbon[i] = soilFertility;
 
@@ -266,8 +241,6 @@ public static class WorldGen {
 		public NativeSlice<float> WaterMass;
 		public NativeSlice<float> CarbonMass;
 		public NativeSlice<float> SaltMass;
-		public NativeSlice<float> PlanktonMass;
-		public NativeSlice<float> PlanktonGlucose;
 		public NativeSlice<float> WaterTemperature;
 		public NativeArray<float> ElevationTop;
 
@@ -282,7 +255,6 @@ public static class WorldGen {
 		[ReadOnly] public float WaterDensityPerSalinity;
 		[ReadOnly] public float LayerDepthMax;
 		[ReadOnly] public float LayerCount;
-		[ReadOnly] public float PlanktonInLayer;
 
 
 		public void Execute(int i)
@@ -309,8 +281,6 @@ public static class WorldGen {
 				CarbonMass[i] = waterCarbonMass;
 				SaltMass[i] = saltMass;
 				ElevationTop[i] -= layerDepth;
-				PlanktonMass[i] = PlanktonInLayer * layerDepth / LayerDepthMax;
-				PlanktonGlucose[i] = PlanktonMass[i] / 2;
 
 			}
 		}
@@ -373,9 +343,6 @@ public static class WorldGen {
 			SurfaceElevation = tempState.SurfaceElevation,
 			GroundWater = state.GroundWater,
 			Elevation = state.Elevation,
-			Flora = state.FloraMass,
-			FloraWater = state.FloraWater,
-			FloraGlucose = state.FloraGlucose,
 			CrustDepth = state.CrustDepth,
 			MagmaMass = state.MagmaMass,
 			LavaMass = state.LavaMass,
@@ -384,9 +351,6 @@ public static class WorldGen {
 			noise = _noise,
 			SphericalPosition = staticState.SphericalPosition,
 			Coordinate = staticState.Coordinate,
-			FullCoverageFlora =worldData.FullCoverageFlora,
-			MinTemperatureFlora = WorldData.FreezingTemperature - 10,
-			MaxTemperatureFlora = WorldData.FreezingTemperature + 40,
 			MinElevation = worldGenData.MinElevation,
 			MaxElevation = worldGenData.MaxElevation,
 			MaxRoughness =worldGenData.MaxRoughness,
@@ -427,24 +391,20 @@ public static class WorldGen {
 		{
 			float layerDepthMax;
 			float layerCount;
-			float plankton;
 			if (i== worldData.SurfaceWaterLayer)
 			{
 				layerDepthMax = worldData.SurfaceWaterDepth;
 				layerCount = 1;
-				plankton = worldGenData.PlanktonMass;
 			}
 			else if (i == worldData.SurfaceWaterLayer - 1)
 			{
 				layerDepthMax = worldData.ThermoclineDepth;
 				layerCount = 1;
-				plankton = 0;
 			}
 			else
 			{
 				layerDepthMax = float.MaxValue;
 				layerCount = i;
-				plankton = 0;
 			}
 			worldGenJobHandle = worldGenJobHelper.Schedule(
 				JobType.Schedule, 64,
@@ -454,8 +414,6 @@ public static class WorldGen {
 					SaltMass = staticState.GetSliceLayer(state.SaltMass, i),
 					WaterMass = staticState.GetSliceLayer(state.WaterMass, i),
 					CarbonMass = staticState.GetSliceLayer(state.WaterCarbon, i),
-					PlanktonMass = staticState.GetSliceLayer(state.PlanktonMass, i),
-					PlanktonGlucose = staticState.GetSliceLayer(state.PlanktonGlucose, i),
 					ElevationTop = WaterLayerElevation,
 
 					LayerCount = layerCount,
@@ -469,7 +427,6 @@ public static class WorldGen {
 					WaterDensityPerSalinity = worldData.WaterDensityPerSalinity,
 					WaterTemperatureBottom = WaterTemperatureBottom,
 					WaterTemperatureSurface = WaterTemperatureTop,
-					PlanktonInLayer = plankton
 				}, worldGenJobHandle);
 		}
 

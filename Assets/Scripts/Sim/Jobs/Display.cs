@@ -55,8 +55,6 @@ public struct DisplayState {
 	public float GlobalCloudCoverage;
 	public float GlobalEvaporation;
 	public float GlobalRainfall;
-	public float GlobalFloraMass;
-	public float GlobalPlanktonMass;
 	public float GlobalSoilFertility;
 	public float GlobalCondensationCloud;
 	public float GlobalCondensationGround;
@@ -278,8 +276,6 @@ public struct DisplayState {
 				Precipitation = tempState.PrecipitationMass,
 				SoilFertility = tempState.SoilFertility,
 				TerrainTemperature = nextState.GroundTemperature,
-				Flora = nextState.FloraMass,
-				FloraWater = nextState.FloraWater,
 				HeatingDepth = worldData.SoilHeatDepth,
 				CloudMass = nextState.CloudMass,
 				IceMass = nextState.IceMass,
@@ -341,8 +337,6 @@ public struct DisplayState {
 			int surfaceWaterIndex = staticState.GetWaterIndex(worldData.SurfaceWaterLayer, i);
 			float waterMassSurface = nextState.WaterMass[surfaceWaterIndex];
 			globalWaterSurfaceMass += waterMassSurface;
-			display.GlobalFloraMass += nextState.FloraMass[i];
-			display.GlobalPlanktonMass += nextState.PlanktonMass[surfaceWaterIndex];
 			display.GlobalSoilFertility += nextState.GroundCarbon[i];
 			display.GlobalOceanSurfaceTemperature += nextState.WaterTemperature[surfaceWaterIndex] * waterMassSurface;
 			display.SolarRadiation += tempState.DisplaySolarRadiation[i];
@@ -430,8 +424,6 @@ public struct DisplayState {
 		[ReadOnly] public NativeArray<float> CloudMass;
 		[ReadOnly] public NativeArray<float> IceMass;
 		[ReadOnly] public NativeArray<float> IceTemperature;
-		[ReadOnly] public NativeArray<float> Flora;
-		[ReadOnly] public NativeArray<float> FloraWater;
 		[ReadOnly] public NativeArray<float> GroundWaterMass;
 		[ReadOnly] public NativeArray<float> GroundWaterTemperature;
 		[ReadOnly] public NativeArray<float> SoilFertility;
@@ -442,7 +434,9 @@ public struct DisplayState {
 			SolarRadiationAbsorbedSurface[i] = SolarRadiationInTerrain[i] + SolarRadiationInIce[i] + SolarRadiationInWaterSurface[i];
 			DisplayPrecipitation[i] = Precipitation[i];
 			DisplayEvaporation[i] = EvaporationWater[i] + EvaporationFlora[i];
-			EnthalpyTerrain[i] = TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i], Flora[i], FloraWater[i]) + FloraWater[i] * WorldData.LatentHeatWaterLiquid;
+			float vegetation = 0;
+			float vegetationWater = 0;
+			EnthalpyTerrain[i] = TerrainTemperature[i] * Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i], vegetation, vegetationWater) + vegetationWater * WorldData.LatentHeatWaterLiquid;
 			EnthalpyCloud[i] = CloudMass[i] * WorldData.LatentHeatWaterLiquid;
 			EnthalpyIce[i] = IceMass[i] * IceTemperature[i] * WorldData.SpecificHeatIce;
 			EnthalpyGroundWater[i] = GroundWaterMass[i] * (WorldData.LatentHeatWaterLiquid + WorldData.SpecificHeatWater * GroundWaterTemperature[i]);

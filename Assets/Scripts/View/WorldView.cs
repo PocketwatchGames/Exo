@@ -34,7 +34,6 @@ public class WorldView : MonoBehaviour {
 		GroundTemperature,
 		GroundWater,
 		GroundWaterTemperature,
-		FloraWater,
 		CrustDepth,
 		MagmaMass,
 		DivergenceAir,
@@ -268,7 +267,6 @@ public class WorldView : MonoBehaviour {
 			{ MeshOverlay.Evaporation, new MeshOverlayColors{ Title="Evaporation", Min=0,Max=DisplayEvaporationMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Volume, DecimalPlaces=2 } },
 			{ MeshOverlay.GroundWater, new MeshOverlayColors{ Title="Ground Water", Min=0,Max=Sim.WorldData.GroundWaterMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Mass, DecimalPlaces=0 } },
 			{ MeshOverlay.GroundWaterTemperature, new MeshOverlayColors{ Title="Ground Water Temperature", Min=DisplayTemperatureMin,Max=DisplayTemperatureMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Temperature, DecimalPlaces=0 } },
-			{ MeshOverlay.FloraWater, new MeshOverlayColors{ Title="Flora Water", Min=0,Max=Sim.WorldData.FullCoverageFlora,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Mass, DecimalPlaces=2 } },
 			{ MeshOverlay.CrustDepth, new MeshOverlayColors{ Title="Crust Depth", Min=DisplayCrustDepthMax,Max=0,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.None, DecimalPlaces=0 } },
 			{ MeshOverlay.MagmaMass, new MeshOverlayColors{ Title="Magma", Min=0,Max=DisplayMagmaMassMax,ColorValuePairs=_normalizedRainbow,LegendType=LegendType.Mass, DecimalPlaces=0 } },
 			{ MeshOverlay.DivergenceAir, new MeshOverlayColors{ Title="Divergence Air", Min=-DisplayDivergenceMax,Max=DisplayDivergenceMax,ColorValuePairs=_normalizedBlueBlackRed,LegendType=LegendType.None, DecimalPlaces=2 } },
@@ -657,7 +655,6 @@ public class WorldView : MonoBehaviour {
 				FloraCoverage = tempState.FloraCoverage,
 				WaterCoverage = staticState.GetSliceLayer(tempState.WaterCoverage,Sim.WorldData.SurfaceWaterLayer),
 				WaterTemperature = staticState.GetSliceLayer(from.WaterTemperature,Sim.WorldData.SurfaceWaterLayer),
-				PlanktonMass = staticState.GetSliceLayer(from.PlanktonMass,Sim.WorldData.SurfaceWaterLayer),
 				WaterCurrent = staticState.GetSliceLayer(from.WaterVelocity, Sim.WorldData.SurfaceWaterLayer),
 				WaterDepth = staticState.GetSliceLayer(tempState.WaterLayerDepth, Sim.WorldData.BottomWaterLayer),
 				LavaMass = from.LavaMass,
@@ -1093,9 +1090,6 @@ public class WorldView : MonoBehaviour {
 					return true;
 				case MeshOverlay.GroundWaterTemperature:
 					overlay = new MeshOverlayData(colors, simState.GroundWaterTemperature);
-					return true;
-				case MeshOverlay.FloraWater:
-					overlay = new MeshOverlayData(colors, simState.FloraWater);
 					return true;
 				case MeshOverlay.CrustDepth:
 					overlay = new MeshOverlayData(colors, simState.CrustDepth);

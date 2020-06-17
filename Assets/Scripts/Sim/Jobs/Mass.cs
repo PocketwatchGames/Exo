@@ -46,11 +46,7 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	public NativeSlice<float> WaterTemperature;
 	public NativeSlice<float> WaterMass;
 	public NativeSlice<float> SaltMass;
-	public NativeSlice<float> PlanktonMass;
-	public NativeSlice<float> PlanktonGlucose;
 	public NativeSlice<float> CarbonMass;
-	[ReadOnly] public NativeSlice<float> LastPlanktonMass;
-	[ReadOnly] public NativeSlice<float> LastPlanktonGlucose;
 	[ReadOnly] public NativeArray<float> Evaporation;
 	[ReadOnly] public NativeArray<float> IceMelted;
 	[ReadOnly] public NativeArray<float> Precipitation;
@@ -59,8 +55,6 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> SaltPlume;
 	[ReadOnly] public NativeArray<float> FloraRespirationWater;
 	[ReadOnly] public NativeArray<float> TerrainTemperature;
-	[ReadOnly] public NativeArray<float> PlanktonMassDelta;
-	[ReadOnly] public NativeArray<float> PlanktonGlucoseDelta;
 	[ReadOnly] public NativeArray<float> WaterCarbonDelta;
 	public void Execute(int i)
 	{
@@ -71,15 +65,11 @@ public struct UpdateMassWaterSurfaceJob : IJobParallelFor {
 		float newMass = waterMass + IceMelted[i] + rainMass - Evaporation[i] - WaterFrozen[i] + FloraRespirationWater[i];
 		WaterMass[i] = newMass;
 		SaltMass[i] -= SaltPlume[i];
-		PlanktonMass[i] = LastPlanktonMass[i] + PlanktonMassDelta[i];
-		PlanktonGlucose[i] = LastPlanktonGlucose[i] + PlanktonGlucoseDelta[i];
 		CarbonMass[i] += WaterCarbonDelta[i];
 
 		if (newMass <= 0)
 		{
 			WaterTemperature[i] = 0;
-			PlanktonMass[i] = 0;
-			PlanktonGlucose[i] = 0;
 		}
 		else
 		{
@@ -337,8 +327,6 @@ public struct UpdateTerrainJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> LavaEjected;
 	[ReadOnly] public NativeArray<float> CrustDelta;
 	[ReadOnly] public NativeArray<float> SoilRespiration;
-	[ReadOnly] public NativeArray<float> FloraDeath;
-	[ReadOnly] public NativeArray<float> PlanktonDeath;
 	[ReadOnly] public float MagmaTemperature;
 	[ReadOnly] public float LavaToRockMassAdjustment;
 	public void Execute(int i)
@@ -351,7 +339,7 @@ public struct UpdateTerrainJob : IJobParallelFor {
 		float lavaCrystalizedDepth = lavaCrystalized * LavaToRockMassAdjustment / WorldData.MassLava;
 		Elevation[i] = LastElevation[i] + lavaCrystalizedDepth;
 		// TODO: improve soil fertility when dust settles
-		SoilCarbon[i] = LastSoilFertility[i] - SoilRespiration[i] + FloraDeath[i] + PlanktonDeath[i];
+		SoilCarbon[i] = LastSoilFertility[i] - SoilRespiration[i];
 		Roughness[i] = LastRoughness[i];
 		GroundWater[i] = LastGroundWater[i] - GroundWaterConsumed[i];
 		CrustDepth[i] = LastCrustDepth[i] + lavaCrystalizedDepth + CrustDelta[i];

@@ -27,9 +27,6 @@ public class ToolAddFlora : GameTool {
 		if (cell >= 0)
 		{
 			float floraAdded = Speed * Time.deltaTime;
-			nextState.FloraMass[cell] += floraAdded;
-			nextState.FloraGlucose[cell] += floraAdded;
-			nextState.FloraWater[cell] += floraAdded;
 		}
 	}
 }

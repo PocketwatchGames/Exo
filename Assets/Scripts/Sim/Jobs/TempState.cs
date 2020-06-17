@@ -131,13 +131,6 @@ public struct TempState {
 	public NativeArray<float> WaterConsumedByFlora;
 	public NativeArray<float> FloraRespirationMassVapor;
 	public NativeArray<float> FloraRespirationMassWater;
-	public NativeArray<float> FloraMassDelta;
-	public NativeArray<float> FloraWaterDelta;
-	public NativeArray<float> FloraGlucoseDelta;
-	public NativeArray<float> FloraDeath;
-	public NativeArray<float> PlanktonMassDelta;
-	public NativeArray<float> PlanktonGlucoseDelta;
-	public NativeArray<float> PlanktonDeath;
 	public NativeArray<float> SoilRespiration;
 	public NativeArray<float> GeothermalRadiation;
 	public NativeArray<float> GroundWaterFlowMass;
@@ -292,13 +285,6 @@ public struct TempState {
 		FloraRespirationMassVapor = new NativeArray<float>(count, Allocator.Persistent);
 		FloraRespirationMassWater = new NativeArray<float>(count, Allocator.Persistent);
 		WaterConsumedByFlora = new NativeArray<float>(count, Allocator.Persistent);
-		FloraMassDelta = new NativeArray<float>(count, Allocator.Persistent);
-		FloraWaterDelta = new NativeArray<float>(count, Allocator.Persistent);
-		FloraGlucoseDelta = new NativeArray<float>(count, Allocator.Persistent);
-		FloraDeath = new NativeArray<float>(count, Allocator.Persistent);
-		PlanktonMassDelta = new NativeArray<float>(count, Allocator.Persistent);
-		PlanktonGlucoseDelta = new NativeArray<float>(count, Allocator.Persistent);
-		PlanktonDeath = new NativeArray<float>(count, Allocator.Persistent);
 		WindFriction = new NativeArray<float>(count, Allocator.Persistent);
 		WaterFriction = new NativeArray<float3>(count, Allocator.Persistent);
 		DiffusionCloud = new NativeArray<DiffusionCloud>(count, Allocator.Persistent);
@@ -491,13 +477,6 @@ public struct TempState {
 		FloraRespirationMassVapor.Dispose();
 		FloraRespirationMassWater.Dispose();
 		WaterConsumedByFlora.Dispose();
-		FloraMassDelta.Dispose();
-		FloraWaterDelta.Dispose();
-		FloraGlucoseDelta.Dispose();
-		FloraDeath.Dispose();
-		PlanktonMassDelta.Dispose();
-		PlanktonGlucoseDelta.Dispose();
-		PlanktonDeath.Dispose();
 		WindFriction.Dispose();
 		WaterFriction.Dispose();
 		DiffusionCloud.Dispose();
@@ -613,8 +592,6 @@ public struct TempState {
 			new UpdateSpecificHeatTerrainJob()
 			{
 				SpecificHeatTerrain = SpecificHeatTerrain,
-				FloraMass = state.FloraMass,
-				FloraWater = state.FloraWater,
 				SoilFertility = SoilFertility,
 				HeatingDepth = worldData.SoilHeatDepth,
 			}, dependencies);
@@ -763,11 +740,9 @@ public struct TempState {
 				IceCoverage = IceCoverage,
 
 				WaterCoverage = staticState.GetSliceLayer(WaterCoverage, worldData.SurfaceWaterLayer),
-				FloraMass = state.FloraMass,
 				IceMass = state.IceMass,
 				AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, worldData.SurfaceAirLayer),
 				SurfaceLayerElevation = staticState.GetSliceLayer(AirLayerElevation, worldData.SurfaceAirLayer),
-				inverseFullCoverageFloraMass = 1.0f / worldData.FullCoverageFlora,
 				inverseFullCoverageIceMass = 1.0f / (worldData.FullCoverageIce * WorldData.MassIce),
 				FloraAirSurfaceArea = worldData.FloraAirSurfaceArea,
 				Roughness = state.Roughness
@@ -1076,19 +1051,17 @@ public struct TempState {
 		public NativeArray<float> FloraCoverage;
 		public NativeArray<float> IceCoverage;
 		[ReadOnly] public NativeArray<float> IceMass;
-		[ReadOnly] public NativeArray<float> FloraMass;
 		[ReadOnly] public NativeSlice<float> WaterCoverage;
 		[ReadOnly] public NativeSlice<float> AirTemperaturePotential;
 		[ReadOnly] public NativeSlice<float> SurfaceLayerElevation;
 		[ReadOnly] public NativeArray<float> Roughness;
 		[ReadOnly] public float inverseFullCoverageIceMass;
-		[ReadOnly] public float inverseFullCoverageFloraMass;
 		[ReadOnly] public float FloraAirSurfaceArea;
 		public void Execute(int i)
 		{
 			SurfaceAirTemperatureAbsolute[i] = Atmosphere.GetAbsoluteTemperature(AirTemperaturePotential[i], SurfaceLayerElevation[i]);
 
-			float floraCoverage = math.saturate(FloraMass[i] * inverseFullCoverageFloraMass);
+			float floraCoverage = 0;
 			FloraCoverage[i] = floraCoverage;
 			float terrainSurfaceArea = floraCoverage * FloraAirSurfaceArea;
 
@@ -1111,12 +1084,12 @@ public struct TempState {
 	public struct UpdateSpecificHeatTerrainJob : IJobParallelFor {
 		public NativeArray<float> SpecificHeatTerrain;
 		[ReadOnly] public NativeArray<float> SoilFertility;
-		[ReadOnly] public NativeArray<float> FloraMass;
-		[ReadOnly] public NativeArray<float> FloraWater;
 		[ReadOnly] public float HeatingDepth;
 		public void Execute(int i)
 		{
-			SpecificHeatTerrain[i] = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i], FloraMass[i], FloraWater[i]);
+			float vegetation = 0;
+			float vegetationWater = 0;
+			SpecificHeatTerrain[i] = Atmosphere.GetSpecificHeatTerrain(HeatingDepth, SoilFertility[i], vegetation, vegetationWater);
 		}
 	}
 	[BurstCompile]

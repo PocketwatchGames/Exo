@@ -117,8 +117,6 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> Mass;
 	[ReadOnly] public NativeSlice<float> Salt;
 	[ReadOnly] public NativeSlice<float> Carbon;
-	[ReadOnly] public NativeSlice<float> PlanktonMass;
-	[ReadOnly] public NativeSlice<float> PlanktonGlucose;
 	[ReadOnly] public NativeSlice<float> Temperature;
 	[ReadOnly] public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeArray<float3> Positions;
@@ -134,8 +132,6 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 		float mass = 0;
 		float salt = 0;
 		float carbon = 0;
-		float planktonMass = 0;
-		float planktonGlucose = 0;
 		float3 velocity = 0;
 		float temperature = 0;
 		float massPercentRemaining = 1;
@@ -163,8 +159,6 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 						mass += massIncoming;
 						salt += saltIncoming;
 						carbon += Carbon[nIndex] * flowPercent;
-						planktonMass += PlanktonMass[nIndex] * flowPercent;
-						planktonGlucose += PlanktonGlucose[nIndex] * flowPercent;
 						temperature += Temperature[nIndex] * (massIncoming + saltIncoming);
 
 						// TODO: this is increasing speed, is that right???  Shouldnt it only rotate?
@@ -191,8 +185,6 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 		mass += massRemaining;
 		salt += saltRemaining;
 		carbon += Carbon[i] * massPercentRemaining;
-		planktonMass += PlanktonMass[i] * massPercentRemaining;
-		planktonGlucose += PlanktonGlucose[i] * massPercentRemaining;
 		velocity += Velocity[i] * (massRemaining + saltRemaining);
 		temperature += Temperature[i] * (massRemaining + saltRemaining);
 
@@ -200,8 +192,6 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 		{
 			temperature = 0;
 			velocity = 0;
-			planktonMass = 0;
-			planktonGlucose = 0;
 		}
 		else
 		{
@@ -217,8 +207,6 @@ public struct ApplyFlowWaterJob : IJobParallelFor {
 			WaterMass = mass,
 			SaltMass = salt,
 			CarbonMass = carbon,
-			Plankton = planktonMass,
-			PlanktonGlucose = planktonGlucose,
 			Temperature = temperature,
 			Velocity = velocity
 		};
@@ -234,8 +222,6 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 	[ReadOnly] public NativeArray<float> Mass;
 	[ReadOnly] public NativeArray<float> Salt;
 	[ReadOnly] public NativeArray<float> Carbon;
-	[ReadOnly] public NativeArray<float> PlanktonMass;
-	[ReadOnly] public NativeArray<float> PlanktonGlucose;
 	[ReadOnly] public NativeArray<float> Temperature;
 	[ReadOnly] public NativeArray<float3> Velocity;
 	[ReadOnly] public float MaxDepth1;
@@ -273,8 +259,6 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass1 - moveMass,
 				SaltMass = salt1 - moveSalt,
 				CarbonMass = Carbon[index1] - moveCarbon,
-				Plankton = PlanktonMass[index1],
-				PlanktonGlucose = PlanktonGlucose[index1],
 				Temperature = temperature1,
 				Velocity = velocity1
 			};
@@ -284,8 +268,6 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass2 + moveMass,
 				SaltMass = salt2 + moveSalt,
 				CarbonMass = Carbon[index2] + moveCarbon,
-				Plankton = 0,
-				PlanktonGlucose = 0,
 				Temperature = (temperature2 * (mass2 + salt2) + temperature1 * (moveMass + moveSalt)) * inverseTotalMass,
 				Velocity = (velocity2 * (mass2 + salt2) + velocity1 * (moveMass + moveSalt)) * inverseTotalMass,
 			};
@@ -302,8 +284,6 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass1 + moveMass,
 				SaltMass = salt1 + moveSalt,
 				CarbonMass = Carbon[index1] + moveCarbon,
-				Plankton = PlanktonMass[index1],
-				PlanktonGlucose = PlanktonGlucose[index1],
 				Temperature = (temperature1 * (mass1 + salt1) + temperature2 * (moveMass + moveSalt)) * inverseTotalMass,
 				Velocity = (velocity1 * (mass1 + salt1) + velocity2 * (moveMass + moveSalt)) * inverseTotalMass,
 			};
@@ -313,8 +293,6 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass2 - moveMass,
 				SaltMass = salt2 - moveSalt,
 				CarbonMass = Carbon[index2] - moveCarbon,
-				Plankton = 0,
-				PlanktonGlucose = 0,
 				Temperature = temperature2 * anyMassRemaining,
 				Velocity = velocity2 * anyMassRemaining
 			};
@@ -326,8 +304,6 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass1,
 				SaltMass = salt1,
 				CarbonMass = Carbon[index1],
-				Plankton = PlanktonMass[index1],
-				PlanktonGlucose = PlanktonGlucose[index1],
 				Temperature = temperature1,
 				Velocity = velocity1
 			};
@@ -336,8 +312,6 @@ public struct RebalanceWaterLayersLimitJob : IJobParallelFor {
 				WaterMass = mass2,
 				SaltMass = salt2,
 				CarbonMass = Carbon[index2],
-				Plankton = 0,
-				PlanktonGlucose = 0,
 				Temperature = temperature2,
 				Velocity = velocity2
 			};

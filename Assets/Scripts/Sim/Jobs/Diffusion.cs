@@ -131,8 +131,6 @@ public struct DiffusionWaterJob : IJobParallelFor {
 	[ReadOnly] public NativeSlice<float> Temperature;
 	[ReadOnly] public NativeSlice<float> SaltMass;
 	[ReadOnly] public NativeSlice<float> CarbonMass;
-	[ReadOnly] public NativeSlice<float> PlanktonMass;
-	[ReadOnly] public NativeSlice<float> PlanktonGlucose;
 	[ReadOnly] public NativeSlice<float3> Velocity;
 	[ReadOnly] public NativeSlice<float> LayerHeight;
 	[ReadOnly] public NativeArray<int> Neighbors;
@@ -153,15 +151,11 @@ public struct DiffusionWaterJob : IJobParallelFor {
 		float temperature = Temperature[i];
 		float saltMass = SaltMass[i];
 		float carbonMass = CarbonMass[i];
-		float plankton = PlanktonMass[i];
-		float glucose = PlanktonGlucose[i];
 		float3 velocity = Velocity[i];
 
 		float neighborTemperature = temperature;
 		float neighborSaltMass = saltMass;
 		float neighborCarbonMass = carbonMass;
-		float neighborPlankton = plankton;
-		float neighborGlucose = glucose;
 		float3 neighborVelocity = velocity;
 
 		int layer = i / Count;
@@ -175,8 +169,6 @@ public struct DiffusionWaterJob : IJobParallelFor {
 			float inverseMass = 1.0f / mass;
 			float saltPercent = saltMass * inverseMass;
 			float carbonPercent = carbonMass * inverseMass;
-			float planktonPercent = plankton * inverseMass;
-			float glucosePercent = glucose * inverseMass;
 
 
 			for (int j = 0; j < StaticState.MaxNeighbors; j++)
@@ -198,8 +190,6 @@ public struct DiffusionWaterJob : IJobParallelFor {
 							neighborTemperature += (Temperature[n] - temperature) * diffusion;
 							neighborVelocity += (Velocity[n] - velocity) * diffusion;
 							neighborSaltMass += (SaltMass[n] * inverseNMass - saltPercent) * diffusion * math.min(nMass, mass);
-							neighborPlankton += (PlanktonMass[n] * inverseNMass - planktonPercent) * diffusion * math.min(nMass, mass);
-							neighborGlucose += (PlanktonGlucose[n] * inverseNMass - glucosePercent) * diffusion * math.min(nMass, mass);
 							neighborCarbonMass += (CarbonMass[n] * inverseNMass - carbonPercent) * diffusion * math.min(nMass, mass);
 						}
 					}
@@ -254,8 +244,6 @@ public struct DiffusionWaterJob : IJobParallelFor {
 			WaterMass = mass,
 			SaltMass = neighborSaltMass,
 			CarbonMass = neighborCarbonMass,
-			Plankton = neighborPlankton,
-			PlanktonGlucose = neighborGlucose,
 			Temperature = neighborTemperature,
 			Velocity = neighborVelocity,
 		};

@@ -7,11 +7,6 @@ public static class SimTest {
 	{
 		bool degen = false;
 		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "TerrainTemperature", state.GroundTemperature, 0, 1200, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "FloraMass", state.FloraMass, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "FloraWater", state.FloraWater, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "FloraGlucose", state.FloraGlucose, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "PlanktonMass", staticState.GetSliceLayer(state.PlanktonMass, worldData.SurfaceWaterLayer), degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "PlanktonGlucose", staticState.GetSliceLayer(state.PlanktonGlucose, worldData.SurfaceWaterLayer), degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "GroundWater", state.GroundWater, degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "CloudMass", state.CloudMass, degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "CloudDropletMass", state.CloudDropletMass, degenVarNames);
@@ -31,7 +26,6 @@ public static class SimTest {
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "WaterMass", staticState.GetSliceWater(state.WaterMass), degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "SaltMass", staticState.GetSliceWater(state.SaltMass), degenVarNames);
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonMass", staticState.GetSliceWater(state.WaterCarbon), degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "Plankton", staticState.GetSliceWater(state.PlanktonMass), degenVarNames);
 		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "WaterTemperature", staticState.GetSliceWater(state.WaterTemperature), 0, 1200, degenVarNames);
 		degen |= CheckDegen(cellCount, degenIndices, "Current", staticState.GetSliceWater(state.WaterVelocity), degenVarNames);
 
