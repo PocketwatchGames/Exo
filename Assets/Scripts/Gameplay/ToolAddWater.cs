@@ -29,7 +29,7 @@ public class ToolAddWater : GameTool {
 			int index = staticState.GetWaterIndex(worldData.SurfaceAirLayer, cell);
 			float waterAdded = MetersPerSecond * WorldData.MassWater * Time.deltaTime;
 			float waterMass = lastState.WaterMass[index];
-			float saltMass = lastState.SaltMass[index];
+			float saltMass = lastState.WaterSaltMass[index];
 			nextState.WaterMass[index] = waterMass + waterAdded;
 			nextState.WaterTemperature[index] =
 				(lastState.WaterTemperature[index] * (waterMass + saltMass)

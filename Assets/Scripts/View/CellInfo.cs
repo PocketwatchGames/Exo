@@ -173,7 +173,7 @@ public static class CellInfo {
 				dependent.AirLayerElevation[index],
 				display.Pressure[index],
 				wind.x, wind.y, wind.z);
-			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[index], state.AirVapor[index], state.AirCarbon[index] / dependent.AirMass[index] * 1000000);
+			s.AppendFormat("\nMASS: {0:N0} kg VAPOR: {1:N0} kg CO2: {2:N0} ppm", dependent.AirMass[index], state.AirVapor[index], state.AirCarbonDioxide[index] / dependent.AirMass[index] * 1000000);
 			s.AppendFormat("\nSOLAR ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionSolar[index].AbsorptivityAirAbove) * display.AbsorptionSolar[index].AbsorptivityAirBelow, display.AbsorptionSolar[index].ReflectivityAirBelow + (1.0f - display.AbsorptionSolar[index].ReflectivityAirBelow) * display.AbsorptionSolar[index].ReflectivityAirBelow);
 			s.AppendFormat("\nCLOUD ABSORB: {0:P0} REFLECT: {1:P0}", display.AbsorptionSolar[index].AbsorptivityCloud, display.AbsorptionSolar[index].ReflectivityCloud);
 			s.AppendFormat("\nTHERMAL ABSORB: {0:P0} CLOUD: {1:P0}", display.AbsorptionThermal[index].AbsorptivityAirAbove + (1.0f - display.AbsorptionThermal[index].AbsorptivityAirAbove) * display.AbsorptionThermal[index].AbsorptivityAirBelow, display.AbsorptionThermal[index].AbsorptivityCloud);
@@ -192,7 +192,7 @@ public static class CellInfo {
 		s.AppendFormat("ELE: {0:N0} m", state.Elevation[ActiveCellIndex]);
 		s.AppendFormat("\nROUGH: {0:N0} m", state.Roughness[ActiveCellIndex]);
 		s.AppendFormat("\nTEMP: {0}", GetTemperatureString(state.GroundTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
-		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbon[ActiveCellIndex]);
+		s.AppendFormat("\nSOIL: {0:N2}", state.GroundCarbonDioxide[ActiveCellIndex]);
 		s.AppendFormat("\nGWATER: {0:N2} TEMP: {1:N2}",
 			state.GroundWater[ActiveCellIndex],
 			GetTemperatureString(state.GroundWaterTemperature[ActiveCellIndex], ActiveTemperatureUnits, 1));
@@ -240,7 +240,7 @@ public static class CellInfo {
 					current.x, current.y, current.z);
 
 				s.AppendFormat("\nCO2: {0:N3}",
-					state.WaterCarbon[index]);
+					state.WaterCarbonDioxide[index]);
 				s.AppendFormat("\nP: {0} D: {1}",
 					dependent.WaterPressure[index],
 					Atmosphere.GetWaterDensity(display.Salinity[index], state.WaterTemperature[index]));
@@ -310,7 +310,7 @@ public static class CellInfo {
 		s.AppendFormat("X: {0} Y: {1}\n", staticState.Coordinate[i].x, staticState.Coordinate[i].y);
 		s.AppendFormat("Elevation: {0}\n", state.Elevation[i]);
 		s.AppendFormat("Roughness: {0}\n", state.Roughness[i]);
-		s.AppendFormat("SoilFertility: {0}\n", state.GroundCarbon[i]);
+		s.AppendFormat("SoilFertility: {0}\n", state.GroundCarbonDioxide[i]);
 		s.AppendFormat("Ground Water: {0} kg\n", state.GroundWater[i]);
 		s.AppendFormat("TerrainTemperature: {0}\n", state.GroundTemperature[i]);
 		s.AppendFormat("IceMass: {0}\n", state.IceMass[i]);
@@ -336,7 +336,7 @@ public static class CellInfo {
 			s.AppendFormat("\nAIR LAYER {0}\n", j);
 			s.AppendFormat("Temperature: {0}\n", state.AirTemperaturePotential[index]);
 			s.AppendFormat("Vapor: {0}\n", state.AirVapor[index]);
-			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbon[index]);
+			s.AppendFormat("CarbonDioxide: {0}\n", state.AirCarbonDioxide[index]);
 			s.AppendFormat("Velocity: {0}\n", state.AirVelocity[index]);
 		}
 
@@ -345,9 +345,9 @@ public static class CellInfo {
 			int index = staticState.GetLayerIndexWater(j, i);
 			s.AppendFormat("\nWATER LAYER {0}\n", j);
 			s.AppendFormat("WaterMass: {0}\n", state.WaterMass[index]);
-			s.AppendFormat("SaltMass: {0}\n", state.SaltMass[index]);
+			s.AppendFormat("SaltMass: {0}\n", state.WaterSaltMass[index]);
 			s.AppendFormat("Temperature: {0}\n", state.WaterTemperature[index]);
-			s.AppendFormat("Carbon: {0}\n", state.WaterCarbon[index]);
+			s.AppendFormat("Carbon: {0}\n", state.WaterCarbonDioxide[index]);
 			s.AppendFormat("Velocity: {0}\n", state.WaterVelocity[index]);
 		}
 		Debug.Log(s);

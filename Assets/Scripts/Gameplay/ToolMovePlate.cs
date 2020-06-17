@@ -61,7 +61,7 @@ public class ToolMovePlate : GameTool {
 				Roughness = nextState.Roughness,
 				CrustDepth = nextState.CrustDepth,
 				GroundTemperature = nextState.GroundTemperature,
-				GroundCarbon = nextState.GroundCarbon,
+				GroundCarbon = nextState.GroundCarbonDioxide,
 				GroundWater = nextState.GroundWater,
 				GroundWaterTemperature = nextState.GroundWaterTemperature,
 
@@ -74,7 +74,7 @@ public class ToolMovePlate : GameTool {
 				LastRoughness = lastState.Roughness,
 				LastCrustDepth = lastState.CrustDepth,
 				LastGroundTemperature = lastState.GroundTemperature,
-				LastGroundCarbon = lastState.GroundCarbon,
+				LastGroundCarbon = lastState.GroundCarbonDioxide,
 				LastGroundWater = lastState.GroundWater,
 				LastGroundWaterTemperature = lastState.GroundWaterTemperature,
 				LastWaterDepth = tempState.WaterDepthTotal

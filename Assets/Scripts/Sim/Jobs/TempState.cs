@@ -131,7 +131,6 @@ public struct TempState {
 	public NativeArray<float> WaterConsumedByFlora;
 	public NativeArray<float> FloraRespirationMassVapor;
 	public NativeArray<float> FloraRespirationMassWater;
-	public NativeArray<float> SoilRespiration;
 	public NativeArray<float> GeothermalRadiation;
 	public NativeArray<float> GroundWaterFlowMass;
 	public NativeArray<float> GroundWaterFlowTemperature;
@@ -309,7 +308,6 @@ public struct TempState {
 		CrustDelta = new NativeArray<float>(count, Allocator.Persistent);
 		AirCarbonDelta = new NativeArray<float>(count, Allocator.Persistent);
 		OxygenDelta = new NativeArray<float>(count, Allocator.Persistent);
-		SoilRespiration = new NativeArray<float>(count, Allocator.Persistent);
 		WaterCarbonDelta = new NativeArray<float>(count, Allocator.Persistent);
 
 
@@ -500,7 +498,6 @@ public struct TempState {
 		CrustDelta.Dispose();
 		AirCarbonDelta.Dispose();
 		OxygenDelta.Dispose();
-		SoilRespiration.Dispose();
 		WaterCarbonDelta.Dispose();
 
 		DisplaySolarRadiation.Dispose();
@@ -584,7 +581,7 @@ public struct TempState {
 			new UpdateSoilFertilityJob()
 			{
 				SoilFertility = SoilFertility,
-				GroundCarbon = state.GroundCarbon,
+				GroundCarbon = state.GroundCarbonDioxide,
 				GroundCarbonFertility = worldData.GroundCarbonFertility
 			}, dependencies);
 		dependencies = _jobHelper.Schedule(
@@ -605,7 +602,7 @@ public struct TempState {
 				PotentialEnergy = staticState.GetSliceWater(WaterPotentialEnergy),
 
 				Temperature = state.WaterTemperature,
-				SaltMass = state.SaltMass,
+				SaltMass = state.WaterSaltMass,
 				WaterMass = state.WaterMass,
 				Count = staticState.Count
 			}, dependencies);
@@ -623,7 +620,7 @@ public struct TempState {
 					WaterCoverage = staticState.GetSliceLayer(WaterCoverage, j),
 
 					LayerHeight = WaterLayerHeight,
-					SaltMass = staticState.GetSliceLayer(state.SaltMass, j),
+					SaltMass = staticState.GetSliceLayer(state.WaterSaltMass, j),
 					WaterMass = staticState.GetSliceLayer(state.WaterMass, j),
 					Roughness = state.Roughness,
 					Gravity = state.PlanetState.Gravity,

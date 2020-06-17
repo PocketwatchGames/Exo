@@ -645,7 +645,7 @@ public class WorldView : MonoBehaviour {
 				MeshOverlayInverseRange = meshOverlay.InverseRange,
 				CloudElevationSim = tempState.CloudElevation,
 				Icosphere = Sim.Icosphere.Vertices,
-				SoilFertility = from.GroundCarbon,
+				SoilFertility = from.GroundCarbonDioxide,
 				Roughness = from.Roughness,
 				Elevation = from.Elevation,
 				CloudMass = from.CloudMass,

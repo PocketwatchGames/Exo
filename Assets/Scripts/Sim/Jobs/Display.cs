@@ -221,7 +221,7 @@ public struct DisplayState {
 				CarbonDioxidePercent = staticState.GetSliceAir(display.CarbonDioxidePercent),
 				Divergence = staticState.GetSliceAir(display.DivergenceAir),
 
-				CarbonDioxide = staticState.GetSliceAir(nextState.AirCarbon),
+				CarbonDioxide = staticState.GetSliceAir(nextState.AirCarbonDioxide),
 				AirTemperaturePotential = staticState.GetSliceAir(nextState.AirTemperaturePotential),
 				AirPressure = staticState.GetSliceAir(tempState.AirPressure),
 				LayerMiddle = staticState.GetSliceAir(tempState.AirLayerMiddle),
@@ -230,7 +230,7 @@ public struct DisplayState {
 				CondensationGround = staticState.GetSliceAir(tempState.CondensationGroundMass),
 				AirMass = staticState.GetSliceAir(tempState.AirMass),
 				VaporMass = staticState.GetSliceAir(nextState.AirVapor),
-				DustMass = staticState.GetSliceAir(nextState.Dust),
+				DustMass = staticState.GetSliceAir(nextState.AirDust),
 				CloudElevation = tempState.CloudElevation,
 				CloudMass = nextState.CloudMass,
 				LayerElevation = staticState.GetSliceAir(tempState.AirLayerElevation),
@@ -248,9 +248,9 @@ public struct DisplayState {
 				CarbonPercent = staticState.GetSliceWater(display.WaterCarbonDioxidePercent),
 
 				WaterTemperature = nextState.WaterTemperature,
-				SaltMass = nextState.SaltMass,
+				SaltMass = nextState.WaterSaltMass,
 				WaterMass = nextState.WaterMass,
-				WaterCarbon = nextState.WaterCarbon,
+				WaterCarbon = nextState.WaterCarbonDioxide,
 				CountPerLayer = staticState.Count,
 			}, initDisplayWaterHandle));
 
@@ -337,7 +337,7 @@ public struct DisplayState {
 			int surfaceWaterIndex = staticState.GetWaterIndex(worldData.SurfaceWaterLayer, i);
 			float waterMassSurface = nextState.WaterMass[surfaceWaterIndex];
 			globalWaterSurfaceMass += waterMassSurface;
-			display.GlobalSoilFertility += nextState.GroundCarbon[i];
+			display.GlobalSoilFertility += nextState.GroundCarbonDioxide[i];
 			display.GlobalOceanSurfaceTemperature += nextState.WaterTemperature[surfaceWaterIndex] * waterMassSurface;
 			display.SolarRadiation += tempState.DisplaySolarRadiation[i];
 			display.GeothermalRadiation += tempState.GeothermalRadiation[i];
@@ -362,7 +362,7 @@ public struct DisplayState {
 				display.EnergySolarAbsorbedAtmosphere += tempState.SolarRadiationInAir[j * staticState.Count + i];
 				display.GlobalEnthalpyAir += display.EnthalpyAir[index];
 				display.GlobalCloudCoverage += math.min(1, tempState.AbsorptivitySolar[index].AbsorptivityCloud * 100);
-				display.GlobalAirCarbon += nextState.AirCarbon[index];
+				display.GlobalAirCarbon += nextState.AirCarbonDioxide[index];
 				display.GlobalCondensationCloud += display.CondensationCloud[index];
 				display.GlobalCondensationGround += display.CondensationGround[index];
 			}
@@ -377,7 +377,7 @@ public struct DisplayState {
 				display.GlobalOceanTemperature += nextState.WaterTemperature[index] * waterMass;
 				display.GlobalEnthalpyWater += display.EnthalpyWater[index];
 				display.GlobalOceanMass += nextState.WaterMass[index];
-				display.GlobalWaterCarbon += nextState.WaterCarbon[index];
+				display.GlobalWaterCarbon += nextState.WaterCarbonDioxide[index];
 			}
 			display.EnergySurfaceConduction += tempState.ConductionAirIce[i] + tempState.ConductionAirTerrain[i] + tempState.ConductionAirWater[i];
 			display.EnergyOceanConduction += tempState.ConductionAirWater[i];

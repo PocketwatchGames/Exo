@@ -28,7 +28,6 @@ public static class WorldGen {
 		state.PlanetState.AngularSpeed = math.PI * 2 / (worldGenData.SpinTime * 60 * 60);
 		state.PlanetState.GeothermalHeat = worldGenData.GeothermalHeat;
 		state.PlanetState.SolarRadiation = worldGenData.SolarRadiation;
-		state.PlanetState.Oxygen = worldGenData.Oxygen;
 	}
 
 #if ASYNC_WORLDGEN
@@ -336,7 +335,7 @@ public static class WorldGen {
 		var worldGenInitJob = new WorldGenInitJob()
 		{
 			Roughness = state.Roughness,
-			SoilCarbon = state.GroundCarbon,
+			SoilCarbon = state.GroundCarbonDioxide,
 			CloudMass = state.CloudMass,
 			potentialTemperature = temperaturePotential,
 			relativeHumidity = RelativeHumidity,
@@ -411,9 +410,9 @@ public static class WorldGen {
 				new WorldGenWaterLayerJob()
 				{
 					WaterTemperature = staticState.GetSliceLayer(state.WaterTemperature, i),
-					SaltMass = staticState.GetSliceLayer(state.SaltMass, i),
+					SaltMass = staticState.GetSliceLayer(state.WaterSaltMass, i),
 					WaterMass = staticState.GetSliceLayer(state.WaterMass, i),
-					CarbonMass = staticState.GetSliceLayer(state.WaterCarbon, i),
+					CarbonMass = staticState.GetSliceLayer(state.WaterCarbonDioxide, i),
 					ElevationTop = WaterLayerElevation,
 
 					LayerCount = layerCount,
@@ -437,7 +436,7 @@ public static class WorldGen {
 				new WorldGenAirLayerJob()
 				{
 					AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, i),
-					Dust = staticState.GetSliceLayer(state.Dust, i),
+					Dust = staticState.GetSliceLayer(state.AirDust, i),
 
 					TemperaturePotential = temperaturePotential,
 				}, worldGenJobHandle);
@@ -455,7 +454,7 @@ public static class WorldGen {
 				new WorldGenWaterVaporJob()
 				{
 					AirVapor = staticState.GetSliceLayer(state.AirVapor,i),
-					CarbonDioxide = staticState.GetSliceLayer(state.AirCarbon,i),
+					CarbonDioxide = staticState.GetSliceLayer(state.AirCarbonDioxide,i),
 
 					AirMass = staticState.GetSliceLayer(tempState.AirMass,i),
 					Pressure = staticState.GetSliceLayer(tempState.AirPressure,i),

@@ -20,12 +20,12 @@ public static class SimTest {
 
 		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirTemperature", staticState.GetSliceAir(state.AirTemperaturePotential), 0, 1200, degenVarNames);
 		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "AirVapor", staticState.GetSliceAir(state.AirVapor), 0, 10000, degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonDioxide", staticState.GetSliceAir(state.AirCarbon), degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonDioxide", staticState.GetSliceAir(state.AirCarbonDioxide), degenVarNames);
 		degen |= CheckDegen(cellCount, degenIndices, "AirVelocity", staticState.GetSliceAir(state.AirVelocity), degenVarNames);
 
 		degen |= CheckDegenPosValues(cellCount, degenIndices, "WaterMass", staticState.GetSliceWater(state.WaterMass), degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "SaltMass", staticState.GetSliceWater(state.SaltMass), degenVarNames);
-		degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonMass", staticState.GetSliceWater(state.WaterCarbon), degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "SaltMass", staticState.GetSliceWater(state.WaterSaltMass), degenVarNames);
+		degen |= CheckDegenPosValues(cellCount, degenIndices, "CarbonMass", staticState.GetSliceWater(state.WaterCarbonDioxide), degenVarNames);
 		degen |= CheckDegenMinMaxValues(cellCount, degenIndices, "WaterTemperature", staticState.GetSliceWater(state.WaterTemperature), 0, 1200, degenVarNames);
 		degen |= CheckDegen(cellCount, degenIndices, "Current", staticState.GetSliceWater(state.WaterVelocity), degenVarNames);
 

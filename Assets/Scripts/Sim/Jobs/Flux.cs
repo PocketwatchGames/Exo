@@ -683,7 +683,6 @@ public struct FluxTerrainJob : IJobParallelFor {
 	public NativeArray<float> LavaEjected;
 	public NativeArray<float> DustEjected;
 	public NativeArray<float> CrustDelta;
-	public NativeArray<float> SoilRespiration;
 	public NativeSlice<float> LatentHeatLava;
 	[ReadOnly] public NativeArray<float> SoilCarbon;
 	[ReadOnly] public NativeSlice<float> WaterCoverage;
@@ -699,7 +698,6 @@ public struct FluxTerrainJob : IJobParallelFor {
 	[ReadOnly] public float MagmaPressureCrustReductionSpeed;
 	[ReadOnly] public float SecondsPerTick;
 	[ReadOnly] public float SoilRespirationSpeed;
-	[ReadOnly] public float OxygenPercent;
 
 	public void Execute(int i)
 	{
@@ -708,15 +706,12 @@ public struct FluxTerrainJob : IJobParallelFor {
 		float lavaEjected = 0;
 		float dustEjected = 0;
 		float crustDelta = 0;
-		float soilRespiration = 0;
 		float mass = LavaMass[i];
 		float temperature = LavaTemperature[i];
 		float crystalizationTempDelta = LavaCrystalizationTemperature - temperature;
 
 #if !DISABLE_SOIL_RESPIRATION
 
-		soilRespiration = soilCarbon * OxygenPercent * SoilRespirationSpeed;
-		soilCarbon -= soilRespiration;
 
 #endif
 
@@ -738,14 +733,11 @@ public struct FluxTerrainJob : IJobParallelFor {
 				// TODO: track dust carbon and eject it so it can settle elsewhere
 				dustEjected = lavaEjected * DustPerLavaEjected * (1.0f - WaterCoverage[i]);
 
-				// eject carbon as a gas
-				soilRespiration += math.min(soilCarbon, lavaEjected * DustPerLavaEjected);
 			}
 		}
 #endif
 
 		LatentHeatLava[i] = crystalizedMass * WorldData.LatentHeatLava;
-		SoilRespiration[i] = soilRespiration;
 		CrystalizedMass[i] = crystalizedMass;
 		LavaEjected[i] = lavaEjected;
 		DustEjected[i] = dustEjected;
