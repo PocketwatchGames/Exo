@@ -51,8 +51,10 @@ public struct SimState {
 	public NativeArray<float> WaterNitrogen;
 	public NativeArray<float3> WaterVelocity;
 	public NativeArray<float> WaterSaltMass;
+	public NativeArray<BacteriaState> BacteriaState;
+	public NativeArray<SpeciesState> SpeciesState;
 
-	public void Init(int count, ref WorldData worldData)
+	public void Init(int count, int speciesCount, ref WorldData worldData)
 	{
 		Plate = new NativeArray<short>(count, Allocator.Persistent);
 		Roughness = new NativeArray<float>(count, Allocator.Persistent);
@@ -96,6 +98,9 @@ public struct SimState {
 		WaterOxygen = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		WaterNitrogen = new NativeArray<float>(count * worldData.WaterLayers, Allocator.Persistent);
 		WaterVelocity = new NativeArray<float3>(count * worldData.WaterLayers, Allocator.Persistent);
+
+		BacteriaState = new NativeArray<BacteriaState>(count, Allocator.Persistent);
+		SpeciesState = new NativeArray<SpeciesState>(speciesCount, Allocator.Persistent);
 	}
 
 	public void CopyFrom(ref SimState from)
@@ -142,6 +147,9 @@ public struct SimState {
 		WaterOxygen.CopyFrom(from.WaterOxygen);
 		WaterVelocity.CopyFrom(from.WaterVelocity);
 		WaterNitrogen.CopyFrom(from.WaterNitrogen);
+
+		BacteriaState.CopyFrom(from.BacteriaState);
+		SpeciesState.CopyFrom(from.SpeciesState);
 	}
 
 	public void Dispose()
@@ -187,6 +195,9 @@ public struct SimState {
 		WaterMinerals.Dispose();
 		WaterOxygen.Dispose();
 		WaterVelocity.Dispose();
+
+		BacteriaState.Dispose();
+		SpeciesState.Dispose();
 	}
 }
 

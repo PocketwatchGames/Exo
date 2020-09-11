@@ -56,7 +56,6 @@ public static class WorldGen {
 		[ReadOnly] public float MaxTemperature;
 		[ReadOnly] public float MinTemperature;
 		[ReadOnly] public float MaxGroundWater;
-		[ReadOnly] public float SoilCarbonMax;
 		[ReadOnly] public float MagmaMin;
 		[ReadOnly] public float MagmaMax;
 		[ReadOnly] public float CrustMin;
@@ -191,6 +190,7 @@ public static class WorldGen {
 
 		public NativeSlice<float> AirTemperaturePotential;
 		public NativeSlice<float> Dust;
+		public NativeSlice<float> Minerals;
 
 		[ReadOnly] public NativeArray<float> TemperaturePotential;
 
@@ -198,6 +198,7 @@ public static class WorldGen {
 		{
 			AirTemperaturePotential[i] = TemperaturePotential[i];
 			Dust[i] = 0;
+			Minerals[i] = 0;
 		}
 	}
 
@@ -209,6 +210,9 @@ public static class WorldGen {
 
 		public NativeSlice<float> AirVapor;
 		public NativeSlice<float> CarbonDioxide;
+		public NativeSlice<float> Oxygen;
+		public NativeSlice<float> Methane;
+		public NativeSlice<float> Nitrogen;
 
 		[ReadOnly] public NativeSlice<float> AirMass;
 		[ReadOnly] public NativeSlice<float> Pressure;
@@ -216,12 +220,18 @@ public static class WorldGen {
 		[ReadOnly] public NativeSlice<float> TemperaturePotential;
 		[ReadOnly] public NativeSlice<float> RelativeHumidity;
 		[ReadOnly] public float CarbonDioxidePPM;
+		[ReadOnly] public float NitrogenPPM;
+		[ReadOnly] public float MethanePPM;
+		[ReadOnly] public float OxygenPPM;
 		public void Execute(int i)
 		{
 			float airTemperatureAbsolute = TemperaturePotential[i] + WorldData.TemperatureLapseRate * LayerMiddle[i];
 			float airVapor = Atmosphere.GetMaxVaporAtTemperature(AirMass[i], airTemperatureAbsolute, Pressure[i]) * RelativeHumidity[i];
 			AirVapor[i] = airVapor;
 			CarbonDioxide[i] = CarbonDioxidePPM * AirMass[i];
+			Oxygen[i] = OxygenPPM * AirMass[i];
+			Methane[i] = MethanePPM * AirMass[i];
+			Nitrogen[i] = NitrogenPPM * AirMass[i];
 		}
 	}
 
@@ -348,7 +358,6 @@ public static class WorldGen {
 			MinTemperature = worldGenData.MinTemperature,
 			MaxTemperature = worldGenData.MaxTemperature,
 			MaxGroundWater = worldData.GroundWaterMax,
-			SoilCarbonMax = worldGenData.SoilCarbonMass,
 			MagmaMin = worldGenData.MagmaMin,
 			MagmaMax = worldGenData.MagmaMax,
 			CrustMin = worldGenData.CrustMin,
@@ -429,6 +438,7 @@ public static class WorldGen {
 				{
 					AirTemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential, i),
 					Dust = staticState.GetSliceLayer(state.AirDust, i),
+					Minerals = staticState.GetSliceLayer(state.AirMinerals, i),
 
 					TemperaturePotential = temperaturePotential,
 				}, worldGenJobHandle);
@@ -446,7 +456,10 @@ public static class WorldGen {
 				new WorldGenWaterVaporJob()
 				{
 					AirVapor = staticState.GetSliceLayer(state.AirVapor,i),
-					CarbonDioxide = staticState.GetSliceLayer(state.AirCarbonDioxide,i),
+					CarbonDioxide = staticState.GetSliceLayer(state.AirCarbonDioxide, i),
+					Oxygen = staticState.GetSliceLayer(state.AirOxygen, i),
+					Nitrogen = staticState.GetSliceLayer(state.AirNitrogen, i),
+					Methane = staticState.GetSliceLayer(state.AirMethane, i),
 
 					AirMass = staticState.GetSliceLayer(tempState.AirMass,i),
 					Pressure = staticState.GetSliceLayer(tempState.AirPressure,i),
@@ -454,6 +467,9 @@ public static class WorldGen {
 					TemperaturePotential = staticState.GetSliceLayer(state.AirTemperaturePotential,i),
 					RelativeHumidity = RelativeHumidity,
 					CarbonDioxidePPM = worldGenData.AirCarbonPercent,
+					OxygenPPM = worldGenData.AirOxygenPercent,
+					NitrogenPPM = worldGenData.AirNitrogenPercent,
+					MethanePPM = worldGenData.AirMethanePercent,
 
 				}, worldGenJobHandle);
 		}

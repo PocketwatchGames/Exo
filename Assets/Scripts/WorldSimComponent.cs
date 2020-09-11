@@ -14,6 +14,7 @@ public class WorldSimComponent : MonoBehaviour
 	[Header("Init")]
 	public int Seed;
 	public int Subdivisions = 5;
+	public int MaxSpecies = 256;
 	public TextAsset WorldGenAsset;
 	public TextAsset WorldDataAsset;
 	public float TicksPerRealSecond = 1;
@@ -76,6 +77,8 @@ public class WorldSimComponent : MonoBehaviour
 	public float TimeTillTick { get; private set; }
 	public float InverseCellCount { get; private set; }
 
+	public List<Species> SpeciesList;
+
 	[SerializeField]
 	private WorldSim _worldSim;
 	private WorldGenData _worldGenData = new WorldGenData();
@@ -116,7 +119,7 @@ public class WorldSimComponent : MonoBehaviour
 		for (int i = 0; i < _simStateCount; i++)
 		{
 			_simStates[i] = new SimState();
-			_simStates[i].Init(CellCount, ref WorldData);
+			_simStates[i].Init(CellCount, MaxSpecies, ref WorldData);
 		}
 		_tempStates = new TempState[_tempStateCount];
 		for (int i = 0; i < _tempStateCount; i++)

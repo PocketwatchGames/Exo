@@ -1,6 +1,6 @@
 {
-	"AirLayers": 5,
-	"WaterLayers": 5,
+	"AirLayers": 4,
+	"WaterLayers": 4,
 	"SecondsPerTick": 3600,
 
 	"FullCoverageIce": 3.0,
